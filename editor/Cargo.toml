@@ -22,6 +22,7 @@ wgpu = "30.0.1"
 pollster = "1.0.1"
 
 [dependencies]
+bytemuck = "1.25.2"
 color-eyre = "0.6.5"
 eyre = "0.6.14"
 tracing = "0.1.44"

@@ -1001,6 +1001,7 @@ dependencies = [
 name = "mktools"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "color-eyre",
  "console_error_panic_hook",
  "eyre",
