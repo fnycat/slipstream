@@ -80,7 +80,7 @@ macro_rules! impl_byteorder_arrays {
                     fn [< read_ $ty _array >]<const N: usize, B: byteorder::ByteOrder>(&mut self)
                         -> std::io::Result<[$ty; N]>
                     {
-                        let mut array = [0; N];
+                        let mut array = [Default::default(); N];
                         for i in 0..N {
                             array[i] = self.[< read_ $ty >]::<B>()?;
                         }
@@ -93,7 +93,7 @@ macro_rules! impl_byteorder_arrays {
     }
 }
 
-impl_byteorder_arrays!(u16, i16, u32, i32, u64, i64, u128, i128);
+impl_byteorder_arrays!(u16, i16, u32, i32, u64, i64, u128, i128, f32, f64);
 
 pub trait ReadStringExt<'buf>: ReadBytesExt {
     /// Reads a `&str` with a `u32` length prefix.

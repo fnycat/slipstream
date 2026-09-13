@@ -20,7 +20,7 @@ const BE_BOM: [u8; 2] = [0xFE, 0xFF];
 /// Returns the amount of sections a subfile has, which depends on the subfile type and version.
 ///
 /// This info comes from [`BRRES Subfiles (File Format)`](https://mkwiiki.org/wiki/BRRES_Subfiles_(File_Format))
-fn get_section_count(ty: SubfileType, version: u32) -> EncodingResult<usize> {
+pub fn get_section_count(ty: SubfileType, version: u32) -> EncodingResult<usize> {
     Ok(match ty {
         SubfileType::Root => 0,
         SubfileType::Mdl0 => match version {
@@ -367,7 +367,7 @@ impl Decode for IndexGroup {
         debug_assert_eq!(
             reader.position() as u32 - group_start,
             header.length,
-            "not all index group entries were read"
+            "an incorrect number of index group entries was read"
         );
 
         Ok(Self {
@@ -409,7 +409,7 @@ pub struct Archive {
 impl Archive {
     fn decode_subfile(
         reader: &mut Cursor<&[u8]>,
-        index: &IndexGroupEntry,
+        _index: &IndexGroupEntry,
     ) -> EncodingResult<SubfileData> {
         let magic = reader.read_u8_array::<4>()?;
         Ok(match magic {

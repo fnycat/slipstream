@@ -47,7 +47,7 @@ mod test {
         fn inner() -> color_eyre::Result<()> {
             setup_tracing();
 
-            let raw_yaz0 = std::fs::read("test/fk-7-allkart.szs")?;
+            let raw_yaz0 = std::fs::read("test/la_bike-bk-1.szs")?;
             let decompressed = decompress_yaz0(&raw_yaz0)?;
 
             let mut cursor = Cursor::new(decompressed.as_slice());
@@ -72,7 +72,7 @@ mod test {
         }
 
         if let Err(err) = inner() {
-            eprintln!("{err:#?}");
+            panic!("{err:#?}");
         }
     }
 }
