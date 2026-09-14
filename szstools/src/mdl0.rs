@@ -128,7 +128,7 @@ impl TryFrom<u32> for Mdl0SectionIds {
 pub enum Mdl0Sections {
     Definitions(Definitions),
     Bones(Bones),
-    Vertices = 2,
+    Vertices(Vertices),
     Normals = 3,
     Colors = 4,
     UvCoordinates = 5,
@@ -143,11 +143,15 @@ pub enum Mdl0Sections {
 }
 
 impl Mdl0Sections {
-    pub fn decode(reader: &mut Cursor<&[u8]>, section_index: usize) -> EncodingResult<Self> {
+    pub fn decode(
+        reader: &mut Cursor<&[u8]>,
+        section_index: usize,
+        header_start: u32,
+    ) -> EncodingResult<Self> {
         Ok(match section_index {
             0 => Self::Definitions(Definitions::decode(reader)?),
             1 => Self::Bones(Bones::decode(reader)?),
-            2 => todo!("vertex decoding"),
+            2 => Self::Vertices(Vertices::decode(reader, header_start)?),
             v => {
                 return Err(CorruptionError {
                     reason: format!("invalid MDL0 section index: {v} (expected 0-13)"),
@@ -341,6 +345,166 @@ impl Decode for Bones {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum VertexData {
+    XY(Vec<[f32; 2]>),
+    XYZ(Vec<[f32; 3]>),
+}
+
+const UINT8_FORMAT: u32 = 0x0;
+const INT8_FORMAT: u32 = 0x1;
+const UINT16_FORMAT: u32 = 0x2;
+const INT16_FORMAT: u32 = 0x3;
+const FLOAT_FORMAT: u32 = 0x4;
+
+const COMPONENTS_XY: u32 = 0x0;
+const COMPONENTS_XYZ: u32 = 0x1;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Vertices {
+    pub index: u32,
+    pub mdl0_offset: i32,
+    pub name_offset: i32,
+    pub data_offset: i32,
+    pub divisor: u8,
+    pub stride: u8,
+    pub bounding_volume_min: [f32; 3],
+    pub bounding_volume_max: [f32; 3],
+    pub vertices: VertexData,
+}
+
+impl Vertices {
+    fn decode_vertices<const N: usize>(
+        reader: &mut Cursor<&[u8]>,
+        vertex_count: u16,
+        format: u32,
+        divisor: u8,
+    ) -> EncodingResult<Vec<[f32; N]>> {
+        let mut vertices = Vec::with_capacity(vertex_count as usize);
+        let factor = 1.0 / 2.0f32.powi(divisor as i32);
+
+        match format {
+            UINT8_FORMAT => {
+                for _ in 0..vertex_count {
+                    let raw_vertex = reader.read_u8_array::<N>()?;
+                    let vertex = std::array::from_fn(|i| raw_vertex[i] as f32 * factor);
+
+                    vertices.push(vertex);
+                }
+            }
+            INT8_FORMAT => {
+                for _ in 0..vertex_count {
+                    let raw_vertex = reader.read_i8_array::<N>()?;
+                    let vertex = std::array::from_fn(|i| raw_vertex[i] as f32 * factor);
+
+                    vertices.push(vertex);
+                }
+            }
+            UINT16_FORMAT => {
+                for _ in 0..vertex_count {
+                    let raw_vertex = reader.read_u16_array::<N, BigEndian>()?;
+                    let vertex = std::array::from_fn(|i| raw_vertex[i] as f32 * factor);
+
+                    vertices.push(vertex);
+                }
+            }
+            INT16_FORMAT => {
+                for _ in 0..vertex_count {
+                    let raw_vertex = reader.read_i16_array::<N, BigEndian>()?;
+                    let vertex = std::array::from_fn(|i| raw_vertex[i] as f32 * factor);
+
+                    vertices.push(vertex);
+                }
+            }
+            FLOAT_FORMAT => {
+                let mut vertices = Vec::with_capacity(vertex_count as usize);
+                for _ in 0..vertex_count {
+                    let vertex = reader.read_f32_array::<N, BigEndian>()?;
+
+                    vertices.push(vertex);
+                }
+            }
+            v => {
+                return Err(CorruptionError {
+                    reason: format!("invalid vertex format: {v} (must be 1-4)"),
+                    location: Some(reader.position()),
+                    ..Default::default()
+                }
+                .into());
+            }
+        }
+
+        Ok(vertices)
+    }
+
+    pub fn decode(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
+        let start = reader.position();
+
+        let length = reader.read_u32::<BigEndian>()?;
+        let mdl0_offset = reader.read_i32::<BigEndian>()?;
+        let data_offset = reader.read_i32::<BigEndian>()?;
+        let name_offset = reader.read_i32::<BigEndian>()?;
+        let index = reader.read_u32::<BigEndian>()?;
+        let component_count = reader.read_u32::<BigEndian>()?;
+        let format = reader.read_u32::<BigEndian>()?;
+        let divisor = reader.read_u8()?;
+        let stride = reader.read_u8()?;
+        let vertex_count = reader.read_u16::<BigEndian>()?;
+        let bounding_volume_min = reader.read_f32_array::<3, BigEndian>()?;
+        let bounding_volume_max = reader.read_f32_array::<3, BigEndian>()?;
+
+        let vertices_start = header_start as i64 + data_offset as i64;
+        reader.set_position(vertices_start as u64);
+
+        let vertices = match component_count {
+            COMPONENTS_XY => VertexData::XY(Self::decode_vertices::<2>(
+                reader,
+                vertex_count,
+                format,
+                divisor,
+            )?),
+            COMPONENTS_XYZ => VertexData::XYZ(Self::decode_vertices::<3>(
+                reader,
+                vertex_count,
+                format,
+                divisor,
+            )?),
+            v => {
+                return Err(CorruptionError {
+                    reason: format!("invalid vertex component count: {v} (expected 2 or 3)"),
+                    location: Some(reader.position()),
+                    ..Default::default()
+                }
+                .into());
+            }
+        };
+
+        // if reader.position() - start != length as u64 {
+        //     return Err(CorruptionError {
+        //         reason: format!(
+        //             "did not read all vertex bytes: {length} vs. {}",
+        //             reader.position() - start
+        //         ),
+        //         location: Some(reader.position()),
+        //         ..Default::default()
+        //     }
+        //     .into());
+        // }
+
+        Ok(Self {
+            vertices,
+            index,
+            mdl0_offset,
+            name_offset,
+            data_offset,
+            divisor,
+            stride,
+            bounding_volume_min,
+            bounding_volume_max,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Mdl0Header {
     pub file_header_offset: i32,
     pub scaling_mode: ScalingMode,
@@ -496,8 +660,12 @@ impl Decode for Mdl0Subfile {
                 );
 
                 reader.set_position(section_start as u64);
-                let section = Mdl0Sections::decode(reader, i)?;
-                dbg!(section);
+                let section = Mdl0Sections::decode(reader, i, section_start)?;
+                if let Mdl0Sections::Vertices(vertices) = section {
+                    tracing::debug!("{name}: {vertices:?}");
+                }
+
+                // dbg!(section);
             }
             // let section = Mdl0Sections::decode(reader, i)?;
             // tracing::debug!("{section:?}");
