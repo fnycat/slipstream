@@ -440,7 +440,9 @@ impl Decode for Archive {
         let root_group = IndexGroup::decode(reader)?;
 
         let mut folders = Vec::with_capacity(root_group.entries.len() - 1);
-        for folder in &root_group.entries[1..] {
+
+        tracing::error!("ONLY OPENING FIRST FILE (TODO REMOVE)");
+        for folder in &root_group.entries[1..2] {
             let folder_name = root_group.get_entry_name(reader.get_ref(), folder)?;
 
             tracing::trace!(

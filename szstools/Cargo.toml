@@ -6,6 +6,7 @@ license = "Apache 2.0"
 repository = "https://github.com/RadiatedMonkey/mktools"
 
 [dependencies]
+bytemuck = "1.25.2"
 byteorder = "1.5.0"
 color-eyre = { version = "0.6.5", features = ["track-caller", "issue-url"] }
 paste = "1.0.15"

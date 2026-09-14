@@ -1,13 +1,7 @@
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
-
-#[cfg(target_arch = "wasm32")]
-use winit::platform::web::EventLoopExtWebSys;
-
-use winit::event_loop::EventLoop;
-
 mod app;
-mod state;
+
+#[cfg(target_arch = "wasm32")]
+mod web;
 
 use crate::app::App;
 
@@ -47,30 +41,86 @@ fn setup_tracing() {
     tracing::debug!("Logging initialized");
 }
 
+fn window_builder_hook(builder: egui::ViewportBuilder) -> egui::ViewportBuilder {
+    builder.with_title("Mario Kart Wii editor")
+}
+
 pub fn run() -> eyre::Result<()> {
     setup_tracing();
 
-    let event_loop = EventLoop::with_user_event().build()?;
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let mut app = App::new();
-        event_loop.run_app(&mut app)?;
+        use std::sync::Arc;
+
+        use eframe::egui_wgpu::SurfaceErrorAction;
+
+        let wgpu_setup = eframe::egui_wgpu::WgpuSetupCreateNew {
+            instance_descriptor: wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::PRIMARY,
+                backend_options: wgpu::BackendOptions::default(),
+                display: None,
+                flags: wgpu::InstanceFlags::empty(),
+                memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
+            },
+            device_descriptor: Arc::new(|adapter| {
+                let adapter_info = adapter.get_info();
+
+                tracing::info!("Using adapter {}", adapter_info.name);
+
+                wgpu::DeviceDescriptor {
+                    label: Some("device"),
+                    experimental_features: wgpu::ExperimentalFeatures::disabled(),
+                    memory_hints: wgpu::MemoryHints::Performance,
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::defaults(),
+                    trace: wgpu::Trace::Off,
+                }
+            }),
+            native_adapter_selector: None,
+            display_handle: None,
+            power_preference: wgpu::PowerPreference::default(),
+        };
+
+        let wgpu_options = eframe::WgpuConfiguration {
+            on_surface_status: Arc::new(|status| match status {
+                wgpu::CurrentSurfaceTexture::Outdated => {
+                    tracing::debug!("Dropped frame with error: {status:?}");
+                    SurfaceErrorAction::Reconfigure
+                }
+                wgpu::CurrentSurfaceTexture::Lost => {
+                    tracing::debug!("Dropped frame with error: {status:?}");
+                    SurfaceErrorAction::RecreateSurface
+                }
+                wgpu::CurrentSurfaceTexture::Occluded => SurfaceErrorAction::SkipFrame,
+                _ => {
+                    tracing::warn!("Dropped frame with error: {status:?}");
+                    SurfaceErrorAction::SkipFrame
+                }
+            }),
+            surface: eframe::SurfaceConfig::HIGH_THROUGHPUT,
+            wgpu_setup: eframe::egui_wgpu::WgpuSetup::CreateNew(wgpu_setup),
+        };
+
+        let native_options = eframe::NativeOptions {
+            centered: true,
+            dithering: true,
+            renderer: eframe::Renderer::Wgpu,
+            window_builder: Some(Box::new(window_builder_hook)),
+            wgpu_options,
+            ..Default::default()
+        };
+
+        eframe::run_native(
+            "MKTools Editor",
+            native_options,
+            Box::new(|cc| Ok(Box::new(App::new(cc)))),
+        )?;
     }
 
     #[cfg(target_arch = "wasm32")]
     {
-        let app = App::new(&event_loop);
-        event_loop.spawn_app(app);
+        todo!();
     }
-
-    Ok(())
-}
-
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen(start)]
-pub fn run_web() -> Result<(), wasm_bindgen::JsValue> {
-    console_error_panic_hook::set_once();
-    run().unwrap_throw();
 
     Ok(())
 }

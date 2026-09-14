@@ -76,7 +76,7 @@ impl Decode for TextureMatrixMode {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum Mdl0SectionIds {
+pub enum SectionIds {
     Definitions,
     Bones,
     Vertices,
@@ -93,7 +93,7 @@ pub enum Mdl0SectionIds {
     UserData,
 }
 
-impl TryFrom<u32> for Mdl0SectionIds {
+impl TryFrom<u32> for SectionIds {
     type Error = EncodingError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
@@ -123,53 +123,15 @@ impl TryFrom<u32> for Mdl0SectionIds {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-#[repr(u32)]
-pub enum Mdl0Sections {
-    Definitions(Definitions),
-    Bones(Bones),
-    Vertices(Vertices),
-    Normals(Normals),
-    Colors = 4,
-    UvCoordinates = 5,
-    FurVectors = 6,
-    FurLayers = 7,
-    Materials = 8,
-    Tevs = 9,
-    Objects = 10,
-    TextureLinks = 11,
-    PaletteLinks = 12,
-    UserData = 13,
-}
-
-impl Mdl0Sections {
-    pub fn decode(
-        reader: &mut Cursor<&[u8]>,
-        section_index: usize,
-        header_start: u32,
-    ) -> EncodingResult<Self> {
-        Ok(match section_index {
-            0 => Self::Definitions(Definitions::decode(reader)?),
-            1 => Self::Bones(Bones::decode(reader)?),
-            2 => Self::Vertices(Vertices::decode(reader, header_start)?),
-            3 => Self::Normals(Normals::decode(reader, header_start)?),
-            v => {
-                return Err(CorruptionError {
-                    reason: format!("invalid MDL0 section index: {v} (expected 0-13)"),
-                    location: Some(reader.position()),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
-    }
+trait SectionDecode: Sized {
+    fn decode_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Definitions {}
 
-impl Decode for Definitions {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl SectionDecode for Definitions {
+    fn decode_section(reader: &mut Cursor<&[u8]>, _header_start: u32) -> EncodingResult<Self> {
         tracing::error!("TODO: draw lists");
         Ok(Self {})
     }
@@ -288,8 +250,8 @@ pub struct Bones {
     pub inverse_matrix: [f32; 12],
 }
 
-impl Decode for Bones {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl SectionDecode for Bones {
+    fn decode_section(reader: &mut Cursor<&[u8]>, _header_start: u32) -> EncodingResult<Self> {
         tracing::trace!(
             "Reading model bones section, at location {}",
             reader.position()
@@ -349,6 +311,22 @@ impl Decode for Bones {
 pub enum VertexData {
     XY(Vec<[f32; 2]>),
     XYZ(Vec<[f32; 3]>),
+}
+
+impl VertexData {
+    pub fn len(&self) -> usize {
+        match self {
+            Self::XY(verts) => verts.len(),
+            Self::XYZ(verts) => verts.len(),
+        }
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        match self {
+            Self::XY(verts) => bytemuck::cast_slice(verts),
+            Self::XYZ(verts) => bytemuck::cast_slice(verts),
+        }
+    }
 }
 
 const COMPONENTS_XY: u32 = 0x0;
@@ -435,11 +413,10 @@ fn decode_components<const N: usize>(
             }
         }
         ComponentFormat::Float => {
-            let mut vertices = Vec::with_capacity(count as usize);
             for _ in 0..count {
-                let components = reader.read_f32_array::<N, BigEndian>()?;
+                let raw_comps = reader.read_f32_array::<N, BigEndian>()?;
 
-                vertices.push(components);
+                components.push(raw_comps);
             }
         }
     }
@@ -463,8 +440,8 @@ pub struct Vertices {
     pub vertices: VertexData,
 }
 
-impl Vertices {
-    pub fn decode(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
+impl SectionDecode for Vertices {
+    fn decode_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let mdl0_offset = reader.read_i32::<BigEndian>()?;
         let data_offset = reader.read_i32::<BigEndian>()?;
@@ -477,6 +454,8 @@ impl Vertices {
         let vertex_count = reader.read_u16::<BigEndian>()?;
         let bounding_volume_min = reader.read_f32_array::<3, BigEndian>()?;
         let bounding_volume_max = reader.read_f32_array::<3, BigEndian>()?;
+
+        tracing::trace!("Reading {vertex_count} vertices");
 
         let vertices_start = header_start as i64 + data_offset as i64;
         reader.set_position(vertices_start as u64);
@@ -547,8 +526,8 @@ pub struct Normals {
     pub normals: NormalData,
 }
 
-impl Normals {
-    pub fn decode(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
+impl SectionDecode for Normals {
+    fn decode_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let mdl0_offset = reader.read_i32::<BigEndian>()?;
         let data_offset = reader.read_i32::<BigEndian>()?;
@@ -713,9 +692,32 @@ impl Decode for BoneLinkTable {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mdl0Subfile {
-    pub header: SubfileHeader,
+    pub subfile_header: SubfileHeader,
     pub mdl0_header: Mdl0Header,
     pub bone_links: BoneLinkTable,
+    pub definitions: Option<HashMap<String, Definitions>>,
+    pub bones: Option<HashMap<String, Bones>>,
+    pub vertices: Option<HashMap<String, Vertices>>,
+    pub normals: Option<HashMap<String, Normals>>,
+}
+
+fn decode_section<T: SectionDecode>(
+    reader: &mut Cursor<&[u8]>,
+) -> EncodingResult<HashMap<String, T>> {
+    let index_group = IndexGroup::decode(reader)?;
+    let mut map = HashMap::with_capacity(index_group.entries.len());
+
+    for entry in &index_group.entries[1..] {
+        let name = index_group.get_entry_name(reader.get_ref(), entry)?;
+        let section_start = index_group.get_entry_data_start(entry);
+        reader.set_position(section_start as u64);
+
+        tracing::trace!("Reading entry `{name}`, at location {section_start}");
+
+        map.insert(name.to_owned(), T::decode_section(reader, section_start)?);
+    }
+
+    Ok(map)
 }
 
 impl Decode for Mdl0Subfile {
@@ -745,42 +747,44 @@ impl Decode for Mdl0Subfile {
         let index_group = IndexGroup::decode(reader)?;
         tracing::debug!("{index_group:?}");
 
-        for (i, &section_offset) in subfile_header.offsets.iter().enumerate() {
+        let mut definitions = None;
+        let mut bones = None;
+        let mut vertices = None;
+        let mut normals = None;
+
+        tracing::error!("TAKING ONLY 4 SECTIONS");
+        for (i, &section_offset) in subfile_header.offsets.iter().enumerate().take(4) {
+            let section_ty = SectionIds::try_from(i as u32)?;
+            if section_offset == 0 {
+                tracing::debug!("Section `{section_ty:?}` does not exist, skipping");
+                continue;
+            }
+
             let section_start = subfile_header.header_start as i64 + section_offset as i64;
             reader.set_position(section_start as u64);
 
-            // The index `i` determines the type of section we are reading here.
-            // Each section starts with an index group pointing to its files.
-            let index_group = IndexGroup::decode(reader)?;
-            for entry in &index_group.entries[1..] {
-                let name = index_group.get_entry_name(reader.get_ref(), entry)?;
-                let section_ty = Mdl0SectionIds::try_from(i as u32)?;
+            tracing::trace!("Reading section `{section_ty:?}`");
 
-                let section_start = index_group.get_entry_data_start(entry);
-                tracing::trace!(
-                    "Reading entry `{name}` in MDL0 section `{section_ty:?}`, at location {section_start}"
-                );
-
-                reader.set_position(section_start as u64);
-                let section = Mdl0Sections::decode(reader, i, section_start)?;
-                if let Mdl0Sections::Normals(vertices) = section {
-                    tracing::debug!("{name}: {vertices:?}");
+            match section_ty {
+                SectionIds::Definitions => {
+                    definitions = Some(decode_section::<Definitions>(reader)?)
                 }
-
-                // dbg!(section);
+                SectionIds::Bones => bones = Some(decode_section::<Bones>(reader)?),
+                SectionIds::Vertices => vertices = Some(decode_section::<Vertices>(reader)?),
+                SectionIds::Normals => normals = Some(decode_section::<Normals>(reader)?),
+                v => todo!("{v:?}"),
             }
-            // let section = Mdl0Sections::decode(reader, i)?;
-            // tracing::debug!("{section:?}");
         }
 
-        todo!();
-
-        for entry in &index_group.entries {
-            let folder_name = index_group.get_entry_name(reader.get_ref(), entry)?;
-            tracing::debug!("{folder_name}");
-        }
-
-        todo!()
+        Ok(Self {
+            subfile_header,
+            mdl0_header,
+            bone_links,
+            definitions,
+            bones,
+            vertices,
+            normals,
+        })
     }
 }
 
