@@ -7,7 +7,7 @@ use crate::error::IncorrectFormat;
 use crate::error::{CorruptionError, EncodingError, EncodingResult};
 
 /// Magic of a YAZ0 file.
-const YAZ0_MAGIC: [u8; 4] = [0x59, 0x61, 0x7a, 0x30];
+pub const YAZ0_MAGIC: [u8; 4] = [0x59, 0x61, 0x7a, 0x30];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
@@ -53,7 +53,7 @@ impl Decode for Header {
     }
 }
 
-pub fn decompress_yaz0(compressed: &[u8]) -> EncodingResult<Vec<u8>> {
+pub fn decompress(compressed: &[u8]) -> EncodingResult<Vec<u8>> {
     let mut cursor = Cursor::new(compressed);
     let yaz0_file = Yaz0File::decode(&mut cursor)?;
 

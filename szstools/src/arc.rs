@@ -1,4 +1,4 @@
-use std::{ffi::CStr, io::Cursor};
+use std::{collections::HashMap, ffi::CStr, io::Cursor};
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// Magic of an ARC file.
-const ARC_MAGIC: u32 = 0x55AA382D;
+pub const ARC_MAGIC: u32 = 0x55AA382D;
 
 /// See [`Custom Mario Kart Wiiki`](https://mkwiiki.org/wiki/ARC_(File_Format)) for more info.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,15 +102,6 @@ impl TryFrom<u8> for RawNodeType {
     }
 }
 
-impl From<&NodeType> for RawNodeType {
-    fn from(value: &NodeType) -> Self {
-        match value {
-            NodeType::File { .. } => RawNodeType::File,
-            NodeType::Directory { .. } => RawNodeType::Directory,
-        }
-    }
-}
-
 /// Exact size of a single ARC node.
 const ARC_NODE_SIZE: usize = 0x0c;
 
@@ -174,71 +165,83 @@ impl Decode for RawNode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NodeType {
-    File {
-        /// Size of the file in bytes.
-        size: u32,
-        content: Vec<u8>,
-    },
-    Directory {
-        /// Index of the parent directory.
-        parent: u32,
-        /// Index of the first node that is not part of this directory.
-        skip_node: u32,
-    },
+#[derive(Debug, Clone, PartialEq)]
+pub enum Node {
+    File { name: String, data: Vec<u8> },
+    Folder { name: String, children: Vec<Node> },
 }
 
-/// Processed ARC node that now includes its name and other properties.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Node {
-    pub name: String,
-    pub data: NodeType,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Archive {
-    pub nodes: Vec<Node>,
-}
-
-impl Archive {
-    /// Sorts all files in alphabetical order within their directory.
-    pub fn sort(&mut self) {
-        tracing::trace!("Sorting {} ARC nodes", self.nodes.len());
-
-        todo!()
+impl Node {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::File { name, .. } => name,
+            Self::Folder { name, .. } => name,
+        }
     }
 }
 
-impl Encode for Archive {
-    fn encode_into(&self, writer: &mut Vec<u8>) -> EncodingResult<()> {
-        tracing::trace!("Encoding {} ARC nodes", self.nodes.len());
+#[derive(Debug, Clone, PartialEq)]
+pub struct Archive {
+    pub root: Option<Node>,
+}
 
-        let spool_size = 0;
-        let fpool_offset = 0;
+impl Archive {
+    pub fn read_filetree<B: AsRef<[u8]>>(data: B) -> EncodingResult<Self> {
+        let mut cursor = Cursor::new(data.as_ref());
+        Self::decode(&mut cursor)
+    }
 
-        let size = ARC_NODE_SIZE * self.nodes.len() + spool_size;
-        let header = Header {
-            node_offset: ARC_NODE_SIZE as i32,
-            file_offset: fpool_offset,
-            size: size as i32,
-            reserved: [0; 4],
-        };
+    fn parse_directory_node(
+        nodes: &[RawNode],
+        cursor: &mut usize,
+        buffer: &[u8],
+        string_pool: &[u8],
+    ) -> EncodingResult<Option<Node>> {
+        let raw_dir = &nodes[*cursor];
+        let end_idx = raw_dir.data2 as usize;
 
-        header.encode_into(writer)?;
+        *cursor += 1;
 
-        for node in &self.nodes {
-            // let raw_node = RawNode {
-            //     ty: RawNodeType::from(&node.data),
-            // };
-            let raw_node: RawNode = todo!();
+        let mut children = Vec::new();
+        while *cursor < end_idx && *cursor < nodes.len() {
+            let curr_node = &nodes[*cursor];
 
-            raw_node.encode_into(writer)?;
+            if curr_node.ty == RawNodeType::Directory {
+                if let Some(child_dir) =
+                    Self::parse_directory_node(nodes, cursor, buffer, string_pool)?
+                {
+                    children.push(child_dir);
+                }
+            } else {
+                let data_start = curr_node.data1 as usize;
+                let data_end = data_start + curr_node.data2 as usize;
+
+                children.push(Node::File {
+                    name: curr_node.get_name_from_pool(string_pool)?.to_owned(),
+                    data: buffer[data_start..data_end].to_owned(),
+                });
+
+                *cursor += 1;
+            }
         }
 
-        todo!();
+        Ok(Some(Node::Folder {
+            name: raw_dir.get_name_from_pool(string_pool)?.to_owned(),
+            children,
+        }))
+    }
 
-        Ok(())
+    fn parse_arc_tree(
+        nodes: &[RawNode],
+        buffer: &[u8],
+        string_pool: &[u8],
+    ) -> EncodingResult<Option<Node>> {
+        if nodes.is_empty() {
+            return Ok(None);
+        }
+
+        let mut cursor = 0;
+        Self::parse_directory_node(nodes, &mut cursor, buffer, string_pool)
     }
 }
 
@@ -266,49 +269,9 @@ impl Decode for Archive {
 
         tracing::trace!("Loading ARC node names and content...");
 
-        // Process all nodes to find their data and names.
-        let mut nodes = Vec::with_capacity(raw_nodes.len());
-        for raw_node in raw_nodes {
-            let name = raw_node.get_name_from_pool(spool)?.to_owned();
+        let nodes = Self::parse_arc_tree(&raw_nodes, reader.get_ref(), spool)?;
 
-            let reader_buf = reader.get_ref();
-            let data = match raw_node.ty {
-                RawNodeType::File => {
-                    let data_start = raw_node.data1 as usize;
-                    let data_end = data_start + raw_node.data2 as usize;
-
-                    tracing::trace!(
-                        "Discovered file node `{name}` with data section {data_start}...{data_end}"
-                    );
-
-                    if data_end > reader_buf.len() {
-                        return Err(CorruptionError {
-                            reason: format!("file node data range {data_start}..{data_end} exceeds file length {}", reader_buf.len()),
-                            location: Some(reader.position())
-                        }.into());
-                    }
-
-                    NodeType::File {
-                        content: reader_buf[data_start..data_end].to_owned(),
-                        size: raw_node.data2,
-                    }
-                }
-                RawNodeType::Directory => {
-                    tracing::trace!(
-                        "Discovered directory node `{name}` (parent node: {}, end node: {})",
-                        raw_node.data1,
-                        raw_node.data2
-                    );
-
-                    NodeType::Directory {
-                        parent: raw_node.data1,
-                        skip_node: raw_node.data2,
-                    }
-                }
-            };
-
-            nodes.push(Node { name, data })
-        }
+        tracing::trace!("Parsed file tree of {node_count} nodes");
 
         debug_assert_eq!(
             reader.position(),
@@ -318,6 +281,6 @@ impl Decode for Archive {
 
         tracing::trace!("Successfully loaded node names and data pointers");
 
-        Ok(Self { nodes })
+        Ok(Self { root: nodes })
     }
 }

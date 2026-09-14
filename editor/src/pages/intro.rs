@@ -1,4 +1,8 @@
-use crate::app::{App, CurrentPage};
+use crate::{
+    app::{App, CurrentPage},
+    model_renderer::ModelRenderer,
+    pages::editor::EditorPageData,
+};
 
 impl App {
     pub fn draw_intro(&mut self, ui: &mut egui::Ui) {
@@ -32,7 +36,7 @@ impl App {
                             ui.columns(2, |ui| {
                                 for ui in ui {
                                     for i in 0..4 {
-                                        if ui.button(format!("driver_{i}.brres")).clicked() {
+                                        if ui.link(format!("driver_{i}.brres")).clicked() {
                                             tracing::debug!("whooshdsd");
                                         }
                                     }
@@ -53,7 +57,15 @@ impl App {
                                     .pick_file();
 
                                 if let Some(selected_file) = selected_file {
-                                    self.current_page = CurrentPage::Editor { selected_file };
+                                    let archive =
+                                        EditorPageData::from_file(&selected_file).unwrap();
+
+                                    ModelRenderer::init(&self.render_state);
+
+                                    self.current_page = CurrentPage::Editor(EditorPageData {
+                                        filepath: selected_file,
+                                        data: archive,
+                                    })
                                 }
                             }
                         });

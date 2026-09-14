@@ -1,6 +1,7 @@
 mod app;
 mod config;
 mod decorations;
+mod model_renderer;
 mod pages;
 
 #[cfg(target_arch = "wasm32")]

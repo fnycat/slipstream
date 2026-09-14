@@ -1,25 +1,39 @@
 use std::{
-    path::PathBuf,
+    any::Any,
+    panic::AssertUnwindSafe,
     time::{Duration, Instant},
 };
 
+use eframe::egui_wgpu;
 use egui_phosphor::regular::{MINUS, SQUARE, X};
 
 use crate::{
-    config::{APP_TITLE, DEFAULT_SIZE, LAUNCH_DELAY},
+    config::{APP_TITLE, DEFAULT_SIZE, LAUNCH_DELAY, configure_dark_style, configure_light_style},
     decorations::WindowState,
+    pages::editor::EditorPageData,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CurrentPage {
     Splash,
     Intro,
-    Editor { selected_file: PathBuf },
+    Editor(EditorPageData),
+}
+
+impl CurrentPage {
+    pub fn as_editor(&self) -> Option<&EditorPageData> {
+        match self {
+            Self::Editor(data) => Some(data),
+            _ => None,
+        }
+    }
 }
 
 pub struct App {
+    pub panic_info: Option<Box<dyn Any + Send>>,
     pub bg_image: Option<egui::load::SizedTexture>,
 
+    pub render_state: egui_wgpu::RenderState,
     pub window_state: WindowState,
     pub first_frame: bool,
     pub preload_finished: bool,
@@ -39,9 +53,17 @@ impl App {
         egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
 
         cc.egui_ctx.set_fonts(fonts);
-        cc.egui_ctx.set_theme(egui::Theme::Light);
+        cc.egui_ctx.set_theme(egui::Theme::Dark);
+
+        cc.egui_ctx
+            .set_style_of(egui::Theme::Dark, configure_dark_style());
+
+        cc.egui_ctx
+            .set_style_of(egui::Theme::Light, configure_light_style());
 
         Self {
+            render_state: cc.wgpu_render_state.as_ref().unwrap().clone(),
+            panic_info: None,
             preload_finished: false,
             bg_image: None,
             window_state: WindowState::Normal,
@@ -70,30 +92,12 @@ impl App {
         }
     }
 
-    fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-        ui.menu_button("File", |ui| {
-            if ui.button("Exit").clicked() {
-                ui.send_viewport_cmd(egui::ViewportCommand::Close);
-            }
-        });
-    }
-}
-
-impl eframe::App for App {
-    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if self.first_frame {
-            ctx.request_repaint_after(LAUNCH_DELAY);
-
-            self.center_window();
-
-            ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(true));
-            ctx.send_viewport_cmd(egui::ViewportCommand::Title("Launching...".into()));
-
-            self.first_frame = false;
+    fn draw_ui(&mut self, ui: &mut egui::Ui) {
+        // Draw panic modal if a panic occurred
+        if self.panic_info.is_some() {
+            self.draw_panic_modal(ui);
         }
-    }
 
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         if let Some(launch) = self.launch_timestamp {
             if launch.elapsed() < LAUNCH_DELAY || !self.preload_finished {
                 self.draw_splash(ui);
@@ -138,10 +142,34 @@ impl eframe::App for App {
             return;
         }
 
-        match self.current_page {
+        match &self.current_page {
             CurrentPage::Intro => self.draw_intro(ui),
             CurrentPage::Editor { .. } => self.draw_editor(ui),
-            _ => todo!(),
+            v => todo!("{v:?}"),
+        }
+    }
+}
+
+impl eframe::App for App {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if self.first_frame {
+            ctx.request_repaint_after(LAUNCH_DELAY);
+
+            self.center_window();
+
+            ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(true));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title("Launching...".into()));
+
+            self.first_frame = false;
+        }
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
+            self.draw_ui(ui);
+        })) {
+            tracing::error!("{err:?}");
+            self.panic_info = Some(err);
         }
     }
 }

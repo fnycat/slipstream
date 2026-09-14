@@ -21,32 +21,50 @@ impl App {
         }
     }
 
+    /// Renders the double square icon to unmaximize the window.
     fn draw_unmaximize(ui: &mut egui::Ui) -> egui::Response {
-        let size = egui::vec2(12.0, 12.0);
-        let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
+        let padding = ui.style().spacing.button_padding;
+        let icon_size = egui::vec2(10.0, 10.0);
+
+        let total_width = icon_size.x + padding.x * 2.0;
+        let total_size = egui::vec2(total_width, ui.available_height());
+
+        let (rect, response) = ui.allocate_exact_size(total_size, egui::Sense::click());
 
         if ui.is_rect_visible(rect) {
             let painter = ui.painter();
+            let visuals = ui.style().interact(&response);
+
+            painter.rect(
+                rect,
+                0.0,
+                visuals.weak_bg_fill,
+                visuals.bg_stroke,
+                egui::StrokeKind::Inside,
+            );
+
             let stroke_color = if response.hovered() {
                 ui.visuals().widgets.hovered.fg_stroke.color
             } else {
-                ui.visuals().widgets.noninteractive.fg_stroke.color
+                ui.visuals().widgets.inactive.fg_stroke.color
             };
 
             let stroke = egui::Stroke::new(1.0, stroke_color);
 
             let box_size = egui::vec2(8.0, 8.0);
-            let back_min = rect.min + egui::vec2(3.0, 0.0);
+            let back_min = rect.min + egui::vec2(padding.x + 3.0, padding.y + 1.0);
             let back_rect = egui::Rect::from_min_size(back_min, box_size);
 
+            // Draws the top line of the rear square
             painter.line_segment([back_rect.left_top(), back_rect.right_top()], stroke);
 
+            // Draws the right line of the rear square.
             painter.line_segment([back_rect.right_top(), back_rect.right_bottom()], stroke);
 
-            let front_min = rect.min + egui::vec2(0.0, 3.0);
+            let front_min = rect.min + egui::vec2(padding.x + 0.0, padding.y + 4.0);
             let front_rect = egui::Rect::from_min_size(front_min, box_size);
 
-            painter.rect_filled(front_rect, 0.0, ui.visuals().window_fill());
+            painter.rect_filled(front_rect, 0.0, visuals.weak_bg_fill);
             painter.rect_stroke(front_rect, 0.0, stroke, egui::StrokeKind::Middle);
         }
 
@@ -66,7 +84,7 @@ impl App {
                 pos,
                 egui::Align2::LEFT_BOTTOM,
                 format!(
-                    "{} ({})",
+                    "v{} ({})",
                     env!("CARGO_PKG_VERSION"),
                     &env!("VERGEN_GIT_SHA")[..8]
                 ),
@@ -82,10 +100,13 @@ impl App {
         let bg_image = self.bg_image.unwrap();
         egui::Image::new(bg_image).paint_at(ui, viewport_rect);
 
-        if ui.theme() == egui::Theme::Dark {
-            let bg_overlay = egui::Color32::from_black_alpha(160);
-            ui.painter().rect_filled(viewport_rect, 0.0, bg_overlay);
-        }
+        let bg_overlay = if ui.theme() == egui::Theme::Dark {
+            egui::Color32::from_black_alpha(160)
+        } else {
+            egui::Color32::from_white_alpha(160)
+        };
+
+        ui.painter().rect_filled(viewport_rect, 0.0, bg_overlay);
     }
 
     /// Draws the title buttons (close, minimize, maximize)
@@ -169,6 +190,9 @@ impl App {
                 }
 
                 if response.drag_started() {
+                    // The window should be unmaximized when dragging starts.
+                    self.window_state = WindowState::Normal;
+
                     ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
                 }
 
