@@ -1,5 +1,3 @@
-use std::sync::mpsc;
-
 use crate::app::App;
 
 impl App {
@@ -21,9 +19,22 @@ impl App {
                         .show(ui, |ui| {
                             ui.set_max_width(360.0);
 
-                            ui.heading("Centered container");
+                            ui.heading("Recent files");
                             ui.separator();
-                            ui.label("Fixed-position launcher UI.");
+
+                            ui.add_space(0.05 * ui.available_height());
+
+                            ui.spacing_mut().button_padding = egui::vec2(12.0, 8.0);
+
+                            ui.columns(2, |ui| {
+                                for ui in ui {
+                                    for i in 0..4 {
+                                        if ui.button(format!("driver_{i}.brres")).clicked() {
+                                            tracing::debug!("whooshdsd");
+                                        }
+                                    }
+                                }
+                            });
                         });
                 });
             });

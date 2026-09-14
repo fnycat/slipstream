@@ -105,7 +105,26 @@ impl eframe::App for App {
                     "Mario Kart Wii editor".to_owned(),
                 ));
 
-                self.center_window();
+                // `center_window` does not work here since it would still be using the old window size.
+
+                let mut window_rect = self.ctx.viewport_rect();
+                // adjust the existing window rect to include the new size.
+                window_rect.max = window_rect.min + DEFAULT_SIZE;
+
+                let sizex = window_rect.max.x - window_rect.min.x;
+                let sizey = window_rect.max.y - window_rect.min.y;
+
+                if let Some(monitor_size) = self.ctx.input(|i| i.viewport().monitor_size) {
+                    let monitor_pos = egui::pos2(0.0, 0.0);
+
+                    let center_x = monitor_pos.x + (monitor_size.x - sizex) / 2.0;
+                    let center_y = monitor_pos.y + (monitor_size.y - sizey) / 2.0;
+
+                    self.ctx
+                        .send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
+                            center_x, center_y,
+                        )));
+                }
 
                 self.launch_timestamp = None;
                 self.current_page = CurrentPage::Intro;
@@ -114,6 +133,7 @@ impl eframe::App for App {
             return;
         }
 
+        self.draw_version_details(ui);
         self.draw_background(ui);
         self.draw_title_bar(ui);
 

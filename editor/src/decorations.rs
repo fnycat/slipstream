@@ -53,8 +53,30 @@ impl App {
         response
     }
 
+    pub fn draw_version_details(&self, ui: &mut egui::Ui) {
+        let screen_rect = ui.viewport_rect();
+        let pos = egui::pos2(screen_rect.center().x, screen_rect.max.y - 12.0);
+
+        ui.ctx()
+            .layer_painter(egui::LayerId::new(
+                egui::Order::Foreground,
+                egui::Id::new("version_overlay"),
+            ))
+            .text(
+                pos,
+                egui::Align2::CENTER_BOTTOM,
+                format!(
+                    "Version {} ({})",
+                    env!("CARGO_PKG_VERSION"),
+                    &env!("VERGEN_GIT_SHA")[..8]
+                ),
+                egui::FontId::proportional(12.0),
+                egui::Color32::from_white_alpha(200),
+            );
+    }
+
     /// Draws the background image with a gray overlay.
-    pub fn draw_background(&mut self, ui: &mut egui::Ui) {
+    pub fn draw_background(&self, ui: &mut egui::Ui) {
         let viewport_rect = ui.ctx().viewport_rect();
 
         let bg_image = self.bg_image.unwrap();
