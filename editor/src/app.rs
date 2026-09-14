@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
 use egui_phosphor::regular::{MINUS, SQUARE, X};
 
@@ -7,10 +10,11 @@ use crate::{
     decorations::WindowState,
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CurrentPage {
     Splash,
     Intro,
+    Editor { selected_file: PathBuf },
 }
 
 pub struct App {
@@ -35,6 +39,7 @@ impl App {
         egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
 
         cc.egui_ctx.set_fonts(fonts);
+        cc.egui_ctx.set_theme(egui::Theme::Light);
 
         Self {
             preload_finished: false,
@@ -133,12 +138,9 @@ impl eframe::App for App {
             return;
         }
 
-        self.draw_version_details(ui);
-        self.draw_background(ui);
-        self.draw_title_bar(ui);
-
         match self.current_page {
             CurrentPage::Intro => self.draw_intro(ui),
+            CurrentPage::Editor { .. } => self.draw_editor(ui),
             _ => todo!(),
         }
     }

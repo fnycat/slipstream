@@ -41,7 +41,8 @@ impl App {
                             let title = egui::Label::new(APP_TITLE).selectable(false);
                             ui.add(title);
 
-                            ui.spinner();
+                            let spinner = egui::Spinner::new().size(24.0);
+                            ui.add(spinner);
                         });
                 });
             });
