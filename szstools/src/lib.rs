@@ -11,7 +11,7 @@ pub mod yaz0;
 
 #[cfg(test)]
 mod test {
-    use crate::{arc, brres, encoding::Decode, yaz0::decompress};
+    use crate::{arc, brres, encoding::Deserialize, yaz0::decompress};
     use std::io::Cursor;
 
     fn setup_tracing() {

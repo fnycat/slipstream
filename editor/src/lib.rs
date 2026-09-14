@@ -3,6 +3,7 @@ mod config;
 mod decorations;
 mod model_renderer;
 mod pages;
+mod shared;
 
 #[cfg(target_arch = "wasm32")]
 mod web;

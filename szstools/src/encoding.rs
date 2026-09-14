@@ -139,8 +139,8 @@ impl<'buf> ReadStringExt<'buf> for Cursor<&'buf [u8]> {
     }
 }
 
-pub trait Decode: Sized {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self>;
+pub trait Deserialize: Sized {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self>;
 }
 
 pub trait Encode {

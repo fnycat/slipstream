@@ -2,7 +2,7 @@ use std::io::Cursor;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::encoding::{Decode, Encode, ReadArrayExt, WriteArrayExt};
+use crate::encoding::{Deserialize, Encode, ReadArrayExt, WriteArrayExt};
 use crate::error::IncorrectFormat;
 use crate::error::{CorruptionError, EncodingError, EncodingResult};
 
@@ -27,8 +27,8 @@ impl Encode for Header {
     }
 }
 
-impl Decode for Header {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for Header {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != YAZ0_MAGIC {
             return Err(IncorrectFormat {
@@ -55,7 +55,7 @@ impl Decode for Header {
 
 pub fn decompress(compressed: &[u8]) -> EncodingResult<Vec<u8>> {
     let mut cursor = Cursor::new(compressed);
-    let yaz0_file = Yaz0File::decode(&mut cursor)?;
+    let yaz0_file = Yaz0File::deserialize(&mut cursor)?;
 
     Ok(yaz0_file.uncompressed)
 }
@@ -73,7 +73,7 @@ pub fn compress_yaz0(uncompressed: &[u8]) -> Vec<u8> {
 /// Each bit in the header corresponds to a chunk (MSB corresponds to chunk 1).
 ///
 /// If the bit of the given chunk is set, the chunk consists of a single byte and can be copied to the output stream directly.
-/// Otherwise we need to decode the chunk. It can be in two formats
+/// Otherwise we need to deserialize the chunk. It can be in two formats
 ///
 /// 1. `NR RR`          `SIZE = N + 2`
 /// 2. `0R RR NN`       `SIZE = N + 0x12`
@@ -95,9 +95,9 @@ pub struct Yaz0File {
     pub uncompressed: Vec<u8>,
 }
 
-impl Decode for Yaz0File {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
-        let header = Header::decode(reader)?;
+impl Deserialize for Yaz0File {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+        let header = Header::deserialize(reader)?;
 
         tracing::trace!(
             "Decompressing Yaz0 archive ({} -> {})",

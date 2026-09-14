@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::{
     brres::{self, IndexGroup, Subfile, SubfileHeader, SubfileType},
-    encoding::{Decode, ReadArrayExt, ReadStringExt},
+    encoding::{Deserialize, ReadArrayExt, ReadStringExt},
     error::{CorruptionError, EncodingError, EncodingResult},
 };
 
@@ -34,8 +34,8 @@ impl TryFrom<u32> for ScalingMode {
     }
 }
 
-impl Decode for ScalingMode {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for ScalingMode {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
@@ -67,8 +67,8 @@ impl TryFrom<u32> for TextureMatrixMode {
     }
 }
 
-impl Decode for TextureMatrixMode {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for TextureMatrixMode {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
@@ -123,15 +123,15 @@ impl TryFrom<u32> for SectionIds {
     }
 }
 
-trait SectionDecode: Sized {
-    fn decode_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self>;
+trait SectionDeserialize: Sized {
+    fn deserialize_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Definitions {}
 
-impl SectionDecode for Definitions {
-    fn decode_section(reader: &mut Cursor<&[u8]>, _header_start: u32) -> EncodingResult<Self> {
+impl SectionDeserialize for Definitions {
+    fn deserialize_section(reader: &mut Cursor<&[u8]>, _header_start: u32) -> EncodingResult<Self> {
         tracing::error!("TODO: draw lists");
         Ok(Self {})
     }
@@ -157,8 +157,8 @@ macro_rules! impl_bone_flags {
                 $(pub $flag: bool),*
             }
 
-            impl Decode for BoneFlags {
-                fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+            impl Deserialize for BoneFlags {
+                fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
                     let word = reader.read_u32::<BigEndian>()?;
 
                     Ok(Self {
@@ -220,8 +220,8 @@ impl TryFrom<u32> for BillboardSetting {
     }
 }
 
-impl Decode for BillboardSetting {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for BillboardSetting {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
@@ -250,8 +250,8 @@ pub struct Bones {
     pub inverse_matrix: [f32; 12],
 }
 
-impl SectionDecode for Bones {
-    fn decode_section(reader: &mut Cursor<&[u8]>, _header_start: u32) -> EncodingResult<Self> {
+impl SectionDeserialize for Bones {
+    fn deserialize_section(reader: &mut Cursor<&[u8]>, _header_start: u32) -> EncodingResult<Self> {
         tracing::trace!(
             "Reading model bones section, at location {}",
             reader.position()
@@ -264,8 +264,8 @@ impl SectionDecode for Bones {
         let name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let id = reader.read_u32::<BigEndian>()?;
-        let flags = BoneFlags::decode(reader)?;
-        let billboard_setting = BillboardSetting::decode(reader)?;
+        let flags = BoneFlags::deserialize(reader)?;
+        let billboard_setting = BillboardSetting::deserialize(reader)?;
         let billboard_transform = reader.read_u32::<BigEndian>()?;
 
         let scaling_vector = reader.read_f32_array::<3, BigEndian>()?;
@@ -362,15 +362,15 @@ impl TryFrom<u32> for ComponentFormat {
     }
 }
 
-impl Decode for ComponentFormat {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for ComponentFormat {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
 }
 
-/// Decodes vertex or normal components.
-fn decode_components<const N: usize>(
+/// Deserializes vertex or normal components.
+fn deserialize_components<const N: usize>(
     reader: &mut Cursor<&[u8]>,
     count: u16,
     format: ComponentFormat,
@@ -440,15 +440,15 @@ pub struct Vertices {
     pub vertices: VertexData,
 }
 
-impl SectionDecode for Vertices {
-    fn decode_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
+impl SectionDeserialize for Vertices {
+    fn deserialize_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let mdl0_offset = reader.read_i32::<BigEndian>()?;
         let data_offset = reader.read_i32::<BigEndian>()?;
         let name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let component_count = reader.read_u32::<BigEndian>()?;
-        let format = ComponentFormat::decode(reader)?;
+        let format = ComponentFormat::deserialize(reader)?;
         let divisor = reader.read_u8()?;
         let stride = reader.read_u8()?;
         let vertex_count = reader.read_u16::<BigEndian>()?;
@@ -461,13 +461,13 @@ impl SectionDecode for Vertices {
         reader.set_position(vertices_start as u64);
 
         let vertices = match component_count {
-            COMPONENTS_XY => VertexData::XY(decode_components::<2>(
+            COMPONENTS_XY => VertexData::XY(deserialize_components::<2>(
                 reader,
                 vertex_count,
                 format,
                 divisor,
             )?),
-            COMPONENTS_XYZ => VertexData::XYZ(decode_components::<3>(
+            COMPONENTS_XYZ => VertexData::XYZ(deserialize_components::<3>(
                 reader,
                 vertex_count,
                 format,
@@ -526,15 +526,15 @@ pub struct Normals {
     pub normals: NormalData,
 }
 
-impl SectionDecode for Normals {
-    fn decode_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
+impl SectionDeserialize for Normals {
+    fn deserialize_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let mdl0_offset = reader.read_i32::<BigEndian>()?;
         let data_offset = reader.read_i32::<BigEndian>()?;
         let name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let component_count = reader.read_u32::<BigEndian>()?;
-        let format = ComponentFormat::decode(reader)?;
+        let format = ComponentFormat::deserialize(reader)?;
         let divisor = reader.read_u8()?;
         let stride = reader.read_u8()?;
         let normal_count = reader.read_u16::<BigEndian>()?;
@@ -543,19 +543,19 @@ impl SectionDecode for Normals {
         reader.set_position(normals_start as u64);
 
         let normals = match component_count {
-            COMPONENTS_NORMAL => NormalData::Normal(decode_components::<3>(
+            COMPONENTS_NORMAL => NormalData::Normal(deserialize_components::<3>(
                 reader,
                 normal_count,
                 format,
                 divisor,
             )?),
-            COMPONENTS_ALL => NormalData::All(decode_components::<9>(
+            COMPONENTS_ALL => NormalData::All(deserialize_components::<9>(
                 reader,
                 normal_count,
                 format,
                 divisor,
             )?),
-            COMPONENTS_ANY => NormalData::Any(decode_components::<3>(
+            COMPONENTS_ANY => NormalData::Any(deserialize_components::<3>(
                 reader,
                 normal_count,
                 format,
@@ -601,14 +601,14 @@ pub struct Mdl0Header {
     pub bounding_volume_maximum: [f32; 3],
 }
 
-impl Decode for Mdl0Header {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for Mdl0Header {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let start = reader.position();
 
         let header_length = reader.read_u32::<BigEndian>()?;
         let file_header_offset = reader.read_i32::<BigEndian>()?;
-        let scaling_mode = ScalingMode::decode(reader)?;
-        let texture_matrix_mode = TextureMatrixMode::decode(reader)?;
+        let scaling_mode = ScalingMode::deserialize(reader)?;
+        let texture_matrix_mode = TextureMatrixMode::deserialize(reader)?;
         let vertex_count = reader.read_i32::<BigEndian>()?;
         let face_count = reader.read_i32::<BigEndian>()?;
         let _unused1 = reader.read_i32::<BigEndian>()?;
@@ -656,8 +656,8 @@ impl BoneLinkTable {
     }
 }
 
-impl Decode for BoneLinkTable {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for BoneLinkTable {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let entry_count = reader.read_u32::<BigEndian>()?;
 
         let mut driven = HashMap::new();
@@ -701,10 +701,10 @@ pub struct Mdl0Subfile {
     pub normals: Option<HashMap<String, Normals>>,
 }
 
-fn decode_section<T: SectionDecode>(
+fn deserialize_section<T: SectionDeserialize>(
     reader: &mut Cursor<&[u8]>,
 ) -> EncodingResult<HashMap<String, T>> {
-    let index_group = IndexGroup::decode(reader)?;
+    let index_group = IndexGroup::deserialize(reader)?;
     let mut map = HashMap::with_capacity(index_group.entries.len());
 
     for entry in &index_group.entries[1..] {
@@ -714,17 +714,20 @@ fn decode_section<T: SectionDecode>(
 
         tracing::trace!("Reading entry `{name}`, at location {section_start}");
 
-        map.insert(name.to_owned(), T::decode_section(reader, section_start)?);
+        map.insert(
+            name.to_owned(),
+            T::deserialize_section(reader, section_start)?,
+        );
     }
 
     Ok(map)
 }
 
-impl Decode for Mdl0Subfile {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for Mdl0Subfile {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         tracing::trace!("Reading MDL0 file, at section {}", reader.position());
 
-        let subfile_header = SubfileHeader::decode(reader, SubfileType::Mdl0)?;
+        let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
         let expected_sections =
             brres::get_section_count(SubfileType::Mdl0, subfile_header.subfile_version)?;
 
@@ -739,12 +742,12 @@ impl Decode for Mdl0Subfile {
             .into());
         }
 
-        let mdl0_header = Mdl0Header::decode(reader)?;
+        let mdl0_header = Mdl0Header::deserialize(reader)?;
 
-        let bone_links = BoneLinkTable::decode(reader)?;
+        let bone_links = BoneLinkTable::deserialize(reader)?;
         tracing::debug!("Loaded {} bone links", bone_links.len());
 
-        let index_group = IndexGroup::decode(reader)?;
+        let index_group = IndexGroup::deserialize(reader)?;
         tracing::debug!("{index_group:?}");
 
         let mut definitions = None;
@@ -767,11 +770,11 @@ impl Decode for Mdl0Subfile {
 
             match section_ty {
                 SectionIds::Definitions => {
-                    definitions = Some(decode_section::<Definitions>(reader)?)
+                    definitions = Some(deserialize_section::<Definitions>(reader)?)
                 }
-                SectionIds::Bones => bones = Some(decode_section::<Bones>(reader)?),
-                SectionIds::Vertices => vertices = Some(decode_section::<Vertices>(reader)?),
-                SectionIds::Normals => normals = Some(decode_section::<Normals>(reader)?),
+                SectionIds::Bones => bones = Some(deserialize_section::<Bones>(reader)?),
+                SectionIds::Vertices => vertices = Some(deserialize_section::<Vertices>(reader)?),
+                SectionIds::Normals => normals = Some(deserialize_section::<Normals>(reader)?),
                 v => todo!("{v:?}"),
             }
         }

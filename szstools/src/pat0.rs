@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{
     brres::{IndexGroup, IndexGroupEntry, Subfile, SubfileHeader, SubfileType},
-    encoding::{Decode, Encode, ReadStringExt},
+    encoding::{Deserialize, Encode, ReadStringExt},
     error::EncodingResult,
 };
 
@@ -16,8 +16,8 @@ pub struct Pat0Header {
     pub cyclic: bool,
 }
 
-impl Decode for Pat0Header {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for Pat0Header {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let _unknown12 = reader.read_u32::<BigEndian>()?; // 2 + 2 unknown bytes
         let frame_count = reader.read_u16::<BigEndian>()?;
         let base_number = reader.read_u16::<BigEndian>()?;
@@ -57,7 +57,7 @@ pub struct U32Section {
 }
 
 impl U32Section {
-    pub fn decode(reader: &mut Cursor<&[u8]>, string_number: u16) -> EncodingResult<Self> {
+    pub fn deserialize(reader: &mut Cursor<&[u8]>, string_number: u16) -> EncodingResult<Self> {
         let mut offsets = Vec::with_capacity(string_number as usize);
         for _ in 0..string_number {
             offsets.push(reader.read_u32::<BigEndian>()?);
@@ -83,10 +83,10 @@ pub struct Pat0Subfile {
     pub pat0_header: Pat0Header,
 }
 
-impl Decode for Pat0Subfile {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
-        let subfile_header = SubfileHeader::decode(reader, SubfileType::Pat0)?;
-        let pat0_header = Pat0Header::decode(reader)?;
+impl Deserialize for Pat0Subfile {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+        let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Pat0)?;
+        let pat0_header = Pat0Header::deserialize(reader)?;
 
         let mut name_start = Cursor::new(
             &reader.get_ref()
@@ -98,7 +98,7 @@ impl Decode for Pat0Subfile {
 
         dbg!(&subfile_header, pat0_header);
 
-        let index_group = IndexGroup::decode(reader)?;
+        let index_group = IndexGroup::deserialize(reader)?;
         let name = index_group.get_entry_name(reader.get_ref(), &index_group.entries[1])?;
         dbg!(name);
 

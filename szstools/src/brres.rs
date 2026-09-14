@@ -4,7 +4,7 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{
     chr0::Chr0Subfile,
-    encoding::{Decode, Encode, ReadArrayExt, ReadStringExt},
+    encoding::{Deserialize, Encode, ReadArrayExt, ReadStringExt},
     error::{
         CorruptionError, EncodingError, EncodingResult, IncorrectFormat, RangeError,
         UnsupportedError,
@@ -13,7 +13,7 @@ use crate::{
     pat0::Pat0Subfile,
 };
 
-const BRRES_MAGIC: [u8; 4] = [0x62, 0x72, 0x65, 0x73];
+pub const BRRES_MAGIC: [u8; 4] = [0x62, 0x72, 0x65, 0x73];
 const LE_BOM: [u8; 2] = [0xFF, 0xFE];
 const BE_BOM: [u8; 2] = [0xFE, 0xFF];
 
@@ -72,8 +72,8 @@ struct Header {
     pub section_count: u16,
 }
 
-impl Decode for Header {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for Header {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != BRRES_MAGIC {
             return Err(IncorrectFormat {
@@ -128,8 +128,8 @@ pub struct RootSubfile {
     pub size: u32,
 }
 
-impl Decode for RootSubfile {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for RootSubfile {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != Self::MAGIC {
             return Err(IncorrectFormat {
@@ -172,7 +172,7 @@ pub struct SubfileHeader {
 }
 
 impl SubfileHeader {
-    pub fn decode(reader: &mut Cursor<&[u8]>, ty: SubfileType) -> EncodingResult<Self> {
+    pub fn deserialize(reader: &mut Cursor<&[u8]>, ty: SubfileType) -> EncodingResult<Self> {
         let header_start = reader.position() as u32 - 4; // Subtract 4 for magic.
         let subfile_length = reader.read_u32::<BigEndian>()?;
         let subfile_version = reader.read_u32::<BigEndian>()?;
@@ -235,8 +235,8 @@ pub struct IndexGroupHeader {
     pub number: u32,
 }
 
-impl Decode for IndexGroupHeader {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for IndexGroupHeader {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         Ok(Self {
             length: reader.read_u32::<BigEndian>()?,
             number: reader.read_u32::<BigEndian>()?,
@@ -262,8 +262,8 @@ pub struct IndexGroupEntry {
     pub data_pointer: u32,
 }
 
-impl Decode for IndexGroupEntry {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for IndexGroupEntry {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let entry_id = reader.read_u16::<BigEndian>()?;
         let flag = reader.read_u16::<BigEndian>()?;
         let left_index = reader.read_u16::<BigEndian>()?;
@@ -353,14 +353,14 @@ impl IndexGroup {
     }
 }
 
-impl Decode for IndexGroup {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Deserialize for IndexGroup {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let group_start = reader.position() as u32;
-        let header = IndexGroupHeader::decode(reader)?;
+        let header = IndexGroupHeader::deserialize(reader)?;
 
         let mut entries = Vec::with_capacity(header.number as usize);
         for _ in 0..header.number + 1 {
-            let entry = IndexGroupEntry::decode(reader)?;
+            let entry = IndexGroupEntry::deserialize(reader)?;
             entries.push(entry);
         }
 
@@ -390,32 +390,32 @@ impl Encode for IndexGroup {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ArchiveFolder {
+pub struct Directory {
     pub name: String,
-    pub files: Vec<ArchiveFile>,
+    pub files: Vec<File>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ArchiveFile {
+pub struct File {
     pub name: String,
     pub file: SubfileData,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Archive {
-    pub folders: Vec<ArchiveFolder>,
+    pub directories: Vec<Directory>,
 }
 
 impl Archive {
-    fn decode_subfile(
+    fn deserialize_subfile(
         reader: &mut Cursor<&[u8]>,
         _index: &IndexGroupEntry,
     ) -> EncodingResult<SubfileData> {
         let magic = reader.read_u8_array::<4>()?;
         Ok(match magic {
-            Mdl0Subfile::MAGIC => SubfileData::Mdl0(Mdl0Subfile::decode(reader)?),
-            Pat0Subfile::MAGIC => SubfileData::Pat0(Pat0Subfile::decode(reader)?),
-            Chr0Subfile::MAGIC => SubfileData::Chr0(Chr0Subfile::decode(reader)?),
+            Mdl0Subfile::MAGIC => SubfileData::Mdl0(Mdl0Subfile::deserialize(reader)?),
+            Pat0Subfile::MAGIC => SubfileData::Pat0(Pat0Subfile::deserialize(reader)?),
+            Chr0Subfile::MAGIC => SubfileData::Chr0(Chr0Subfile::deserialize(reader)?),
             _ => {
                 return Err(UnsupportedError {
                     reason: format!("file type `{}`", String::from_utf8_lossy(&magic)),
@@ -427,17 +427,17 @@ impl Archive {
     }
 }
 
-impl Decode for Archive {
-    fn decode(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
-        let header = Header::decode(reader)?;
+impl Deserialize for Archive {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+        let header = Header::deserialize(reader)?;
 
         // Skip to root start
         reader.set_position(header.root_offset as u64);
 
-        let _root = RootSubfile::decode(reader)?;
+        let _root = RootSubfile::deserialize(reader)?;
 
         // Root group, which contains folders such as AnmChr(NW4R) or AnmTexPat(NW4R).
-        let root_group = IndexGroup::decode(reader)?;
+        let root_group = IndexGroup::deserialize(reader)?;
 
         let mut folders = Vec::with_capacity(root_group.entries.len() - 1);
 
@@ -453,7 +453,7 @@ impl Decode for Archive {
             reader.set_position(root_group.get_entry_data_start(folder) as u64);
 
             // Folder group which contains the actual subfiles.
-            let child_group = IndexGroup::decode(reader)?;
+            let child_group = IndexGroup::deserialize(reader)?;
             let mut subfiles = Vec::with_capacity(child_group.entries.len() - 1);
 
             for file in &child_group.entries[1..] {
@@ -471,21 +471,23 @@ impl Decode for Archive {
                     reader.position()
                 );
 
-                let file = tracing::trace_span!("decode_subfile", %folder_name, %file_name)
-                    .in_scope(|| Self::decode_subfile(reader, file))?;
+                let file = tracing::trace_span!("deserialize_subfile", %folder_name, %file_name)
+                    .in_scope(|| Self::deserialize_subfile(reader, file))?;
 
-                subfiles.push(ArchiveFile {
+                subfiles.push(File {
                     name: file_name.to_owned(),
                     file,
                 });
             }
 
-            folders.push(ArchiveFolder {
+            folders.push(Directory {
                 name: folder_name.to_owned(),
                 files: subfiles,
             });
         }
 
-        Ok(Self { folders })
+        Ok(Self {
+            directories: folders,
+        })
     }
 }

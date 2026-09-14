@@ -3,11 +3,14 @@ use std::{io::Cursor, path::PathBuf};
 use eframe::egui_wgpu;
 use egui_phosphor::regular::CARET_DOWN;
 use szslib::{
-    arc,
+    arc, brres,
     yaz0::{self, YAZ0_MAGIC},
 };
 
-use crate::{app::App, config::FILE_INDENTATION_SIZE, model_renderer::ModelRenderer};
+use crate::{
+    app::App, config::FILE_INDENTATION_SIZE, model_renderer::ModelRenderer,
+    shared::tree::DrawFileTree,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Filetype {
@@ -17,6 +20,7 @@ pub enum Filetype {
 #[derive(Debug, Clone, PartialEq)]
 pub enum FileData {
     Szs(arc::Archive),
+    Brres(brres::Archive),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -86,60 +90,29 @@ impl App {
 
     fn draw_editor_view(&self, ui: &mut egui::Ui) {
         egui::Frame::canvas(ui.style()).show(ui, |ui| {
-            let (rect, response) = ui.allocate_exact_size(ui.available_size(), egui::Sense::drag());
+            let (rect, _response) =
+                ui.allocate_exact_size(ui.available_size(), egui::Sense::drag());
 
             ui.painter()
                 .add(egui_wgpu::Callback::new_paint_callback(rect, ModelRenderer))
         });
     }
 
-    fn draw_lower_toolbar(&self, ui: &mut egui::Ui) {}
-
-    fn draw_file_node(&self, ui: &mut egui::Ui, node: &arc::Node, indentation: u32) {
-        // ui.add_space(indentation as f32 * FILE_INDENTATION_SIZE);
-
-        ui.horizontal_centered(|ui| {
-            if ui.button(CARET_DOWN).clicked() {
-                tracing::info!("Collapse toggle");
-            }
-
-            if ui.button(node.name()).clicked() {
-                tracing::info!("Open {}", node.name());
-            }
-        });
-
-        match node {
-            arc::Node::Folder { children, .. } => {
-                for child in children {
-                    self.draw_file_node(ui, child, indentation + 1);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn draw_file_tree(&mut self, ui: &mut egui::Ui) {
-        let mut is_expanded = true;
-
-        let panel_id = egui::Id::new("filetree_panel");
-        egui::Panel::left(panel_id)
-            .show_separator_line(false)
-            .show_collapsible(ui, &mut is_expanded, |ui| {
-                let editor = self.current_page.as_editor().unwrap();
-
-                ui.heading(editor.filepath.file_name().unwrap().to_string_lossy());
-
-                match &editor.data {
-                    FileData::Szs(file) => {
-                        self.draw_file_node(ui, file.root.as_ref().unwrap(), 0);
-                    }
-                }
-            });
-    }
+    fn draw_property_window(&self, ui: &mut egui::Ui) {}
 
     pub fn draw_editor(&mut self, ui: &mut egui::Ui) {
         self.draw_upper_toolbar(ui);
-        self.draw_file_tree(ui);
+
+        // Draw file explorer
+        let panel_id = egui::Id::new("file_tree_panel");
+        egui::Panel::left(panel_id).show(ui, |ui| {
+            self.current_page
+                .as_editor()
+                .unwrap()
+                .data
+                .draw_tree(ui, "<null>");
+        });
+
         self.draw_editor_view(ui);
     }
 }
