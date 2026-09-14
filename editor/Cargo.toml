@@ -33,3 +33,5 @@ tracing-tree = "0.4.1"
 winit = "0.30.13"
 egui = "0.36.2"
 eframe = "0.36.2"
+egui_extras = { version = "0.36.2", features = ["image"] }
+egui-phosphor = "0.14.0"

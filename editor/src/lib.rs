@@ -1,4 +1,5 @@
 mod app;
+mod config;
 
 #[cfg(target_arch = "wasm32")]
 mod web;
@@ -42,7 +43,11 @@ fn setup_tracing() {
 }
 
 fn window_builder_hook(builder: egui::ViewportBuilder) -> egui::ViewportBuilder {
-    builder.with_title("Mario Kart Wii editor")
+    builder
+        .with_title("Mario Kart Wii editor")
+        .with_inner_size(egui::Vec2::new(600.0, 200.0))
+        .with_decorations(false)
+        .with_resizable(false)
 }
 
 pub fn run() -> eyre::Result<()> {
