@@ -1,5 +1,7 @@
 mod app;
 mod config;
+mod decorations;
+mod pages;
 
 #[cfg(target_arch = "wasm32")]
 mod web;
