@@ -10,11 +10,12 @@ pub trait VirtualNode {
     fn children(&self) -> &[Rc<dyn VirtualNode>];
 }
 
-pub fn draw_node_tree(base: &dyn VirtualNode, ui: &mut egui::Ui) {
+/// Draws the file tree of the given virtual node.
+pub fn draw_virtual_node_tree(base: &dyn VirtualNode, ui: &mut egui::Ui) {
     if base.is_directory() {
         egui::CollapsingHeader::new(base.label()).show(ui, |ui| {
             for child in base.children() {
-                draw_node_tree(child.as_ref(), ui);
+                draw_virtual_node_tree(child.as_ref(), ui);
             }
         });
     } else {

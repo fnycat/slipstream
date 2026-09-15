@@ -10,8 +10,8 @@ use szslib::{
 use crate::{
     app::App,
     model_renderer::ModelRenderer,
-    pages::editor::{FileCache, VirtualNode, draw_node_tree},
-    shared::file::{self},
+    pages::editor::{FileCache, VirtualNode, draw_virtual_node_tree},
+    shared::r#virtual::{self},
 };
 
 /// Data specific to the editor page.
@@ -28,7 +28,7 @@ pub struct EditorPageData {
 
 impl EditorPageData {
     pub fn new(filepath: PathBuf) -> eyre::Result<Self> {
-        let contents = std::fs::read(&filepath)?;
+        let contents = Cursor::new(std::fs::read(&filepath)?);
         let file_name = filepath
             .file_name()
             .ok_or_else(|| eyre::eyre!("unable to find file name of `{filepath:?}`"))?
@@ -37,10 +37,10 @@ impl EditorPageData {
         let mut file_cache = FileCache::new();
 
         Ok(Self {
-            root_node: file::deserialize_unknown(
-                file_name.into_owned(),
-                &mut file_cache,
+            root_node: r#virtual::deserialize_maybe_compressed(
                 contents,
+                &mut file_cache,
+                file_name.into_owned(),
             )?,
             filepath,
             file_cache,
@@ -116,7 +116,7 @@ impl App {
         let panel_id = egui::Id::new("file_tree_panel");
         egui::Panel::left(panel_id).show(ui, |ui| {
             let page_data = self.current_page.as_editor().unwrap();
-            draw_node_tree(page_data.root_node.as_ref(), ui);
+            draw_virtual_node_tree(page_data.root_node.as_ref(), ui);
         });
 
         self.draw_editor_view(ui);
