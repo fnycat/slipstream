@@ -4,13 +4,13 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{
     format::{
-        brres,
+        brres::{self, BRRES_MAGIC},
         encoding::{Deserialize, ReadArrayExt, ReadStringExt, Serialize, WriteArrayExt},
         error::{
             CorruptionError, EncodingError, EncodingResult, IncorrectFormat, UnsupportedError,
         },
     },
-    shared::r#virtual::{ResourceId, VirtualNode, VirtualNodeKind},
+    shared::r#virtual::{ResourceId, ResourceStore, VirtualNode, VirtualNodeKind},
 };
 
 /// Magic of an ARC file.
@@ -145,12 +145,32 @@ pub struct Archive {
     pub root: Node,
 }
 
+fn lazy_parse_file(
+    name: String,
+    res_store: &mut ResourceStore,
+    raw_data: Vec<u8>,
+) -> EncodingResult<VirtualNode> {
+    let mut reader = Cursor::new(raw_data.as_slice());
+
+    let magic: [u8; 4] = raw_data[..4].try_into().expect("4 does not equal 4");
+    match magic {
+        ARC_MAGIC => deserialize_virtual(&mut reader, res_store, name),
+        BRRES_MAGIC => brres::deserialize_virtual(&mut reader, res_store, name),
+        _ => Ok(VirtualNode {
+            label: name,
+            kind: VirtualNodeKind::File { cache_id: None },
+            children: Vec::new(),
+        }),
+    }
+}
+
 fn parse_directory_tree(
-    node_list: &[Node],
+    node_list: &mut [Node],
+    res_store: &mut ResourceStore,
     label: String,
     cursor: &mut usize,
 ) -> EncodingResult<VirtualNode> {
-    let &NodeContent::Directory { parent, skip_node } = &node_list[*cursor].data else {
+    let &NodeContent::Directory { skip_node, .. } = &node_list[*cursor].data else {
         todo!();
     };
 
@@ -158,23 +178,21 @@ fn parse_directory_tree(
 
     let mut children = Vec::new();
     while *cursor < skip_node as usize && *cursor < node_list.len() {
-        let curr_node = &node_list[*cursor];
+        let curr_node = &mut node_list[*cursor];
 
-        if curr_node.data.is_directory() {
-            let child = parse_directory_tree(node_list, curr_node.name.clone(), cursor)?;
-            children.push(child);
-        } else {
-            let child = VirtualNode {
-                label: curr_node.name.clone(),
-                kind: VirtualNodeKind::File {
-                    format_tag: "hello",
-                    cache_id: ResourceId::ZERO,
-                },
-                children: Vec::new(),
-            };
-            children.push(child);
+        let name = std::mem::take(&mut curr_node.name);
+        match &mut curr_node.data {
+            NodeContent::Directory { .. } => {
+                let child = parse_directory_tree(node_list, res_store, name, cursor)?;
+                children.push(child);
+            }
+            NodeContent::File { data } => {
+                let data = std::mem::take(data);
+                let child = lazy_parse_file(name, res_store, data)?;
+                children.push(child);
 
-            *cursor += 1;
+                *cursor += 1;
+            }
         }
     }
 
@@ -187,6 +205,7 @@ fn parse_directory_tree(
 
 pub fn deserialize_virtual(
     reader: &mut Cursor<&[u8]>,
+    res_store: &mut ResourceStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
     let header = Header::deserialize(reader)?;
@@ -228,5 +247,5 @@ pub fn deserialize_virtual(
     }
 
     let mut cursor = 0;
-    parse_directory_tree(&nodes, name, &mut cursor)
+    parse_directory_tree(&mut nodes, res_store, name, &mut cursor)
 }

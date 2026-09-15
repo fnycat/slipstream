@@ -5,8 +5,10 @@ use eframe::egui_wgpu;
 use crate::{
     app::App,
     model_renderer::ModelRenderer,
-    shared::node::{self},
-    shared::r#virtual::VirtualNode,
+    shared::{
+        node::{self},
+        r#virtual::{ResourceStore, VirtualNode},
+    },
 };
 
 /// Data specific to the editor page.
@@ -18,6 +20,7 @@ pub struct EditorPageData {
     pub filepath: PathBuf,
     /// The whole file currently open in the editor.
     pub root_node: VirtualNode,
+    pub res_store: ResourceStore,
 }
 
 impl EditorPageData {
@@ -28,12 +31,15 @@ impl EditorPageData {
             .ok_or_else(|| eyre::eyre!("unable to find file name of `{filepath:?}`"))?
             .to_string_lossy();
 
-        let root_node = node::deserialize_maybe_compressed(contents, file_name.into_owned())?;
+        let mut res_store = ResourceStore::new();
+        let root_node =
+            node::deserialize_maybe_compressed(contents, &mut res_store, file_name.into_owned())?;
 
         tracing::debug!("{root_node:#?}");
 
         Ok(Self {
             root_node,
+            res_store,
             filepath,
         })
     }

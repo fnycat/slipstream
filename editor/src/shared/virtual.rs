@@ -1,15 +1,31 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, num::NonZeroUsize};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ResourceId(usize);
+pub struct ResourceId(NonZeroUsize);
 
-impl ResourceId {
-    pub const ZERO: Self = Self(0);
+pub struct ResourceStore {
+    next_id: usize,
+    cache: HashMap<ResourceId, Vec<u8>>,
 }
 
-pub struct ResourceCache {
-    next_id: usize,
-    cache: HashMap<ResourceId, ()>,
+impl ResourceStore {
+    pub fn new() -> Self {
+        Self {
+            next_id: 1,
+            cache: HashMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, raw: Vec<u8>) -> ResourceId {
+        let id = self.next_id();
+        self.cache.insert(id, raw);
+        id
+    }
+
+    pub fn next_id(&mut self) -> ResourceId {
+        self.next_id += 1;
+        ResourceId(NonZeroUsize::new(self.next_id - 1).unwrap())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,8 +52,5 @@ impl VirtualNode {
 #[derive(Debug, Clone, PartialEq)]
 pub enum VirtualNodeKind {
     Directory,
-    File {
-        format_tag: &'static str,
-        cache_id: ResourceId,
-    },
+    File { cache_id: Option<ResourceId> },
 }
