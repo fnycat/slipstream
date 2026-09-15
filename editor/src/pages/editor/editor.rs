@@ -6,7 +6,7 @@ use crate::{
     app::App,
     model_renderer::ModelRenderer,
     shared::node::{self},
-    r#virtual::VirtualNode,
+    shared::r#virtual::VirtualNode,
 };
 
 /// Data specific to the editor page.
@@ -106,10 +106,8 @@ impl App {
         // Draw file explorer
         let panel_id = egui::Id::new("file_tree_panel");
         egui::Panel::left(panel_id).show(ui, |ui| {
-            let page_data = self.current_page.as_editor().unwrap();
-            // draw_virtual_node_tree(page_data.root_node.as_ref(), ui);
-            //
-            todo!();
+            let root = &self.current_page.as_editor().unwrap().root_node;
+            root.draw_node_tree(ui);
         });
 
         self.draw_editor_view(ui);

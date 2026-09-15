@@ -19,6 +19,20 @@ pub struct VirtualNode {
     pub children: Vec<VirtualNode>,
 }
 
+impl VirtualNode {
+    pub fn draw_node_tree(&self, ui: &mut egui::Ui) {
+        if !self.children.is_empty() {
+            egui::CollapsingHeader::new(&self.label).show(ui, |ui| {
+                for child in &self.children {
+                    child.draw_node_tree(ui);
+                }
+            });
+        } else {
+            ui.button(&self.label);
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum VirtualNodeKind {
     Directory,

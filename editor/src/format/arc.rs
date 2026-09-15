@@ -10,7 +10,7 @@ use crate::{
             CorruptionError, EncodingError, EncodingResult, IncorrectFormat, UnsupportedError,
         },
     },
-    r#virtual::{ResourceId, VirtualNode, VirtualNodeKind},
+    shared::r#virtual::{ResourceId, VirtualNode, VirtualNodeKind},
 };
 
 /// Magic of an ARC file.

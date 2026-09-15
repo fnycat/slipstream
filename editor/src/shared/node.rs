@@ -5,7 +5,7 @@ use crate::{
         arc,
         yaz0::{self, YAZ0_MAGIC},
     },
-    r#virtual::VirtualNode,
+    shared::r#virtual::VirtualNode,
 };
 
 /// Deserializes a possibly YAZ0-compressed file.

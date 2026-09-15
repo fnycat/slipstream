@@ -7,7 +7,6 @@ mod format;
 mod model_renderer;
 mod pages;
 mod shared;
-mod r#virtual;
 
 #[cfg(target_arch = "wasm32")]
 mod web;
