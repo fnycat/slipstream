@@ -39,7 +39,7 @@ impl VirtualBrresNode {
         }
     }
 
-    pub fn from_physical_node(archive: brres::Archive) -> eyre::Result<Self> {
+    pub fn from_physical_node(archive: brres::Archive, name: String) -> eyre::Result<Self> {
         let mut directories = Vec::with_capacity(archive.directories.len() as usize);
         for directory in archive.directories {
             // Examples of directories are `3DModels(NW4R)`.
@@ -61,7 +61,7 @@ impl VirtualBrresNode {
         }
 
         Ok(Self::Directory {
-            name: archive.name,
+            name,
             children: directories,
         })
     }

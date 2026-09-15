@@ -1,10 +1,16 @@
 use std::io::Cursor;
 use std::rc::Rc;
 
-use szslib::arc::{self, ArcNode, FileType};
+use szslib::{
+    arc::{self, ArcNode, FileData},
+    lazy::Lazy,
+};
 
 use crate::{
-    nodes::brres::{VirtualBrresNode, VirtualRawNode},
+    nodes::{
+        brres::{VirtualBrresNode, VirtualRawNode},
+        lazy::LazyVirtualNode,
+    },
     pages::editor::{FileCache, VirtualNode},
 };
 
@@ -22,28 +28,31 @@ pub enum VirtualArcNode {
     /// The node is an ARC file.
     ///
     /// These files may however have their own file tree.
-    Content { content: Rc<dyn VirtualNode> },
+    Content {
+        name: String,
+        content: Rc<dyn VirtualNode>,
+    },
 }
 
 impl VirtualNode for VirtualArcNode {
     fn label(&self) -> &str {
         match self {
             Self::Directory { name, .. } => name,
-            Self::Content { content } => content.label(),
+            Self::Content { name, .. } => name,
         }
     }
 
     fn is_directory(&self) -> bool {
         match self {
             Self::Directory { .. } => true,
-            Self::Content { content } => content.is_directory(),
+            Self::Content { content, .. } => content.is_directory(),
         }
     }
 
     fn children(&self) -> &[Rc<dyn VirtualNode>] {
         match self {
             Self::Directory { children, .. } => children,
-            Self::Content { content } => content.children(),
+            Self::Content { content, .. } => content.children(),
         }
     }
 }
@@ -71,54 +80,31 @@ impl VirtualArcNode {
                     children: virtual_children,
                 }
             }
-            ArcNode::File { data } => {
-                let name = data.name().to_owned();
-                let resource_id = file_cache.next_id();
+            ArcNode::File { name, data } => {
+                tracing::trace!("Creating virtual file node `{name}`");
 
-                tracing::trace!(
-                    "Creating virtual file node `{name}`, with resource ID `{resource_id}`"
-                );
-
+                let lazy_node = Rc::new(LazyVirtualNode::from_lazy(data));
                 VirtualArcNode::Content {
-                    content: from_physical_file_type(file_cache, data, name)?,
+                    name,
+                    content: lazy_node,
                 }
             }
         })
     }
 }
 
-/// Converts the given ARC node file type into a virtual node.
-pub fn from_physical_file_type(
-    file_cache: &mut FileCache,
-    data: FileType,
-    name: String,
-) -> eyre::Result<Rc<dyn VirtualNode>> {
-    let virtual_node = match data {
-        FileType::Brres(brres) => {
-            let node = Rc::new(VirtualBrresNode::from_physical_node(brres)?);
-            node as Rc<dyn VirtualNode>
-        }
-        FileType::Unknown(raw) => Rc::new(VirtualRawNode {
-            name: raw.name,
-            content: file_cache.insert(raw.data),
-        }),
-    };
-
-    Ok(virtual_node)
-}
-
 /// Deserializes an ARC file.
-pub fn deserialize_virtual_root_arc(
+pub fn deserialize_arc_root_virtual(
     reader: &mut Cursor<&[u8]>,
     file_cache: &mut FileCache,
     name: String,
 ) -> eyre::Result<Rc<dyn VirtualNode>> {
-    let arc = arc::Archive::deserialize(reader, name)?;
-    let root_node = arc
+    let archive = arc::Archive::deserialize(reader, name)?;
+    let root = archive
         .root
-        .ok_or_else(|| eyre::eyre!("root node does not exist"))?;
+        .ok_or_else(|| eyre::eyre!("archive is empty"))?;
 
     Ok(Rc::new(VirtualArcNode::from_physical_node(
-        reader, file_cache, root_node,
+        reader, file_cache, root,
     )?))
 }

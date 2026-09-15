@@ -1,7 +1,7 @@
 use std::{collections::HashMap, io::Cursor, path::PathBuf, rc::Rc};
 
 use szslib::{
-    arc::{self, ArcNode, FileType},
+    arc::{self, ArcNode},
     brres,
     chr0::Chr0Subfile,
     mdl0::{MDL0_SECTION_NAMES, Mdl0Subfile},
@@ -10,7 +10,7 @@ use szslib::{
 
 use crate::{
     nodes::{
-        arc::{VirtualArcNode, deserialize_virtual_root_arc},
+        arc::{VirtualArcNode, deserialize_arc_root_virtual},
         brres::{VirtualBrresNode, VirtualRawNode, deserialize_virtual_root_brres},
     },
     pages::editor::{FileCache, ResourceId, VirtualNode},
@@ -49,7 +49,7 @@ pub fn deserialize_unknown_root(
         .expect("array of size 4 does not have size 4?");
 
     let contents = match magic {
-        &arc::ARC_MAGIC => deserialize_virtual_root_arc(reader, file_cache, name)?,
+        &arc::ARC_MAGIC => deserialize_arc_root_virtual(reader, file_cache, name)?,
         &brres::BRRES_MAGIC => deserialize_virtual_root_brres(reader, file_cache, name)?,
         _ => eyre::bail!(
             "unknown or unsupported file magic: `{}`",

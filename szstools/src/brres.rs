@@ -403,7 +403,6 @@ pub struct File {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Archive {
-    pub name: String,
     pub directories: Vec<Directory>,
 }
 
@@ -426,8 +425,10 @@ impl Archive {
             }
         })
     }
+}
 
-    pub fn deserialize(reader: &mut Cursor<&[u8]>, name: String) -> EncodingResult<Self> {
+impl Deserialize for Archive {
+    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
         let header = Header::deserialize(reader)?;
 
         // Skip to root start
@@ -494,6 +495,6 @@ impl Archive {
             });
         }
 
-        Ok(Self { name, directories })
+        Ok(Self { directories })
     }
 }

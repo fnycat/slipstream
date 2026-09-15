@@ -6,6 +6,7 @@ use crate::{
     brres,
     encoding::{Deserialize, Encode, ReadArrayExt, WriteArrayExt},
     error::{CorruptionError, EncodingError, EncodingResult, IncorrectFormat, UnsupportedError},
+    lazy::Lazy,
 };
 
 /// Magic of an ARC file.
@@ -172,26 +173,24 @@ pub struct UnknownFile {
     pub data: Vec<u8>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum FileType {
-    Brres(brres::Archive),
-    Unknown(UnknownFile),
+    Brres,
+    Bmg,
+    Unknown,
 }
 
-impl FileType {
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Brres(v) => &v.name,
-            Self::Unknown(v) => &v.name,
-        }
-    }
+#[derive(Debug, Clone, PartialEq)]
+pub enum FileData {
+    Brres(brres::Archive),
+    Unknown(UnknownFile),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ArcNode {
     File {
-        // Name is contained in the file data
-        data: FileType,
+        name: String,
+        data: Lazy<FileData, Vec<u8>>,
     },
     Directory {
         name: String,
@@ -202,7 +201,7 @@ pub enum ArcNode {
 impl ArcNode {
     pub fn name(&self) -> &str {
         match self {
-            Self::File { data, .. } => data.name(),
+            Self::File { name, .. } => name,
             Self::Directory { name, .. } => name,
         }
     }
@@ -215,22 +214,13 @@ pub struct Archive {
 }
 
 impl Archive {
-    fn deserialize_node_contents(buffer: &[u8], name: String) -> EncodingResult<ArcNode> {
-        if &buffer[..4] != brres::BRRES_MAGIC {
-            tracing::error!("unimplemented file format (not BRRES)");
-            return Ok(ArcNode::File {
-                data: FileType::Unknown(UnknownFile {
-                    name,
-                    data: buffer.to_owned(),
-                }),
-            });
-        }
+    fn parse_unknown_file_node(raw: &mut Vec<u8>) -> EncodingResult<FileData> {
+        let mut reader = Cursor::new(raw.as_slice());
 
-        let mut cursor = Cursor::new(buffer);
-        let archive = brres::Archive::deserialize(&mut cursor, name)?;
-
-        Ok(ArcNode::File {
-            data: FileType::Brres(archive),
+        let magic: [u8; 4] = raw[..4].try_into().expect("4 does not equal 4");
+        Ok(match magic {
+            brres::BRRES_MAGIC => FileData::Brres(brres::Archive::deserialize(&mut reader)?),
+            _ => todo!(),
         })
     }
 
@@ -258,12 +248,16 @@ impl Archive {
             } else {
                 let data_start = curr_node.data1 as usize;
                 let data_end = data_start + curr_node.data2 as usize;
-                let data = &buffer[data_start..data_end];
+                let data = buffer[data_start..data_end].to_vec();
 
                 let name = curr_node.get_name_from_pool(string_pool)?.to_owned();
-                tracing::trace!("Reading `{name}` contents");
+                tracing::trace!("Discovered `{name}`, lazily reading it upon request");
 
-                children.push(Self::deserialize_node_contents(data, name)?);
+                children.push(ArcNode::File {
+                    name,
+                    data: Lazy::deferred(data, Self::parse_unknown_file_node),
+                });
+
                 *cursor += 1;
             }
         }
