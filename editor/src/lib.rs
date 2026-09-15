@@ -1,10 +1,13 @@
+#![feature(error_generic_member_access)]
+
 mod app;
 mod config;
 mod decorations;
+mod format;
 mod model_renderer;
-mod nodes;
 mod pages;
 mod shared;
+mod r#virtual;
 
 #[cfg(target_arch = "wasm32")]
 mod web;

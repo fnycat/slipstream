@@ -2,9 +2,10 @@ use std::io::Cursor;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::encoding::{Deserialize, Encode, ReadArrayExt, WriteArrayExt};
-use crate::error::IncorrectFormat;
-use crate::error::{CorruptionError, EncodingError, EncodingResult};
+use crate::format::{
+    encoding::{Deserialize, ReadArrayExt, Serialize, WriteArrayExt},
+    error::{CorruptionError, EncodingError, EncodingResult, IncorrectFormat},
+};
 
 /// Magic of a YAZ0 file.
 pub const YAZ0_MAGIC: [u8; 4] = [0x59, 0x61, 0x7a, 0x30];
@@ -17,8 +18,8 @@ pub struct Header {
     pub reserved: [u32; 2],
 }
 
-impl Encode for Header {
-    fn encode_into(&self, writer: &mut Vec<u8>) -> EncodingResult<()> {
+impl Serialize for Header {
+    fn serialize_into(&self, writer: &mut Vec<u8>) -> EncodingResult<()> {
         writer.write_u8_array::<4>(YAZ0_MAGIC)?;
         writer.write_u32::<BigEndian>(self.uncompressed_size)?;
         writer.write_u32_array::<2, BigEndian>(self.reserved)?;

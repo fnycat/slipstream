@@ -1,19 +1,11 @@
 use std::{collections::HashMap, io::Cursor, path::PathBuf, rc::Rc};
 
-use szslib::{
-    arc::{self, ArcNode},
-    brres,
-    chr0::Chr0Subfile,
-    mdl0::{MDL0_SECTION_NAMES, Mdl0Subfile},
-    yaz0::{self, YAZ0_MAGIC},
-};
-
 use crate::{
-    nodes::{
-        arc::{VirtualArcNode, deserialize_arc_root_virtual},
-        brres::{VirtualBrresNode, VirtualRawNode, deserialize_virtual_root_brres},
+    format::{
+        arc,
+        yaz0::{self, YAZ0_MAGIC},
     },
-    pages::editor::{FileCache, ResourceId, VirtualNode},
+    r#virtual::VirtualNode,
 };
 
 /// Deserializes a possibly YAZ0-compressed file.
@@ -21,9 +13,8 @@ use crate::{
 /// After decompressing, this forwards the call to [`deserialize_unknown_root`]
 pub fn deserialize_maybe_compressed(
     mut reader: Cursor<Vec<u8>>,
-    file_cache: &mut FileCache,
     name: String,
-) -> eyre::Result<Rc<dyn VirtualNode>> {
+) -> eyre::Result<VirtualNode> {
     // Is this file compressed?
     if &reader.get_ref()[..4] == YAZ0_MAGIC {
         // then decompress it.
@@ -31,7 +22,7 @@ pub fn deserialize_maybe_compressed(
     }
 
     let mut reader = Cursor::new(reader.get_ref().as_slice());
-    deserialize_unknown_root(&mut reader, file_cache, name)
+    deserialize_unknown_root(&mut reader, name)
 }
 
 /// Deserializes an uncompressed file.
@@ -41,16 +32,15 @@ pub fn deserialize_maybe_compressed(
 /// This function works with OS level files, not files within archives.
 pub fn deserialize_unknown_root(
     reader: &mut Cursor<&[u8]>,
-    file_cache: &mut FileCache,
     name: String,
-) -> eyre::Result<Rc<dyn VirtualNode>> {
+) -> eyre::Result<VirtualNode> {
     let magic: &[u8; 4] = reader.get_ref()[..4]
         .try_into()
         .expect("array of size 4 does not have size 4?");
 
     let contents = match magic {
-        &arc::ARC_MAGIC => deserialize_arc_root_virtual(reader, file_cache, name)?,
-        &brres::BRRES_MAGIC => deserialize_virtual_root_brres(reader, file_cache, name)?,
+        &arc::ARC_MAGIC => arc::deserialize_virtual(reader, name)?,
+        // &brres::BRRES_MAGIC => deserialize_virtual_root_brres(reader, file_cache, name)?,
         _ => eyre::bail!(
             "unknown or unsupported file magic: `{}`",
             String::from_utf8_lossy(magic)

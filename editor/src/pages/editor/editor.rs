@@ -1,17 +1,12 @@
 use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
 
 use eframe::egui_wgpu;
-use egui_phosphor::regular::CARET_DOWN;
-use szslib::{
-    arc, brres,
-    yaz0::{self, YAZ0_MAGIC},
-};
 
 use crate::{
     app::App,
     model_renderer::ModelRenderer,
-    pages::editor::{FileCache, VirtualNode, draw_virtual_node_tree},
     shared::node::{self},
+    r#virtual::VirtualNode,
 };
 
 /// Data specific to the editor page.
@@ -22,8 +17,7 @@ pub struct EditorPageData {
     /// Not an internal URI.
     pub filepath: PathBuf,
     /// The whole file currently open in the editor.
-    pub root_node: Rc<dyn VirtualNode>,
-    pub file_cache: FileCache,
+    pub root_node: VirtualNode,
 }
 
 impl EditorPageData {
@@ -34,17 +28,13 @@ impl EditorPageData {
             .ok_or_else(|| eyre::eyre!("unable to find file name of `{filepath:?}`"))?
             .to_string_lossy();
 
-        let mut file_cache = FileCache::new();
-
-        let root_node =
-            node::deserialize_maybe_compressed(contents, &mut file_cache, file_name.into_owned())?;
+        let root_node = node::deserialize_maybe_compressed(contents, file_name.into_owned())?;
 
         tracing::debug!("{root_node:#?}");
 
         Ok(Self {
             root_node,
             filepath,
-            file_cache,
         })
     }
 }
@@ -117,7 +107,9 @@ impl App {
         let panel_id = egui::Id::new("file_tree_panel");
         egui::Panel::left(panel_id).show(ui, |ui| {
             let page_data = self.current_page.as_editor().unwrap();
-            draw_virtual_node_tree(page_data.root_node.as_ref(), ui);
+            // draw_virtual_node_tree(page_data.root_node.as_ref(), ui);
+            //
+            todo!();
         });
 
         self.draw_editor_view(ui);

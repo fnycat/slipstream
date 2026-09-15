@@ -1,5 +1,4 @@
 use eframe::egui_wgpu;
-use szslib::mdl0;
 use wgpu::util::DeviceExt;
 
 const VERTICES: [[f32; 3]; 3] = [[0.0, 0.5, 0.0], [-0.5, -0.5, 0.0], [0.5, -0.5, 0.0]];

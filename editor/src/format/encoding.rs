@@ -2,7 +2,7 @@ use std::io::Cursor;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 
-use crate::error::{CorruptionError, EncodingError, EncodingResult};
+use crate::format::error::{CorruptionError, EncodingError, EncodingResult};
 
 macro_rules! impl_byteorder_arrays {
     ($($ty: ty),*) => {
@@ -143,13 +143,13 @@ pub trait Deserialize: Sized {
     fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self>;
 }
 
-pub trait Encode {
-    fn encode(&self) -> EncodingResult<Vec<u8>> {
+pub trait Serialize {
+    fn serialize(&self) -> EncodingResult<Vec<u8>> {
         let mut out = Vec::new();
-        self.encode_into(&mut out)?;
+        self.serialize_into(&mut out)?;
 
         Ok(out)
     }
 
-    fn encode_into(&self, writer: &mut Vec<u8>) -> EncodingResult<()>;
+    fn serialize_into(&self, writer: &mut Vec<u8>) -> EncodingResult<()>;
 }

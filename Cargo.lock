@@ -698,7 +698,6 @@ dependencies = [
  "once_cell",
  "owo-colors",
  "tracing-error",
- "url",
 ]
 
 [[package]]
@@ -1991,6 +1990,7 @@ name = "mktools"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "byteorder",
  "color-eyre",
  "console_error_panic_hook",
  "eframe",
@@ -1998,9 +1998,9 @@ dependencies = [
  "egui-phosphor",
  "egui_extras",
  "eyre",
+ "paste",
  "pollster 1.0.1",
  "rfd",
- "szslib",
  "thiserror 2.0.20",
  "tracing",
  "tracing-subscriber",
@@ -3394,20 +3394,6 @@ dependencies = [
  "objc2-io-kit",
  "objc2-open-directory",
  "windows",
-]
-
-[[package]]
-name = "szslib"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "byteorder",
- "color-eyre",
- "paste",
- "thiserror 2.0.20",
- "tracing",
- "tracing-subscriber",
- "tracing-tree",
 ]
 
 [[package]]
