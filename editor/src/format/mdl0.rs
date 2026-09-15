@@ -742,7 +742,7 @@ impl Mdl0Subfile {
         dbg!(&index_group, &subfile_header.offsets);
 
         let mut files = Vec::with_capacity(subfile_header.offsets.len());
-        for &section_offset in &subfile_header.offsets {
+        for (i, &section_offset) in subfile_header.offsets.iter().enumerate() {
             // Loops over sections like `Bones`, `Vertices`, `Normals`...
 
             if section_offset == 0 {
@@ -769,7 +769,7 @@ impl Mdl0Subfile {
             }
 
             files.push(VirtualNode {
-                label: format!("????? {section_start}"),
+                label: MDL0_SECTION_NAMES[i].to_owned(),
                 kind: VirtualNodeKind::Container,
                 content: None,
                 children,
