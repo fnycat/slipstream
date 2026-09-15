@@ -23,27 +23,20 @@ impl App {
 
     /// Renders the splash screen
     pub fn draw_splash(&mut self, ui: &mut egui::Ui) {
-        let window_bg = ui.visuals().panel_fill;
-
-        egui::CentralPanel::default()
-            .frame(egui::Frame::default())
+        egui::Area::new(egui::Id::new("splash_panel"))
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
             .show(ui, |ui| {
+                ui.set_max_width(360.0);
+
                 ui.vertical_centered(|ui| {
-                    ui.add_space(ui.available_height() * 0.25); // Top spacing
+                    let title_text = egui::RichText::new(APP_TITLE);
+                    let title = egui::Label::new(title_text).selectable(false);
+                    ui.add(title);
 
-                    egui::Frame::new()
-                        .corner_radius(0.0)
-                        .fill(window_bg)
-                        .inner_margin(24.0)
-                        .show(ui, |ui| {
-                            ui.set_max_width(360.0);
+                    ui.add_space(0.2 * ui.available_height());
 
-                            let title = egui::Label::new(APP_TITLE).selectable(false);
-                            ui.add(title);
-
-                            let spinner = egui::Spinner::new().size(24.0);
-                            ui.add(spinner);
-                        });
+                    let spinner = egui::Spinner::new().size(32.0);
+                    ui.add(spinner);
                 });
             });
 

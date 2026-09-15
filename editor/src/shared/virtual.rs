@@ -1,14 +1,32 @@
-use std::{collections::HashMap, num::NonZeroUsize};
+use std::{any::Any, collections::HashMap, num::NonZeroUsize};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ResourceId(NonZeroUsize);
 
-pub struct ResourceStore {
-    next_id: usize,
-    cache: HashMap<ResourceId, Vec<u8>>,
+pub trait Inspectable {}
+
+pub type LazyParser = fn(String, &mut ResourceCache, Vec<u8>) -> eyre::Result<Box<dyn Inspectable>>;
+
+pub enum Lazy<T> {
+    Deferred {
+        parse_fn: LazyParser,
+        bytes: Vec<u8>,
+    },
+    Parsed(T),
 }
 
-impl ResourceStore {
+pub enum ResourceKind {
+    Bones,
+    Vertices,
+    Normals,
+}
+
+pub struct ResourceCache {
+    next_id: usize,
+    cache: HashMap<ResourceId, Lazy<ResourceKind>>,
+}
+
+impl ResourceCache {
     pub fn new() -> Self {
         Self {
             next_id: 1,
@@ -16,9 +34,9 @@ impl ResourceStore {
         }
     }
 
-    pub fn insert(&mut self, raw: Vec<u8>) -> ResourceId {
+    pub fn insert_deferred(&mut self, bytes: Vec<u8>, parse_fn: LazyParser) -> ResourceId {
         let id = self.next_id();
-        self.cache.insert(id, raw);
+        self.cache.insert(id, Lazy::Deferred { bytes, parse_fn });
         id
     }
 
@@ -32,25 +50,35 @@ impl ResourceStore {
 pub struct VirtualNode {
     pub label: String,
     pub kind: VirtualNodeKind,
+    pub content: Option<ResourceId>,
     pub children: Vec<VirtualNode>,
 }
 
 impl VirtualNode {
+    /// Draws the file tree under the current node.
+    ///
+    /// Lazy nodes are automatically evaluated once their folder is opened.
     pub fn draw_node_tree(&self, ui: &mut egui::Ui) {
-        if !self.children.is_empty() {
+        if self.kind == VirtualNodeKind::Container {
             egui::CollapsingHeader::new(&self.label).show(ui, |ui| {
                 for child in &self.children {
                     child.draw_node_tree(ui);
                 }
             });
         } else {
-            ui.button(&self.label);
+            if ui.button(&self.label).clicked() {};
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum VirtualNodeKind {
-    Directory,
-    File { cache_id: Option<ResourceId> },
+    /// This virtual node can contain other nodes.
+    ///
+    /// This is used for both directories and files that contain multiple subfiles/sections.
+    Container,
+    /// This is the final node in this branch.
+    ///
+    /// This is used for files that are not split up any further.
+    Terminal,
 }

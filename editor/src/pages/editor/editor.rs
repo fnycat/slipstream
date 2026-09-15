@@ -7,7 +7,7 @@ use crate::{
     model_renderer::ModelRenderer,
     shared::{
         node::{self},
-        r#virtual::{ResourceStore, VirtualNode},
+        r#virtual::{ResourceCache, VirtualNode},
     },
 };
 
@@ -20,7 +20,7 @@ pub struct EditorPageData {
     pub filepath: PathBuf,
     /// The whole file currently open in the editor.
     pub root_node: VirtualNode,
-    pub res_store: ResourceStore,
+    pub res_store: ResourceCache,
 }
 
 impl EditorPageData {
@@ -31,11 +31,11 @@ impl EditorPageData {
             .ok_or_else(|| eyre::eyre!("unable to find file name of `{filepath:?}`"))?
             .to_string_lossy();
 
-        let mut res_store = ResourceStore::new();
+        let mut res_store = ResourceCache::new();
         let root_node =
             node::deserialize_maybe_compressed(contents, &mut res_store, file_name.into_owned())?;
 
-        tracing::debug!("{root_node:#?}");
+        // tracing::debug!("{root_node:#?}");
 
         Ok(Self {
             root_node,
@@ -111,11 +111,12 @@ impl App {
 
         // Draw file explorer
         let panel_id = egui::Id::new("file_tree_panel");
-        egui::Panel::left(panel_id).show(ui, |ui| {
+        egui::Panel::left(panel_id).min_size(500.0).show(ui, |ui| {
             let root = &self.current_page.as_editor().unwrap().root_node;
             root.draw_node_tree(ui);
         });
 
+        self.draw_property_window(ui);
         self.draw_editor_view(ui);
     }
 }

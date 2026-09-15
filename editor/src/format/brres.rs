@@ -4,6 +4,7 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{
     format::{
+        arc::{self, ARC_MAGIC},
         chr0::Chr0Subfile,
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
         error::{
@@ -13,7 +14,7 @@ use crate::{
         mdl0::Mdl0Subfile,
         pat0::Pat0Subfile,
     },
-    shared::r#virtual::{ResourceStore, VirtualNode, VirtualNodeKind},
+    shared::r#virtual::{ResourceCache, VirtualNode, VirtualNodeKind},
 };
 
 pub const BRRES_MAGIC: [u8; 4] = [0x62, 0x72, 0x65, 0x73];
@@ -379,9 +380,29 @@ pub struct Archive {
     pub directories: Vec<Directory>,
 }
 
+fn deserialize_subfile(
+    reader: &mut Cursor<&[u8]>,
+    res_store: &mut ResourceCache,
+    name: String,
+) -> EncodingResult<VirtualNode> {
+    // Check magic
+    let magic = reader.read_u8_array::<4>()?;
+
+    match magic {
+        Mdl0Subfile::MAGIC => Mdl0Subfile::deserialize_virtual(reader, name),
+        // Chr0Subfile::MAGIC => Chr0Subfile::deserialize_lazy(reader),
+        _ => Ok(VirtualNode {
+            label: String::from("SOME UNPARSED FORMAT"),
+            kind: VirtualNodeKind::Terminal,
+            content: None,
+            children: Vec::new(),
+        }),
+    }
+}
+
 pub fn deserialize_virtual(
     reader: &mut Cursor<&[u8]>,
-    res_store: &mut ResourceStore,
+    res_cache: &mut ResourceCache,
     name: String,
 ) -> EncodingResult<VirtualNode> {
     let header = Header::deserialize(reader)?;
@@ -429,26 +450,31 @@ pub fn deserialize_virtual(
                 }
             }
 
-            // let file = tracing::trace_span!("deserialize_subfile", %dir_name, %subfile_name)
-            //     .in_scope(|| deserialize_subfile(reader, subfile))?;
+            let file = tracing::trace_span!("deserialize_subfile", %dir_name, %subfile_name)
+                .in_scope(|| deserialize_subfile(reader, res_cache, subfile_name.to_owned()))?;
 
-            subfiles.push(VirtualNode {
-                label: subfile_name.to_owned(),
-                kind: VirtualNodeKind::File { cache_id: None },
-                children: Vec::new(),
-            })
+            subfiles.push(file);
+
+            // subfiles.push(VirtualNode {
+            //     label: subfile_name.to_owned(),
+            //     kind: VirtualNodeKind::Container,
+            //     children: Vec::new(),
+            //     content: None,
+            // })
         }
 
         directories.push(VirtualNode {
             label: dir_name.to_owned(),
-            kind: VirtualNodeKind::Directory,
+            kind: VirtualNodeKind::Container,
             children: subfiles,
+            content: None,
         });
     }
 
     Ok(VirtualNode {
         label: name,
-        kind: VirtualNodeKind::File { cache_id: None },
+        kind: VirtualNodeKind::Container,
         children: directories,
+        content: None,
     })
 }

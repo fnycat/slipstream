@@ -3,9 +3,12 @@ use std::{collections::HashMap, io::Cursor};
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::{
-    format::brres::{self, IndexGroup, Subfile, SubfileHeader, SubfileType},
-    format::encoding::{Deserialize, ReadArrayExt, ReadStringExt},
-    format::error::{CorruptionError, EncodingError, EncodingResult},
+    format::{
+        brres::{self, IndexGroup, Subfile, SubfileHeader, SubfileType},
+        encoding::{Deserialize, ReadArrayExt, ReadStringExt},
+        error::{CorruptionError, EncodingError, EncodingResult},
+    },
+    shared::r#virtual::{VirtualNode, VirtualNodeKind},
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -716,6 +719,70 @@ pub struct Mdl0Subfile {
     pub bones: Option<HashMap<String, Bones>>,
     pub vertices: Option<HashMap<String, Vertices>>,
     pub normals: Option<HashMap<String, Normals>>,
+}
+
+impl Mdl0Subfile {
+    pub fn deserialize_virtual(
+        reader: &mut Cursor<&[u8]>,
+        name: String,
+    ) -> EncodingResult<VirtualNode> {
+        let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
+
+        let expected_sections =
+            brres::get_section_count(SubfileType::Mdl0, subfile_header.subfile_version)?;
+        if subfile_header.offsets.len() != expected_sections {
+            todo!("invalid section count");
+        }
+
+        let mdl0_header = Mdl0Header::deserialize(reader)?;
+
+        let bone_links = BoneLinkTable::deserialize(reader)?;
+        let index_group = IndexGroup::deserialize(reader)?;
+
+        dbg!(&index_group, &subfile_header.offsets);
+
+        let mut files = Vec::with_capacity(subfile_header.offsets.len());
+        for &section_offset in &subfile_header.offsets {
+            // Loops over sections like `Bones`, `Vertices`, `Normals`...
+
+            if section_offset == 0 {
+                // Section does not exist, skip it
+                continue;
+            }
+
+            let section_start = subfile_header.header_start as i64 + section_offset as i64;
+            reader.set_position(section_start as u64);
+
+            let section_index = IndexGroup::deserialize(reader)?;
+            let mut children = Vec::with_capacity(section_index.entries.len() - 1);
+
+            for entry in &section_index.entries[1..] {
+                let name = section_index.get_entry_name(reader.get_ref(), entry)?;
+                let data_start = section_index.get_entry_data_start(entry);
+
+                children.push(VirtualNode {
+                    label: name.to_owned(),
+                    kind: VirtualNodeKind::Terminal,
+                    children: Vec::new(),
+                    content: None,
+                });
+            }
+
+            files.push(VirtualNode {
+                label: format!("????? {section_start}"),
+                kind: VirtualNodeKind::Container,
+                content: None,
+                children,
+            });
+        }
+
+        Ok(VirtualNode {
+            label: name,
+            kind: VirtualNodeKind::Container,
+            children: files,
+            content: None,
+        })
+    }
 }
 
 fn deserialize_section<T: SectionDeserialize>(
