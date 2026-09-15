@@ -1,4 +1,4 @@
-use std::{io::Cursor, path::PathBuf, sync::Arc};
+use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
 
 use eframe::egui_wgpu;
 use egui_phosphor::regular::CARET_DOWN;
@@ -10,8 +10,8 @@ use szslib::{
 use crate::{
     app::App,
     model_renderer::ModelRenderer,
-    pages::editor::EditorTab,
-    shared::file::{self, EditorNode},
+    pages::editor::{FileCache, VirtualNode, draw_node_tree},
+    shared::file::{self},
 };
 
 /// Data specific to the editor page.
@@ -22,11 +22,8 @@ pub struct EditorPageData {
     /// Not an internal URI.
     pub filepath: PathBuf,
     /// The whole file currently open in the editor.
-    pub node_tree: Box<dyn EditorNode>,
-    /// Index into the tabs list of the currently open tab.
-    pub open_tab: Option<usize>,
-    /// Currently open subsections of the file.
-    pub tabs: Vec<EditorTab>,
+    pub root_node: Rc<dyn VirtualNode>,
+    pub file_cache: FileCache,
 }
 
 impl EditorPageData {
@@ -37,11 +34,16 @@ impl EditorPageData {
             .ok_or_else(|| eyre::eyre!("unable to find file name of `{filepath:?}`"))?
             .to_string_lossy();
 
+        let mut file_cache = FileCache::new();
+
         Ok(Self {
-            node_tree: file::deserialize_unknown(file_name.into_owned(), contents)?,
+            root_node: file::deserialize_unknown(
+                file_name.into_owned(),
+                &mut file_cache,
+                contents,
+            )?,
             filepath,
-            open_tab: None,
-            tabs: Vec::new(),
+            file_cache,
         })
     }
 }
@@ -113,11 +115,8 @@ impl App {
         // Draw file explorer
         let panel_id = egui::Id::new("file_tree_panel");
         egui::Panel::left(panel_id).show(ui, |ui| {
-            self.current_page
-                .as_editor()
-                .unwrap()
-                .node_tree
-                .draw_tree(ui)
+            let page_data = self.current_page.as_editor().unwrap();
+            draw_node_tree(page_data.root_node.as_ref(), ui);
         });
 
         self.draw_editor_view(ui);

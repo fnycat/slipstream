@@ -1,19 +1,18 @@
-use std::{io::Cursor, path::PathBuf};
+use std::{collections::HashMap, io::Cursor, path::PathBuf, rc::Rc};
 
 use szslib::{
     arc::{self, ArcNode},
-    brres,
-    encoding::Deserialize,
     yaz0::{self, YAZ0_MAGIC},
 };
 
-use crate::shared::uri::UriSlice;
+use crate::pages::editor::{FileCache, ResourceId, VirtualNode};
 
 /// Figures out the format of the given file and tries to deserialize it.
 pub fn deserialize_unknown(
     name: String,
+    file_cache: &mut FileCache,
     mut contents: Vec<u8>,
-) -> eyre::Result<Box<dyn EditorNode>> {
+) -> eyre::Result<Rc<dyn VirtualNode>> {
     // Is this file compressed?
     if &contents[..4] == YAZ0_MAGIC {
         // then decompress it.
@@ -27,146 +26,91 @@ pub fn deserialize_unknown(
         .expect("array of size 4 does not have size 4?");
 
     let contents = match magic {
-        &arc::ARC_MAGIC => {
-            let boxed = Box::new(arc::Archive::deserialize(&mut cursor, name)?);
-            boxed as Box<dyn EditorNode>
-        }
-        &brres::BRRES_MAGIC => {
-            let boxed = Box::new(brres::Archive::deserialize(&mut cursor, name)?);
-            boxed as Box<dyn EditorNode>
-        }
-        _ => eyre::bail!("unknown file magic: `{}`", String::from_utf8_lossy(magic)),
+        &arc::ARC_MAGIC => decode_virtual_arc(&mut cursor, file_cache, name)?,
+        _ => eyre::bail!(
+            "unknown or unsupported file magic: `{}`",
+            String::from_utf8_lossy(magic)
+        ),
     };
 
     Ok(contents)
 }
 
-/// Implemented by all types of files that can be opened in the editor.
-pub trait EditorNode {
-    fn name(&self) -> &str;
-
-    /// Draws the file tree in this file (if it has one).
-    fn draw_tree(&self, ui: &mut egui::Ui);
-
-    fn uri(&self) -> UriSlice;
-
-    // fn resolve_uri<'a>(&self, uri: UriSlice<'a>) -> Option<Box<dyn EditorNode>>;
+enum VirtualArcNode {
+    Directory {
+        name: String,
+        children: Vec<Rc<dyn VirtualNode>>,
+    },
+    File {
+        name: String,
+        /// Points to the file contents in the file cache.
+        ///
+        /// Each file automatically gets assigned a resource ID,
+        /// but its resource might not exist yet until it is accessed.
+        content: ResourceId,
+    },
 }
 
-impl EditorNode for arc::Archive {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn uri(&self) -> UriSlice {}
-
-    fn resolve_uri<'a>(&self, uri: UriSlice<'a>) -> Option<Box<dyn EditorNode>> {
-        let curr = uri.head()?;
-    }
-
-    fn draw_tree(&self, ui: &mut egui::Ui) {
-        egui::CollapsingHeader::new(format!("{}//.", &self.name)).show(ui, |ui| {
-            // An ARC file always has an empty top root, skip it
-            let Some(root) = &self.root else {
-                return;
-            };
-
-            let arc::ArcNode::Directory { children, .. } = root else {
-                return;
-            };
-
-            for child in children {
-                child.draw_tree(ui);
-            }
-        });
-    }
-}
-
-impl EditorNode for arc::FileType {
-    fn name(&self) -> &str {
-        self.name()
-    }
-
-    fn draw_tree(&self, ui: &mut egui::Ui) {
+impl VirtualNode for VirtualArcNode {
+    fn label(&self) -> &str {
         match self {
-            Self::Raw(_) => {
-                ui.button(self.name());
-            }
-            Self::Brres(archive) => archive.draw_tree(ui),
+            Self::Directory { name, .. } => name,
+            Self::File { name, .. } => name,
+        }
+    }
+
+    fn is_directory(&self) -> bool {
+        matches!(self, Self::Directory { .. })
+    }
+
+    fn children(&self) -> &[Rc<dyn VirtualNode>] {
+        match self {
+            Self::Directory { children, .. } => children,
+            Self::File { .. } => unimplemented!(),
         }
     }
 }
 
-impl EditorNode for arc::ArcNode {
-    fn name(&self) -> &str {
-        // Calls ArcNode::name
-        self.name()
-    }
+impl VirtualArcNode {
+    pub fn from_physical_node(file_cache: &mut FileCache, node: ArcNode) -> Self {
+        match node {
+            ArcNode::Directory { name, children } => {
+                let mut virtual_children = Vec::with_capacity(children.len());
+                for child in children {
+                    let virtual_child = Rc::new(Self::from_physical_node(file_cache, child));
+                    virtual_children.push(virtual_child as Rc<dyn VirtualNode>);
+                }
 
-    fn draw_tree(&self, ui: &mut egui::Ui) {
-        match self {
-            arc::ArcNode::Directory { name, children } => {
-                egui::CollapsingHeader::new(name).show(ui, |ui| {
-                    for child in children {
-                        child.draw_tree(ui);
-                    }
-                });
+                VirtualArcNode::Directory {
+                    name,
+                    children: virtual_children,
+                }
             }
-            arc::ArcNode::File { data } => {
-                // This file might have a further file tree of its own
-                // (albeit not in ARC format)
-                //
-                // This for example happens in brres files.
-                data.draw_tree(ui);
+            ArcNode::File { data } => {
+                let name = data.name().to_owned();
+                let resource_id = file_cache.next_id();
+                tracing::trace!("Assigned resource ID {resource_id} to `{name}`");
+
+                VirtualArcNode::File {
+                    name,
+                    content: resource_id,
+                }
             }
         }
     }
 }
 
-impl EditorNode for arc::RawFile {
-    fn name(&self) -> &str {
-        &self.name
-    }
+fn decode_virtual_arc(
+    reader: &mut Cursor<&[u8]>,
+    file_cache: &mut FileCache,
+    name: String,
+) -> eyre::Result<Rc<dyn VirtualNode>> {
+    let arc = arc::Archive::deserialize(reader, name)?;
+    let root_node = arc
+        .root
+        .ok_or_else(|| eyre::eyre!("root node does not exist"))?;
 
-    fn draw_tree(&self, ui: &mut egui::Ui) {
-        ui.button(format!("RAW: {}", self.name));
-    }
-}
-
-impl EditorNode for brres::Archive {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn draw_tree(&self, ui: &mut egui::Ui) {
-        egui::CollapsingHeader::new(&self.name).show(ui, |ui| {
-            for dir in &self.directories {
-                dir.draw_tree(ui);
-            }
-        });
-    }
-}
-
-impl EditorNode for brres::Directory {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn draw_tree(&self, ui: &mut egui::Ui) {
-        egui::CollapsingHeader::new(&self.name).show(ui, |ui| {
-            for file in &self.files {
-                file.draw_tree(ui);
-            }
-        });
-    }
-}
-
-impl EditorNode for brres::File {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn draw_tree(&self, ui: &mut egui::Ui) {
-        ui.button(&self.name);
-    }
+    Ok(Rc::new(VirtualArcNode::from_physical_node(
+        file_cache, root_node,
+    )))
 }
