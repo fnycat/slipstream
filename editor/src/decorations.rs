@@ -164,6 +164,62 @@ impl App {
         });
     }
 
+    pub fn handle_frameless_resize(ctx: &egui::Context) {
+        let border_width = 6.0;
+        let screen_rect = ctx.viewport_rect();
+
+        let Some(pointer_pos) = ctx.pointer_interact_pos() else {
+            return;
+        };
+
+        let on_left = pointer_pos.x <= screen_rect.min.x + border_width;
+        let on_right = pointer_pos.x >= screen_rect.max.x - border_width;
+        let on_top = pointer_pos.y <= screen_rect.min.y + border_width;
+        let on_bottom = pointer_pos.y >= screen_rect.max.y - border_width;
+
+        if !on_left && !on_right && !on_top && !on_bottom {
+            return;
+        }
+
+        let direction = match (on_left, on_right, on_top, on_bottom) {
+            (true, false, false, false) => Some(egui::ResizeDirection::West),
+            (false, true, false, false) => Some(egui::ResizeDirection::East),
+            (false, false, true, false) => Some(egui::ResizeDirection::North),
+            (false, false, false, true) => Some(egui::ResizeDirection::South),
+            (true, false, true, false) => Some(egui::ResizeDirection::NorthWest),
+            (true, false, false, true) => Some(egui::ResizeDirection::SouthWest),
+            (false, true, true, false) => Some(egui::ResizeDirection::NorthEast),
+            (false, true, false, true) => Some(egui::ResizeDirection::SouthEast),
+            _ => {
+                tracing::error!(
+                    "Hmmm, the cursor seems to be at opposite sides of the window at the same time"
+                );
+                None
+            }
+        };
+
+        if let Some(dir) = direction {
+            ctx.set_cursor_icon(match dir {
+                egui::ResizeDirection::North | egui::ResizeDirection::South => {
+                    egui::CursorIcon::ResizeVertical
+                }
+                egui::ResizeDirection::East | egui::ResizeDirection::West => {
+                    egui::CursorIcon::ResizeHorizontal
+                }
+                egui::ResizeDirection::NorthEast | egui::ResizeDirection::SouthWest => {
+                    egui::CursorIcon::ResizeNeSw
+                }
+                egui::ResizeDirection::NorthWest | egui::ResizeDirection::SouthEast => {
+                    egui::CursorIcon::ResizeNwSe
+                }
+            });
+
+            if ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary)) {
+                ctx.send_viewport_cmd(egui::ViewportCommand::BeginResize(dir));
+            }
+        }
+    }
+
     /// Draws a basic title bar with the window title and title buttons.
     pub fn draw_basic_title_bar(&mut self, ui: &mut egui::Ui) {
         let layout_bg = ui.style().visuals.panel_fill;

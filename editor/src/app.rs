@@ -17,6 +17,8 @@ pub enum CurrentPage {
     Splash,
     Intro,
     Editor(EditorPageData),
+    Info,
+    Settings,
 }
 
 impl CurrentPage {
@@ -92,6 +94,8 @@ impl App {
     }
 
     fn draw_ui(&mut self, ui: &mut egui::Ui) {
+        Self::handle_frameless_resize(ui.ctx());
+
         // Draw panic modal if a panic occurred
         if self.panic_info.is_some() {
             self.draw_panic_modal(ui);
