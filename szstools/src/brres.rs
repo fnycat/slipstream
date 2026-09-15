@@ -403,6 +403,7 @@ pub struct File {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Archive {
+    pub name: String,
     pub directories: Vec<Directory>,
 }
 
@@ -427,8 +428,8 @@ impl Archive {
     }
 }
 
-impl Deserialize for Archive {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+impl Archive {
+    pub fn deserialize(reader: &mut Cursor<&[u8]>, name: String) -> EncodingResult<Self> {
         let header = Header::deserialize(reader)?;
 
         // Skip to root start
@@ -439,7 +440,7 @@ impl Deserialize for Archive {
         // Root group, which contains folders such as AnmChr(NW4R) or AnmTexPat(NW4R).
         let root_group = IndexGroup::deserialize(reader)?;
 
-        let mut folders = Vec::with_capacity(root_group.entries.len() - 1);
+        let mut directories = Vec::with_capacity(root_group.entries.len() - 1);
 
         tracing::error!("ONLY OPENING FIRST FILE (TODO REMOVE)");
         for folder in &root_group.entries[1..2] {
@@ -480,14 +481,12 @@ impl Deserialize for Archive {
                 });
             }
 
-            folders.push(Directory {
+            directories.push(Directory {
                 name: folder_name.to_owned(),
                 files: subfiles,
             });
         }
 
-        Ok(Self {
-            directories: folders,
-        })
+        Ok(Self { name, directories })
     }
 }

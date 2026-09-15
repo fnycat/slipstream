@@ -13,7 +13,6 @@ use crate::{
     pages::editor::EditorPageData,
 };
 
-#[derive(Debug, Clone, PartialEq)]
 pub enum CurrentPage {
     Splash,
     Intro,
@@ -145,7 +144,7 @@ impl App {
         match &self.current_page {
             CurrentPage::Intro => self.draw_intro(ui),
             CurrentPage::Editor { .. } => self.draw_editor(ui),
-            v => todo!("{v:?}"),
+            _ => todo!(),
         }
     }
 }

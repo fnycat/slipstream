@@ -57,15 +57,11 @@ impl App {
                                     .pick_file();
 
                                 if let Some(selected_file) = selected_file {
-                                    let archive =
-                                        EditorPageData::from_file(&selected_file).unwrap();
-
                                     ModelRenderer::init(&self.render_state);
 
-                                    self.current_page = CurrentPage::Editor(EditorPageData {
-                                        filepath: selected_file,
-                                        data: archive,
-                                    })
+                                    self.current_page = CurrentPage::Editor(
+                                        EditorPageData::new(selected_file).unwrap(),
+                                    );
                                 }
                             }
                         });

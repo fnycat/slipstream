@@ -1,4 +1,4 @@
-use std::{io::Cursor, path::PathBuf};
+use std::{io::Cursor, path::PathBuf, sync::Arc};
 
 use eframe::egui_wgpu;
 use egui_phosphor::regular::CARET_DOWN;
@@ -8,40 +8,41 @@ use szslib::{
 };
 
 use crate::{
-    app::App, config::FILE_INDENTATION_SIZE, model_renderer::ModelRenderer,
-    shared::tree::DrawFileTree,
+    app::App,
+    model_renderer::ModelRenderer,
+    pages::editor::EditorTab,
+    shared::file::{self, EditorNode},
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Filetype {
-    Yaz0Arc,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum FileData {
-    Szs(arc::Archive),
-    Brres(brres::Archive),
-}
-
-#[derive(Debug, Clone, PartialEq)]
+/// Data specific to the editor page.
 pub struct EditorPageData {
+    /// The path of the current file open in the editor.
+    ///
+    /// This is a regular filesystem path, pointing to the root file.
+    /// Not an internal URI.
     pub filepath: PathBuf,
-    pub data: FileData,
+    /// The whole file currently open in the editor.
+    pub node_tree: Box<dyn EditorNode>,
+    /// Index into the tabs list of the currently open tab.
+    pub open_tab: Option<usize>,
+    /// Currently open subsections of the file.
+    pub tabs: Vec<EditorTab>,
 }
 
 impl EditorPageData {
-    pub fn from_file(filepath: &PathBuf) -> eyre::Result<FileData> {
-        // This function loads only the file tree.
-        // It does not read any files.
+    pub fn new(filepath: PathBuf) -> eyre::Result<Self> {
+        let contents = std::fs::read(&filepath)?;
+        let file_name = filepath
+            .file_name()
+            .ok_or_else(|| eyre::eyre!("unable to find file name of `{filepath:?}`"))?
+            .to_string_lossy();
 
-        let mut file_data = std::fs::read(&filepath)?;
-        if &file_data[..4] == YAZ0_MAGIC {
-            let decompressed = yaz0::decompress(&file_data)?;
-            file_data = decompressed;
-        }
-
-        let archive = arc::Archive::read_filetree(&file_data)?;
-        Ok(FileData::Szs(archive))
+        Ok(Self {
+            node_tree: file::deserialize_unknown(file_name.into_owned(), contents)?,
+            filepath,
+            open_tab: None,
+            tabs: Vec::new(),
+        })
     }
 }
 
@@ -77,6 +78,14 @@ impl App {
                 ui.horizontal_centered(|ui| {
                     egui::MenuBar::new().ui(ui, |ui| {
                         ui.menu_button("File", |ui| {
+                            if ui.button("Save").clicked() {
+                                todo!()
+                            }
+
+                            if ui.button("Save as").clicked() {
+                                todo!()
+                            }
+
                             if ui.button("Quit").clicked() {
                                 ui.send_viewport_cmd(egui::ViewportCommand::Close);
                             }
@@ -98,8 +107,6 @@ impl App {
         });
     }
 
-    fn draw_property_window(&self, ui: &mut egui::Ui) {}
-
     pub fn draw_editor(&mut self, ui: &mut egui::Ui) {
         self.draw_upper_toolbar(ui);
 
@@ -109,8 +116,8 @@ impl App {
             self.current_page
                 .as_editor()
                 .unwrap()
-                .data
-                .draw_tree(ui, "<null>");
+                .node_tree
+                .draw_tree(ui)
         });
 
         self.draw_editor_view(ui);

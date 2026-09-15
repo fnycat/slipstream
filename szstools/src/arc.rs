@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// Magic of an ARC file.
-pub const ARC_MAGIC: u32 = 0x55AA382D;
+pub const ARC_MAGIC: [u8; 4] = [0x55, 0xAA, 0x38, 0x2D];
 
 /// See [`Custom Mario Kart Wiiki`](https://mkwiiki.org/wiki/ARC_(File_Format)) for more info.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,11 +26,11 @@ struct Header {
 
 impl Deserialize for Header {
     fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
-        let magic = reader.read_u32::<BigEndian>()?;
+        let magic = reader.read_u8_array::<4>()?;
         if magic != ARC_MAGIC {
             return Err(IncorrectFormat {
-                expected_magic: ARC_MAGIC.to_be_bytes().to_vec(),
-                found_magic: magic.to_be_bytes().to_vec(),
+                expected_magic: ARC_MAGIC.to_vec(),
+                found_magic: magic.to_vec(),
                 location: Some(reader.position()),
             }
             .into());
@@ -52,7 +52,7 @@ impl Deserialize for Header {
 
 impl Encode for Header {
     fn encode_into(&self, writer: &mut Vec<u8>) -> EncodingResult<()> {
-        writer.write_u32::<BigEndian>(ARC_MAGIC)?;
+        writer.write_u8_array(ARC_MAGIC)?;
         writer.write_i32::<BigEndian>(self.node_offset)?;
         writer.write_i32::<BigEndian>(self.size)?;
         writer.write_i32::<BigEndian>(self.file_offset)?;
@@ -167,15 +167,30 @@ impl Deserialize for RawNode {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct RawFile {
+    pub name: String,
+    pub data: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum FileType {
     Brres(brres::Archive),
-    Raw(Vec<u8>),
+    Raw(RawFile),
+}
+
+impl FileType {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Brres(v) => &v.name,
+            Self::Raw(v) => &v.name,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ArcNode {
     File {
-        name: String,
+        // Name is contained in the file data
         data: FileType,
     },
     Directory {
@@ -187,7 +202,7 @@ pub enum ArcNode {
 impl ArcNode {
     pub fn name(&self) -> &str {
         match self {
-            Self::File { name, .. } => name,
+            Self::File { data, .. } => data.name(),
             Self::Directory { name, .. } => name,
         }
     }
@@ -195,26 +210,28 @@ impl ArcNode {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Archive {
+    pub name: String,
     pub root: Option<ArcNode>,
 }
 
 impl Archive {
-    /// Deserializes all folders in this ARC archive.
-    pub fn read_filetree<B: AsRef<[u8]>>(data: B) -> EncodingResult<Self> {
-        let mut cursor = Cursor::new(data.as_ref());
-        Self::deserialize(&mut cursor)
-    }
-
-    fn deserialize_file_contents(buffer: &[u8]) -> EncodingResult<FileType> {
+    fn deserialize_node_contents(buffer: &[u8], name: String) -> EncodingResult<ArcNode> {
         if &buffer[..4] != brres::BRRES_MAGIC {
             tracing::error!("unimplemented file format (not BRRES)");
-            return Ok(FileType::Raw(buffer.to_owned()));
+            return Ok(ArcNode::File {
+                data: FileType::Raw(RawFile {
+                    name,
+                    data: buffer.to_owned(),
+                }),
+            });
         }
 
         let mut cursor = Cursor::new(buffer);
-        let archive = brres::Archive::deserialize(&mut cursor)?;
+        let archive = brres::Archive::deserialize(&mut cursor, name)?;
 
-        Ok(FileType::Brres(archive))
+        Ok(ArcNode::File {
+            data: FileType::Brres(archive),
+        })
     }
 
     fn parse_directory_node(
@@ -246,11 +263,7 @@ impl Archive {
                 let name = curr_node.get_name_from_pool(string_pool)?.to_owned();
                 tracing::trace!("Reading `{name}` contents");
 
-                children.push(ArcNode::File {
-                    name,
-                    data: Self::deserialize_file_contents(data)?,
-                });
-
+                children.push(Self::deserialize_node_contents(data, name)?);
                 *cursor += 1;
             }
         }
@@ -274,10 +287,8 @@ impl Archive {
         let mut cursor = 0;
         Self::parse_directory_node(nodes, &mut cursor, buffer, string_pool)
     }
-}
 
-impl Deserialize for Archive {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    pub fn deserialize(reader: &mut Cursor<&[u8]>, name: String) -> EncodingResult<Self> {
         let header = Header::deserialize(reader)?;
         let root_node = RawNode::deserialize(reader)?;
         let node_count = root_node.data2;
@@ -312,6 +323,6 @@ impl Deserialize for Archive {
 
         tracing::trace!("Successfully loaded node names and data pointers");
 
-        Ok(Self { root: nodes })
+        Ok(Self { root: nodes, name })
     }
 }
