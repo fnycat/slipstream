@@ -11,7 +11,7 @@ use crate::{
     app::App,
     model_renderer::ModelRenderer,
     pages::editor::{FileCache, VirtualNode, draw_virtual_node_tree},
-    shared::r#virtual::{self},
+    shared::node::{self},
 };
 
 /// Data specific to the editor page.
@@ -36,12 +36,13 @@ impl EditorPageData {
 
         let mut file_cache = FileCache::new();
 
+        let root_node =
+            node::deserialize_maybe_compressed(contents, &mut file_cache, file_name.into_owned())?;
+
+        tracing::debug!("{root_node:#?}");
+
         Ok(Self {
-            root_node: r#virtual::deserialize_maybe_compressed(
-                contents,
-                &mut file_cache,
-                file_name.into_owned(),
-            )?,
+            root_node,
             filepath,
             file_cache,
         })

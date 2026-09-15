@@ -23,7 +23,6 @@ impl App {
                     egui::Frame::new()
                         .fill(window_bg)
                         .corner_radius(0.0)
-                        // .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(65, 65, 70)))
                         .inner_margin(24.0)
                         .show(ui, |ui| {
                             ui.set_max_width(360.0);

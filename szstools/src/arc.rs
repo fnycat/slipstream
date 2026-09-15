@@ -167,7 +167,7 @@ impl Deserialize for RawNode {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct RawFile {
+pub struct UnknownFile {
     pub name: String,
     pub data: Vec<u8>,
 }
@@ -175,14 +175,14 @@ pub struct RawFile {
 #[derive(Debug, Clone, PartialEq)]
 pub enum FileType {
     Brres(brres::Archive),
-    Raw(RawFile),
+    Unknown(UnknownFile),
 }
 
 impl FileType {
     pub fn name(&self) -> &str {
         match self {
             Self::Brres(v) => &v.name,
-            Self::Raw(v) => &v.name,
+            Self::Unknown(v) => &v.name,
         }
     }
 }
@@ -219,7 +219,7 @@ impl Archive {
         if &buffer[..4] != brres::BRRES_MAGIC {
             tracing::error!("unimplemented file format (not BRRES)");
             return Ok(ArcNode::File {
-                data: FileType::Raw(RawFile {
+                data: FileType::Unknown(UnknownFile {
                     name,
                     data: buffer.to_owned(),
                 }),

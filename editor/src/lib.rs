@@ -2,6 +2,7 @@ mod app;
 mod config;
 mod decorations;
 mod model_renderer;
+mod nodes;
 mod pages;
 mod shared;
 

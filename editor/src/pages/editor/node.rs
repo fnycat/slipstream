@@ -4,7 +4,7 @@ use szslib::{arc, brres};
 
 use crate::shared::uri::UriSlice;
 
-pub trait VirtualNode {
+pub trait VirtualNode: std::fmt::Debug {
     fn label(&self) -> &str;
     fn is_directory(&self) -> bool;
     fn children(&self) -> &[Rc<dyn VirtualNode>];

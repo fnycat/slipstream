@@ -398,7 +398,7 @@ pub struct Directory {
 #[derive(Debug, Clone, PartialEq)]
 pub struct File {
     pub name: String,
-    pub file: SubfileData,
+    pub content: SubfileData,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -426,9 +426,7 @@ impl Archive {
             }
         })
     }
-}
 
-impl Archive {
     pub fn deserialize(reader: &mut Cursor<&[u8]>, name: String) -> EncodingResult<Self> {
         let header = Header::deserialize(reader)?;
 
@@ -442,8 +440,8 @@ impl Archive {
 
         let mut directories = Vec::with_capacity(root_group.entries.len() - 1);
 
-        tracing::error!("ONLY OPENING FIRST FILE (TODO REMOVE)");
-        for folder in &root_group.entries[1..2] {
+        // tracing::error!("ONLY OPENING FIRST FILE (TODO REMOVE)");
+        for folder in &root_group.entries[1..] {
             let folder_name = root_group.get_entry_name(reader.get_ref(), folder)?;
 
             tracing::trace!(
@@ -472,12 +470,21 @@ impl Archive {
                     reader.position()
                 );
 
+                // Skip over unimplemented formats for now
+                let magic =
+                    &reader.get_ref()[reader.position() as usize..reader.position() as usize + 4];
+
+                if magic != Mdl0Subfile::MAGIC && magic != Chr0Subfile::MAGIC {
+                    tracing::error!("Skipping `{}`", String::from_utf8_lossy(magic));
+                    continue;
+                }
+
                 let file = tracing::trace_span!("deserialize_subfile", %folder_name, %file_name)
                     .in_scope(|| Self::deserialize_subfile(reader, file))?;
 
                 subfiles.push(File {
                     name: file_name.to_owned(),
-                    file,
+                    content: file,
                 });
             }
 

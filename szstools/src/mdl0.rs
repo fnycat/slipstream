@@ -74,6 +74,23 @@ impl Deserialize for TextureMatrixMode {
     }
 }
 
+pub const MDL0_SECTION_NAMES: &[&str] = &[
+    "Definitions",
+    "Bones",
+    "Vertices",
+    "Normals",
+    "Colors",
+    "UVs",
+    "Fur vectors",
+    "Fur layers",
+    "Materials",
+    "TEVs",
+    "Objects",
+    "TextureLinks",
+    "PaletteLinks",
+    "UserData",
+];
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum SectionIds {
