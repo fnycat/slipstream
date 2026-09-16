@@ -3,3 +3,4 @@ pub mod properties;
 
 pub use editor::*;
 pub use properties::*;
+pub mod inspector;

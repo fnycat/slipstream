@@ -153,7 +153,11 @@ trait SectionDeserialize: Sized {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Definitions {}
 
-impl Inspectable for Definitions {}
+impl Inspectable for Definitions {
+    fn draw_properties(&mut self, ui: &mut egui::Ui) {
+        todo!()
+    }
+}
 
 impl SectionDeserialize for Definitions {
     fn deserialize_section(reader: &mut Cursor<&[u8]>, _header_start: u32) -> EncodingResult<Self> {
@@ -222,6 +226,12 @@ pub enum BillboardSetting {
     InfluencedOnlyYDirectZ,
 }
 
+impl BillboardSetting {
+    pub fn len() -> usize {
+        Self::InfluencedOnlyYDirectZ as usize + 1
+    }
+}
+
 impl TryFrom<u32> for BillboardSetting {
     type Error = EncodingError;
 
@@ -274,8 +284,6 @@ pub struct Bones {
     pub transform_matrix: [f32; 12],
     pub inverse_matrix: [f32; 12],
 }
-
-impl Inspectable for Bones {}
 
 impl SectionDeserialize for Bones {
     fn deserialize_section(reader: &mut Cursor<&[u8]>, _header_start: u32) -> EncodingResult<Self> {
@@ -467,7 +475,11 @@ pub struct Vertices {
     pub vertices: VertexData,
 }
 
-impl Inspectable for Vertices {}
+impl Inspectable for Vertices {
+    fn draw_properties(&mut self, ui: &mut egui::Ui) {
+        todo!()
+    }
+}
 
 impl SectionDeserialize for Vertices {
     fn deserialize_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
@@ -553,6 +565,12 @@ pub struct Normals {
     pub divisor: u8,
     pub stride: u8,
     pub normals: NormalData,
+}
+
+impl Inspectable for Normals {
+    fn draw_properties(&mut self, ui: &mut egui::Ui) {
+        todo!()
+    }
 }
 
 impl SectionDeserialize for Normals {
@@ -737,8 +755,6 @@ pub fn deserialize_virtual(
     let bone_links = BoneLinkTable::deserialize(reader)?;
     let index_group = IndexGroup::deserialize(reader)?;
 
-    dbg!(&index_group, &subfile_header.offsets);
-
     let mut files = Vec::with_capacity(subfile_header.offsets.len());
     for (i, &section_offset) in subfile_header.offsets.iter().enumerate() {
         // Loops over sections like `Bones`, `Vertices`, `Normals`...
@@ -784,6 +800,9 @@ pub fn deserialize_virtual(
                     }
                     SectionType::Vertices => {
                         Box::new(Vertices::deserialize_section(&mut reader, data_start)?)
+                    }
+                    SectionType::Normals => {
+                        Box::new(Normals::deserialize_section(&mut reader, data_start)?)
                     }
                     _ => eyre::bail!(
                         "Evaluation of section of type `{section_ty:?}` is not implemented yet"

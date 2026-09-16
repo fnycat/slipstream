@@ -38,7 +38,9 @@ where
     }
 }
 
-pub trait Inspectable: std::fmt::Debug {}
+pub trait Inspectable: std::fmt::Debug {
+    fn draw_properties(&mut self, ui: &mut egui::Ui);
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CacheId(NonZeroUsize);

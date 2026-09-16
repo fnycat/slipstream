@@ -7,7 +7,7 @@ use crate::{
     model_renderer::ModelRenderer,
     shared::{
         node::{self},
-        r#virtual::{CacheStore, VirtualNode, VirtualNodeKind},
+        r#virtual::{CacheId, CacheStore, VirtualNode, VirtualNodeKind},
     },
 };
 
@@ -21,6 +21,7 @@ pub struct Editor {
     /// The whole file currently open in the editor.
     pub root_node: VirtualNode,
 
+    pub open_properties: Option<CacheId>,
     pub cache_store: CacheStore,
 }
 
@@ -41,6 +42,7 @@ impl Editor {
         Ok(Self {
             root_node,
             cache_store: res_store,
+            open_properties: None,
             filepath,
         })
     }
@@ -123,21 +125,35 @@ impl App {
         let panel_id = egui::Id::new("file_tree_panel");
         egui::Panel::left(panel_id).min_size(500.0).show(ui, |ui| {
             let editor = self.current_page.as_editor_mut().unwrap();
-            Self::draw_file_tree(&editor.root_node, &mut editor.cache_store, ui);
+            if let Some(cache_id) =
+                Self::draw_file_tree(&editor.root_node, &mut editor.cache_store, ui)
+            {
+                editor.open_properties = Some(cache_id);
+            }
         });
 
-        self.draw_property_window(ui);
+        self.draw_property_window(ui).unwrap();
         self.draw_editor_view(ui);
     }
 
     /// Draws the file tree under the current node.
     ///
     /// Lazy nodes are automatically evaluated once their folder is opened.
-    fn draw_file_tree(base: &VirtualNode, cache_store: &mut CacheStore, ui: &mut egui::Ui) {
+    ///
+    /// If a specific node has been opened, this function returns the ID of its cache entry.
+    fn draw_file_tree(
+        base: &VirtualNode,
+        cache_store: &mut CacheStore,
+        ui: &mut egui::Ui,
+    ) -> Option<CacheId> {
+        let mut opened_cache_id = None;
         if base.kind == VirtualNodeKind::Container {
             egui::CollapsingHeader::new(&base.label).show(ui, |ui| {
                 for child in &base.children {
-                    Self::draw_file_tree(child, cache_store, ui);
+                    let ret = Self::draw_file_tree(child, cache_store, ui);
+                    if ret.is_some() {
+                        opened_cache_id = ret;
+                    }
                 }
             });
         } else {
@@ -145,11 +161,16 @@ impl App {
                 // Open the inspector window for this file's content
                 tracing::trace!("should open: {}", base.label);
 
-                // Check whether the file has already been lazily loaded.
+                // Ensure the lazy file has been loaded
                 let cache_id = base.content.expect("file did not have a cache ID");
-                let cache = cache_store.get_mut(cache_id).unwrap();
-                dbg!(cache);
+                let props = cache_store.get_mut(cache_id).unwrap();
+
+                dbg!(props);
+
+                return Some(cache_id);
             }
         }
+
+        opened_cache_id
     }
 }

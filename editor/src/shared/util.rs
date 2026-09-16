@@ -1,36 +1,28 @@
-pub struct SlidingWindows<'a, T> {
-    slice: &'a [T],
-    index: usize,
-    window_size: usize,
-}
+pub fn vec_drag_value<T: egui::emath::Numeric, const N: usize>(
+    mut input_field_size: egui::Vec2,
+    labels: [&str; N],
+    values: &mut [T; N],
+    ui: &mut egui::Ui,
+) {
+    input_field_size.x /= N as f32;
 
-impl<'a, T> SlidingWindows<'a, T> {
-    pub fn new(slice: &'a [T], window_size: usize) -> Self {
-        Self {
-            slice,
-            window_size,
-            index: 0,
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        for i in (0..N).rev() {
+            ui.add_sized(input_field_size, egui::DragValue::new(&mut values[i]));
+            if labels[i].is_empty() {
+                let label_width = ui
+                    .painter()
+                    .layout_no_wrap(
+                        "X:".to_owned(),
+                        egui::FontId::default(),
+                        egui::Color32::TRANSPARENT,
+                    )
+                    .rect
+                    .width();
+                ui.allocate_space(egui::vec2(label_width, input_field_size.y));
+            } else {
+                ui.label(labels[i]);
+            }
         }
-    }
-}
-
-impl<'a, T> Iterator for SlidingWindows<'a, T> {
-    type Item = &'a [T];
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let upper_bound = (self.index + self.window_size).clamp(0, self.slice.len() - 1);
-        if self.index >= upper_bound {
-            return None;
-        }
-
-        let item = &self.slice[self.index..upper_bound];
-        self.index += 1;
-        Some(item)
-    }
-}
-
-impl<'a, T> ExactSizeIterator for SlidingWindows<'a, T> {
-    fn len(&self) -> usize {
-        (self.slice.len() - self.index).div_ceil(self.window_size)
-    }
+    });
 }

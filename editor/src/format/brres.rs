@@ -427,13 +427,6 @@ pub fn deserialize_virtual(
                 .in_scope(|| deserialize_subfile(reader, res_cache, subfile_name.to_owned()))?;
 
             subfiles.push(file);
-
-            // subfiles.push(VirtualNode {
-            //     label: subfile_name.to_owned(),
-            //     kind: VirtualNodeKind::Container,
-            //     children: Vec::new(),
-            //     content: None,
-            // })
         }
 
         directories.push(VirtualNode {
