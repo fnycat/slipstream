@@ -10,7 +10,7 @@ use crate::{
             CorruptionError, EncodingError, EncodingResult, IncorrectFormat, UnsupportedError,
         },
     },
-    shared::r#virtual::{Inspectable, ResourceCache, ResourceId, VirtualNode, VirtualNodeKind},
+    shared::r#virtual::{CacheId, CacheStore, Inspectable, VirtualNode, VirtualNodeKind},
 };
 
 /// Magic of an ARC file.
@@ -141,7 +141,7 @@ impl Node {
 
 fn parse_leaf_node(
     name: String,
-    res_cache: &mut ResourceCache,
+    res_cache: &mut CacheStore,
     raw_data: Vec<u8>,
 ) -> EncodingResult<VirtualNode> {
     let mut reader = Cursor::new(raw_data.as_slice());
@@ -161,7 +161,7 @@ fn parse_leaf_node(
 
 fn parse_directory_tree(
     node_list: &mut [Node],
-    res_cache: &mut ResourceCache,
+    res_cache: &mut CacheStore,
     label: String,
     cursor: &mut usize,
 ) -> EncodingResult<VirtualNode> {
@@ -202,7 +202,7 @@ fn parse_directory_tree(
 
 pub fn deserialize_virtual(
     reader: &mut Cursor<&[u8]>,
-    res_store: &mut ResourceCache,
+    res_store: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
     let header = Header::deserialize(reader)?;

@@ -3,7 +3,7 @@ use egui_phosphor::regular::{GEAR_FINE, GITHUB_LOGO, INFO, MOON, POWER, SUN};
 use crate::{
     app::{App, CurrentPage},
     model_renderer::ModelRenderer,
-    pages::editor::EditorPageData,
+    pages::editor::Editor,
 };
 
 impl App {
@@ -71,7 +71,7 @@ impl App {
                                             ModelRenderer::init(&self.render_state);
 
                                             self.current_page = CurrentPage::Editor(
-                                                EditorPageData::new(selected_file).unwrap(),
+                                                Editor::new(selected_file).unwrap(),
                                             );
                                         }
                                     }

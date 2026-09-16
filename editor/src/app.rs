@@ -10,13 +10,13 @@ use egui_phosphor::regular::{MINUS, SQUARE, X};
 use crate::{
     config::{APP_TITLE, DEFAULT_SIZE, LAUNCH_DELAY, configure_dark_style, configure_light_style},
     decorations::WindowState,
-    pages::editor::EditorPageData,
+    pages::editor::Editor,
 };
 
 pub enum CurrentPage {
     Splash,
     Intro,
-    Editor(EditorPageData),
+    Editor(Editor),
     Info,
     Settings,
 }
@@ -26,7 +26,14 @@ impl CurrentPage {
         matches!(self, Self::Editor(_))
     }
 
-    pub fn as_editor(&self) -> Option<&EditorPageData> {
+    pub fn as_editor(&self) -> Option<&Editor> {
+        match self {
+            Self::Editor(data) => Some(data),
+            _ => None,
+        }
+    }
+
+    pub fn as_editor_mut(&mut self) -> Option<&mut Editor> {
         match self {
             Self::Editor(data) => Some(data),
             _ => None,

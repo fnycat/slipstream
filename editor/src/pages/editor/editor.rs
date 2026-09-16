@@ -7,12 +7,12 @@ use crate::{
     model_renderer::ModelRenderer,
     shared::{
         node::{self},
-        r#virtual::{ResourceCache, VirtualNode, VirtualNodeKind},
+        r#virtual::{CacheStore, VirtualNode, VirtualNodeKind},
     },
 };
 
 /// Data specific to the editor page.
-pub struct EditorPageData {
+pub struct Editor {
     /// The path of the current file open in the editor.
     ///
     /// This is a regular filesystem path, pointing to the root file.
@@ -20,10 +20,11 @@ pub struct EditorPageData {
     pub filepath: PathBuf,
     /// The whole file currently open in the editor.
     pub root_node: VirtualNode,
-    pub res_store: ResourceCache,
+
+    pub cache_store: CacheStore,
 }
 
-impl EditorPageData {
+impl Editor {
     pub fn new(filepath: PathBuf) -> eyre::Result<Self> {
         let contents = Cursor::new(std::fs::read(&filepath)?);
         let file_name = filepath
@@ -31,7 +32,7 @@ impl EditorPageData {
             .ok_or_else(|| eyre::eyre!("unable to find file name of `{filepath:?}`"))?
             .to_string_lossy();
 
-        let mut res_store = ResourceCache::new();
+        let mut res_store = CacheStore::new();
         let root_node =
             node::deserialize_maybe_compressed(contents, &mut res_store, file_name.into_owned())?;
 
@@ -39,7 +40,7 @@ impl EditorPageData {
 
         Ok(Self {
             root_node,
-            res_store,
+            cache_store: res_store,
             filepath,
         })
     }
@@ -121,8 +122,8 @@ impl App {
         // Draw file explorer
         let panel_id = egui::Id::new("file_tree_panel");
         egui::Panel::left(panel_id).min_size(500.0).show(ui, |ui| {
-            let root = &self.current_page.as_editor().unwrap().root_node;
-            self.draw_file_tree(root, ui);
+            let editor = self.current_page.as_editor_mut().unwrap();
+            Self::draw_file_tree(&editor.root_node, &mut editor.cache_store, ui);
         });
 
         self.draw_property_window(ui);
@@ -132,11 +133,11 @@ impl App {
     /// Draws the file tree under the current node.
     ///
     /// Lazy nodes are automatically evaluated once their folder is opened.
-    fn draw_file_tree(&self, base: &VirtualNode, ui: &mut egui::Ui) {
+    fn draw_file_tree(base: &VirtualNode, cache_store: &mut CacheStore, ui: &mut egui::Ui) {
         if base.kind == VirtualNodeKind::Container {
             egui::CollapsingHeader::new(&base.label).show(ui, |ui| {
                 for child in &base.children {
-                    self.draw_file_tree(child, ui);
+                    Self::draw_file_tree(child, cache_store, ui);
                 }
             });
         } else {
@@ -145,6 +146,9 @@ impl App {
                 tracing::trace!("should open: {}", base.label);
 
                 // Check whether the file has already been lazily loaded.
+                let cache_id = base.content.expect("file did not have a cache ID");
+                let cache = cache_store.get_mut(cache_id).unwrap();
+                dbg!(cache);
             }
         }
     }

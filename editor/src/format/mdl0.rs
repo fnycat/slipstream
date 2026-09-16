@@ -8,7 +8,7 @@ use crate::{
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
         error::{CorruptionError, EncodingError, EncodingResult},
     },
-    shared::r#virtual::{LazyPayload, ResourceCache, VirtualNode, VirtualNodeKind},
+    shared::r#virtual::{CacheStore, LazyPayload, VirtualNode, VirtualNodeKind},
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -724,7 +724,7 @@ pub struct Mdl0Subfile {
 impl Mdl0Subfile {
     pub fn deserialize_virtual(
         reader: &mut Cursor<&[u8]>,
-        res_cache: &mut ResourceCache,
+        res_cache: &mut CacheStore,
         name: String,
     ) -> EncodingResult<VirtualNode> {
         let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
@@ -772,14 +772,11 @@ impl Mdl0Subfile {
 
                 let data = reader.get_ref()[data_start..data_end].to_vec();
 
-                let res_id = res_cache.insert_deferred(LazyPayload {
-                    payload: data,
-                    parser: |_data| {
-                        println!("Parsing!");
+                let res_id = res_cache.insert_deferred(LazyPayload::new(data, |_data| {
+                    tracing::debug!("PARSING!!!");
 
-                        Ok(Box::new(()))
-                    },
-                });
+                    Err(eyre::eyre!("oopsie whoopsie"))
+                }));
 
                 children.push(VirtualNode {
                     label: name.to_owned(),

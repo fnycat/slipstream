@@ -5,7 +5,7 @@ use crate::{
         arc,
         yaz0::{self, YAZ0_MAGIC},
     },
-    shared::r#virtual::{ResourceCache, VirtualNode},
+    shared::r#virtual::{CacheStore, VirtualNode},
 };
 
 /// Deserializes a possibly YAZ0-compressed file.
@@ -13,7 +13,7 @@ use crate::{
 /// After decompressing, this forwards the call to [`deserialize_unknown_root`]
 pub fn deserialize_maybe_compressed(
     mut reader: Cursor<Vec<u8>>,
-    res_cache: &mut ResourceCache,
+    res_cache: &mut CacheStore,
     name: String,
 ) -> eyre::Result<VirtualNode> {
     // Is this file compressed?
@@ -33,7 +33,7 @@ pub fn deserialize_maybe_compressed(
 /// This function works with OS level files, not files within archives.
 pub fn deserialize_unknown_root(
     reader: &mut Cursor<&[u8]>,
-    res_cache: &mut ResourceCache,
+    res_cache: &mut CacheStore,
     name: String,
 ) -> eyre::Result<VirtualNode> {
     let magic: &[u8; 4] = reader.get_ref()[..4]

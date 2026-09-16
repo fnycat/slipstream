@@ -14,7 +14,7 @@ use crate::{
         mdl0::Mdl0Subfile,
         pat0::Pat0Subfile,
     },
-    shared::r#virtual::{ResourceCache, VirtualNode, VirtualNodeKind},
+    shared::r#virtual::{CacheStore, VirtualNode, VirtualNodeKind},
 };
 
 pub const BRRES_MAGIC: [u8; 4] = [0x62, 0x72, 0x65, 0x73];
@@ -382,7 +382,7 @@ pub struct Archive {
 
 fn deserialize_subfile(
     reader: &mut Cursor<&[u8]>,
-    res_cache: &mut ResourceCache,
+    res_cache: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
     // Check magic
@@ -402,7 +402,7 @@ fn deserialize_subfile(
 
 pub fn deserialize_virtual(
     reader: &mut Cursor<&[u8]>,
-    res_cache: &mut ResourceCache,
+    res_cache: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
     let header = Header::deserialize(reader)?;
