@@ -382,14 +382,14 @@ pub struct Archive {
 
 fn deserialize_subfile(
     reader: &mut Cursor<&[u8]>,
-    res_store: &mut ResourceCache,
+    res_cache: &mut ResourceCache,
     name: String,
 ) -> EncodingResult<VirtualNode> {
     // Check magic
     let magic = reader.read_u8_array::<4>()?;
 
     match magic {
-        Mdl0Subfile::MAGIC => Mdl0Subfile::deserialize_virtual(reader, name),
+        Mdl0Subfile::MAGIC => Mdl0Subfile::deserialize_virtual(reader, res_cache, name),
         // Chr0Subfile::MAGIC => Chr0Subfile::deserialize_lazy(reader),
         _ => Ok(VirtualNode {
             label: String::from("SOME UNPARSED FORMAT"),

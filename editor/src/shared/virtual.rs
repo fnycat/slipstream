@@ -1,29 +1,41 @@
 use std::{any::Any, collections::HashMap, num::NonZeroUsize};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ResourceId(NonZeroUsize);
+pub trait LazyParser {
+    fn parse(self) -> eyre::Result<Box<dyn Inspectable>>;
+}
+
+pub struct LazyPayload<T, F>
+where
+    F: FnOnce(T) -> eyre::Result<Box<dyn Inspectable>>,
+{
+    pub payload: T,
+    pub parser: F,
+}
+
+impl<T, F> LazyParser for LazyPayload<T, F>
+where
+    F: FnOnce(T) -> eyre::Result<Box<dyn Inspectable>>,
+{
+    fn parse(self) -> eyre::Result<Box<dyn Inspectable>> {
+        (self.parser)(self.payload)
+    }
+}
 
 pub trait Inspectable {}
 
-pub type LazyParser = fn(String, &mut ResourceCache, Vec<u8>) -> eyre::Result<Box<dyn Inspectable>>;
+impl Inspectable for () {}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ResourceId(NonZeroUsize);
 
 pub enum Lazy<T> {
-    Deferred {
-        parse_fn: LazyParser,
-        bytes: Vec<u8>,
-    },
+    Deferred(Box<dyn LazyParser>),
     Parsed(T),
-}
-
-pub enum ResourceKind {
-    Bones,
-    Vertices,
-    Normals,
 }
 
 pub struct ResourceCache {
     next_id: usize,
-    cache: HashMap<ResourceId, Lazy<ResourceKind>>,
+    cache: HashMap<ResourceId, Lazy<Box<dyn Inspectable>>>,
 }
 
 impl ResourceCache {
@@ -34,9 +46,13 @@ impl ResourceCache {
         }
     }
 
-    pub fn insert_deferred(&mut self, bytes: Vec<u8>, parse_fn: LazyParser) -> ResourceId {
+    pub fn insert_deferred<T: 'static, F>(&mut self, lazy_payload: LazyPayload<T, F>) -> ResourceId
+    where
+        F: FnOnce(T) -> eyre::Result<Box<dyn Inspectable>> + 'static,
+    {
         let id = self.next_id();
-        self.cache.insert(id, Lazy::Deferred { bytes, parse_fn });
+        self.cache
+            .insert(id, Lazy::Deferred(Box::new(lazy_payload)));
         id
     }
 
@@ -52,23 +68,6 @@ pub struct VirtualNode {
     pub kind: VirtualNodeKind,
     pub content: Option<ResourceId>,
     pub children: Vec<VirtualNode>,
-}
-
-impl VirtualNode {
-    /// Draws the file tree under the current node.
-    ///
-    /// Lazy nodes are automatically evaluated once their folder is opened.
-    pub fn draw_node_tree(&self, ui: &mut egui::Ui) {
-        if self.kind == VirtualNodeKind::Container {
-            egui::CollapsingHeader::new(&self.label).show(ui, |ui| {
-                for child in &self.children {
-                    child.draw_node_tree(ui);
-                }
-            });
-        } else {
-            if ui.button(&self.label).clicked() {};
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

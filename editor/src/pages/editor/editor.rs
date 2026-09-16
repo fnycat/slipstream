@@ -3,11 +3,11 @@ use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
 use eframe::egui_wgpu;
 
 use crate::{
-    app::App,
+    app::{App, CurrentPage},
     model_renderer::ModelRenderer,
     shared::{
         node::{self},
-        r#virtual::{ResourceCache, VirtualNode},
+        r#virtual::{ResourceCache, VirtualNode, VirtualNodeKind},
     },
 };
 
@@ -85,6 +85,10 @@ impl App {
                                 todo!()
                             }
 
+                            if ui.button("Close").clicked() {
+                                self.current_page = CurrentPage::Intro;
+                            }
+
                             if ui.button("Quit").clicked() {
                                 ui.send_viewport_cmd(egui::ViewportCommand::Close);
                             }
@@ -109,14 +113,39 @@ impl App {
     pub fn draw_editor(&mut self, ui: &mut egui::Ui) {
         self.draw_upper_toolbar(ui);
 
+        // Check whether we have switched back to the home menu
+        if !self.current_page.is_editor() {
+            return;
+        }
+
         // Draw file explorer
         let panel_id = egui::Id::new("file_tree_panel");
         egui::Panel::left(panel_id).min_size(500.0).show(ui, |ui| {
             let root = &self.current_page.as_editor().unwrap().root_node;
-            root.draw_node_tree(ui);
+            self.draw_file_tree(root, ui);
         });
 
         self.draw_property_window(ui);
         self.draw_editor_view(ui);
+    }
+
+    /// Draws the file tree under the current node.
+    ///
+    /// Lazy nodes are automatically evaluated once their folder is opened.
+    fn draw_file_tree(&self, base: &VirtualNode, ui: &mut egui::Ui) {
+        if base.kind == VirtualNodeKind::Container {
+            egui::CollapsingHeader::new(&base.label).show(ui, |ui| {
+                for child in &base.children {
+                    self.draw_file_tree(child, ui);
+                }
+            });
+        } else {
+            if ui.button(&base.label).clicked() {
+                // Open the inspector window for this file's content
+                tracing::trace!("should open: {}", base.label);
+
+                // Check whether the file has already been lazily loaded.
+            }
+        }
     }
 }

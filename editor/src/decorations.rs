@@ -103,7 +103,8 @@ impl App {
         let bg_overlay = if ui.theme() == egui::Theme::Dark {
             egui::Color32::from_black_alpha(160)
         } else {
-            egui::Color32::from_white_alpha(160)
+            // egui::Color32::from_white_alpha(160)
+            egui::Color32::TRANSPARENT
         };
 
         ui.painter().rect_filled(viewport_rect, 0.0, bg_overlay);
@@ -223,7 +224,7 @@ impl App {
     /// Draws a basic title bar with the window title and title buttons.
     pub fn draw_basic_title_bar(&mut self, ui: &mut egui::Ui) {
         let layout_bg = ui.style().visuals.panel_fill;
-        let decorations_id = egui::Id::new("title_panel");
+        let decorations_id = egui::Id::new("titlebar_panel");
 
         egui::Panel::top(decorations_id)
             .frame(

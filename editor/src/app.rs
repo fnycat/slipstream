@@ -22,6 +22,10 @@ pub enum CurrentPage {
 }
 
 impl CurrentPage {
+    pub fn is_editor(&self) -> bool {
+        matches!(self, Self::Editor(_))
+    }
+
     pub fn as_editor(&self) -> Option<&EditorPageData> {
         match self {
             Self::Editor(data) => Some(data),
@@ -148,6 +152,8 @@ impl App {
         match &self.current_page {
             CurrentPage::Intro => self.draw_intro(ui),
             CurrentPage::Editor { .. } => self.draw_editor(ui),
+            CurrentPage::Settings => self.draw_settings(ui),
+            CurrentPage::Info => self.draw_info(ui),
             _ => todo!(),
         }
     }

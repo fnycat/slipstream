@@ -8,7 +8,7 @@ use crate::{
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
         error::{CorruptionError, EncodingError, EncodingResult},
     },
-    shared::r#virtual::{VirtualNode, VirtualNodeKind},
+    shared::r#virtual::{LazyPayload, ResourceCache, VirtualNode, VirtualNodeKind},
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -724,6 +724,7 @@ pub struct Mdl0Subfile {
 impl Mdl0Subfile {
     pub fn deserialize_virtual(
         reader: &mut Cursor<&[u8]>,
+        res_cache: &mut ResourceCache,
         name: String,
     ) -> EncodingResult<VirtualNode> {
         let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
@@ -756,15 +757,35 @@ impl Mdl0Subfile {
             let section_index = IndexGroup::deserialize(reader)?;
             let mut children = Vec::with_capacity(section_index.entries.len() - 1);
 
-            for entry in &section_index.entries[1..] {
+            for (i, entry) in section_index.entries[1..].iter().enumerate() {
                 let name = section_index.get_entry_name(reader.get_ref(), entry)?;
-                let data_start = section_index.get_entry_data_start(entry);
+                let data_start = section_index.get_entry_data_start(entry) as usize;
+
+                // Add 2 because we start the iterator on the first element.
+                let data_end = if let Some(next) = section_index.entries.get(i + 2) {
+                    // Take data until next index entry.
+                    section_index.get_entry_data_start(next) as usize
+                } else {
+                    // Take data until end of MDL0 file.
+                    subfile_header.header_start as usize + subfile_header.subfile_length as usize
+                };
+
+                let data = reader.get_ref()[data_start..data_end].to_vec();
+
+                let res_id = res_cache.insert_deferred(LazyPayload {
+                    payload: data,
+                    parser: |_data| {
+                        println!("Parsing!");
+
+                        Ok(Box::new(()))
+                    },
+                });
 
                 children.push(VirtualNode {
                     label: name.to_owned(),
                     kind: VirtualNodeKind::Terminal,
                     children: Vec::new(),
-                    content: None,
+                    content: Some(res_id),
                 });
             }
 
