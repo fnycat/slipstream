@@ -125,6 +125,19 @@ impl CacheStore {
         Ok(lazy.get_parsed_mut().unwrap())
     }
 
+    /// Force the entry at the given cache ID to be evaluated.
+    ///
+    /// This function does nothing if the entry has already been parsed.
+    pub fn evaluate(&mut self, cache_id: CacheId) -> eyre::Result<()> {
+        let lazy = self
+            .cache
+            .get_mut(&cache_id)
+            .ok_or_else(|| eyre::eyre!("did not find cache entry {cache_id} in cache"))?;
+
+        lazy.evaluate()?;
+        Ok(())
+    }
+
     pub fn get(&mut self, cache_id: CacheId) -> eyre::Result<&dyn Inspectable> {
         let lazy = self
             .cache

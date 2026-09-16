@@ -1,6 +1,7 @@
 use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
 
 use eframe::egui_wgpu;
+use egui_phosphor::regular::{CARET_DOWN, CARET_RIGHT, FOLDER, FOLDER_OPEN};
 
 use crate::{
     app::{App, CurrentPage},
@@ -10,6 +11,12 @@ use crate::{
         r#virtual::{CacheId, CacheStore, VirtualNode, VirtualNodeKind},
     },
 };
+
+pub struct Properties {
+    pub label: String,
+    // pub path: Vec<String>,
+    pub cache_id: CacheId,
+}
 
 /// Data specific to the editor page.
 pub struct Editor {
@@ -21,7 +28,7 @@ pub struct Editor {
     /// The whole file currently open in the editor.
     pub root_node: VirtualNode,
 
-    pub open_properties: Option<CacheId>,
+    pub open_properties: Option<Properties>,
     pub cache_store: CacheStore,
 }
 
@@ -123,16 +130,17 @@ impl App {
 
         // Draw file explorer
         let panel_id = egui::Id::new("file_tree_panel");
-        egui::Panel::left(panel_id).min_size(500.0).show(ui, |ui| {
+        egui::Panel::left(panel_id).show(ui, |ui| {
             let editor = self.current_page.as_editor_mut().unwrap();
-            if let Some(cache_id) =
+            if let Some(properties) =
                 Self::draw_file_tree(&editor.root_node, &mut editor.cache_store, ui)
             {
-                editor.open_properties = Some(cache_id);
+                editor.open_properties = Some(properties);
             }
         });
 
-        self.draw_property_window(ui).unwrap();
+        self.draw_inspector_window(ui).unwrap();
+        self.draw_animator_window(ui);
         self.draw_editor_view(ui);
     }
 
@@ -145,17 +153,36 @@ impl App {
         base: &VirtualNode,
         cache_store: &mut CacheStore,
         ui: &mut egui::Ui,
-    ) -> Option<CacheId> {
+    ) -> Option<Properties> {
+        ui.visuals_mut().collapsing_header_frame = true;
+
         let mut opened_cache_id = None;
         if base.kind == VirtualNodeKind::Container {
-            egui::CollapsingHeader::new(&base.label).show(ui, |ui| {
-                for child in &base.children {
-                    let ret = Self::draw_file_tree(child, cache_store, ui);
-                    if ret.is_some() {
-                        opened_cache_id = ret;
+            egui::CollapsingHeader::new(&base.label)
+                .icon(|ui, openness, response| {
+                    let icon = if openness < 0.5 { FOLDER } else { FOLDER_OPEN };
+
+                    ui.painter().text(
+                        response.rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        icon,
+                        egui::FontId::default(),
+                        ui.visuals().text_color(),
+                    );
+
+                    // let stroke = ui.style().interact(&response).fg_stroke;
+                    // let radius = egui::lerp(2.0..=3.0, openness);
+                    // ui.painter()
+                    //     .circle_filled(response.rect.center(), radius, stroke.color);
+                })
+                .show(ui, |ui| {
+                    for child in &base.children {
+                        let ret = Self::draw_file_tree(child, cache_store, ui);
+                        if ret.is_some() {
+                            opened_cache_id = ret;
+                        }
                     }
-                }
-            });
+                });
         } else {
             if ui.button(&base.label).clicked() {
                 // Open the inspector window for this file's content
@@ -163,11 +190,12 @@ impl App {
 
                 // Ensure the lazy file has been loaded
                 let cache_id = base.content.expect("file did not have a cache ID");
-                let props = cache_store.get_mut(cache_id).unwrap();
+                cache_store.evaluate(cache_id).unwrap();
 
-                dbg!(props);
-
-                return Some(cache_id);
+                return Some(Properties {
+                    label: format!("Inspector ({})", base.label),
+                    cache_id,
+                });
             }
         }
 

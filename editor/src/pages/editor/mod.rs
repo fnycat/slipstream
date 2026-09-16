@@ -1,6 +1,5 @@
+pub mod animator;
 pub mod editor;
-pub mod properties;
+pub mod inspector;
 
 pub use editor::*;
-pub use properties::*;
-pub mod inspector;
