@@ -11,7 +11,7 @@ use crate::{
             CorruptionError, EncodingError, EncodingResult, IncorrectFormat, RangeError,
             UnsupportedError,
         },
-        mdl0::{self, MDL0_MAGIC},
+        mdl0::mdl0::{self, MDL0_MAGIC},
         pat0::Pat0Subfile,
     },
     shared::r#virtual::{CacheStore, VirtualNode, VirtualNodeKind},

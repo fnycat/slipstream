@@ -169,11 +169,6 @@ impl App {
                         egui::FontId::default(),
                         ui.visuals().text_color(),
                     );
-
-                    // let stroke = ui.style().interact(&response).fg_stroke;
-                    // let radius = egui::lerp(2.0..=3.0, openness);
-                    // ui.painter()
-                    //     .circle_filled(response.rect.center(), radius, stroke.color);
                 })
                 .show(ui, |ui| {
                     for child in &base.children {
@@ -186,7 +181,7 @@ impl App {
         } else {
             if ui.button(&base.label).clicked() {
                 // Open the inspector window for this file's content
-                tracing::trace!("should open: {}", base.label);
+                tracing::trace!("Opening file");
 
                 // Ensure the lazy file has been loaded
                 let cache_id = base.content.expect("file did not have a cache ID");

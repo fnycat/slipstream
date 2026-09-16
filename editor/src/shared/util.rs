@@ -1,4 +1,4 @@
-pub fn vec_drag_value<T: egui::emath::Numeric, const N: usize>(
+pub fn draw_vec_drag_values<T: egui::emath::Numeric, const N: usize>(
     mut input_field_size: egui::Vec2,
     labels: [&str; N],
     values: &mut [T; N],
@@ -24,5 +24,30 @@ pub fn vec_drag_value<T: egui::emath::Numeric, const N: usize>(
                 ui.label(labels[i]);
             }
         }
+    });
+}
+
+pub fn draw_inspector_section_header(name: String, ui: &mut egui::Ui) {
+    ui.horizontal(|ui| {
+        let total_width = ui.available_width();
+        let text_width = ui
+            .painter()
+            .layout_no_wrap(
+                name.clone(),
+                egui::FontId::default(),
+                ui.visuals().text_color(),
+            )
+            .rect
+            .width();
+
+        let padding = 16.0;
+        let line_width = ((total_width - text_width - padding) / 2.0).max(0.0);
+        let separator_size = egui::vec2(line_width, ui.available_height());
+
+        ui.add_space(0.01 * ui.available_height());
+        ui.add_sized(separator_size, egui::Separator::default().horizontal());
+        ui.label(name);
+        ui.add_sized(separator_size, egui::Separator::default().horizontal());
+        ui.add_space(0.01 * ui.available_height());
     });
 }

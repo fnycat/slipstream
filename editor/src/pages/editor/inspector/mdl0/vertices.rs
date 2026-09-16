@@ -1,0 +1,42 @@
+use crate::{
+    format::mdl0::vertices::Vertices,
+    shared::{
+        util::{draw_inspector_section_header, draw_vec_drag_values},
+        r#virtual::Inspectable,
+    },
+};
+
+impl Inspectable for Vertices {
+    fn draw_properties(&mut self, ui: &mut egui::Ui) {
+        let input_field_size = egui::vec2(180.0, 20.0);
+
+        draw_inspector_section_header("Bounding volume".to_owned(), ui);
+
+        egui::Grid::new("vertices_inspector_grid1")
+            .num_columns(2)
+            .show(ui, |ui| {
+                ui.label("Bounding volume minimum:");
+                draw_vec_drag_values(
+                    input_field_size,
+                    ["X:", "Y:", "Z:"],
+                    &mut self.bounding_volume_min,
+                    ui,
+                );
+
+                ui.end_row();
+
+                ui.label("Bounding volume maximum:");
+                draw_vec_drag_values(
+                    input_field_size,
+                    ["X:", "Y:", "Z:"],
+                    &mut self.bounding_volume_max,
+                    ui,
+                );
+            });
+
+        ui.label(format!("Vertex count: {}", self.vertices.len()));
+        ui.label(format!("Vertex format: {:?}", self.format));
+        ui.label(format!("Divisor: {}", self.divisor));
+        ui.label(format!("Stride: {}", self.stride));
+    }
+}

@@ -1,6 +1,9 @@
 use crate::{
-    format::mdl0::{BillboardSetting, BoneFlags, Bones},
-    shared::{util::vec_drag_value, r#virtual::Inspectable},
+    format::mdl0::bones::{BillboardSetting, BoneFlags, Bones},
+    shared::{
+        util::{draw_inspector_section_header, draw_vec_drag_values},
+        r#virtual::Inspectable,
+    },
 };
 
 impl Inspectable for BoneFlags {
@@ -68,7 +71,7 @@ impl Inspectable for Bones {
             .spacing([40.0, 8.0])
             .show(ui, |ui| {
                 ui.label("Translation:");
-                vec_drag_value(
+                draw_vec_drag_values(
                     input_field_size,
                     ["X:", "Y:", "Z:"],
                     &mut self.translation_vector,
@@ -78,7 +81,7 @@ impl Inspectable for Bones {
                 ui.end_row();
 
                 ui.label("Rotation:");
-                vec_drag_value(
+                draw_vec_drag_values(
                     input_field_size,
                     ["X:", "Y:", "Z:"],
                     &mut self.rotation_vector,
@@ -88,7 +91,7 @@ impl Inspectable for Bones {
                 ui.end_row();
 
                 ui.label("Scale:");
-                vec_drag_value(
+                draw_vec_drag_values(
                     input_field_size,
                     ["X:", "Y:", "Z:"],
                     &mut self.scaling_vector,
@@ -98,7 +101,7 @@ impl Inspectable for Bones {
                 ui.end_row();
 
                 ui.label("Bounding volume minimum:");
-                vec_drag_value(
+                draw_vec_drag_values(
                     input_field_size,
                     ["X:", "Y:", "Z:"],
                     &mut self.bounding_volume_min,
@@ -108,7 +111,7 @@ impl Inspectable for Bones {
                 ui.end_row();
 
                 ui.label("Bounding volume maximum:");
-                vec_drag_value(
+                draw_vec_drag_values(
                     input_field_size,
                     ["X:", "Y:", "Z:"],
                     &mut self.bounding_volume_max,
@@ -166,29 +169,4 @@ impl Inspectable for Bones {
         ui.label("User data:");
         ui.add(egui::DragValue::new(&mut self.user_data_offset));
     }
-}
-
-fn draw_inspector_section_header(name: String, ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        let total_width = ui.available_width();
-        let text_width = ui
-            .painter()
-            .layout_no_wrap(
-                name.clone(),
-                egui::FontId::default(),
-                ui.visuals().text_color(),
-            )
-            .rect
-            .width();
-
-        let padding = 16.0;
-        let line_width = ((total_width - text_width - padding) / 2.0).max(0.0);
-        let separator_size = egui::vec2(line_width, ui.available_height());
-
-        ui.add_space(0.01 * ui.available_height());
-        ui.add_sized(separator_size, egui::Separator::default().horizontal());
-        ui.label(name);
-        ui.add_sized(separator_size, egui::Separator::default().horizontal());
-        ui.add_space(0.01 * ui.available_height());
-    });
 }
