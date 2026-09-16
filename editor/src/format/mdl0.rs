@@ -1,6 +1,7 @@
 use std::{collections::HashMap, io::Cursor};
 
 use byteorder::{BigEndian, ReadBytesExt};
+use egui::accesskit::Role::Section;
 
 use crate::{
     format::{
@@ -8,8 +9,10 @@ use crate::{
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
         error::{CorruptionError, EncodingError, EncodingResult},
     },
-    shared::r#virtual::{CacheStore, LazyPayload, VirtualNode, VirtualNodeKind},
+    shared::r#virtual::{CacheStore, Inspectable, LazyPayload, VirtualNode, VirtualNodeKind},
 };
+
+pub const MDL0_MAGIC: [u8; 4] = [0x4d, 0x44, 0x4c, 0x30]; // "MDL0"
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ScalingMode {
@@ -96,7 +99,7 @@ pub const MDL0_SECTION_NAMES: &[&str] = &[
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum SectionIds {
+pub enum SectionType {
     Definitions,
     Bones,
     Vertices,
@@ -113,7 +116,7 @@ pub enum SectionIds {
     UserData,
 }
 
-impl TryFrom<u32> for SectionIds {
+impl TryFrom<u32> for SectionType {
     type Error = EncodingError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
@@ -149,6 +152,8 @@ trait SectionDeserialize: Sized {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Definitions {}
+
+impl Inspectable for Definitions {}
 
 impl SectionDeserialize for Definitions {
     fn deserialize_section(reader: &mut Cursor<&[u8]>, _header_start: u32) -> EncodingResult<Self> {
@@ -269,6 +274,8 @@ pub struct Bones {
     pub transform_matrix: [f32; 12],
     pub inverse_matrix: [f32; 12],
 }
+
+impl Inspectable for Bones {}
 
 impl SectionDeserialize for Bones {
     fn deserialize_section(reader: &mut Cursor<&[u8]>, _header_start: u32) -> EncodingResult<Self> {
@@ -459,6 +466,8 @@ pub struct Vertices {
     pub bounding_volume_max: [f32; 3],
     pub vertices: VertexData,
 }
+
+impl Inspectable for Vertices {}
 
 impl SectionDeserialize for Vertices {
     fn deserialize_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
@@ -710,189 +719,98 @@ impl Deserialize for BoneLinkTable {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Mdl0Subfile {
-    pub subfile_header: SubfileHeader,
-    pub mdl0_header: Mdl0Header,
-    pub bone_links: BoneLinkTable,
-    pub definitions: Option<HashMap<String, Definitions>>,
-    pub bones: Option<HashMap<String, Bones>>,
-    pub vertices: Option<HashMap<String, Vertices>>,
-    pub normals: Option<HashMap<String, Normals>>,
-}
+pub fn deserialize_virtual(
+    reader: &mut Cursor<&[u8]>,
+    res_cache: &mut CacheStore,
+    name: String,
+) -> EncodingResult<VirtualNode> {
+    let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
 
-impl Mdl0Subfile {
-    pub fn deserialize_virtual(
-        reader: &mut Cursor<&[u8]>,
-        res_cache: &mut CacheStore,
-        name: String,
-    ) -> EncodingResult<VirtualNode> {
-        let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
+    let expected_sections =
+        brres::get_section_count(SubfileType::Mdl0, subfile_header.subfile_version)?;
+    if subfile_header.offsets.len() != expected_sections {
+        todo!("invalid section count");
+    }
 
-        let expected_sections =
-            brres::get_section_count(SubfileType::Mdl0, subfile_header.subfile_version)?;
-        if subfile_header.offsets.len() != expected_sections {
-            todo!("invalid section count");
+    let mdl0_header = Mdl0Header::deserialize(reader)?;
+
+    let bone_links = BoneLinkTable::deserialize(reader)?;
+    let index_group = IndexGroup::deserialize(reader)?;
+
+    dbg!(&index_group, &subfile_header.offsets);
+
+    let mut files = Vec::with_capacity(subfile_header.offsets.len());
+    for (i, &section_offset) in subfile_header.offsets.iter().enumerate() {
+        // Loops over sections like `Bones`, `Vertices`, `Normals`...
+
+        if section_offset == 0 {
+            // Section does not exist, skip it
+            continue;
         }
 
-        let mdl0_header = Mdl0Header::deserialize(reader)?;
+        let section_start = subfile_header.header_start as i64 + section_offset as i64;
+        reader.set_position(section_start as u64);
 
-        let bone_links = BoneLinkTable::deserialize(reader)?;
-        let index_group = IndexGroup::deserialize(reader)?;
+        let section_index = IndexGroup::deserialize(reader)?;
+        let mut children = Vec::with_capacity(section_index.entries.len() - 1);
 
-        dbg!(&index_group, &subfile_header.offsets);
+        for (j, entry) in section_index.entries[1..].iter().enumerate() {
+            let name = section_index.get_entry_name(reader.get_ref(), entry)?;
 
-        let mut files = Vec::with_capacity(subfile_header.offsets.len());
-        for (i, &section_offset) in subfile_header.offsets.iter().enumerate() {
-            // Loops over sections like `Bones`, `Vertices`, `Normals`...
+            let data_start = section_index.get_entry_data_start(entry);
 
-            if section_offset == 0 {
-                // Section does not exist, skip it
-                continue;
-            }
+            // Add 2 because we start the iterator on the first element.
+            let data_end = if let Some(next) = section_index.entries.get(j + 2) {
+                // Take data until next index entry.
+                section_index.get_entry_data_start(next) as usize
+            } else {
+                // Take data until end of MDL0 file.
+                subfile_header.header_start as usize + subfile_header.subfile_length as usize
+            };
 
-            let section_start = subfile_header.header_start as i64 + section_offset as i64;
-            reader.set_position(section_start as u64);
+            let data = reader.get_ref()[data_start as usize..data_end].to_vec();
+            let res_id = res_cache.insert_deferred(LazyPayload::new(data, move |data| {
+                let mut reader = Cursor::new(data.as_slice());
 
-            let section_index = IndexGroup::deserialize(reader)?;
-            let mut children = Vec::with_capacity(section_index.entries.len() - 1);
+                let section_ty = SectionType::try_from(i as u32)?;
+                tracing::trace!("Lazily evaluating section of type  `{section_ty:?}`");
 
-            for (i, entry) in section_index.entries[1..].iter().enumerate() {
-                let name = section_index.get_entry_name(reader.get_ref(), entry)?;
-                let data_start = section_index.get_entry_data_start(entry) as usize;
+                Ok(match section_ty {
+                    SectionType::Definitions => {
+                        Box::new(Definitions::deserialize_section(&mut reader, data_start)?)
+                    }
+                    SectionType::Bones => {
+                        Box::new(Bones::deserialize_section(&mut reader, data_start)?)
+                    }
+                    SectionType::Vertices => {
+                        Box::new(Vertices::deserialize_section(&mut reader, data_start)?)
+                    }
+                    _ => eyre::bail!(
+                        "Evaluation of section of type `{section_ty:?}` is not implemented yet"
+                    ),
+                })
+            }));
 
-                // Add 2 because we start the iterator on the first element.
-                let data_end = if let Some(next) = section_index.entries.get(i + 2) {
-                    // Take data until next index entry.
-                    section_index.get_entry_data_start(next) as usize
-                } else {
-                    // Take data until end of MDL0 file.
-                    subfile_header.header_start as usize + subfile_header.subfile_length as usize
-                };
-
-                let data = reader.get_ref()[data_start..data_end].to_vec();
-
-                let res_id = res_cache.insert_deferred(LazyPayload::new(data, |_data| {
-                    tracing::debug!("PARSING!!!");
-
-                    Err(eyre::eyre!("oopsie whoopsie"))
-                }));
-
-                children.push(VirtualNode {
-                    label: name.to_owned(),
-                    kind: VirtualNodeKind::Terminal,
-                    children: Vec::new(),
-                    content: Some(res_id),
-                });
-            }
-
-            files.push(VirtualNode {
-                label: MDL0_SECTION_NAMES[i].to_owned(),
-                kind: VirtualNodeKind::Container,
-                content: None,
-                children,
+            children.push(VirtualNode {
+                label: name.to_owned(),
+                kind: VirtualNodeKind::Terminal,
+                children: Vec::new(),
+                content: Some(res_id),
             });
         }
 
-        Ok(VirtualNode {
-            label: name,
+        files.push(VirtualNode {
+            label: MDL0_SECTION_NAMES[i].to_owned(),
             kind: VirtualNodeKind::Container,
-            children: files,
             content: None,
-        })
-    }
-}
-
-fn deserialize_section<T: SectionDeserialize>(
-    reader: &mut Cursor<&[u8]>,
-) -> EncodingResult<HashMap<String, T>> {
-    let index_group = IndexGroup::deserialize(reader)?;
-    let mut map = HashMap::with_capacity(index_group.entries.len());
-
-    for entry in &index_group.entries[1..] {
-        let name = index_group.get_entry_name(reader.get_ref(), entry)?;
-        let section_start = index_group.get_entry_data_start(entry);
-        reader.set_position(section_start as u64);
-
-        tracing::trace!("Reading entry `{name}`, at location {section_start}");
-
-        map.insert(
-            name.to_owned(),
-            T::deserialize_section(reader, section_start)?,
-        );
+            children,
+        });
     }
 
-    Ok(map)
-}
-
-impl Deserialize for Mdl0Subfile {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
-        tracing::trace!("Reading MDL0 file, at section {}", reader.position());
-
-        let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
-        let expected_sections =
-            brres::get_section_count(SubfileType::Mdl0, subfile_header.subfile_version)?;
-
-        if subfile_header.offsets.len() != expected_sections {
-            return Err(CorruptionError {
-                reason: format!(
-                    "invalid MDL0 section count: expected {expected_sections}, got {}",
-                    subfile_header.offsets.len()
-                ),
-                ..Default::default()
-            }
-            .into());
-        }
-
-        let mdl0_header = Mdl0Header::deserialize(reader)?;
-
-        let bone_links = BoneLinkTable::deserialize(reader)?;
-        tracing::debug!("Loaded {} bone links", bone_links.len());
-
-        let index_group = IndexGroup::deserialize(reader)?;
-        tracing::debug!("{index_group:?}");
-
-        let mut definitions = None;
-        let mut bones = None;
-        let mut vertices = None;
-        let mut normals = None;
-
-        tracing::error!("TAKING ONLY 4 SECTIONS");
-        for (i, &section_offset) in subfile_header.offsets.iter().enumerate().take(4) {
-            let section_ty = SectionIds::try_from(i as u32)?;
-            if section_offset == 0 {
-                tracing::debug!("Section `{section_ty:?}` does not exist, skipping");
-                continue;
-            }
-
-            let section_start = subfile_header.header_start as i64 + section_offset as i64;
-            reader.set_position(section_start as u64);
-
-            tracing::trace!("Reading section `{section_ty:?}`");
-
-            match section_ty {
-                SectionIds::Definitions => {
-                    definitions = Some(deserialize_section::<Definitions>(reader)?)
-                }
-                SectionIds::Bones => bones = Some(deserialize_section::<Bones>(reader)?),
-                SectionIds::Vertices => vertices = Some(deserialize_section::<Vertices>(reader)?),
-                SectionIds::Normals => normals = Some(deserialize_section::<Normals>(reader)?),
-                v => todo!("{v:?}"),
-            }
-        }
-
-        Ok(Self {
-            subfile_header,
-            mdl0_header,
-            bone_links,
-            definitions,
-            bones,
-            vertices,
-            normals,
-        })
-    }
-}
-
-impl Subfile for Mdl0Subfile {
-    const MAGIC: [u8; 4] = [0x4d, 0x44, 0x4c, 0x30]; // "MDL0"
+    Ok(VirtualNode {
+        label: name,
+        kind: VirtualNodeKind::Container,
+        children: files,
+        content: None,
+    })
 }

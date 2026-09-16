@@ -40,8 +40,6 @@ where
 
 pub trait Inspectable: std::fmt::Debug {}
 
-impl Inspectable for () {}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CacheId(NonZeroUsize);
 

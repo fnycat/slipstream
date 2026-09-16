@@ -11,7 +11,7 @@ use crate::{
             CorruptionError, EncodingError, EncodingResult, IncorrectFormat, RangeError,
             UnsupportedError,
         },
-        mdl0::Mdl0Subfile,
+        mdl0::{self, MDL0_MAGIC},
         pat0::Pat0Subfile,
     },
     shared::r#virtual::{CacheStore, VirtualNode, VirtualNodeKind},
@@ -215,23 +215,13 @@ impl SubfileHeader {
     }
 }
 
-macro_rules! impl_subfile_enum {
-    ($($ty: ident),*) => {
-        paste::paste! {
-            #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-            pub enum SubfileType {
-                $($ty),*
-            }
-
-            #[derive(Debug, Clone, PartialEq)]
-            pub enum SubfileData {
-                $($ty([< $ty Subfile >])),*
-            }
-        }
-    }
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SubfileType {
+    Root,
+    Mdl0,
+    Chr0,
+    Pat0,
 }
-
-impl_subfile_enum!(Root, Mdl0, Chr0, Pat0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndexGroupHeader {
@@ -363,23 +353,6 @@ impl Deserialize for IndexGroup {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Directory {
-    pub name: String,
-    pub files: Vec<File>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct File {
-    pub name: String,
-    pub content: SubfileData,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Archive {
-    pub directories: Vec<Directory>,
-}
-
 fn deserialize_subfile(
     reader: &mut Cursor<&[u8]>,
     res_cache: &mut CacheStore,
@@ -389,7 +362,7 @@ fn deserialize_subfile(
     let magic = reader.read_u8_array::<4>()?;
 
     match magic {
-        Mdl0Subfile::MAGIC => Mdl0Subfile::deserialize_virtual(reader, res_cache, name),
+        MDL0_MAGIC => mdl0::deserialize_virtual(reader, res_cache, name),
         // Chr0Subfile::MAGIC => Chr0Subfile::deserialize_lazy(reader),
         _ => Ok(VirtualNode {
             label: String::from("SOME UNPARSED FORMAT"),
@@ -444,7 +417,7 @@ pub fn deserialize_virtual(
             {
                 let magic =
                     &reader.get_ref()[reader.position() as usize..reader.position() as usize + 4];
-                if magic != Mdl0Subfile::MAGIC && magic != Chr0Subfile::MAGIC {
+                if magic != MDL0_MAGIC && magic != Chr0Subfile::MAGIC {
                     tracing::error!("SKIPPING {}", String::from_utf8_lossy(magic));
                     continue;
                 }
