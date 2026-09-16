@@ -1,4 +1,4 @@
-use std::{any::Any, collections::HashMap, ffi::CStr, io::Cursor};
+use std::{any::Any, collections::HashMap, ffi::CStr, io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -30,7 +30,7 @@ struct Header {
 }
 
 impl Deserialize for Header {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != ARC_MAGIC {
             return Err(IncorrectFormat {
@@ -63,7 +63,7 @@ enum NodeType {
 }
 
 impl Deserialize for NodeType {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let b = reader.read_u8()?;
         Self::try_from(b)
     }
@@ -111,7 +111,7 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn deserialize(reader: &mut Cursor<&[u8]>, string_pool: &[u8]) -> EncodingResult<Self> {
+    pub fn deserialize(reader: &mut Cursor<Rc<[u8]>>, string_pool: &[u8]) -> EncodingResult<Self> {
         let ty = NodeType::deserialize(reader)?;
         let name_offset = reader.read_u24::<BigEndian>()?;
         let data1 = reader.read_u32::<BigEndian>()?;
@@ -201,7 +201,7 @@ fn parse_directory_tree(
 }
 
 pub fn deserialize_virtual(
-    reader: &mut Cursor<&[u8]>,
+    reader: &mut Cursor<Rc<[u8]>>,
     res_store: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {

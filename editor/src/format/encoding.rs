@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{io::Cursor, rc::Rc};
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 
@@ -140,7 +140,7 @@ impl<'buf> ReadStringExt<'buf> for Cursor<&'buf [u8]> {
 }
 
 pub trait Deserialize: Sized {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self>;
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self>;
 }
 
 pub trait Serialize {

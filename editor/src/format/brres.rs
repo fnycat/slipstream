@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -77,7 +77,7 @@ struct Header {
 }
 
 impl Deserialize for Header {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != BRRES_MAGIC {
             return Err(IncorrectFormat {
@@ -133,7 +133,7 @@ pub struct RootSubfile {
 }
 
 impl Deserialize for RootSubfile {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != Self::MAGIC {
             return Err(IncorrectFormat {
@@ -176,7 +176,7 @@ pub struct SubfileHeader {
 }
 
 impl SubfileHeader {
-    pub fn deserialize(reader: &mut Cursor<&[u8]>, ty: SubfileType) -> EncodingResult<Self> {
+    pub fn deserialize(reader: &mut Cursor<Rc<[u8]>>, ty: SubfileType) -> EncodingResult<Self> {
         let header_start = reader.position() as u32 - 4; // Subtract 4 for magic.
         let subfile_length = reader.read_u32::<BigEndian>()?;
         let subfile_version = reader.read_u32::<BigEndian>()?;
@@ -230,7 +230,7 @@ pub struct IndexGroupHeader {
 }
 
 impl Deserialize for IndexGroupHeader {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         Ok(Self {
             length: reader.read_u32::<BigEndian>()?,
             number: reader.read_u32::<BigEndian>()?,
@@ -249,7 +249,7 @@ pub struct IndexGroupEntry {
 }
 
 impl Deserialize for IndexGroupEntry {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let entry_id = reader.read_u16::<BigEndian>()?;
         let flag = reader.read_u16::<BigEndian>()?;
         let left_index = reader.read_u16::<BigEndian>()?;
@@ -329,7 +329,7 @@ impl IndexGroup {
 }
 
 impl Deserialize for IndexGroup {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let group_start = reader.position() as u32;
         let header = IndexGroupHeader::deserialize(reader)?;
 
@@ -354,7 +354,7 @@ impl Deserialize for IndexGroup {
 }
 
 fn deserialize_subfile(
-    reader: &mut Cursor<&[u8]>,
+    reader: &mut Cursor<Rc<[u8]>>,
     res_cache: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
@@ -374,7 +374,7 @@ fn deserialize_subfile(
 }
 
 pub fn deserialize_virtual(
-    reader: &mut Cursor<&[u8]>,
+    reader: &mut Cursor<Rc<[u8]>>,
     res_cache: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
@@ -390,7 +390,7 @@ pub fn deserialize_virtual(
 
     // Do not include root subfile.
     for dir in &root_index.entries[1..] {
-        let dir_name = root_index.get_entry_name(reader.get_ref(), dir)?;
+        let dir_name = root_index.get_entry_name(reader.get_ref(), dir)?.to_owned();
 
         tracing::trace!(
             "Discovered folder `{dir_name}` at location {}",
@@ -404,7 +404,9 @@ pub fn deserialize_virtual(
 
         // Skip root subfile
         for subfile in &child_index.entries[1..] {
-            let subfile_name = child_index.get_entry_name(reader.get_ref(), subfile)?;
+            let subfile_name = child_index
+                .get_entry_name(reader.get_ref(), subfile)?
+                .to_owned();
 
             tracing::trace!(
                 "Discovered file `{dir_name}/{subfile_name}` at location `{}`",
@@ -424,13 +426,13 @@ pub fn deserialize_virtual(
             }
 
             let file = tracing::trace_span!("deserialize_subfile", %dir_name, %subfile_name)
-                .in_scope(|| deserialize_subfile(reader, res_cache, subfile_name.to_owned()))?;
+                .in_scope(|| deserialize_subfile(reader, res_cache, subfile_name))?;
 
             subfiles.push(file);
         }
 
         directories.push(VirtualNode {
-            label: dir_name.to_owned(),
+            label: dir_name,
             kind: VirtualNodeKind::Container,
             children: subfiles,
             content: None,

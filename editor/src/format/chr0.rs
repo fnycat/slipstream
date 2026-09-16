@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
@@ -33,7 +33,7 @@ impl TryFrom<u32> for AnimationPolicy {
 }
 
 impl Deserialize for AnimationPolicy {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let policy = reader.read_u32::<BigEndian>()?;
         Self::try_from(policy)
     }
@@ -67,7 +67,7 @@ impl TryFrom<u32> for ScalingRule {
 }
 
 impl Deserialize for ScalingRule {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let rule = reader.read_u32::<BigEndian>()?;
         Self::try_from(rule)
     }
@@ -82,7 +82,7 @@ pub struct Chr0Header {
 }
 
 impl Deserialize for Chr0Header {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         let anim_data_count = reader.read_u16::<BigEndian>()?;
         let anim_policy = AnimationPolicy::deserialize(reader)?;
@@ -184,7 +184,7 @@ macro_rules! apply_masks {
             }
 
             impl AnimationCode {
-                fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+                fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
                     let flags = reader.read_u32::<BigEndian>()?;
                     tracing::trace!("Animation type code is {flags:#X?}");
 
@@ -264,7 +264,7 @@ impl I4Frame {
 }
 
 impl Deserialize for I4Frame {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
 
         let index = ((word & Self::INDEX_MASK) >> 24) as u8;
@@ -287,7 +287,7 @@ pub struct I6Frame {
 }
 
 impl Deserialize for I6Frame {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let index = (reader.read_u16::<BigEndian>()? as f32) / 32.0f32;
         let step = reader.read_u16::<BigEndian>()? as f32;
         let tangent = (reader.read_u16::<BigEndian>()? as f32) / 256.0f32;
@@ -308,7 +308,7 @@ pub struct I12Frame {
 }
 
 impl Deserialize for I12Frame {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let index = reader.read_f32::<BigEndian>()?;
         let value = reader.read_f32::<BigEndian>()?;
         let tangent = reader.read_f32::<BigEndian>()?;
@@ -330,7 +330,7 @@ pub struct I4Animation {
 }
 
 impl Deserialize for I4Animation {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         tracing::trace!(
             "Reading {frame_count} I4 frames at location {}",
@@ -365,7 +365,7 @@ pub struct I6Animation {
 }
 
 impl Deserialize for I6Animation {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         tracing::trace!(
             "Reading {frame_count} I6 frames at location {}",
@@ -398,7 +398,7 @@ pub struct I12Animation {
 }
 
 impl Deserialize for I12Animation {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         tracing::trace!(
             "Reading {frame_count} I12 frames at location {}",
@@ -429,7 +429,7 @@ pub struct L1Animation {
 
 impl L1Animation {
     pub fn deserialize(
-        reader: &mut Cursor<&[u8]>,
+        reader: &mut Cursor<Rc<[u8]>>,
         header_frame_count: u16,
     ) -> EncodingResult<Self> {
         tracing::trace!(
@@ -481,7 +481,7 @@ pub struct AnimationData {
 
 impl AnimationData {
     fn deserialize_anim_frame(
-        reader: &mut Cursor<&[u8]>,
+        reader: &mut Cursor<Rc<[u8]>>,
         bone_data_start: u32,
         header_frame_count: u16,
         format: AnimationFormat,
@@ -515,7 +515,7 @@ impl AnimationData {
     }
 
     fn deserialize_scale(
-        reader: &mut Cursor<&[u8]>,
+        reader: &mut Cursor<Rc<[u8]>>,
         bone_data_start: u32,
         header_frame_count: u16,
         anim_ty_code: &AnimationCode,
@@ -598,7 +598,7 @@ impl AnimationData {
     }
 
     fn deserialize_rotation(
-        reader: &mut Cursor<&[u8]>,
+        reader: &mut Cursor<Rc<[u8]>>,
         bone_data_start: u32,
         header_frame_count: u16,
         anim_code: &AnimationCode,
@@ -675,7 +675,7 @@ impl AnimationData {
     }
 
     fn deserialize_translation(
-        reader: &mut Cursor<&[u8]>,
+        reader: &mut Cursor<Rc<[u8]>>,
         bone_data_start: u32,
         header_frame_count: u16,
         anim_code: &AnimationCode,
@@ -748,7 +748,7 @@ impl AnimationData {
     }
 
     pub fn deserialize(
-        reader: &mut Cursor<&[u8]>,
+        reader: &mut Cursor<Rc<[u8]>>,
         bone_data_start: u32,
         header_frame_count: u16,
         anim_code: &AnimationCode,
@@ -806,10 +806,10 @@ pub struct AnimatedBone {
 impl AnimatedBone {
     #[tracing::instrument(skip(reader, bone_data_start, header_frame_count))]
     pub fn deserialize(
-        reader: &mut Cursor<&[u8]>,
+        reader: &mut Cursor<Rc<[u8]>>,
         bone_data_start: u32,
         header_frame_count: u16,
-        name: &str,
+        name: String,
     ) -> EncodingResult<Self> {
         // Points to the same string as the file name in the index group entry,
         // so we don't need it.
@@ -843,7 +843,7 @@ pub struct Chr0Subfile {
 }
 
 impl Deserialize for Chr0Subfile {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Chr0)?;
 
         reader.set_position(reader.position() + 4); // there are 4 bytes of padding between the headers
@@ -854,7 +854,9 @@ impl Deserialize for Chr0Subfile {
         let mut bones = Vec::with_capacity(bones_group.entries.len());
 
         for entry in &bones_group.entries[1..] {
-            let name = bones_group.get_entry_name(reader.get_ref(), entry)?;
+            let name = bones_group
+                .get_entry_name(reader.get_ref(), entry)?
+                .to_owned();
 
             let data_start = bones_group.get_entry_data_start(entry);
             reader.set_position(data_start as u64);

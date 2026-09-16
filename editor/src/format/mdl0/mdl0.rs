@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor};
+use std::{collections::HashMap, io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 use egui::accesskit::Role::Section;
@@ -42,7 +42,7 @@ impl TryFrom<u32> for ScalingMode {
 }
 
 impl Deserialize for ScalingMode {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
@@ -75,7 +75,7 @@ impl TryFrom<u32> for TextureMatrixMode {
 }
 
 impl Deserialize for TextureMatrixMode {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
@@ -148,7 +148,10 @@ impl TryFrom<u32> for SectionType {
 }
 
 pub trait SectionDeserialize: Sized {
-    fn deserialize_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self>;
+    fn deserialize_section(
+        reader: &mut Cursor<Rc<[u8]>>,
+        header_start: u32,
+    ) -> EncodingResult<Self>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -168,7 +171,7 @@ pub struct Mdl0Header {
 }
 
 impl Deserialize for Mdl0Header {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let start = reader.position();
 
         let header_length = reader.read_u32::<BigEndian>()?;
@@ -223,7 +226,7 @@ impl BoneLinkTable {
 }
 
 impl Deserialize for BoneLinkTable {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let entry_count = reader.read_u32::<BigEndian>()?;
 
         let mut driven = HashMap::new();
@@ -257,7 +260,7 @@ impl Deserialize for BoneLinkTable {
 }
 
 pub fn deserialize_virtual(
-    reader: &mut Cursor<&[u8]>,
+    reader: &mut Cursor<Rc<[u8]>>,
     res_cache: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
@@ -290,7 +293,9 @@ pub fn deserialize_virtual(
         let mut children = Vec::with_capacity(section_index.entries.len() - 1);
 
         for (j, entry) in section_index.entries[1..].iter().enumerate() {
-            let name = section_index.get_entry_name(reader.get_ref(), entry)?;
+            let name = section_index
+                .get_entry_name(reader.get_ref(), entry)?
+                .to_owned();
 
             let data_start = section_index.get_entry_data_start(entry);
 
@@ -303,10 +308,16 @@ pub fn deserialize_virtual(
                 subfile_header.header_start as usize + subfile_header.subfile_length as usize
             };
 
-            let data = reader.get_ref()[data_start as usize..data_end].to_vec();
-            let res_id = res_cache.insert_deferred(LazyPayload::new(data, move |data| {
-                let mut reader = Cursor::new(data.as_slice());
+            tracing::debug!("Data end of {name} is {data_end}");
 
+            // let data = reader.get_ref()[data_start as usize..data_end].to_vec();
+            reader.set_position(data_start as u64);
+
+            // Cloning is cheap due to the reference counter.
+            //
+            // The reader must be cloned since it is reused by the next iteration of the loop.
+            let mut reader = reader.clone();
+            let res_id = res_cache.insert_deferred(LazyPayload::new((), move |data| {
                 let section_ty = SectionType::try_from(i as u32)?;
                 tracing::trace!("Lazily evaluating section of type  `{section_ty:?}`");
 
@@ -330,7 +341,7 @@ pub fn deserialize_virtual(
             }));
 
             children.push(VirtualNode {
-                label: name.to_owned(),
+                label: name,
                 kind: VirtualNodeKind::Terminal,
                 children: Vec::new(),
                 content: Some(res_id),

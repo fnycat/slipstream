@@ -34,7 +34,9 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(filepath: PathBuf) -> eyre::Result<Self> {
-        let contents = Cursor::new(std::fs::read(&filepath)?);
+        let contents = std::fs::read(&filepath)?;
+        let cursor = Cursor::new(Rc::<[u8]>::from(contents));
+
         let file_name = filepath
             .file_name()
             .ok_or_else(|| eyre::eyre!("unable to find file name of `{filepath:?}`"))?
@@ -42,7 +44,7 @@ impl Editor {
 
         let mut res_store = CacheStore::new();
         let root_node =
-            node::deserialize_maybe_compressed(contents, &mut res_store, file_name.into_owned())?;
+            node::deserialize_maybe_compressed(cursor, &mut res_store, file_name.into_owned())?;
 
         // tracing::debug!("{root_node:#?}");
 

@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
@@ -39,7 +39,10 @@ pub struct Normals {
 }
 
 impl SectionDeserialize for Normals {
-    fn deserialize_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
+    fn deserialize_section(
+        reader: &mut Cursor<Rc<[u8]>>,
+        header_start: u32,
+    ) -> EncodingResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let mdl0_offset = reader.read_i32::<BigEndian>()?;
         let data_offset = reader.read_i32::<BigEndian>()?;

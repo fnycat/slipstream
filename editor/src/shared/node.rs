@@ -12,17 +12,16 @@ use crate::{
 ///
 /// After decompressing, this forwards the call to [`deserialize_unknown_root`]
 pub fn deserialize_maybe_compressed(
-    mut reader: Cursor<Vec<u8>>,
+    mut reader: Cursor<Rc<[u8]>>,
     res_cache: &mut CacheStore,
     name: String,
 ) -> eyre::Result<VirtualNode> {
     // Is this file compressed?
     if &reader.get_ref()[..4] == YAZ0_MAGIC {
         // then decompress it.
-        reader = Cursor::new(yaz0::decompress(reader.get_ref())?);
+        reader = Cursor::new(Rc::from(yaz0::decompress(&mut reader)?));
     }
 
-    let mut reader = Cursor::new(reader.get_ref().as_slice());
     deserialize_unknown_root(&mut reader, res_cache, name)
 }
 
@@ -32,7 +31,7 @@ pub fn deserialize_maybe_compressed(
 ///
 /// This function works with OS level files, not files within archives.
 pub fn deserialize_unknown_root(
-    reader: &mut Cursor<&[u8]>,
+    reader: &mut Cursor<Rc<[u8]>>,
     res_cache: &mut CacheStore,
     name: String,
 ) -> eyre::Result<VirtualNode> {

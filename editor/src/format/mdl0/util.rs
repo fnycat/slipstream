@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
@@ -38,7 +38,7 @@ impl TryFrom<u32> for ComponentFormat {
 }
 
 impl Deserialize for ComponentFormat {
-    fn deserialize(reader: &mut Cursor<&[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
@@ -46,7 +46,7 @@ impl Deserialize for ComponentFormat {
 
 /// Deserializes vertex or normal components.
 pub fn deserialize_components<const N: usize>(
-    reader: &mut Cursor<&[u8]>,
+    reader: &mut Cursor<Rc<[u8]>>,
     count: u16,
     format: ComponentFormat,
     divisor: u8,

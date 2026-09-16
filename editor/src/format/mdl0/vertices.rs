@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
@@ -53,7 +53,10 @@ pub struct Vertices {
 }
 
 impl SectionDeserialize for Vertices {
-    fn deserialize_section(reader: &mut Cursor<&[u8]>, header_start: u32) -> EncodingResult<Self> {
+    fn deserialize_section(
+        reader: &mut Cursor<Rc<[u8]>>,
+        header_start: u32,
+    ) -> EncodingResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let mdl0_offset = reader.read_i32::<BigEndian>()?;
         let data_offset = reader.read_i32::<BigEndian>()?;
@@ -71,6 +74,8 @@ impl SectionDeserialize for Vertices {
 
         let vertices_start = header_start as i64 + data_offset as i64;
         reader.set_position(vertices_start as u64);
+
+        // FIXME: This vertex data is not included in the lazy buffer.
 
         let vertices = match component_count {
             COMPONENTS_XY => VertexData::XY(deserialize_components::<2>(
@@ -94,6 +99,8 @@ impl SectionDeserialize for Vertices {
                 .into());
             }
         };
+
+        tracing::debug!("ended at {}", reader.position());
 
         Ok(Self {
             header_start,
