@@ -126,6 +126,8 @@ impl Node {
         string_pool.set_position(name_offset as u64);
 
         let name = string_pool.read_null_string::<BigEndian>()?;
+        panic!("{name}");
+
         let data = match ty {
             NodeType::Directory => NodeContent::Directory {
                 parent: data1,
@@ -226,13 +228,15 @@ pub fn deserialize_virtual(
     let node_count = reader.read_u32::<BigEndian>()?;
 
     let mut string_pool = {
-        let start = header.node_offset as u64 + ARC_NODE_SIZE as u64 * node_count as u64;
+        let start = header.node_offset as i64 + ARC_NODE_SIZE as i64 * node_count as i64;
         let end = (header.node_offset + header.size) as u64;
 
         tracing::trace!("ARC string pool is in range {start}..{end}");
 
-        reader.slice(start..end)?
+        reader.slice(start as u64..end)?
     };
+
+    string_pool.dump("string_pool.bin").unwrap();
 
     let mut nodes = Vec::with_capacity(node_count as usize);
     nodes.push(Node {

@@ -11,6 +11,9 @@ use std::{
 /// keeps track of the bounds of its buffer, allowing cursors to use different
 /// sections of the same underlying buffer.
 ///
+/// Additionally the position is a `usize` instead of a `u64` since we are only working
+/// with in-memory buffers.
+///
 /// [`Cursor`]: std::io::Cursor
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RefCursor<T>
@@ -19,9 +22,9 @@ where
 {
     inner: Rc<T>,
     /// The current position of the cursor.
-    pos: u64,
+    pos: usize,
     /// The bounds that this cursor should read within.
-    range: Range<u64>,
+    range: Range<usize>,
 }
 
 /// This is a nearly exact copy of the standard library.
@@ -30,7 +33,7 @@ where
     T: AsRef<[u8]> + ?Sized,
 {
     pub fn new(inner: Rc<T>) -> Self {
-        let len = inner.as_ref().as_ref().len() as u64;
+        let len = inner.as_ref().as_ref().len();
 
         Self {
             inner,
@@ -39,8 +42,8 @@ where
         }
     }
 
-    pub fn new_sliced(inner: Rc<T>, range: Range<u64>) -> io::Result<Self> {
-        let len = inner.as_ref().as_ref().len() as u64;
+    pub fn new_sliced(inner: Rc<T>, range: Range<usize>) -> io::Result<Self> {
+        let len = inner.as_ref().as_ref().len();
         if range.end > len {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -55,6 +58,10 @@ where
         })
     }
 
+    pub fn len(&self) -> usize {
+        self.range.end - self.range.start
+    }
+
     /// Returns a subset of `self`.
     ///
     /// # Errors
@@ -62,15 +69,16 @@ where
     /// The function returns an [`InvalidInput`] error when the range is outside of the buffer bounds.
     ///
     /// [`InvalidInput`]: std::io::ErrorKind::InvalidInput
-    pub fn slice(&self, range: Range<u64>) -> io::Result<Self> {
+    pub fn slice(&self, range: Range<usize>) -> io::Result<Self> {
+        tracing::debug!("slicing {}..{}", range.start, range.end);
         Self::new_sliced(self.inner.clone(), range)
     }
 
-    pub fn position(&self) -> u64 {
+    pub fn position(&self) -> usize {
         self.pos
     }
 
-    pub fn set_position(&mut self, pos: u64) {
+    pub fn set_position(&mut self, pos: usize) {
         self.pos = pos;
     }
 
@@ -80,8 +88,12 @@ where
 
     pub fn split(&self) -> (&[u8], &[u8]) {
         let slice = self.get_ref().as_ref();
-        let pos = self.pos.min(slice.len() as u64);
+        let pos = self.pos.min(slice.len());
         slice.split_at(pos as usize)
+    }
+
+    pub fn dump<P: AsRef<std::path::Path>>(&self, path: P) -> io::Result<()> {
+        std::fs::write(path.as_ref(), self.inner.as_ref())
     }
 }
 
@@ -104,8 +116,12 @@ where
     T: AsRef<[u8]> + ?Sized,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        todo!(
+            "this is not respecting the buffer's range, causing the strings to be read incorrectly"
+        );
+
         let n = io::Read::read(&mut Self::split(self).1, buf)?;
-        self.set_position(self.position() + n as u64);
+        self.set_position(self.position() + n);
         Ok(n)
     }
 
@@ -126,8 +142,8 @@ where
         let result = io::Read::read_exact(&mut Self::split(self).1, buf);
 
         match result {
-            Ok(_) => self.set_position(self.position() + buf.len() as u64),
-            Err(_) => self.set_position(self.get_ref().as_ref().len() as u64),
+            Ok(_) => self.set_position(self.position() + buf.len()),
+            Err(_) => self.set_position(self.get_ref().as_ref().len()),
         }
 
         result
@@ -139,7 +155,7 @@ where
         buf.try_reserve(len)?;
         buf.extend_from_slice(content);
 
-        self.set_position(self.position() + len as u64);
+        self.set_position(self.position() + len);
         Ok(len)
     }
 
@@ -150,7 +166,7 @@ where
         let len = content.len();
         buf.try_reserve(len)?;
         buf.push_str(content);
-        self.set_position(self.position() + len as u64);
+        self.set_position(self.position() + len);
 
         Ok(len)
     }
