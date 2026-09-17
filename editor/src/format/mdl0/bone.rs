@@ -2,7 +2,7 @@ use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::r#virtual::node::{VirtualNode, VirtualNodeContent, VirtualNodeRef};
+use crate::r#virtual::node::{VirtualNode, VirtualNodeContent, VirtualNodeKind, VirtualNodeRef};
 use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
@@ -12,7 +12,8 @@ use crate::{
 };
 use crate::error::{CorruptionError, EditorError, EditorResult};
 use crate::format::brres::IndexGroup;
-use crate::r#virtual::refs::VirtualNodeId;
+use crate::r#virtual::defer::Deferred;
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
 
 const IS_BILLBOARD_CHILD_MASK: u32 = 0x00000400;
 const IS_DISPLAY_MATRIX_MASK: u32 = 0x00000200;
@@ -185,10 +186,33 @@ impl Bone {
     }
 }
 
-pub fn deserialize_skeleton(reader: &mut RefCursor<[u8]>) -> EditorResult<VirtualNodeContent> {
+#[derive(Debug)]
+pub struct NamedBone {
+    pub name: String,
+    pub bone: Bone
+}
+
+fn build_skeleton_tree(bones: &[NamedBone], ref_cache: &VirtualRefCache) -> VirtualNodeRef {
+    let id = ref_cache.next_id();
+
+    let node = VirtualNodeRef::from(VirtualNode {
+        label: String::from("skl_root_test"),
+        id,
+        kind: VirtualNodeKind::Container,
+        content: Deferred::evaluated(VirtualNodeContent {
+            inspectable: None,
+            children: Vec::new()
+        })
+    });
+
+    ref_cache.insert(id, Rc::downgrade(&node));
+    node
+}
+
+pub fn deserialize_skeleton(reader: &mut RefCursor<[u8]>, ref_cache: &VirtualRefCache) -> EditorResult<VirtualNodeContent> {
     let section_index = IndexGroup::deserialize(reader)?;
     let mut bones = Vec::with_capacity(section_index.entries.len() - 1);
-    
+
     for entry in &section_index.entries[1..] {
         let name = section_index.get_entry_name(reader, entry)?;
 
@@ -196,13 +220,19 @@ pub fn deserialize_skeleton(reader: &mut RefCursor<[u8]>) -> EditorResult<Virtua
         reader.set_position(data_start as u64);
 
         let bone = Bone::deserialize(reader)?;
-        bones.push(bone);
+        bones.push(NamedBone {
+            name, bone
+        });
     }
+
+    std::fs::write("bones.txt", format!("{bones:#?}"));
 
     // dbg!(bones);
 
+    let node = build_skeleton_tree(&bones, ref_cache);
+
     Ok(VirtualNodeContent {
         inspectable: None,
-        children: Vec::new()
+        children: vec![node]
     })
 }

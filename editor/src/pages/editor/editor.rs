@@ -1,11 +1,11 @@
 use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
 
 use eframe::egui_wgpu;
-use egui_phosphor::regular::{CARET_DOWN, CARET_RIGHT, FOLDER, FOLDER_OPEN};
+use egui_phosphor::regular::{CARET_DOWN, CARET_RIGHT, FOLDER, FOLDER_DASHED, FOLDER_OPEN};
 
 use crate::error::{EditorError, EditorResult, InvalidInputError};
 use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheMap};
-use crate::r#virtual::node::VirtualNodeRef;
+use crate::r#virtual::node::{VirtualNodeRef, VirtualNodeRefExt};
 use crate::{
     app::{App, CurrentPage},
     model_renderer::ModelRenderer,
@@ -29,7 +29,7 @@ pub struct Editor {
     /// The whole file currently open in the editor.
     pub root_node: VirtualNodeRef,
 
-    pub open_properties: Option<Properties>,
+    pub open_node: Option<VirtualNodeId>,
     pub ref_cache: VirtualRefCache,
 }
 
@@ -55,7 +55,7 @@ impl Editor {
         Ok(Self {
             root_node,
             ref_cache,
-            open_properties: None,
+            open_node: None,
             filepath,
         })
     }
@@ -141,7 +141,7 @@ impl App {
             if let Some(properties) =
                 Self::draw_file_tree(&editor.root_node, &editor.ref_cache, ui).unwrap()
             {
-                editor.open_properties = Some(properties);
+                editor.open_node = Some(properties);
             }
         });
 
@@ -159,17 +159,25 @@ impl App {
         base: &VirtualNodeRef,
         ref_cache: &VirtualRefCache,
         ui: &mut egui::Ui,
-    ) -> EditorResult<Option<Properties>> {
+    ) -> EditorResult<Option<VirtualNodeId>> {
         ui.visuals_mut().collapsing_header_frame = true;
 
         let base_ref = base.borrow();
+        let is_deferred = base_ref.content.is_deferred();
 
         let mut opened_cache_id = None;
         if base_ref.kind == VirtualNodeKind::Container {
             // egui::CollapsingHeader::new(&base.label)
-            egui::CollapsingHeader::new(format!("{}: {}", base_ref.id, base_ref.label))
-                .icon(|ui, openness, response| {
-                    let icon = if openness < 0.5 { FOLDER } else { FOLDER_OPEN };
+            let response = egui::CollapsingHeader::new(format!("{}: {}", base_ref.id, base_ref.label))
+                .icon(move |ui, openness, response| {
+                    let icon = if is_deferred {
+                        FOLDER_DASHED
+                    } else if openness < 0.5 {
+                        FOLDER
+                    } else {
+                        FOLDER_OPEN
+                    };
+                    // let icon = if openness < 0.5 { FOLDER } else { FOLDER_OPEN };
 
                     ui.painter().text(
                         response.rect.center(),
@@ -196,6 +204,11 @@ impl App {
                         }
                     }
                 });
+
+            // Open the properties window of the folder when clicked.
+            if response.header_response.double_clicked() {
+                return Ok(Some(base.id()))
+            }
         } else {
             if ui.button(format!("{}: {}", base_ref.id, base_ref.label)).clicked() {
             // if ui.button(&base.label).clicked() {
@@ -210,10 +223,7 @@ impl App {
 
                 tracing::trace!("Opening file");
 
-                return Ok(Some(Properties {
-                    label: format!("Inspector ({})", base_ref.label),
-                    node_id: base_ref.id,
-                }));
+                return Ok(Some(base_ref.id));
             }
         }
 

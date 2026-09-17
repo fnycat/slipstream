@@ -296,6 +296,8 @@ pub fn deserialize_virtual(
         let section_ty = SectionType::try_from(i as u32)?;
 
         let mut reader = reader.clone();
+        let ref_cache2 = ref_cache.clone();
+
         let section_parser = move |_data| {
             let section_start = subfile_header.header_start as i64 + section_offset as i64;
             reader.set_position(section_start as u64);
@@ -303,7 +305,7 @@ pub fn deserialize_virtual(
             tracing::debug!("Parsing {section_ty:?}");
 
             match section_ty {
-                SectionType::Bones => deserialize_skeleton(&mut reader),
+                SectionType::Bones => deserialize_skeleton(&mut reader, &ref_cache2),
                 _ => Ok(VirtualNodeContent {
                     children: Vec::new(),
                     inspectable: None

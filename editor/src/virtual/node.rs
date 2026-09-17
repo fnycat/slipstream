@@ -6,9 +6,31 @@ use std::{
     ,
     rc::Rc,
 };
+use std::cell::Ref;
 use crate::error::EditorResult;
 
 pub type VirtualNodeRef = Rc<RefCell<VirtualNode>>;
+
+pub trait VirtualNodeRefExt {
+    /// Returns the name of the node, by cloning it.
+    fn label(&self) -> String;
+    fn id(&self) -> VirtualNodeId;
+    fn kind(&self) -> VirtualNodeKind;
+}
+
+impl VirtualNodeRefExt for VirtualNodeRef {
+    fn label(&self) -> String {
+        self.borrow().label.clone()
+    }
+
+    fn id(&self) -> VirtualNodeId {
+        self.borrow().id
+    }
+
+    fn kind(&self) -> VirtualNodeKind {
+        self.borrow().kind
+    }
+}
 
 impl From<VirtualNode> for VirtualNodeRef {
     fn from(value: VirtualNode) -> Self {
@@ -50,7 +72,7 @@ impl VirtualNode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum VirtualNodeKind {
     /// This virtual node can contain other nodes.
     ///
