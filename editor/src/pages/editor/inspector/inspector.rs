@@ -2,6 +2,7 @@ use egui_phosphor::regular::X;
 
 use crate::app::App;
 use crate::error::{EditorError, EditorResult, InvalidInputError};
+use crate::r#virtual::refs::VirtualRefCacheExt;
 
 impl App {
     pub fn draw_inspector_window(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {

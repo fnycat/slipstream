@@ -9,14 +9,14 @@ use crate::{
 };
 use crate::error::{EditorResult, UnsupportedError};
 use crate::r#virtual::node::VirtualNodeRef;
-use crate::r#virtual::refs::VirtualRefCache;
+use crate::r#virtual::refs::{VirtualRefCache, VirtualRefCacheMap};
 
 /// Deserializes a possibly YAZ0-compressed file.
 ///
 /// After decompressing, this forwards the call to [`deserialize_unknown_root`]
 pub fn deserialize_maybe_compressed(
     mut reader: RefCursor<[u8]>,
-    ref_cache: &mut VirtualRefCache,
+    ref_cache: &VirtualRefCache,
     name: String,
 ) -> EditorResult<VirtualNodeRef> {
     // Is this file compressed?
@@ -35,7 +35,7 @@ pub fn deserialize_maybe_compressed(
 /// This function works with OS level files, not files within archives.
 pub fn deserialize_unknown_root(
     reader: &mut RefCursor<[u8]>,
-    ref_cache: &mut VirtualRefCache,
+    ref_cache: &VirtualRefCache,
     name: String,
 ) -> EditorResult<VirtualNodeRef> {
     let magic: &[u8; 4] = reader.as_remaining()[..4]

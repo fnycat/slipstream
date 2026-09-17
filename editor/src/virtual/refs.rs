@@ -18,17 +18,47 @@ impl fmt::Display for VirtualNodeId {
 ///
 /// This allows the editor to quickly access referenced nodes without
 /// having to traverse the entire node tree.
-pub struct VirtualRefCache {
+pub struct VirtualRefCacheMap {
     next_id: usize,
     refs: HashMap<VirtualNodeId, Weak<RefCell<VirtualNode>>>,
 }
 
-impl VirtualRefCache {
-    pub fn new() -> Self {
-        Self {
+pub type VirtualRefCache = Rc<RefCell<VirtualRefCacheMap>>;
+
+/// Implements the [`VirtualRefCacheMap`] methods on `Rc<RefCell<VirtualRefCacheMap>>`.
+///
+/// These cannot be implemented on a foreign type directly, so a trait is used instead.
+pub trait VirtualRefCacheExt {
+    fn next_id(&self) -> VirtualNodeId;
+    fn get(&self, id: VirtualNodeId) -> Option<VirtualNodeRef>;
+    fn insert(&self, id: VirtualNodeId, node: Weak<RefCell<VirtualNode>>);
+    fn prune_stale(&self);
+}
+
+impl VirtualRefCacheExt for Rc<RefCell<VirtualRefCacheMap>> {
+    fn next_id(&self) -> VirtualNodeId {
+        self.borrow_mut().next_id()
+    }
+
+    fn get(&self, id: VirtualNodeId) -> Option<VirtualNodeRef> {
+        self.borrow().get(id)
+    }
+
+    fn insert(&self, id: VirtualNodeId, node: Weak<RefCell<VirtualNode>>) {
+        self.borrow_mut().insert(id, node);
+    }
+
+    fn prune_stale(&self) {
+        self.borrow_mut().prune_stale();
+    }
+}
+
+impl VirtualRefCacheMap {
+    pub fn new() -> VirtualRefCache {
+        Rc::new(RefCell::new(Self {
             next_id: 1,
             refs: HashMap::new(),
-        }
+        }))
     }
 
     pub fn next_id(&mut self) -> VirtualNodeId {

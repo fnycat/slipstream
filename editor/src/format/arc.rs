@@ -4,7 +4,7 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::pages::editor::inspector::raw::Raw;
 use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::refs::VirtualRefCache;
+use crate::r#virtual::refs::{VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap};
 use crate::r#virtual::node::{VirtualNodeContent, VirtualNodeRef};
 use crate::{
     format::{
@@ -151,7 +151,7 @@ impl Node {
 
 fn parse_leaf_node(
     reader: &mut RefCursor<[u8]>,
-    ref_cache: &mut VirtualRefCache,
+    ref_cache: &VirtualRefCache,
     name: String,
 ) -> EditorResult<VirtualNodeRef> {
     let magic: [u8; 4] = reader.read_u8_array()?;
@@ -182,7 +182,7 @@ fn parse_leaf_node(
 
 fn parse_directory_tree(
     node_list: &mut [Node],
-    ref_cache: &mut VirtualRefCache,
+    ref_cache: &VirtualRefCache,
     label: String,
     cursor: &mut usize,
 ) -> EditorResult<VirtualNodeRef> {
@@ -232,7 +232,7 @@ fn parse_directory_tree(
 
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
-    ref_cache: &mut VirtualRefCache,
+    ref_cache: &VirtualRefCache,
     name: String,
 ) -> EditorResult<VirtualNodeRef> {
     tracing::trace!("Parsing ARC file `{name}`");

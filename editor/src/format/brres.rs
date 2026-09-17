@@ -1,5 +1,5 @@
 use std::{io::Cursor, rc::Rc};
-
+use std::cell::RefCell;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{
@@ -19,7 +19,7 @@ use crate::error::{
 };
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeContent, VirtualNodeKind, VirtualNodeRef};
-use crate::r#virtual::refs::VirtualRefCache;
+use crate::r#virtual::refs::{VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap};
 
 pub const BRRES_MAGIC: [u8; 4] = [0x62, 0x72, 0x65, 0x73];
 const LE_BOM: [u8; 2] = [0xFF, 0xFE];
@@ -345,7 +345,7 @@ impl Deserialize for IndexGroup {
 
 fn deserialize_subfile(
     reader: &mut RefCursor<[u8]>,
-    ref_cache: &mut VirtualRefCache,
+    ref_cache: &VirtualRefCache,
     name: String,
 ) -> EditorResult<VirtualNodeRef> {
     // Check magic
@@ -376,85 +376,93 @@ fn deserialize_subfile(
 
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
-    ref_cache: &mut VirtualRefCache,
+    ref_cache: &VirtualRefCache,
     name: String,
 ) -> EditorResult<VirtualNodeRef> {
-    tracing::trace!("Parsing BRRES file `{name}`");
+    let mut reader = reader.clone();
+    let ref_cache2 = ref_cache.clone();
 
-    let header = Header::deserialize(reader)?;
+    let name2 = name.clone();
+    let parse_brres = move |_data| {
+        tracing::trace!("Triggered deferred parse of `{name2}`");
 
-    // Skip to root start
-    reader.set_position(header.root_offset as u64);
+        let header = Header::deserialize(&mut reader)?;
 
-    let _root = RootSubfile::deserialize(reader)?;
-    let root_index = IndexGroup::deserialize(reader)?;
+        // Skip to root start
+        reader.set_position(header.root_offset as u64);
 
-    let mut directories = Vec::with_capacity(root_index.entries.len());
+        let _root = RootSubfile::deserialize(&mut reader)?;
+        let root_index = IndexGroup::deserialize(&mut reader)?;
 
-    // Do not include root subfile.
-    for dir in &root_index.entries[1..] {
-        let dir_name = root_index.get_entry_name(reader, dir)?.to_owned();
+        let mut directories = Vec::with_capacity(root_index.entries.len());
 
-        tracing::trace!(
-            "Discovered folder `{dir_name}` at location {}",
-            reader.position()
-        );
-
-        reader.set_position(root_index.get_entry_data_start(dir) as u64);
-
-        let child_index = IndexGroup::deserialize(reader)?;
-        let mut subfiles = Vec::with_capacity(child_index.entries.len());
-
-        // Skip root subfile
-        for subfile in &child_index.entries[1..] {
-            let subfile_name = child_index.get_entry_name(reader, subfile)?.to_owned();
+        // Do not include root subfile.
+        for dir in &root_index.entries[1..] {
+            let dir_name = root_index.get_entry_name(&mut reader, dir)?.to_owned();
 
             tracing::trace!(
-                "Discovered file `{dir_name}/{subfile_name}` at location `{}`",
+                "Discovered folder `{dir_name}` at location {}",
                 reader.position()
             );
 
-            reader.set_position(child_index.get_entry_data_start(subfile) as u64);
+            reader.set_position(root_index.get_entry_data_start(dir) as u64);
 
-            // Skip over unimplemented formats for testing for now
-            {
-                let magic = &reader.as_remaining()[..4];
-                if magic != MDL0_MAGIC && magic != Chr0Subfile::MAGIC {
-                    tracing::error!("SKIPPING {}", String::from_utf8_lossy(magic));
-                    continue;
+            let child_index = IndexGroup::deserialize(&mut reader)?;
+            let mut subfiles = Vec::with_capacity(child_index.entries.len());
+
+            // Skip root subfile
+            for subfile in &child_index.entries[1..] {
+                let subfile_name = child_index.get_entry_name(&mut reader, subfile)?.to_owned();
+
+                tracing::trace!(
+                    "Discovered file `{dir_name}/{subfile_name}` at location `{}`",
+                    reader.position()
+                );
+
+                reader.set_position(child_index.get_entry_data_start(subfile) as u64);
+
+                // Skip over unimplemented formats for testing for now
+                {
+                    let magic = &reader.as_remaining()[..4];
+                    if magic != MDL0_MAGIC && magic != Chr0Subfile::MAGIC {
+                        tracing::error!("SKIPPING {}", String::from_utf8_lossy(magic));
+                        continue;
+                    }
                 }
+
+                let file = tracing::trace_span!("deserialize_subfile", %dir_name, %subfile_name)
+                    .in_scope(|| deserialize_subfile(&mut reader, &ref_cache2, subfile_name))?;
+
+                subfiles.push(file);
             }
 
-            let file = tracing::trace_span!("deserialize_subfile", %dir_name, %subfile_name)
-                .in_scope(|| deserialize_subfile(reader, ref_cache, subfile_name))?;
+            let id = ref_cache2.next_id();
+            let node = VirtualNodeRef::from(VirtualNode {
+                label: dir_name,
+                id,
+                kind: VirtualNodeKind::Container,
+                content: Deferred::evaluated(VirtualNodeContent {
+                    inspectable: None,
+                    children: subfiles,
+                }),
+            });
 
-            subfiles.push(file);
+            ref_cache2.insert(id, Rc::downgrade(&node));
+            directories.push(node);
         }
 
-        let id = ref_cache.next_id();
-        let node = VirtualNodeRef::from(VirtualNode {
-            label: dir_name,
-            id,
-            kind: VirtualNodeKind::Container,
-            content: Deferred::evaluated(VirtualNodeContent {
-                inspectable: None,
-                children: subfiles,
-            }),
-        });
-
-        ref_cache.insert(id, Rc::downgrade(&node));
-        directories.push(node);
-    }
+        Ok(VirtualNodeContent {
+            inspectable: None,
+            children: directories
+        })
+    };
 
     let id = ref_cache.next_id();
     let node = VirtualNodeRef::from(VirtualNode {
         label: name,
         id,
         kind: VirtualNodeKind::Container,
-        content: Deferred::evaluated(VirtualNodeContent {
-            inspectable: None,
-            children: directories,
-        }),
+        content: Deferred::defer((), parse_brres)?
     });
 
     ref_cache.insert(id, Rc::downgrade(&node));

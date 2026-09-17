@@ -4,7 +4,7 @@ use eframe::egui_wgpu;
 use egui_phosphor::regular::{CARET_DOWN, CARET_RIGHT, FOLDER, FOLDER_OPEN};
 
 use crate::error::{EditorError, EditorResult, InvalidInputError};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheMap};
 use crate::r#virtual::node::VirtualNodeRef;
 use crate::{
     app::{App, CurrentPage},
@@ -48,7 +48,7 @@ impl Editor {
             })?
             .to_string_lossy();
 
-        let mut ref_cache = VirtualRefCache::new();
+        let mut ref_cache = VirtualRefCacheMap::new();
         let root_node =
             root::deserialize_maybe_compressed(cursor, &mut ref_cache, file_name.into_owned())?;
 
@@ -139,7 +139,7 @@ impl App {
         egui::Panel::left(panel_id).show(ui, |ui| {
             let editor = self.current_page.as_editor_mut().unwrap();
             if let Some(properties) =
-                Self::draw_file_tree(&editor.root_node, &mut editor.ref_cache, ui).unwrap()
+                Self::draw_file_tree(&editor.root_node, &editor.ref_cache, ui).unwrap()
             {
                 editor.open_properties = Some(properties);
             }
@@ -157,7 +157,7 @@ impl App {
     /// If a specific node has been opened, this function returns the ID of its cache entry.
     fn draw_file_tree(
         base: &VirtualNodeRef,
-        ref_cache: &mut VirtualRefCache,
+        ref_cache: &VirtualRefCache,
         ui: &mut egui::Ui,
     ) -> EditorResult<Option<Properties>> {
         ui.visuals_mut().collapsing_header_frame = true;

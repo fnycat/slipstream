@@ -20,7 +20,7 @@ use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{
     Inspectable, VirtualNode, VirtualNodeContent, VirtualNodeKind, VirtualNodeRef,
 };
-use crate::r#virtual::refs::VirtualRefCache;
+use crate::r#virtual::refs::{VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap};
 use crate::format::mdl0::bone::deserialize_skeleton;
 
 pub const MDL0_MAGIC: [u8; 4] = [0x4d, 0x44, 0x4c, 0x30]; // "MDL0"
@@ -268,7 +268,7 @@ impl Deserialize for BoneLinkTable {
 
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
-    ref_cache: &mut VirtualRefCache,
+    ref_cache: &VirtualRefCache,
     name: String,
 ) -> EditorResult<VirtualNodeRef> {
     let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
