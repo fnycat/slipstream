@@ -6,10 +6,10 @@ use crate::{
     format::{
         brres::{IndexGroup, IndexGroupEntry, Subfile, SubfileHeader, SubfileType},
         encoding::{Deserialize, ReadStringExt},
-        error::{CorruptionError, EncodingError, EncodingResult},
     },
     shared::util::RefCursor,
 };
+use crate::error::{CorruptionError, EditorError, EditorResult};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AnimationPolicy {
@@ -18,7 +18,7 @@ pub enum AnimationPolicy {
 }
 
 impl TryFrom<u32> for AnimationPolicy {
-    type Error = EncodingError;
+    type Error = EditorError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -36,7 +36,7 @@ impl TryFrom<u32> for AnimationPolicy {
 }
 
 impl Deserialize for AnimationPolicy {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let policy = reader.read_u32::<BigEndian>()?;
         Self::try_from(policy)
     }
@@ -51,7 +51,7 @@ pub enum ScalingRule {
 }
 
 impl TryFrom<u32> for ScalingRule {
-    type Error = EncodingError;
+    type Error = EditorError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -70,7 +70,7 @@ impl TryFrom<u32> for ScalingRule {
 }
 
 impl Deserialize for ScalingRule {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let rule = reader.read_u32::<BigEndian>()?;
         Self::try_from(rule)
     }
@@ -85,7 +85,7 @@ pub struct Chr0Header {
 }
 
 impl Deserialize for Chr0Header {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         let anim_data_count = reader.read_u16::<BigEndian>()?;
         let anim_policy = AnimationPolicy::deserialize(reader)?;
@@ -119,14 +119,14 @@ impl AnimationFormat {
 
     /// Applies the given bitmask to the flags, shifts it to the given position and converts it into
     /// an [`AnimationFormat`].
-    pub fn from_flag(flag: u32, mask: u32, shift_by: u32) -> EncodingResult<Self> {
+    pub fn from_flag(flag: u32, mask: u32, shift_by: u32) -> EditorResult<Self> {
         let b = ((flag & mask) >> shift_by) as u8;
         AnimationFormat::try_from(b)
     }
 }
 
 impl TryFrom<u8> for AnimationFormat {
-    type Error = EncodingError;
+    type Error = EditorError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -187,7 +187,7 @@ macro_rules! apply_masks {
             }
 
             impl AnimationCode {
-                fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+                fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
                     let flags = reader.read_u32::<BigEndian>()?;
                     tracing::trace!("Animation type code is {flags:#X?}");
 
@@ -196,9 +196,9 @@ macro_rules! apply_masks {
             }
 
             impl TryFrom<u32> for AnimationCode {
-                type Error = EncodingError;
+                type Error = EditorError;
 
-                fn try_from(v: u32) -> EncodingResult<Self> {
+                fn try_from(v: u32) -> EditorResult<Self> {
                     Ok(Self {
                         // translation_format: (((v & TRANSLATION_FORMAT_MASK) >> 30) as u8),
                         translation_format: AnimationFormat::from_flag(v, TRANSLATION_FORMAT_MASK, 30)?,
@@ -267,7 +267,7 @@ impl I4Frame {
 }
 
 impl Deserialize for I4Frame {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
 
         let index = ((word & Self::INDEX_MASK) >> 24) as u8;
@@ -290,7 +290,7 @@ pub struct I6Frame {
 }
 
 impl Deserialize for I6Frame {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let index = (reader.read_u16::<BigEndian>()? as f32) / 32.0f32;
         let step = reader.read_u16::<BigEndian>()? as f32;
         let tangent = (reader.read_u16::<BigEndian>()? as f32) / 256.0f32;
@@ -311,7 +311,7 @@ pub struct I12Frame {
 }
 
 impl Deserialize for I12Frame {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let index = reader.read_f32::<BigEndian>()?;
         let value = reader.read_f32::<BigEndian>()?;
         let tangent = reader.read_f32::<BigEndian>()?;
@@ -333,7 +333,7 @@ pub struct I4Animation {
 }
 
 impl Deserialize for I4Animation {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         tracing::trace!(
             "Reading {frame_count} I4 frames at location {}",
@@ -368,7 +368,7 @@ pub struct I6Animation {
 }
 
 impl Deserialize for I6Animation {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         tracing::trace!(
             "Reading {frame_count} I6 frames at location {}",
@@ -401,7 +401,7 @@ pub struct I12Animation {
 }
 
 impl Deserialize for I12Animation {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         tracing::trace!(
             "Reading {frame_count} I12 frames at location {}",
@@ -434,7 +434,7 @@ impl L1Animation {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
         header_frame_count: u16,
-    ) -> EncodingResult<Self> {
+    ) -> EditorResult<Self> {
         tracing::trace!(
             "Reading {header_frame_count} L1 frames at location {}",
             reader.position()
@@ -488,7 +488,7 @@ impl AnimationData {
         bone_data_start: u32,
         header_frame_count: u16,
         format: AnimationFormat,
-    ) -> EncodingResult<AnimationType> {
+    ) -> EditorResult<AnimationType> {
         let orig_position = reader.position();
 
         let frame_offset = reader.read_i32::<BigEndian>()? as i64;
@@ -522,7 +522,7 @@ impl AnimationData {
         bone_data_start: u32,
         header_frame_count: u16,
         anim_ty_code: &AnimationCode,
-    ) -> EncodingResult<ComponentData> {
+    ) -> EditorResult<ComponentData> {
         tracing::trace!(
             "Reading scale animations (iso: {}, x fixed: {}, y fixed: {}, z fixed: {})",
             anim_ty_code.scale_isotropic,
@@ -605,7 +605,7 @@ impl AnimationData {
         bone_data_start: u32,
         header_frame_count: u16,
         anim_code: &AnimationCode,
-    ) -> EncodingResult<ComponentData> {
+    ) -> EditorResult<ComponentData> {
         tracing::trace!(
             "Reading rotation animations (iso: {}, x fixed: {}, y fixed: {}, z fixed: {})",
             anim_code.rotation_isotropic,
@@ -682,7 +682,7 @@ impl AnimationData {
         bone_data_start: u32,
         header_frame_count: u16,
         anim_code: &AnimationCode,
-    ) -> EncodingResult<ComponentData> {
+    ) -> EditorResult<ComponentData> {
         tracing::trace!(
             "Reading translation animations (iso: {}, x fixed: {}, y fixed: {}, z fixed: {})",
             anim_code.translation_isotropic,
@@ -755,7 +755,7 @@ impl AnimationData {
         bone_data_start: u32,
         header_frame_count: u16,
         anim_code: &AnimationCode,
-    ) -> EncodingResult<Self> {
+    ) -> EditorResult<Self> {
         let scale = if anim_code.has_scale {
             Some(Self::deserialize_scale(
                 reader,
@@ -813,7 +813,7 @@ impl AnimatedBone {
         bone_data_start: u32,
         header_frame_count: u16,
         name: String,
-    ) -> EncodingResult<Self> {
+    ) -> EditorResult<Self> {
         // Points to the same string as the file name in the index group entry,
         // so we don't need it.
         let _bone_name_offset = reader.read_u32::<BigEndian>()?;
@@ -846,7 +846,7 @@ pub struct Chr0Subfile {
 }
 
 impl Deserialize for Chr0Subfile {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Chr0)?;
 
         reader.set_position(reader.position() + 4); // there are 4 bytes of padding between the headers

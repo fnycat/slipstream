@@ -95,8 +95,24 @@ impl Display for RangeError {
     }
 }
 
+#[derive(Debug, Error, Clone, Default)]
+pub struct InvalidInputError {
+    pub reason: String,
+    pub location: Option<u64>,
+}
+
+impl Display for InvalidInputError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(location) = self.location {
+            write!(f, "{}, at location {location}", self.reason)
+        } else {
+            f.write_str(&self.reason)
+        }
+    }
+}
+
 #[derive(Error, Debug)]
-pub enum EncodingError {
+pub enum EditorError {
     #[error("unsupported: {source}")]
     Unsupported {
         #[from]
@@ -133,6 +149,18 @@ pub enum EncodingError {
         source: RangeError,
         backtrace: Backtrace,
     },
+    #[error("eframe error: {source}")]
+    EframeError {
+        #[from]
+        source: eframe::Error,
+        backtrace: Backtrace,
+    },
+    #[error("invalid input: {source}")]
+    InvalidInput {
+        #[from]
+        source: InvalidInputError,
+        backtrace: Backtrace,
+    },
 }
 
-pub type EncodingResult<T> = Result<T, EncodingError>;
+pub type EditorResult<T> = Result<T, EditorError>;

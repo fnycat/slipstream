@@ -1,10 +1,6 @@
-use crate::{
-    format::mdl0::vertices::Vertices,
-    shared::{
-        util::{draw_inspector_section_header, draw_vec_drag_values},
-        r#virtual::Inspectable,
-    },
-};
+use crate::format::mdl0::vertices::Vertices;
+use crate::pages::editor::inspector::widgets::{draw_inspector_section_header, draw_vec_drag_values};
+use crate::r#virtual::node::Inspectable;
 
 impl Inspectable for Vertices {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {

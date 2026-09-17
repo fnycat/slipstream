@@ -5,14 +5,14 @@ use byteorder::{BigEndian, ReadBytesExt};
 use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
-        error::{CorruptionError, EncodingResult},
         mdl0::{
+            util::{deserialize_components, ComponentFormat},
             SectionDeserialize,
-            util::{ComponentFormat, deserialize_components},
         },
     },
     shared::util::RefCursor,
 };
+use crate::error::{CorruptionError, EditorResult};
 
 const COMPONENTS_XY: u32 = 0x0;
 const COMPONENTS_XYZ: u32 = 0x1;
@@ -56,10 +56,7 @@ pub struct Vertices {
 }
 
 impl SectionDeserialize for Vertices {
-    fn deserialize_section(
-        reader: &mut RefCursor<[u8]>,
-        header_start: u32,
-    ) -> EncodingResult<Self> {
+    fn deserialize_section(reader: &mut RefCursor<[u8]>, header_start: u32) -> EditorResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let mdl0_offset = reader.read_i32::<BigEndian>()?;
         let data_offset = reader.read_i32::<BigEndian>()?;

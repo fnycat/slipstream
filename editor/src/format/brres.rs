@@ -7,21 +7,19 @@ use crate::{
         arc::{self, ARC_MAGIC},
         chr0::Chr0Subfile,
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
-        error::{
-            CorruptionError, EncodingError, EncodingResult, IncorrectFormat, RangeError,
-            UnsupportedError,
-        },
         mdl0::{self, MDL0_MAGIC},
         pat0::Pat0Subfile,
     },
     pages::editor::inspector::raw::Raw,
-    shared::{
-        defer::Deferred,
-        refs::VirtualRefCache,
-        util::RefCursor,
-        r#virtual::{VirtualNode, VirtualNodeContent, VirtualNodeKind, VirtualNodeRef},
-    },
+    shared::util::RefCursor,
 };
+use crate::error::{
+    CorruptionError, EditorError, EditorResult, IncorrectFormat, RangeError,
+    UnsupportedError,
+};
+use crate::r#virtual::defer::Deferred;
+use crate::r#virtual::node::{VirtualNode, VirtualNodeContent, VirtualNodeKind, VirtualNodeRef};
+use crate::r#virtual::refs::VirtualRefCache;
 
 pub const BRRES_MAGIC: [u8; 4] = [0x62, 0x72, 0x65, 0x73];
 const LE_BOM: [u8; 2] = [0xFF, 0xFE];
@@ -30,7 +28,7 @@ const BE_BOM: [u8; 2] = [0xFE, 0xFF];
 /// Returns the amount of sections a subfile has, which depends on the subfile type and version.
 ///
 /// This info comes from [`BRRES Subfiles (File Format)`](https://mkwiiki.org/wiki/BRRES_Subfiles_(File_Format))
-pub fn get_section_count(ty: SubfileType, version: u32) -> EncodingResult<usize> {
+pub fn get_section_count(ty: SubfileType, version: u32) -> EditorResult<usize> {
     Ok(match ty {
         SubfileType::Root => 0,
         SubfileType::Mdl0 => match version {
@@ -83,7 +81,7 @@ struct Header {
 }
 
 impl Deserialize for Header {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != BRRES_MAGIC {
             return Err(IncorrectFormat {
@@ -139,7 +137,7 @@ pub struct RootSubfile {
 }
 
 impl Deserialize for RootSubfile {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != Self::MAGIC {
             return Err(IncorrectFormat {
@@ -182,7 +180,7 @@ pub struct SubfileHeader {
 }
 
 impl SubfileHeader {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>, ty: SubfileType) -> EncodingResult<Self> {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>, ty: SubfileType) -> EditorResult<Self> {
         let header_start = reader.position() as u32 - 4; // Subtract 4 for magic.
         let subfile_length = reader.read_u32::<BigEndian>()?;
         let subfile_version = reader.read_u32::<BigEndian>()?;
@@ -208,9 +206,9 @@ impl SubfileHeader {
     }
 
     /// Obtains the starting index of the specified section.
-    pub fn get_section_start(&self, section_index: usize) -> EncodingResult<u32> {
+    pub fn get_section_start(&self, section_index: usize) -> EditorResult<u32> {
         let offset = *self.offsets.get(section_index).ok_or_else(|| {
-            EncodingError::from(RangeError {
+            EditorError::from(RangeError {
                 requested: section_index as u64,
                 range: 0..self.offsets.len() as u64,
                 ..Default::default()
@@ -236,7 +234,7 @@ pub struct IndexGroupHeader {
 }
 
 impl Deserialize for IndexGroupHeader {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         Ok(Self {
             length: reader.read_u32::<BigEndian>()?,
             number: reader.read_u32::<BigEndian>()?,
@@ -255,7 +253,7 @@ pub struct IndexGroupEntry {
 }
 
 impl Deserialize for IndexGroupEntry {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let entry_id = reader.read_u16::<BigEndian>()?;
         let flag = reader.read_u16::<BigEndian>()?;
         let left_index = reader.read_u16::<BigEndian>()?;
@@ -301,7 +299,7 @@ impl IndexGroup {
         &self,
         reader: &mut RefCursor<[u8]>,
         entry: &IndexGroupEntry,
-    ) -> EncodingResult<String> {
+    ) -> EditorResult<String> {
         if entry.name_pointer == 0 {
             return Ok(String::new()); // This entry has no name.
         }
@@ -321,7 +319,7 @@ impl IndexGroup {
 }
 
 impl Deserialize for IndexGroup {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let group_start = reader.position() as u32;
         let header = IndexGroupHeader::deserialize(reader)?;
 
@@ -349,7 +347,7 @@ fn deserialize_subfile(
     reader: &mut RefCursor<[u8]>,
     ref_cache: &mut VirtualRefCache,
     name: String,
-) -> EncodingResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeRef> {
     // Check magic
     let magic = reader.read_u8_array::<4>()?;
 
@@ -380,7 +378,7 @@ pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     ref_cache: &mut VirtualRefCache,
     name: String,
-) -> EncodingResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeRef> {
     tracing::trace!("Parsing BRRES file `{name}`");
 
     let header = Header::deserialize(reader)?;

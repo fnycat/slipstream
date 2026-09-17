@@ -1,13 +1,12 @@
-use crate::shared::defer::Deferred;
-use crate::shared::refs::VirtualNodeId;
-use crate::uri::uri::Uri;
+use crate::r#virtual::refs::VirtualNodeId;
+use crate::r#virtual::defer::Deferred;
 use std::{
-    any::Any,
-    cell::{Ref, RefCell},
-    collections::HashMap,
-    num::NonZeroUsize,
+    cell::RefCell
+
+    ,
     rc::Rc,
 };
+use crate::error::EditorResult;
 
 pub type VirtualNodeRef = Rc<RefCell<VirtualNode>>;
 
@@ -41,9 +40,9 @@ pub struct VirtualNode {
 }
 
 impl VirtualNode {
-    /// Forces a lazy node to be evaluated.
-    pub fn evaluate(&mut self) -> eyre::Result<()> {
-        todo!()
+    pub fn evaluate(&mut self) -> EditorResult<()> {
+        self.content.evaluate()?;
+        Ok(())
     }
 
     pub fn is_deferred(&self) -> bool {

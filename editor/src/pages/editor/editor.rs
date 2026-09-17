@@ -3,17 +3,16 @@ use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
 use eframe::egui_wgpu;
 use egui_phosphor::regular::{CARET_DOWN, CARET_RIGHT, FOLDER, FOLDER_OPEN};
 
-use crate::shared::refs::{VirtualNodeId, VirtualRefCache};
-use crate::shared::r#virtual::VirtualNodeRef;
+use crate::error::{EditorError, EditorResult, InvalidInputError};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
+use crate::r#virtual::node::VirtualNodeRef;
 use crate::{
     app::{App, CurrentPage},
     model_renderer::ModelRenderer,
-    shared::{
-        node::{self},
-        util::RefCursor,
-        r#virtual::{VirtualNode, VirtualNodeKind},
-    },
+    shared::util::RefCursor,
 };
+use crate::r#virtual::node::{VirtualNode, VirtualNodeKind};
+use crate::r#virtual::root::{self};
 
 pub struct Properties {
     pub label: String,
@@ -35,20 +34,23 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new(filepath: PathBuf) -> eyre::Result<Self> {
+    pub fn new(filepath: PathBuf) -> EditorResult<Self> {
         let contents = std::fs::read(&filepath)?;
         let cursor = RefCursor::new(Rc::<[u8]>::from(contents));
 
         let file_name = filepath
             .file_name()
-            .ok_or_else(|| eyre::eyre!("unable to find file name of `{filepath:?}`"))?
+            .ok_or_else(|| {
+                EditorError::from(InvalidInputError {
+                    reason: format!("unable to find file name of `{filepath:?}`"),
+                    ..Default::default()
+                })
+            })?
             .to_string_lossy();
 
         let mut ref_cache = VirtualRefCache::new();
         let root_node =
-            node::deserialize_maybe_compressed(cursor, &mut ref_cache, file_name.into_owned())?;
-
-        // tracing::debug!("{root_node:#?}");
+            root::deserialize_maybe_compressed(cursor, &mut ref_cache, file_name.into_owned())?;
 
         Ok(Self {
             root_node,
@@ -157,7 +159,7 @@ impl App {
         base: &VirtualNodeRef,
         ref_cache: &mut VirtualRefCache,
         ui: &mut egui::Ui,
-    ) -> eyre::Result<Option<Properties>> {
+    ) -> EditorResult<Option<Properties>> {
         ui.visuals_mut().collapsing_header_frame = true;
 
         // Has this node been evaluated?
@@ -168,7 +170,8 @@ impl App {
 
         let mut opened_cache_id = None;
         if base.kind == VirtualNodeKind::Container {
-            egui::CollapsingHeader::new(&base.label)
+            // egui::CollapsingHeader::new(&base.label)
+            egui::CollapsingHeader::new(format!("{}: {}", base.id, base.label))
                 .icon(|ui, openness, response| {
                     let icon = if openness < 0.5 { FOLDER } else { FOLDER_OPEN };
 
@@ -191,7 +194,8 @@ impl App {
                     }
                 });
         } else {
-            if ui.button(&base.label).clicked() {
+            if ui.button(format!("{}: {}", base.id, base.label)).clicked() {
+            // if ui.button(&base.label).clicked() {
                 // Open the inspector window for this file's content
                 tracing::trace!("Opening file");
 

@@ -1,14 +1,10 @@
-use std::{io::Cursor, rc::Rc};
-
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::{
-    format::{
-        encoding::{Deserialize, ReadArrayExt},
-        error::{CorruptionError, EncodingError, EncodingResult},
-    },
+    format::encoding::{Deserialize, ReadArrayExt},
     shared::util::RefCursor,
 };
+use crate::error::{CorruptionError, EditorError, EditorResult};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ComponentFormat {
@@ -20,7 +16,7 @@ pub enum ComponentFormat {
 }
 
 impl TryFrom<u32> for ComponentFormat {
-    type Error = EncodingError;
+    type Error = EditorError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -41,7 +37,7 @@ impl TryFrom<u32> for ComponentFormat {
 }
 
 impl Deserialize for ComponentFormat {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
@@ -53,7 +49,7 @@ pub fn deserialize_components<const N: usize>(
     count: u16,
     format: ComponentFormat,
     divisor: u8,
-) -> EncodingResult<Vec<[f32; N]>> {
+) -> EditorResult<Vec<[f32; N]>> {
     let mut components = Vec::with_capacity(count as usize);
     let factor = 1.0 / 2.0f32.powi(divisor as i32);
 

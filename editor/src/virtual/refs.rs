@@ -1,11 +1,18 @@
-use crate::shared::r#virtual::{VirtualNode, VirtualNodeRef};
+use crate::r#virtual::node::{VirtualNode, VirtualNodeRef};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt;
 use std::num::NonZeroUsize;
 use std::rc::{Rc, Weak};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct VirtualNodeId(NonZeroUsize);
+
+impl fmt::Display for VirtualNodeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 /// Maps between node IDs and the nodes that the IDs refer to.
 ///

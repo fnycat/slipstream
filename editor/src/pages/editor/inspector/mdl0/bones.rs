@@ -1,10 +1,6 @@
-use crate::{
-    format::mdl0::bones::{BillboardSetting, BoneFlags, Bones},
-    shared::{
-        util::{draw_inspector_section_header, draw_vec_drag_values},
-        r#virtual::Inspectable,
-    },
-};
+use crate::format::mdl0::bone::{BillboardSetting, Bone, BoneFlags};
+use crate::pages::editor::inspector::widgets::{draw_inspector_section_header, draw_vec_drag_values};
+use crate::r#virtual::node::Inspectable;
 
 impl Inspectable for BoneFlags {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {
@@ -59,7 +55,7 @@ impl Inspectable for BoneFlags {
     }
 }
 
-impl Inspectable for Bones {
+impl Inspectable for Bone {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {
         let input_field_size = egui::vec2(180.0, 20.0);
 

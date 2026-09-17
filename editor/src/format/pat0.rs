@@ -1,15 +1,13 @@
-use std::{io::Cursor, rc::Rc};
-
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::{
     format::{
-        brres::{IndexGroup, IndexGroupEntry, Subfile, SubfileHeader, SubfileType},
+        brres::{IndexGroup, Subfile, SubfileHeader, SubfileType},
         encoding::{Deserialize, ReadStringExt},
-        error::EncodingResult,
     },
     shared::util::RefCursor,
 };
+use crate::error::EditorResult;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pat0Header {
@@ -20,7 +18,7 @@ pub struct Pat0Header {
 }
 
 impl Deserialize for Pat0Header {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let _unknown12 = reader.read_u32::<BigEndian>()?; // 2 + 2 unknown bytes
         let frame_count = reader.read_u16::<BigEndian>()?;
         let base_number = reader.read_u16::<BigEndian>()?;
@@ -47,7 +45,7 @@ pub struct U32Section {
 }
 
 impl U32Section {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>, string_number: u16) -> EncodingResult<Self> {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>, string_number: u16) -> EditorResult<Self> {
         let mut offsets = Vec::with_capacity(string_number as usize);
         for _ in 0..string_number {
             offsets.push(reader.read_u32::<BigEndian>()?);
@@ -64,7 +62,7 @@ pub struct Pat0Subfile {
 }
 
 impl Deserialize for Pat0Subfile {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Pat0)?;
         let pat0_header = Pat0Header::deserialize(reader)?;
 

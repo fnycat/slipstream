@@ -3,12 +3,10 @@ use std::{io::Cursor, rc::Rc};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{
-    format::{
-        encoding::{Deserialize, ReadArrayExt, Serialize, WriteArrayExt},
-        error::{CorruptionError, EncodingError, EncodingResult, IncorrectFormat},
-    },
+    format::encoding::{Deserialize, ReadArrayExt, Serialize, WriteArrayExt},
     shared::util::RefCursor,
 };
+use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat};
 
 /// Magic of a YAZ0 file.
 pub const YAZ0_MAGIC: [u8; 4] = [0x59, 0x61, 0x7a, 0x30];
@@ -22,7 +20,7 @@ pub struct Header {
 }
 
 impl Serialize for Header {
-    fn serialize_into(&self, writer: &mut Vec<u8>) -> EncodingResult<()> {
+    fn serialize_into(&self, writer: &mut Vec<u8>) -> EditorResult<()> {
         writer.write_u8_array::<4>(YAZ0_MAGIC)?;
         writer.write_u32::<BigEndian>(self.uncompressed_size)?;
         writer.write_u32_array::<2, BigEndian>(self.reserved)?;
@@ -32,7 +30,7 @@ impl Serialize for Header {
 }
 
 impl Deserialize for Header {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != YAZ0_MAGIC {
             return Err(IncorrectFormat {
@@ -57,7 +55,7 @@ impl Deserialize for Header {
     }
 }
 
-pub fn decompress(compressed: &mut RefCursor<[u8]>) -> EncodingResult<Vec<u8>> {
+pub fn decompress(compressed: &mut RefCursor<[u8]>) -> EditorResult<Vec<u8>> {
     let yaz0_file = Yaz0File::deserialize(compressed)?;
 
     Ok(yaz0_file.uncompressed)
@@ -99,7 +97,7 @@ pub struct Yaz0File {
 }
 
 impl Deserialize for Yaz0File {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let header = Header::deserialize(reader)?;
 
         tracing::trace!(
@@ -152,7 +150,7 @@ impl Deserialize for Yaz0File {
                     }
 
                     let copy_start = uncompressed.len().checked_sub(rrr + 1).ok_or_else(|| {
-                        EncodingError::from(CorruptionError {
+                        EditorError::from(CorruptionError {
                             reason: "data group references byte before start of file".to_owned(),
                             location: Some(reader.position()),
                         })

@@ -1,9 +1,10 @@
 use egui_phosphor::regular::X;
 
-use crate::{app::App, pages::editor::Editor};
+use crate::app::App;
+use crate::error::{EditorError, EditorResult, InvalidInputError};
 
 impl App {
-    pub fn draw_inspector_window(&mut self, ui: &mut egui::Ui) -> eyre::Result<()> {
+    pub fn draw_inspector_window(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
         let editor = self.current_page.as_editor_mut().unwrap();
         let Some(props) = &editor.open_properties else {
             return Ok(());
@@ -13,10 +14,15 @@ impl App {
         // The properties field cannot be set immediately in the closure due to borrowing rules.
         let mut should_close = false;
 
-        let node_ref = editor
-            .ref_cache
-            .get(props.node_id)
-            .ok_or_else(|| eyre::eyre!("attempt to open stale node in inspector window"))?;
+        let node_ref = editor.ref_cache.get(props.node_id).ok_or_else(|| {
+            EditorError::from(InvalidInputError {
+                reason: format!(
+                    "attempted to open stale virtual node with ID {}",
+                    props.node_id
+                ),
+                ..Default::default()
+            })
+        })?;
 
         let mut node = node_ref.borrow_mut();
         let node_content = node.content.evaluate()?.inspectable.as_mut().unwrap();

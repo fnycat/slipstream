@@ -3,22 +3,18 @@ use std::{any::Any, collections::HashMap, ffi::CStr, io::Cursor, rc::Rc};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::pages::editor::inspector::raw::Raw;
-use crate::shared::defer::Deferred;
-use crate::shared::refs::VirtualRefCache;
-use crate::shared::r#virtual::{VirtualNodeContent, VirtualNodeRef};
+use crate::r#virtual::defer::Deferred;
+use crate::r#virtual::refs::VirtualRefCache;
+use crate::r#virtual::node::{VirtualNodeContent, VirtualNodeRef};
 use crate::{
     format::{
         brres::{self, BRRES_MAGIC},
         encoding::{Deserialize, ReadArrayExt, ReadStringExt, Serialize, WriteArrayExt},
-        error::{
-            CorruptionError, EncodingError, EncodingResult, IncorrectFormat, UnsupportedError,
-        },
     },
-    shared::{
-        util::RefCursor,
-        r#virtual::{Inspectable, VirtualNode, VirtualNodeKind},
-    },
+    shared::util::RefCursor,
 };
+use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat, UnsupportedError};
+use crate::r#virtual::node::{Inspectable, VirtualNode, VirtualNodeKind};
 
 /// Magic of an ARC file.
 pub const ARC_MAGIC: [u8; 4] = [0x55, 0xAA, 0x38, 0x2D];
@@ -37,7 +33,7 @@ struct Header {
 }
 
 impl Deserialize for Header {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != ARC_MAGIC {
             return Err(IncorrectFormat {
@@ -70,16 +66,16 @@ enum NodeType {
 }
 
 impl Deserialize for NodeType {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let b = reader.read_u8()?;
         Self::try_from(b)
     }
 }
 
 impl TryFrom<u8> for NodeType {
-    type Error = EncodingError;
+    type Error = EditorError;
 
-    fn try_from(value: u8) -> EncodingResult<Self> {
+    fn try_from(value: u8) -> EditorResult<Self> {
         Ok(match value {
             0 => NodeType::File,
             1 => NodeType::Directory,
@@ -121,7 +117,7 @@ impl Node {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
         string_pool: &mut RefCursor<[u8]>,
-    ) -> EncodingResult<Self> {
+    ) -> EditorResult<Self> {
         let ty = NodeType::deserialize(reader)?;
         let name_offset = reader.read_u24::<BigEndian>()?;
         let data1 = reader.read_u32::<BigEndian>()?;
@@ -157,7 +153,7 @@ fn parse_leaf_node(
     reader: &mut RefCursor<[u8]>,
     ref_cache: &mut VirtualRefCache,
     name: String,
-) -> EncodingResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeRef> {
     let magic: [u8; 4] = reader.read_u8_array()?;
     reader.set_position(reader.position() - 4);
 
@@ -189,7 +185,7 @@ fn parse_directory_tree(
     ref_cache: &mut VirtualRefCache,
     label: String,
     cursor: &mut usize,
-) -> EncodingResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeRef> {
     let &NodeContent::Directory { skip_node, .. } = &node_list[*cursor].data else {
         return Err(CorruptionError {
             reason: "expected directory at root, found file instead".to_owned(),
@@ -238,7 +234,7 @@ pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     ref_cache: &mut VirtualRefCache,
     name: String,
-) -> EncodingResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeRef> {
     tracing::trace!("Parsing ARC file `{name}`");
 
     let header = Header::deserialize(reader)?;

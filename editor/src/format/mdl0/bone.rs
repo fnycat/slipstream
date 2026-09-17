@@ -2,15 +2,17 @@ use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
+use crate::r#virtual::node::{VirtualNode, VirtualNodeContent, VirtualNodeRef};
 use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
-        error::{CorruptionError, EncodingError, EncodingResult},
         mdl0::SectionDeserialize,
     },
     shared::util::RefCursor,
 };
-use crate::shared::r#virtual::VirtualNode;
+use crate::error::{CorruptionError, EditorError, EditorResult};
+use crate::format::brres::IndexGroup;
+use crate::r#virtual::refs::VirtualNodeId;
 
 const IS_BILLBOARD_CHILD_MASK: u32 = 0x00000400;
 const IS_DISPLAY_MATRIX_MASK: u32 = 0x00000200;
@@ -33,7 +35,7 @@ macro_rules! impl_bone_flags {
             }
 
             impl Deserialize for BoneFlags {
-                fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+                fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
                     let word = reader.read_u32::<BigEndian>()?;
 
                     Ok(Self {
@@ -79,7 +81,7 @@ impl BillboardSetting {
 }
 
 impl TryFrom<u32> for BillboardSetting {
-    type Error = EncodingError;
+    type Error = EditorError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -102,14 +104,14 @@ impl TryFrom<u32> for BillboardSetting {
 }
 
 impl Deserialize for BillboardSetting {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Bones {
+pub struct Bone {
     pub mdl0_offset: i32,
     pub name_offset: i32,
     pub index: u32,
@@ -131,16 +133,8 @@ pub struct Bones {
     pub inverse_matrix: [f32; 12],
 }
 
-impl SectionDeserialize for Bones {
-    fn deserialize_section(
-        reader: &mut RefCursor<[u8]>,
-        _header_start: u32,
-    ) -> EncodingResult<Self> {
-        tracing::trace!(
-            "Reading model bones section, at location {}",
-            reader.position()
-        );
-
+impl Bone {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let start = reader.position();
 
         let length = reader.read_u32::<BigEndian>()?;
@@ -191,6 +185,24 @@ impl SectionDeserialize for Bones {
     }
 }
 
-pub fn construct_virtual_bone_tree() -> eyre::Result<VirtualNode> {
-    todo!()
+pub fn deserialize_skeleton(reader: &mut RefCursor<[u8]>) -> EditorResult<VirtualNodeContent> {
+    let section_index = IndexGroup::deserialize(reader)?;
+    let mut bones = Vec::with_capacity(section_index.entries.len() - 1);
+    
+    for entry in &section_index.entries[1..] {
+        let name = section_index.get_entry_name(reader, entry)?;
+
+        let data_start = section_index.get_entry_data_start(entry);
+        reader.set_position(data_start as u64);
+
+        let bone = Bone::deserialize(reader)?;
+        bones.push(bone);
+    }
+
+    // dbg!(bones);
+
+    Ok(VirtualNodeContent {
+        inspectable: None,
+        children: Vec::new()
+    })
 }

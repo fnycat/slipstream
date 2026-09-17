@@ -1,17 +1,19 @@
 #![feature(error_generic_member_access)]
 
-mod app;
-mod config;
-mod decorations;
-mod format;
-mod model_renderer;
-mod pages;
-mod shared;
-mod uri;
+pub mod app;
+pub mod config;
+pub mod decorations;
+pub mod format;
+pub mod model_renderer;
+pub mod pages;
+pub mod shared;
+pub mod r#virtual;
 
 #[cfg(target_arch = "wasm32")]
 mod web;
+pub mod error;
 
+use error::EditorResult;
 use crate::app::App;
 
 fn setup_tracing() {
@@ -58,7 +60,7 @@ fn window_builder_hook(builder: egui::ViewportBuilder) -> egui::ViewportBuilder 
         .with_resizable(false)
 }
 
-pub fn run() -> eyre::Result<()> {
+pub fn run() -> EditorResult<()> {
     setup_tracing();
 
     #[cfg(not(target_arch = "wasm32"))]

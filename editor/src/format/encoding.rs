@@ -1,14 +1,9 @@
-use std::{
-    io::{Cursor, Read, Seek},
-    rc::Rc,
-};
+use std::io::Read;
 
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use crate::{
-    format::error::{CorruptionError, EncodingError, EncodingResult},
-    shared::util::RefCursor,
-};
+use crate::shared::util::RefCursor;
+use crate::error::{CorruptionError, EditorError, EditorResult};
 
 macro_rules! impl_byteorder_arrays {
     ($($ty: ty),*) => {
@@ -103,14 +98,14 @@ impl_byteorder_arrays!(u16, i16, u32, i32, u64, i64, u128, i128, f32, f64);
 
 pub trait ReadStringExt: ReadBytesExt {
     /// Reads a `String` with a `u32` length prefix.
-    fn read_u32_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String>;
+    fn read_u32_string<B: byteorder::ByteOrder>(&mut self) -> EditorResult<String>;
 
     /// Reads a `String` with a null terminator.
-    fn read_null_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String>;
+    fn read_null_string<B: byteorder::ByteOrder>(&mut self) -> EditorResult<String>;
 }
 
 impl ReadStringExt for RefCursor<[u8]> {
-    fn read_u32_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String> {
+    fn read_u32_string<B: byteorder::ByteOrder>(&mut self) -> EditorResult<String> {
         let str_len = self.read_u32::<B>()?;
         let mut str_buf = vec![0; str_len as usize];
         self.read_exact(&mut str_buf)?;
@@ -118,10 +113,10 @@ impl ReadStringExt for RefCursor<[u8]> {
         Ok(String::from_utf8(str_buf)?)
     }
 
-    fn read_null_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String> {
+    fn read_null_string<B: byteorder::ByteOrder>(&mut self) -> EditorResult<String> {
         let rem = self.as_remaining();
         let null_pos = rem.iter().position(|&c| c == 0).ok_or_else(|| {
-            EncodingError::from(CorruptionError {
+            EditorError::from(CorruptionError {
                 reason: "did not find string null terminator before EOF".to_owned(),
                 ..Default::default()
             })
@@ -135,16 +130,16 @@ impl ReadStringExt for RefCursor<[u8]> {
 }
 
 pub trait Deserialize: Sized {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self>;
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self>;
 }
 
 pub trait Serialize {
-    fn serialize(&self) -> EncodingResult<Vec<u8>> {
+    fn serialize(&self) -> EditorResult<Vec<u8>> {
         let mut out = Vec::new();
         self.serialize_into(&mut out)?;
 
         Ok(out)
     }
 
-    fn serialize_into(&self, writer: &mut Vec<u8>) -> EncodingResult<()>;
+    fn serialize_into(&self, writer: &mut Vec<u8>) -> EditorResult<()>;
 }

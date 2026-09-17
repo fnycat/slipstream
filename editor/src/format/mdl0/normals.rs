@@ -1,18 +1,16 @@
-use std::{io::Cursor, rc::Rc};
-
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::{
     format::{
         encoding::Deserialize,
-        error::{CorruptionError, EncodingResult},
         mdl0::{
+            util::{deserialize_components, ComponentFormat},
             SectionDeserialize,
-            util::{ComponentFormat, deserialize_components},
         },
     },
     shared::util::RefCursor,
 };
+use crate::error::{CorruptionError, EditorResult};
 
 const COMPONENTS_NORMAL: u32 = 0x0;
 const COMPONENTS_ALL: u32 = 0x1;
@@ -42,10 +40,7 @@ pub struct Normals {
 }
 
 impl SectionDeserialize for Normals {
-    fn deserialize_section(
-        reader: &mut RefCursor<[u8]>,
-        header_start: u32,
-    ) -> EncodingResult<Self> {
+    fn deserialize_section(reader: &mut RefCursor<[u8]>, header_start: u32) -> EditorResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let mdl0_offset = reader.read_i32::<BigEndian>()?;
         let data_offset = reader.read_i32::<BigEndian>()?;
