@@ -11,9 +11,6 @@ use std::{
 /// keeps track of the bounds of its buffer, allowing cursors to use different
 /// sections of the same underlying buffer.
 ///
-/// Additionally the position is a `usize` instead of a `u64` since we are only working
-/// with in-memory buffers.
-///
 /// [`Cursor`]: std::io::Cursor
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RefCursor<T>
@@ -22,9 +19,9 @@ where
 {
     inner: Rc<T>,
     /// The current position of the cursor.
-    pos: usize,
+    pos: u64,
     /// The bounds that this cursor should read within.
-    range: Range<usize>,
+    range: Range<u64>,
 }
 
 /// This is a nearly exact copy of the standard library.
@@ -33,7 +30,7 @@ where
     T: AsRef<[u8]> + ?Sized,
 {
     pub fn new(inner: Rc<T>) -> Self {
-        let len = inner.as_ref().as_ref().len();
+        let len = inner.as_ref().as_ref().len() as u64;
 
         Self {
             inner,
@@ -42,8 +39,8 @@ where
         }
     }
 
-    pub fn new_sliced(inner: Rc<T>, range: Range<usize>) -> io::Result<Self> {
-        let len = inner.as_ref().as_ref().len();
+    pub fn new_sliced(inner: Rc<T>, range: Range<u64>) -> io::Result<Self> {
+        let len = inner.as_ref().as_ref().len() as u64;
         if range.end > len {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -58,10 +55,6 @@ where
         })
     }
 
-    pub fn len(&self) -> usize {
-        self.range.end - self.range.start
-    }
-
     /// Returns a subset of `self`.
     ///
     /// # Errors
@@ -69,27 +62,31 @@ where
     /// The function returns an [`InvalidInput`] error when the range is outside of the buffer bounds.
     ///
     /// [`InvalidInput`]: std::io::ErrorKind::InvalidInput
-    pub fn slice(&self, range: Range<usize>) -> io::Result<Self> {
+    pub fn slice(&self, range: Range<u64>) -> io::Result<Self> {
         tracing::debug!("slicing {}..{}", range.start, range.end);
         Self::new_sliced(self.inner.clone(), range)
     }
 
-    pub fn position(&self) -> usize {
+    pub fn position(&self) -> u64 {
         self.pos
     }
 
-    pub fn set_position(&mut self, pos: usize) {
-        self.pos = pos;
+    /// Sets the current position of the cursor.
+    ///
+    /// This position is relative to the start of the cursor slice.
+    pub fn set_position(&mut self, pos: u64) {
+        self.pos = self.range.start + pos;
+    }
+
+    /// Returns a reference to the bytes remaining in this buffer.
+    ///
+    /// I.e this buffer will be the bytes in the range `pos...range.end`.
+    pub fn as_remaining(&self) -> &[u8] {
+        &self.get_ref().as_ref()[self.pos as usize..self.range.end as usize]
     }
 
     pub fn get_ref(&self) -> &T {
         &self.inner
-    }
-
-    pub fn split(&self) -> (&[u8], &[u8]) {
-        let slice = self.get_ref().as_ref();
-        let pos = self.pos.min(slice.len());
-        slice.split_at(pos as usize)
     }
 
     pub fn dump<P: AsRef<std::path::Path>>(&self, path: P) -> io::Result<()> {
@@ -116,12 +113,12 @@ where
     T: AsRef<[u8]> + ?Sized,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        todo!(
-            "this is not respecting the buffer's range, causing the strings to be read incorrectly"
-        );
+        let rem = self.as_remaining();
+        let n = std::cmp::min(buf.len(), rem.len());
 
-        let n = io::Read::read(&mut Self::split(self).1, buf)?;
-        self.set_position(self.position() + n);
+        buf[..n].copy_from_slice(&rem[..n]);
+        self.set_position(self.position() + n as u64);
+
         Ok(n)
     }
 
@@ -139,36 +136,46 @@ where
     }
 
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
-        let result = io::Read::read_exact(&mut Self::split(self).1, buf);
+        let rem = self.as_remaining();
+        let n = buf.len();
 
-        match result {
-            Ok(_) => self.set_position(self.position() + buf.len()),
-            Err(_) => self.set_position(self.get_ref().as_ref().len()),
+        if rem.len() < n {
+            // Set cursor to EOF
+            self.set_position(self.get_ref().as_ref().len() as u64);
+            return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
         }
 
-        result
+        buf.copy_from_slice(&rem[..n]);
+        self.set_position(self.position() + buf.len() as u64);
+
+        Ok(())
     }
 
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        let content = Self::split(self).1;
-        let len = content.len();
-        buf.try_reserve(len)?;
-        buf.extend_from_slice(content);
+        let rem = self.as_remaining();
+        let n = rem.len();
 
-        self.set_position(self.position() + len);
-        Ok(len)
+        buf.reserve(n);
+        buf.extend_from_slice(rem);
+
+        self.set_position(self.position() + n as u64);
+
+        Ok(n)
     }
 
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        let content = str::from_utf8(Self::split(self).1)
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid UTF-8 encountered"))?;
+        let rem = self.as_remaining();
+        let n = rem.len();
 
-        let len = content.len();
-        buf.try_reserve(len)?;
+        let content = str::from_utf8(rem)
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid utf-8"))?;
+
+        buf.reserve(n);
         buf.push_str(content);
-        self.set_position(self.position() + len);
 
-        Ok(len)
+        self.set_position(self.position() + n as u64);
+
+        Ok(n)
     }
 }
 

@@ -128,6 +128,8 @@ impl ReadStringExt for RefCursor<[u8]> {
         })?;
 
         let mut str_buf = vec![0; null_pos];
+        tracing::trace!("str_buf.len() = {}", str_buf.len());
+
         self.read_exact(&mut str_buf)?;
 
         Ok(String::from_utf8(str_buf)?)

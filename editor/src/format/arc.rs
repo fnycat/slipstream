@@ -126,7 +126,7 @@ impl Node {
         string_pool.set_position(name_offset as u64);
 
         let name = string_pool.read_null_string::<BigEndian>()?;
-        panic!("{name}");
+        tracing::trace!("name = {name}");
 
         let data = match ty {
             NodeType::Directory => NodeContent::Directory {
