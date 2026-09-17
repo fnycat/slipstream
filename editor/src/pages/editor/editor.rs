@@ -162,16 +162,12 @@ impl App {
     ) -> EditorResult<Option<Properties>> {
         ui.visuals_mut().collapsing_header_frame = true;
 
-        // Has this node been evaluated?
-        // If not, evaluate it
-        base.borrow_mut().content.evaluate()?;
-        let base = base.borrow();
-        let base_content = base.content.get().expect("virtual node content not loaded");
+        let base_ref = base.borrow();
 
         let mut opened_cache_id = None;
-        if base.kind == VirtualNodeKind::Container {
+        if base_ref.kind == VirtualNodeKind::Container {
             // egui::CollapsingHeader::new(&base.label)
-            egui::CollapsingHeader::new(format!("{}: {}", base.id, base.label))
+            egui::CollapsingHeader::new(format!("{}: {}", base_ref.id, base_ref.label))
                 .icon(|ui, openness, response| {
                     let icon = if openness < 0.5 { FOLDER } else { FOLDER_OPEN };
 
@@ -184,7 +180,14 @@ impl App {
                     );
                 })
                 .show(ui, |ui| {
+                    drop(base_ref); // Ensure the ref is dropped so we can modify the node.
+
                     // Check if the current node has been evaluated.
+                    base.borrow_mut().content.evaluate().unwrap();
+
+                    // Then reborrow immutably to allow other code to access the node.
+                    let base_ref = base.borrow();
+                    let base_content = base_ref.content.get().expect("virtual node content not loaded");
 
                     for child in &base_content.children {
                         let ret = Self::draw_file_tree(child, ref_cache, ui).unwrap();
@@ -194,14 +197,22 @@ impl App {
                     }
                 });
         } else {
-            if ui.button(format!("{}: {}", base.id, base.label)).clicked() {
+            if ui.button(format!("{}: {}", base_ref.id, base_ref.label)).clicked() {
             // if ui.button(&base.label).clicked() {
-                // Open the inspector window for this file's content
+                // Open the inspector window for this file's content and
+                // force the node to be evaluated.
+
+                drop(base_ref); // Ensure the ref is dropped so we can modify the node.
+                base.borrow_mut().content.evaluate()?;
+
+                // Then reborrow immutably to allow other code to access the node.
+                let base_ref = base.borrow();
+
                 tracing::trace!("Opening file");
 
                 return Ok(Some(Properties {
-                    label: format!("Inspector ({})", base.label),
-                    node_id: base.id,
+                    label: format!("Inspector ({})", base_ref.label),
+                    node_id: base_ref.id,
                 }));
             }
         }
