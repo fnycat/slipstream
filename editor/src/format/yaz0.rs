@@ -104,7 +104,7 @@ impl Deserialize for Yaz0File {
 
         tracing::trace!(
             "Decompressing Yaz0 archive ({} -> {})",
-            reader.get_ref().len(),
+            reader.full_len(),
             header.uncompressed_size
         );
 

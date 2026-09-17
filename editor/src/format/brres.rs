@@ -305,23 +305,9 @@ impl IndexGroup {
 
         // Move cursor to name and then back after reading.
         let name_start = self.group_start + entry.name_pointer;
-        reader.set_position(name_start as u64 - 1);
+        reader.set_position(name_start as u64 - 4);
+
         let name = reader.read_u32_string::<BigEndian>()?;
-
-        // Confirm both the null terminated and length prefixed strings are equal.
-        // This is an extra check to ensure offsets are correct.
-        #[cfg(debug_assertions)]
-        {
-            use crate::format::encoding::ReadStringExt;
-
-            reader.set_position(4); // Skip length prefix.
-            let null_name = reader.read_null_string::<BigEndian>()?;
-
-            debug_assert_eq!(
-                null_name, name,
-                "prefixed and null-terminated names are not equal"
-            );
-        }
 
         Ok(name)
     }
@@ -381,6 +367,8 @@ pub fn deserialize_virtual(
     res_cache: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
+    tracing::trace!("Parsing BRRES file `{name}`");
+
     let header = Header::deserialize(reader)?;
 
     // Skip to root start
@@ -418,8 +406,7 @@ pub fn deserialize_virtual(
 
             // Skip over unimplemented formats for testing for now
             {
-                let magic =
-                    &reader.get_ref()[reader.position() as usize..reader.position() as usize + 4];
+                let magic = &reader.as_remaining()[..4];
                 if magic != MDL0_MAGIC && magic != Chr0Subfile::MAGIC {
                     tracing::error!("SKIPPING {}", String::from_utf8_lossy(magic));
                     continue;

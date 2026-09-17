@@ -20,7 +20,7 @@ pub fn deserialize_maybe_compressed(
     name: String,
 ) -> eyre::Result<VirtualNode> {
     // Is this file compressed?
-    if &reader.get_ref()[..4] == YAZ0_MAGIC {
+    if &reader.as_remaining()[..4] == YAZ0_MAGIC {
         // then decompress it.
         reader = RefCursor::new(Rc::from(yaz0::decompress(&mut reader)?));
     }
@@ -38,7 +38,7 @@ pub fn deserialize_unknown_root(
     res_cache: &mut CacheStore,
     name: String,
 ) -> eyre::Result<VirtualNode> {
-    let magic: &[u8; 4] = reader.get_ref()[..4]
+    let magic: &[u8; 4] = reader.as_remaining()[..4]
         .try_into()
         .expect("array of size 4 does not have size 4?");
 

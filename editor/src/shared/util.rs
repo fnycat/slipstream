@@ -3,13 +3,12 @@ use std::{
     ops::Range,
     rc::Rc,
 };
+use std::ops::{Bound, RangeBounds};
 
 /// A `RangedCursor` is very similar to the std's [`Cursor`]
 /// but instead stores its contents in a reference counter.
 ///
-/// This allows the cursor to very cheaply be cloned. The cursor itself
-/// keeps track of the bounds of its buffer, allowing cursors to use different
-/// sections of the same underlying buffer.
+/// This allows the cursor to very cheaply be cloned.
 ///
 /// [`Cursor`]: std::io::Cursor
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -20,8 +19,7 @@ where
     inner: Rc<T>,
     /// The current position of the cursor.
     pos: u64,
-    /// The bounds that this cursor should read within.
-    range: Range<u64>,
+    lower_bound: u64
 }
 
 /// This is a nearly exact copy of the standard library.
@@ -30,41 +28,25 @@ where
     T: AsRef<[u8]> + ?Sized,
 {
     pub fn new(inner: Rc<T>) -> Self {
-        let len = inner.as_ref().as_ref().len() as u64;
-
         Self {
             inner,
             pos: 0,
-            range: 0..len,
+            lower_bound: 0
         }
     }
 
-    pub fn new_sliced(inner: Rc<T>, range: Range<u64>) -> io::Result<Self> {
-        let len = inner.as_ref().as_ref().len() as u64;
-        if range.end > len {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "slice range is outside of buffer",
-            ));
+    /// Returns a cursor that only reads the remaining bytes.
+    pub fn tail(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            pos: 0,
+            lower_bound: self.position()
         }
-
-        Ok(Self {
-            inner,
-            pos: range.start,
-            range,
-        })
     }
 
-    /// Returns a subset of `self`.
-    ///
-    /// # Errors
-    ///
-    /// The function returns an [`InvalidInput`] error when the range is outside of the buffer bounds.
-    ///
-    /// [`InvalidInput`]: std::io::ErrorKind::InvalidInput
-    pub fn slice(&self, range: Range<u64>) -> io::Result<Self> {
-        tracing::debug!("slicing {}..{}", range.start, range.end);
-        Self::new_sliced(self.inner.clone(), range)
+    pub fn set_tail(&mut self) {
+        self.lower_bound = self.position();
+        self.pos = 0;
     }
 
     pub fn position(&self) -> u64 {
@@ -75,18 +57,28 @@ where
     ///
     /// This position is relative to the start of the cursor slice.
     pub fn set_position(&mut self, pos: u64) {
-        self.pos = self.range.start + pos;
+        self.pos = pos;
     }
 
     /// Returns a reference to the bytes remaining in this buffer.
     ///
     /// I.e this buffer will be the bytes in the range `pos...range.end`.
+    ///
+    /// If the cursor is past the end of the buffer, the remaining buffer will be empty.
     pub fn as_remaining(&self) -> &[u8] {
-        &self.get_ref().as_ref()[self.pos as usize..self.range.end as usize]
+        &self.inner.as_ref().as_ref()[(self.pos + self.lower_bound) as usize..]
     }
 
-    pub fn get_ref(&self) -> &T {
-        &self.inner
+    /// Returns the length of the entire underlying buffer.
+    ///
+    /// This function completely disregards the slicing mechanics.
+    pub fn full_len(&self) -> usize {
+        self.inner.as_ref().as_ref().len()
+    }
+
+    /// The length of the remaining buffer.
+    pub fn remaining_len(&self) -> usize {
+        self.as_remaining().len()
     }
 
     pub fn dump<P: AsRef<std::path::Path>>(&self, path: P) -> io::Result<()> {
@@ -102,7 +94,7 @@ where
         Self {
             inner: self.inner.clone(),
             pos: self.pos,
-            range: self.range.clone(),
+            lower_bound: self.lower_bound
         }
     }
 }
@@ -141,7 +133,7 @@ where
 
         if rem.len() < n {
             // Set cursor to EOF
-            self.set_position(self.get_ref().as_ref().len() as u64);
+            self.set_position(self.inner.as_ref().as_ref().len() as u64);
             return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
         }
 
@@ -190,7 +182,7 @@ where
                 self.set_position(n);
                 return Ok(n);
             }
-            SeekFrom::End(n) => (self.get_ref().as_ref().len() as u64, n),
+            SeekFrom::End(n) => (self.inner.as_ref().as_ref().len() as u64, n),
             SeekFrom::Current(n) => (self.position(), n),
         };
 

@@ -119,8 +119,8 @@ impl ReadStringExt for RefCursor<[u8]> {
     }
 
     fn read_null_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String> {
-        let buf_remaining = &self.get_ref()[self.position() as usize..];
-        let null_pos = buf_remaining.iter().position(|&c| c == 0).ok_or_else(|| {
+        let rem = self.as_remaining();
+        let null_pos = rem.iter().position(|&c| c == 0).ok_or_else(|| {
             EncodingError::from(CorruptionError {
                 reason: "did not find string null terminator before EOF".to_owned(),
                 ..Default::default()
@@ -128,8 +128,6 @@ impl ReadStringExt for RefCursor<[u8]> {
         })?;
 
         let mut str_buf = vec![0; null_pos];
-        tracing::trace!("str_buf.len() = {}", str_buf.len());
-
         self.read_exact(&mut str_buf)?;
 
         Ok(String::from_utf8(str_buf)?)

@@ -126,7 +126,8 @@ impl Node {
         string_pool.set_position(name_offset as u64);
 
         let name = string_pool.read_null_string::<BigEndian>()?;
-        tracing::trace!("name = {name}");
+
+        tracing::trace!("Discovered node `{name}`");
 
         let data = match ty {
             NodeType::Directory => NodeContent::Directory {
@@ -135,9 +136,11 @@ impl Node {
             },
             NodeType::File => {
                 let data_start = data1;
-                let data_end = data_start + data2;
 
-                let data = reader.slice(data_start as u64..data_end as u64)?;
+                let mut data = reader.clone();
+                data.set_position(data_start as u64);
+                data.set_tail();
+
                 NodeContent::File { data }
             }
         };
@@ -152,6 +155,8 @@ fn parse_leaf_node(
     res_cache: &mut CacheStore,
 ) -> EncodingResult<VirtualNode> {
     let magic: [u8; 4] = reader.read_u8_array()?;
+    reader.set_position(reader.position() - 4);
+
     match magic {
         ARC_MAGIC => deserialize_virtual(reader, res_cache, name),
         BRRES_MAGIC => brres::deserialize_virtual(reader, res_cache, name),
@@ -212,6 +217,8 @@ pub fn deserialize_virtual(
     res_store: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
+    tracing::trace!("Parsing ARC file `{name}`");
+
     let header = Header::deserialize(reader)?;
 
     let ty = NodeType::deserialize(reader)?;
@@ -233,10 +240,12 @@ pub fn deserialize_virtual(
 
         tracing::trace!("ARC string pool is in range {start}..{end}");
 
-        reader.slice(start as u64..end)?
-    };
+        let mut pool = reader.clone();
+        pool.set_position(start as u64);
+        pool.set_tail();
 
-    string_pool.dump("string_pool.bin").unwrap();
+        pool
+    };
 
     let mut nodes = Vec::with_capacity(node_count as usize);
     nodes.push(Node {
@@ -247,11 +256,16 @@ pub fn deserialize_virtual(
         },
     });
 
+    tracing::trace!("Reading {node_count} nodes");
     for _ in 1..node_count {
         let node = Node::deserialize(reader, &mut string_pool)?;
         nodes.push(node);
     }
 
     let mut cursor = 0;
-    parse_directory_tree(&mut nodes, res_store, name, &mut cursor)
+
+    tracing::trace!("Constructing directory tree and parsing nodes...");
+    let ret = parse_directory_tree(&mut nodes, res_store, name, &mut cursor)?;
+    tracing::trace!("Constructed directory tree successfully");
+    Ok(ret)
 }
