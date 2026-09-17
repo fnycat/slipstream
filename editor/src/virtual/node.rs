@@ -1,13 +1,9 @@
-use crate::r#virtual::refs::VirtualNodeId;
-use crate::r#virtual::defer::Deferred;
-use std::{
-    cell::RefCell
-
-    ,
-    rc::Rc,
-};
-use std::cell::Ref;
 use crate::error::EditorResult;
+use crate::r#virtual::defer::Deferred;
+use crate::r#virtual::refs::VirtualNodeId;
+use std::cell::Ref;
+use std::rc::Weak;
+use std::{cell::RefCell, rc::Rc};
 
 pub type VirtualNodeRef = Rc<RefCell<VirtualNode>>;
 
@@ -58,6 +54,7 @@ pub struct VirtualNode {
     ///
     /// [`Container`](VirtualNodeKind::Container)
     pub kind: VirtualNodeKind,
+    pub parent: Weak<RefCell<VirtualNode>>,
     pub content: Deferred<VirtualNodeContent>,
 }
 

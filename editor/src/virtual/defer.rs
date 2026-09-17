@@ -55,6 +55,29 @@ impl<T: 'static> Deferred<T> {
         })))
     }
 
+    /// Runs the given closure, and returns its output, if the object has been evaluated.
+    ///
+    /// Returns `None` otherwise.
+    pub fn inspect_ref<F, O>(&self, peek_fn: F) -> Option<O>
+    where
+        F: FnOnce(&T) -> O,
+    {
+        match self {
+            Self::Evaluated(x) => Some(peek_fn(x)),
+            _ => None,
+        }
+    }
+
+    pub fn inspect_mut<F, O>(&mut self, peek_fn: F) -> Option<O>
+    where
+        F: FnOnce(&mut T) -> O,
+    {
+        match self {
+            Self::Evaluated(x) => Some(peek_fn(x)),
+            _ => None,
+        }
+    }
+
     pub fn evaluated(data: T) -> Self {
         Self::Evaluated(data)
     }

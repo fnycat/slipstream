@@ -2,10 +2,12 @@ use std::{any::Any, collections::HashMap, ffi::CStr, io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
+use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat, UnsupportedError};
 use crate::pages::editor::inspector::raw::Raw;
 use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::refs::{VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap};
+use crate::r#virtual::node::{Inspectable, VirtualNode, VirtualNodeKind};
 use crate::r#virtual::node::{VirtualNodeContent, VirtualNodeRef};
+use crate::r#virtual::refs::{VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap};
 use crate::{
     format::{
         brres::{self, BRRES_MAGIC},
@@ -13,8 +15,6 @@ use crate::{
     },
     shared::util::RefCursor,
 };
-use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat, UnsupportedError};
-use crate::r#virtual::node::{Inspectable, VirtualNode, VirtualNodeKind};
 
 /// Magic of an ARC file.
 pub const ARC_MAGIC: [u8; 4] = [0x55, 0xAA, 0x38, 0x2D];

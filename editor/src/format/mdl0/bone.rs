@@ -1,8 +1,14 @@
+use crate::r#virtual::node::VirtualNodeRefExt;
+use byteorder::{BigEndian, ReadBytesExt};
+use std::cell::RefMut;
+use std::collections::HashMap;
 use std::{io::Cursor, rc::Rc};
 
-use byteorder::{BigEndian, ReadBytesExt};
-
+use crate::error::{CorruptionError, EditorError, EditorResult, InvalidInputError};
+use crate::format::brres::IndexGroup;
+use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeContent, VirtualNodeKind, VirtualNodeRef};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
 use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
@@ -10,10 +16,6 @@ use crate::{
     },
     shared::util::RefCursor,
 };
-use crate::error::{CorruptionError, EditorError, EditorResult};
-use crate::format::brres::IndexGroup;
-use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
 
 const IS_BILLBOARD_CHILD_MASK: u32 = 0x00000400;
 const IS_DISPLAY_MATRIX_MASK: u32 = 0x00000200;
@@ -113,6 +115,7 @@ impl Deserialize for BillboardSetting {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Bone {
+    pub bone_start: u32,
     pub mdl0_offset: i32,
     pub name_offset: i32,
     pub index: u32,
@@ -163,6 +166,7 @@ impl Bone {
         reader.set_position(start + length as u64);
 
         Ok(Self {
+            bone_start: start as u32,
             mdl0_offset,
             name_offset,
             index,
@@ -189,11 +193,91 @@ impl Bone {
 #[derive(Debug)]
 pub struct NamedBone {
     pub name: String,
-    pub bone: Bone
+    pub bone: Bone,
 }
 
-fn build_skeleton_tree(bones: &[NamedBone], ref_cache: &VirtualRefCache) -> VirtualNodeRef {
-    let id = ref_cache.next_id();
+/// Similar to [`Bone`] but contains virtual node IDs to reference other bones, instead
+/// of using offsets.
+pub struct VirtualBone {
+    pub index: u32,
+    pub id: u32,
+    pub flags: BoneFlags,
+    pub billboard_setting: BillboardSetting,
+    pub billboard_transform: u32,
+    pub scaling_vector: [f32; 3],
+    pub rotation_vector: [f32; 3],
+    pub translation_vector: [f32; 3],
+    pub bounding_volume_min: [f32; 3],
+    pub bounding_volume_max: [f32; 3],
+    pub parent: VirtualNodeId,
+    pub user_data_offset: i32,
+    pub transform_matrix: [f32; 12],
+    pub inverse_matrix: [f32; 12],
+}
+
+fn build_skeleton_tree(
+    reader: &mut RefCursor<[u8]>,
+    bones: &[NamedBone],
+    ref_cache: &VirtualRefCache,
+) -> EditorResult<VirtualNodeRef> {
+    /// The offset between the start of the bone and the bone's index.
+    const BONE_INDEX_OFFSET: u64 = 3 * 4;
+
+    let virtual_bones = bones
+        .iter()
+        .map(|bone| {
+            let id = ref_cache.next_id();
+            let node = VirtualNodeRef::from(VirtualNode {
+                label: bone.name.clone(),
+                id,
+                kind: VirtualNodeKind::Container,
+                content: Deferred::evaluated(VirtualNodeContent {
+                    inspectable: None,
+                    children: Vec::new(),
+                }),
+            });
+
+            ref_cache.insert(id, Rc::downgrade(&node));
+            node
+        })
+        .collect::<Vec<_>>();
+
+    let mut root = None;
+    for (i, bone) in bones.iter().enumerate() {
+        let curr_bone = &virtual_bones[i];
+
+        if bone.bone.parent_offset == 0 {
+            root = Some(Rc::clone(curr_bone));
+            continue; // No parent
+        }
+
+        let parent_start = bone.bone.bone_start as i64 + bone.bone.parent_offset as i64;
+        reader.set_position(parent_start as u64 + BONE_INDEX_OFFSET);
+
+        // Index into `virtual_bones` of the parent.
+        let parent_index = reader.read_u32::<BigEndian>()?;
+        if parent_index == i as u32 {
+            // Ensure a bone is not its own parent.
+            // This would cause cyclical references.
+
+            return Err(InvalidInputError {
+                reason: format!("bone `{}` is its own parent", bone.name),
+                ..Default::default()
+            }
+            .into());
+        }
+
+        let parent = &bones[parent_index as usize];
+
+        let parent_borrow = virtual_bones[parent_index as usize].borrow_mut();
+        parent_borrow.content.inspect_mut(|content| {
+            let child = Rc::clone(curr_bone);
+            content.children.push(child);
+        });
+
+        let self_borrow = curr_bone.borrow_mut();
+        self_borrow.content.inspect_mut(|content| {});
+    }
 
     let node = VirtualNodeRef::from(VirtualNode {
         label: String::from("skl_root_test"),
@@ -201,15 +285,18 @@ fn build_skeleton_tree(bones: &[NamedBone], ref_cache: &VirtualRefCache) -> Virt
         kind: VirtualNodeKind::Container,
         content: Deferred::evaluated(VirtualNodeContent {
             inspectable: None,
-            children: Vec::new()
-        })
+            children: Vec::new(),
+        }),
     });
 
     ref_cache.insert(id, Rc::downgrade(&node));
-    node
+    Ok(node)
 }
 
-pub fn deserialize_skeleton(reader: &mut RefCursor<[u8]>, ref_cache: &VirtualRefCache) -> EditorResult<VirtualNodeContent> {
+pub fn deserialize_skeleton(
+    reader: &mut RefCursor<[u8]>,
+    ref_cache: &VirtualRefCache,
+) -> EditorResult<VirtualNodeContent> {
     let section_index = IndexGroup::deserialize(reader)?;
     let mut bones = Vec::with_capacity(section_index.entries.len() - 1);
 
@@ -220,19 +307,13 @@ pub fn deserialize_skeleton(reader: &mut RefCursor<[u8]>, ref_cache: &VirtualRef
         reader.set_position(data_start as u64);
 
         let bone = Bone::deserialize(reader)?;
-        bones.push(NamedBone {
-            name, bone
-        });
+        bones.push(NamedBone { name, bone });
     }
 
-    std::fs::write("bones.txt", format!("{bones:#?}"));
-
-    // dbg!(bones);
-
-    let node = build_skeleton_tree(&bones, ref_cache);
+    let node = build_skeleton_tree(reader, &bones, ref_cache)?;
 
     Ok(VirtualNodeContent {
         inspectable: None,
-        children: vec![node]
+        children: vec![node],
     })
 }
