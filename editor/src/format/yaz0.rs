@@ -2,9 +2,12 @@ use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::format::{
-    encoding::{Deserialize, ReadArrayExt, Serialize, WriteArrayExt},
-    error::{CorruptionError, EncodingError, EncodingResult, IncorrectFormat},
+use crate::{
+    format::{
+        encoding::{Deserialize, ReadArrayExt, Serialize, WriteArrayExt},
+        error::{CorruptionError, EncodingError, EncodingResult, IncorrectFormat},
+    },
+    shared::util::RefCursor,
 };
 
 /// Magic of a YAZ0 file.
@@ -29,7 +32,7 @@ impl Serialize for Header {
 }
 
 impl Deserialize for Header {
-    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != YAZ0_MAGIC {
             return Err(IncorrectFormat {
@@ -54,7 +57,7 @@ impl Deserialize for Header {
     }
 }
 
-pub fn decompress(compressed: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Vec<u8>> {
+pub fn decompress(compressed: &mut RefCursor<[u8]>) -> EncodingResult<Vec<u8>> {
     let yaz0_file = Yaz0File::deserialize(compressed)?;
 
     Ok(yaz0_file.uncompressed)
@@ -96,7 +99,7 @@ pub struct Yaz0File {
 }
 
 impl Deserialize for Yaz0File {
-    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
         let header = Header::deserialize(reader)?;
 
         tracing::trace!(

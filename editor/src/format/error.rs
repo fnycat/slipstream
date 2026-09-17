@@ -124,7 +124,7 @@ pub enum EncodingError {
     #[error("invalid utf-8 string: {source}")]
     InvalidString {
         #[from]
-        source: std::str::Utf8Error,
+        source: std::string::FromUtf8Error,
         backtrace: Backtrace,
     },
     #[error("out of range: {source}")]

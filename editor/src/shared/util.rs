@@ -12,8 +12,11 @@ use std::{
 /// sections of the same underlying buffer.
 ///
 /// [`Cursor`]: std::io::Cursor
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SlicedCursor<T: AsRef<[u8]>> {
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct RefCursor<T>
+where
+    T: AsRef<[u8]> + ?Sized,
+{
     inner: Rc<T>,
     /// The current position of the cursor.
     pos: u64,
@@ -22,9 +25,9 @@ pub struct SlicedCursor<T: AsRef<[u8]>> {
 }
 
 /// This is a nearly exact copy of the standard library.
-impl<T> SlicedCursor<T>
+impl<T> RefCursor<T>
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + ?Sized,
 {
     pub fn new(inner: Rc<T>) -> Self {
         let len = inner.as_ref().as_ref().len() as u64;
@@ -82,10 +85,23 @@ where
     }
 }
 
-/// This is a nearly exact copy of the standard library.
-impl<T: io::Read> io::Read for SlicedCursor<T>
+impl<T> Clone for RefCursor<T>
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + ?Sized,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            pos: self.pos,
+            range: self.range.clone(),
+        }
+    }
+}
+
+/// This is a nearly exact copy of the standard library.
+impl<T> io::Read for RefCursor<T>
+where
+    T: AsRef<[u8]> + ?Sized,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let n = io::Read::read(&mut Self::split(self).1, buf)?;
@@ -141,9 +157,9 @@ where
 }
 
 /// This is a nearly exact copy of the standard library.
-impl<T> io::Seek for SlicedCursor<T>
+impl<T> io::Seek for RefCursor<T>
 where
-    T: AsRef<[u8]>,
+    T: AsRef<[u8]> + ?Sized,
 {
     fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
         let (base_pos, offset) = match style {

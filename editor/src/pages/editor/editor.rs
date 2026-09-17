@@ -8,6 +8,7 @@ use crate::{
     model_renderer::ModelRenderer,
     shared::{
         node::{self},
+        util::RefCursor,
         r#virtual::{CacheId, CacheStore, VirtualNode, VirtualNodeKind},
     },
 };
@@ -35,7 +36,7 @@ pub struct Editor {
 impl Editor {
     pub fn new(filepath: PathBuf) -> eyre::Result<Self> {
         let contents = std::fs::read(&filepath)?;
-        let cursor = Cursor::new(Rc::<[u8]>::from(contents));
+        let cursor = RefCursor::new(Rc::<[u8]>::from(contents));
 
         let file_name = filepath
             .file_name()

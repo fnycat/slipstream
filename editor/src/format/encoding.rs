@@ -1,8 +1,14 @@
-use std::{io::Cursor, rc::Rc};
+use std::{
+    io::{Cursor, Read, Seek},
+    rc::Rc,
+};
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 
-use crate::format::error::{CorruptionError, EncodingError, EncodingResult};
+use crate::{
+    format::error::{CorruptionError, EncodingError, EncodingResult},
+    shared::util::RefCursor,
+};
 
 macro_rules! impl_byteorder_arrays {
     ($($ty: ty),*) => {
@@ -95,52 +101,41 @@ macro_rules! impl_byteorder_arrays {
 
 impl_byteorder_arrays!(u16, i16, u32, i32, u64, i64, u128, i128, f32, f64);
 
-pub trait ReadStringExt<'buf>: ReadBytesExt {
-    /// Reads a `&str` with a `u32` length prefix.
-    fn read_u32_str<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<&'buf str>;
-    /// Reads a `&str` with a null terminator.
-    fn read_null_str<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<&'buf str>;
-
+pub trait ReadStringExt: ReadBytesExt {
     /// Reads a `String` with a `u32` length prefix.
-    fn read_u32_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String> {
-        let str = self.read_u32_str::<B>()?;
-        Ok(str.to_owned())
-    }
+    fn read_u32_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String>;
 
     /// Reads a `String` with a null terminator.
-    fn read_null_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String> {
-        let str = self.read_null_str::<B>()?;
-        Ok(str.to_owned())
-    }
+    fn read_null_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String>;
 }
 
-impl<'buf> ReadStringExt<'buf> for Cursor<&'buf [u8]> {
-    fn read_u32_str<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<&'buf str> {
+impl ReadStringExt for RefCursor<[u8]> {
+    fn read_u32_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String> {
         let str_len = self.read_u32::<B>()?;
-        let str_buffer =
-            &self.get_ref()[self.position() as usize..str_len as usize + self.position() as usize];
+        let mut str_buf = vec![0; str_len as usize];
+        self.read_exact(&mut str_buf)?;
 
-        Ok(str::from_utf8(str_buffer)?)
+        Ok(String::from_utf8(str_buf)?)
     }
 
-    fn read_null_str<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<&'buf str> {
-        let start_buffer = &self.get_ref()[self.position() as usize..];
-        let null_position = start_buffer
-            .iter()
-            .position(|&b| b == 0x00)
-            .ok_or_else(|| {
-                EncodingError::from(CorruptionError {
-                    reason: "did not find string null terminator before EOF".to_owned(),
-                    ..Default::default()
-                })
-            })?;
+    fn read_null_string<B: byteorder::ByteOrder>(&mut self) -> EncodingResult<String> {
+        let buf_remaining = &self.get_ref()[self.position() as usize..];
+        let null_pos = buf_remaining.iter().position(|&c| c == 0).ok_or_else(|| {
+            EncodingError::from(CorruptionError {
+                reason: "did not find string null terminator before EOF".to_owned(),
+                ..Default::default()
+            })
+        })?;
 
-        Ok(str::from_utf8(&start_buffer[..null_position as usize])?)
+        let mut str_buf = vec![0; null_pos];
+        self.read_exact(&mut str_buf)?;
+
+        Ok(String::from_utf8(str_buf)?)
     }
 }
 
 pub trait Deserialize: Sized {
-    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self>;
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self>;
 }
 
 pub trait Serialize {

@@ -2,10 +2,13 @@ use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::format::{
-    encoding::{Deserialize, ReadArrayExt},
-    error::{CorruptionError, EncodingError, EncodingResult},
-    mdl0::mdl0::SectionDeserialize,
+use crate::{
+    format::{
+        encoding::{Deserialize, ReadArrayExt},
+        error::{CorruptionError, EncodingError, EncodingResult},
+        mdl0::mdl0::SectionDeserialize,
+    },
+    shared::util::RefCursor,
 };
 
 const IS_BILLBOARD_CHILD_MASK: u32 = 0x00000400;
@@ -29,7 +32,7 @@ macro_rules! impl_bone_flags {
             }
 
             impl Deserialize for BoneFlags {
-                fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
+                fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
                     let word = reader.read_u32::<BigEndian>()?;
 
                     Ok(Self {
@@ -98,7 +101,7 @@ impl TryFrom<u32> for BillboardSetting {
 }
 
 impl Deserialize for BillboardSetting {
-    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
@@ -129,7 +132,7 @@ pub struct Bones {
 
 impl SectionDeserialize for Bones {
     fn deserialize_section(
-        reader: &mut Cursor<Rc<[u8]>>,
+        reader: &mut RefCursor<[u8]>,
         _header_start: u32,
     ) -> EncodingResult<Self> {
         tracing::trace!(

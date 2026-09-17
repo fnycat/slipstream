@@ -10,7 +10,10 @@ use crate::{
         error::{CorruptionError, EncodingError, EncodingResult},
         mdl0::{bones::Bones, definitions::Definitions, normals::Normals, vertices::Vertices},
     },
-    shared::r#virtual::{CacheStore, Inspectable, LazyPayload, VirtualNode, VirtualNodeKind},
+    shared::{
+        util::RefCursor,
+        r#virtual::{CacheStore, Inspectable, LazyPayload, VirtualNode, VirtualNodeKind},
+    },
 };
 
 pub const MDL0_MAGIC: [u8; 4] = [0x4d, 0x44, 0x4c, 0x30]; // "MDL0"
@@ -42,7 +45,7 @@ impl TryFrom<u32> for ScalingMode {
 }
 
 impl Deserialize for ScalingMode {
-    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
@@ -75,7 +78,7 @@ impl TryFrom<u32> for TextureMatrixMode {
 }
 
 impl Deserialize for TextureMatrixMode {
-    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
     }
@@ -148,10 +151,8 @@ impl TryFrom<u32> for SectionType {
 }
 
 pub trait SectionDeserialize: Sized {
-    fn deserialize_section(
-        reader: &mut Cursor<Rc<[u8]>>,
-        header_start: u32,
-    ) -> EncodingResult<Self>;
+    fn deserialize_section(reader: &mut RefCursor<[u8]>, header_start: u32)
+    -> EncodingResult<Self>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -171,7 +172,7 @@ pub struct Mdl0Header {
 }
 
 impl Deserialize for Mdl0Header {
-    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
         let start = reader.position();
 
         let header_length = reader.read_u32::<BigEndian>()?;
@@ -226,7 +227,7 @@ impl BoneLinkTable {
 }
 
 impl Deserialize for BoneLinkTable {
-    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
         let entry_count = reader.read_u32::<BigEndian>()?;
 
         let mut driven = HashMap::new();
@@ -260,7 +261,7 @@ impl Deserialize for BoneLinkTable {
 }
 
 pub fn deserialize_virtual(
-    reader: &mut Cursor<Rc<[u8]>>,
+    reader: &mut RefCursor<[u8]>,
     res_cache: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
@@ -293,9 +294,7 @@ pub fn deserialize_virtual(
         let mut children = Vec::with_capacity(section_index.entries.len() - 1);
 
         for (j, entry) in section_index.entries[1..].iter().enumerate() {
-            let name = section_index
-                .get_entry_name(reader.get_ref(), entry)?
-                .to_owned();
+            let name = section_index.get_entry_name(reader, entry)?.to_owned();
 
             let data_start = section_index.get_entry_data_start(entry);
 

@@ -10,7 +10,10 @@ use crate::{
             CorruptionError, EncodingError, EncodingResult, IncorrectFormat, UnsupportedError,
         },
     },
-    shared::r#virtual::{CacheId, CacheStore, Inspectable, VirtualNode, VirtualNodeKind},
+    shared::{
+        util::RefCursor,
+        r#virtual::{CacheId, CacheStore, Inspectable, VirtualNode, VirtualNodeKind},
+    },
 };
 
 /// Magic of an ARC file.
@@ -30,7 +33,7 @@ struct Header {
 }
 
 impl Deserialize for Header {
-    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != ARC_MAGIC {
             return Err(IncorrectFormat {
@@ -63,7 +66,7 @@ enum NodeType {
 }
 
 impl Deserialize for NodeType {
-    fn deserialize(reader: &mut Cursor<Rc<[u8]>>) -> EncodingResult<Self> {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EncodingResult<Self> {
         let b = reader.read_u8()?;
         Self::try_from(b)
     }
@@ -94,7 +97,7 @@ const ARC_NODE_SIZE: usize = 0x0c;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum NodeContent {
-    File { data: Vec<u8> },
+    File { data: RefCursor<[u8]> },
     Directory { parent: u32, skip_node: u32 },
 }
 
@@ -111,16 +114,18 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn deserialize(reader: &mut Cursor<Rc<[u8]>>, string_pool: &[u8]) -> EncodingResult<Self> {
+    pub fn deserialize(
+        reader: &mut RefCursor<[u8]>,
+        string_pool: &mut RefCursor<[u8]>,
+    ) -> EncodingResult<Self> {
         let ty = NodeType::deserialize(reader)?;
         let name_offset = reader.read_u24::<BigEndian>()?;
         let data1 = reader.read_u32::<BigEndian>()?;
         let data2 = reader.read_u32::<BigEndian>()?;
 
-        let mut name_cursor = Cursor::new(string_pool);
-        name_cursor.set_position(name_offset as u64);
+        string_pool.set_position(name_offset as u64);
 
-        let name = name_cursor.read_null_string::<BigEndian>()?;
+        let name = string_pool.read_null_string::<BigEndian>()?;
         let data = match ty {
             NodeType::Directory => NodeContent::Directory {
                 parent: data1,
@@ -130,7 +135,7 @@ impl Node {
                 let data_start = data1;
                 let data_end = data_start + data2;
 
-                let data = reader.get_ref()[data_start as usize..data_end as usize].to_vec();
+                let data = reader.slice(data_start as u64..data_end as u64)?;
                 NodeContent::File { data }
             }
         };
@@ -140,16 +145,14 @@ impl Node {
 }
 
 fn parse_leaf_node(
+    reader: &mut RefCursor<[u8]>,
     name: String,
     res_cache: &mut CacheStore,
-    raw_data: Vec<u8>,
 ) -> EncodingResult<VirtualNode> {
-    let mut reader = Cursor::new(raw_data.as_slice());
-
-    let magic: [u8; 4] = raw_data[..4].try_into().expect("4 does not equal 4");
+    let magic: [u8; 4] = reader.read_u8_array()?;
     match magic {
-        ARC_MAGIC => deserialize_virtual(&mut reader, res_cache, name),
-        BRRES_MAGIC => brres::deserialize_virtual(&mut reader, res_cache, name),
+        ARC_MAGIC => deserialize_virtual(reader, res_cache, name),
+        BRRES_MAGIC => brres::deserialize_virtual(reader, res_cache, name),
         _ => Ok(VirtualNode {
             label: name,
             content: None,
@@ -166,7 +169,11 @@ fn parse_directory_tree(
     cursor: &mut usize,
 ) -> EncodingResult<VirtualNode> {
     let &NodeContent::Directory { skip_node, .. } = &node_list[*cursor].data else {
-        todo!();
+        return Err(CorruptionError {
+            reason: "expected directory at root, found file instead".to_owned(),
+            ..Default::default()
+        }
+        .into());
     };
 
     *cursor += 1;
@@ -182,9 +189,7 @@ fn parse_directory_tree(
                 children.push(child);
             }
             NodeContent::File { data } => {
-                let data = std::mem::take(data);
-
-                let sections = parse_leaf_node(name, res_cache, data)?;
+                let sections = parse_leaf_node(data, name, res_cache)?;
                 children.push(sections);
 
                 *cursor += 1;
@@ -201,7 +206,7 @@ fn parse_directory_tree(
 }
 
 pub fn deserialize_virtual(
-    reader: &mut Cursor<Rc<[u8]>>,
+    reader: &mut RefCursor<[u8]>,
     res_store: &mut CacheStore,
     name: String,
 ) -> EncodingResult<VirtualNode> {
@@ -220,13 +225,13 @@ pub fn deserialize_virtual(
     let _data1 = reader.read_u32::<BigEndian>()?;
     let node_count = reader.read_u32::<BigEndian>()?;
 
-    let string_pool = {
-        let start = header.node_offset as usize + ARC_NODE_SIZE * node_count as usize;
-        let end = header.node_offset as usize + header.size as usize;
+    let mut string_pool = {
+        let start = header.node_offset as u64 + ARC_NODE_SIZE as u64 * node_count as u64;
+        let end = (header.node_offset + header.size) as u64;
 
         tracing::trace!("ARC string pool is in range {start}..{end}");
 
-        &reader.get_ref()[start..end]
+        reader.slice(start..end)?
     };
 
     let mut nodes = Vec::with_capacity(node_count as usize);
@@ -239,7 +244,7 @@ pub fn deserialize_virtual(
     });
 
     for _ in 1..node_count {
-        let node = Node::deserialize(reader, string_pool)?;
+        let node = Node::deserialize(reader, &mut string_pool)?;
         nodes.push(node);
     }
 
