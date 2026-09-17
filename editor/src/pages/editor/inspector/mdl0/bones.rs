@@ -21,7 +21,7 @@ impl Inspectable for BoneFlags {
         ui.end_row();
 
         ui.checkbox(&mut self.disable_classic_scale, "Disable classic scale")
-            .on_hover_text("Controls the scale matrix algorithm. When set, disables traditional Maya/Wii scaling behaviour (where parent scale propagates directly down the hierarchy) in favour of standard matrix multiplication");
+            .on_hover_text("Controls the scale matrix algorithm. When set, disables traditional Maya/Wii scaling behaviour (where parent scale propagates directly down the hierarchy) in favour of standard matrix multiplication");;
 
         ui.checkbox(&mut self.is_billboard_child, "Billboard child")
             .on_hover_text(

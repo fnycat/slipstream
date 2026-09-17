@@ -6,10 +6,11 @@ use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
         error::{CorruptionError, EncodingError, EncodingResult},
-        mdl0::mdl0::SectionDeserialize,
+        mdl0::SectionDeserialize,
     },
     shared::util::RefCursor,
 };
+use crate::shared::r#virtual::VirtualNode;
 
 const IS_BILLBOARD_CHILD_MASK: u32 = 0x00000400;
 const IS_DISPLAY_MATRIX_MASK: u32 = 0x00000200;
@@ -188,4 +189,8 @@ impl SectionDeserialize for Bones {
             inverse_matrix,
         })
     }
+}
+
+pub fn construct_virtual_bone_tree() -> eyre::Result<VirtualNode> {
+    todo!()
 }

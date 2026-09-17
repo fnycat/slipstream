@@ -11,12 +11,15 @@ use crate::{
             CorruptionError, EncodingError, EncodingResult, IncorrectFormat, RangeError,
             UnsupportedError,
         },
-        mdl0::mdl0::{self, MDL0_MAGIC},
+        mdl0::{self, MDL0_MAGIC},
         pat0::Pat0Subfile,
     },
+    pages::editor::inspector::raw::Raw,
     shared::{
+        defer::Deferred,
+        refs::VirtualRefCache,
         util::RefCursor,
-        r#virtual::{CacheStore, VirtualNode, VirtualNodeKind},
+        r#virtual::{VirtualNode, VirtualNodeContent, VirtualNodeKind, VirtualNodeRef},
     },
 };
 
@@ -344,29 +347,40 @@ impl Deserialize for IndexGroup {
 
 fn deserialize_subfile(
     reader: &mut RefCursor<[u8]>,
-    res_cache: &mut CacheStore,
+    ref_cache: &mut VirtualRefCache,
     name: String,
-) -> EncodingResult<VirtualNode> {
+) -> EncodingResult<VirtualNodeRef> {
     // Check magic
     let magic = reader.read_u8_array::<4>()?;
 
     match magic {
-        MDL0_MAGIC => mdl0::deserialize_virtual(reader, res_cache, name),
+        MDL0_MAGIC => mdl0::deserialize_virtual(reader, ref_cache, name),
         // Chr0Subfile::MAGIC => Chr0Subfile::deserialize_lazy(reader),
-        _ => Ok(VirtualNode {
-            label: String::from("SOME UNPARSED FORMAT"),
-            kind: VirtualNodeKind::Terminal,
-            content: None,
-            children: Vec::new(),
-        }),
+        _ => {
+            let id = ref_cache.next_id();
+            let node = VirtualNodeRef::from(VirtualNode {
+                label: String::from("TODO, UNPARSED FORMAT"),
+                id,
+                kind: VirtualNodeKind::Terminal,
+                content: Deferred::evaluated(VirtualNodeContent {
+                    children: Vec::new(),
+                    inspectable: Some(Box::new(Raw {
+                        bytes: reader.clone(),
+                    })),
+                }),
+            });
+
+            ref_cache.insert(id, Rc::downgrade(&node));
+            Ok(node)
+        }
     }
 }
 
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
-    res_cache: &mut CacheStore,
+    ref_cache: &mut VirtualRefCache,
     name: String,
-) -> EncodingResult<VirtualNode> {
+) -> EncodingResult<VirtualNodeRef> {
     tracing::trace!("Parsing BRRES file `{name}`");
 
     let header = Header::deserialize(reader)?;
@@ -414,23 +428,37 @@ pub fn deserialize_virtual(
             }
 
             let file = tracing::trace_span!("deserialize_subfile", %dir_name, %subfile_name)
-                .in_scope(|| deserialize_subfile(reader, res_cache, subfile_name))?;
+                .in_scope(|| deserialize_subfile(reader, ref_cache, subfile_name))?;
 
             subfiles.push(file);
         }
 
-        directories.push(VirtualNode {
+        let id = ref_cache.next_id();
+        let node = VirtualNodeRef::from(VirtualNode {
             label: dir_name,
+            id,
             kind: VirtualNodeKind::Container,
-            children: subfiles,
-            content: None,
+            content: Deferred::evaluated(VirtualNodeContent {
+                inspectable: None,
+                children: subfiles,
+            }),
         });
+
+        ref_cache.insert(id, Rc::downgrade(&node));
+        directories.push(node);
     }
 
-    Ok(VirtualNode {
+    let id = ref_cache.next_id();
+    let node = VirtualNodeRef::from(VirtualNode {
         label: name,
+        id,
         kind: VirtualNodeKind::Container,
-        children: directories,
-        content: None,
-    })
+        content: Deferred::evaluated(VirtualNodeContent {
+            inspectable: None,
+            children: directories,
+        }),
+    });
+
+    ref_cache.insert(id, Rc::downgrade(&node));
+    Ok(node)
 }

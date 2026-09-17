@@ -3,20 +3,21 @@ use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
 use eframe::egui_wgpu;
 use egui_phosphor::regular::{CARET_DOWN, CARET_RIGHT, FOLDER, FOLDER_OPEN};
 
+use crate::shared::refs::{VirtualNodeId, VirtualRefCache};
+use crate::shared::r#virtual::VirtualNodeRef;
 use crate::{
     app::{App, CurrentPage},
     model_renderer::ModelRenderer,
     shared::{
         node::{self},
         util::RefCursor,
-        r#virtual::{CacheId, CacheStore, VirtualNode, VirtualNodeKind},
+        r#virtual::{VirtualNode, VirtualNodeKind},
     },
 };
 
 pub struct Properties {
     pub label: String,
-    // pub path: Vec<String>,
-    pub cache_id: CacheId,
+    pub node_id: VirtualNodeId,
 }
 
 /// Data specific to the editor page.
@@ -27,10 +28,10 @@ pub struct Editor {
     /// Not an internal URI.
     pub filepath: PathBuf,
     /// The whole file currently open in the editor.
-    pub root_node: VirtualNode,
+    pub root_node: VirtualNodeRef,
 
     pub open_properties: Option<Properties>,
-    pub cache_store: CacheStore,
+    pub ref_cache: VirtualRefCache,
 }
 
 impl Editor {
@@ -43,15 +44,15 @@ impl Editor {
             .ok_or_else(|| eyre::eyre!("unable to find file name of `{filepath:?}`"))?
             .to_string_lossy();
 
-        let mut res_store = CacheStore::new();
+        let mut ref_cache = VirtualRefCache::new();
         let root_node =
-            node::deserialize_maybe_compressed(cursor, &mut res_store, file_name.into_owned())?;
+            node::deserialize_maybe_compressed(cursor, &mut ref_cache, file_name.into_owned())?;
 
         // tracing::debug!("{root_node:#?}");
 
         Ok(Self {
             root_node,
-            cache_store: res_store,
+            ref_cache,
             open_properties: None,
             filepath,
         })
@@ -136,7 +137,7 @@ impl App {
         egui::Panel::left(panel_id).show(ui, |ui| {
             let editor = self.current_page.as_editor_mut().unwrap();
             if let Some(properties) =
-                Self::draw_file_tree(&editor.root_node, &mut editor.cache_store, ui)
+                Self::draw_file_tree(&editor.root_node, &mut editor.ref_cache, ui).unwrap()
             {
                 editor.open_properties = Some(properties);
             }
@@ -153,11 +154,17 @@ impl App {
     ///
     /// If a specific node has been opened, this function returns the ID of its cache entry.
     fn draw_file_tree(
-        base: &VirtualNode,
-        cache_store: &mut CacheStore,
+        base: &VirtualNodeRef,
+        ref_cache: &mut VirtualRefCache,
         ui: &mut egui::Ui,
-    ) -> Option<Properties> {
+    ) -> eyre::Result<Option<Properties>> {
         ui.visuals_mut().collapsing_header_frame = true;
+
+        // Has this node been evaluated?
+        // If not, evaluate it
+        base.borrow_mut().content.evaluate()?;
+        let base = base.borrow();
+        let base_content = base.content.get().expect("virtual node content not loaded");
 
         let mut opened_cache_id = None;
         if base.kind == VirtualNodeKind::Container {
@@ -174,8 +181,10 @@ impl App {
                     );
                 })
                 .show(ui, |ui| {
-                    for child in &base.children {
-                        let ret = Self::draw_file_tree(child, cache_store, ui);
+                    // Check if the current node has been evaluated.
+
+                    for child in &base_content.children {
+                        let ret = Self::draw_file_tree(child, ref_cache, ui).unwrap();
                         if ret.is_some() {
                             opened_cache_id = ret;
                         }
@@ -186,17 +195,13 @@ impl App {
                 // Open the inspector window for this file's content
                 tracing::trace!("Opening file");
 
-                // Ensure the lazy file has been loaded
-                let cache_id = base.content.expect("file did not have a cache ID");
-                cache_store.evaluate(cache_id).unwrap();
-
-                return Some(Properties {
+                return Ok(Some(Properties {
                     label: format!("Inspector ({})", base.label),
-                    cache_id,
-                });
+                    node_id: base.id,
+                }));
             }
         }
 
-        opened_cache_id
+        Ok(opened_cache_id)
     }
 }

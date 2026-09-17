@@ -7,7 +7,7 @@ use crate::{
         encoding::{Deserialize, ReadArrayExt},
         error::{CorruptionError, EncodingResult},
         mdl0::{
-            mdl0::SectionDeserialize,
+            SectionDeserialize,
             util::{ComponentFormat, deserialize_components},
         },
     },

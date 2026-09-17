@@ -12,7 +12,14 @@ impl App {
         // Whether the current property window should be closed.
         // The properties field cannot be set immediately in the closure due to borrowing rules.
         let mut should_close = false;
-        let cache = editor.cache_store.get_mut(props.cache_id)?;
+
+        let node_ref = editor
+            .ref_cache
+            .get(props.node_id)
+            .ok_or_else(|| eyre::eyre!("attempt to open stale node in inspector window"))?;
+
+        let mut node = node_ref.borrow_mut();
+        let node_content = node.content.evaluate()?.inspectable.as_mut().unwrap();
 
         egui::Panel::right(egui::Id::new("property_panel")).show(ui, |ui| {
             ui.set_max_width(475.0);
@@ -32,7 +39,7 @@ impl App {
             ui.add_space(0.02 * ui.available_height());
 
             if editor.open_properties.is_some() {
-                cache.draw_properties(ui);
+                node_content.draw_properties(ui);
             }
         });
 

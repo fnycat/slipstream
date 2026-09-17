@@ -1,40 +1,19 @@
-use std::{any::Any, cell::RefCell, collections::HashMap, num::NonZeroUsize, rc::Rc};
+use crate::shared::defer::Deferred;
+use crate::shared::refs::VirtualNodeId;
+use crate::uri::uri::Uri;
+use std::{
+    any::Any,
+    cell::{Ref, RefCell},
+    collections::HashMap,
+    num::NonZeroUsize,
+    rc::Rc,
+};
 
-pub type InspectableRc = Box<dyn Inspectable>;
+pub type VirtualNodeRef = Rc<RefCell<VirtualNode>>;
 
-pub trait LazyParser {
-    fn parse(&mut self) -> eyre::Result<InspectableRc>;
-}
-
-pub struct LazyPayload<T, F>
-where
-    F: FnOnce(T) -> eyre::Result<InspectableRc>,
-{
-    pub inner: Option<(T, F)>,
-}
-
-impl<T, F> LazyPayload<T, F>
-where
-    F: FnOnce(T) -> eyre::Result<InspectableRc>,
-{
-    pub fn new(payload: T, parser: F) -> Self {
-        Self {
-            inner: Some((payload, parser)),
-        }
-    }
-}
-
-impl<T, F> LazyParser for LazyPayload<T, F>
-where
-    F: FnOnce(T) -> eyre::Result<InspectableRc>,
-{
-    fn parse(&mut self) -> eyre::Result<InspectableRc> {
-        let (payload, parser) = self
-            .inner
-            .take()
-            .ok_or_else(|| eyre::eyre!("parser has already been used"))?;
-
-        parser(payload)
+impl From<VirtualNode> for VirtualNodeRef {
+    fn from(value: VirtualNode) -> Self {
+        Rc::new(RefCell::new(value))
     }
 }
 
@@ -42,119 +21,34 @@ pub trait Inspectable: std::fmt::Debug {
     fn draw_properties(&mut self, ui: &mut egui::Ui);
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct CacheId(NonZeroUsize);
-
-impl std::fmt::Display for CacheId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
+#[derive(Debug)]
+pub struct VirtualNodeContent {
+    pub inspectable: Option<Box<dyn Inspectable>>,
+    pub children: Vec<VirtualNodeRef>,
 }
 
-pub enum LazyInspectable {
-    Deferred(Box<dyn LazyParser>),
-    Parsed(InspectableRc),
-}
-
-impl LazyInspectable {
-    /// Forces this inspectable to be evaluated, allowing it to be rendered in the inspector window.
-    ///
-    /// This should be called before attempting to use the inspectable.
-    pub fn evaluate(&mut self) -> eyre::Result<()> {
-        match self {
-            Self::Deferred(payload) => {
-                let parsed = payload.parse()?;
-                *self = Self::Parsed(parsed);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    pub fn get_parsed(&self) -> Option<&dyn Inspectable> {
-        match self {
-            Self::Parsed(x) => Some(x.as_ref()),
-            _ => None,
-        }
-    }
-
-    pub fn get_parsed_mut(&mut self) -> Option<&mut dyn Inspectable> {
-        match self {
-            Self::Parsed(x) => Some(x.as_mut()),
-            _ => None,
-        }
-    }
-}
-
-pub struct CacheStore {
-    next_id: usize,
-    cache: HashMap<CacheId, LazyInspectable>,
-}
-
-impl CacheStore {
-    pub fn new() -> Self {
-        Self {
-            next_id: 1,
-            cache: HashMap::new(),
-        }
-    }
-
-    pub fn insert_deferred<T: 'static, F>(&mut self, lazy_payload: LazyPayload<T, F>) -> CacheId
-    where
-        F: FnOnce(T) -> eyre::Result<Box<dyn Inspectable>> + 'static,
-    {
-        let id = self.next_id();
-        self.cache
-            .insert(id, LazyInspectable::Deferred(Box::new(lazy_payload)));
-        id
-    }
-
-    pub fn next_id(&mut self) -> CacheId {
-        self.next_id += 1;
-        CacheId(NonZeroUsize::new(self.next_id - 1).unwrap())
-    }
-
-    pub fn get_mut(&mut self, cache_id: CacheId) -> eyre::Result<&mut dyn Inspectable> {
-        let lazy = self
-            .cache
-            .get_mut(&cache_id)
-            .ok_or_else(|| eyre::eyre!("did not find cache entry {cache_id} in cache"))?;
-
-        lazy.evaluate()?;
-        Ok(lazy.get_parsed_mut().unwrap())
-    }
-
-    /// Force the entry at the given cache ID to be evaluated.
-    ///
-    /// This function does nothing if the entry has already been parsed.
-    pub fn evaluate(&mut self, cache_id: CacheId) -> eyre::Result<()> {
-        let lazy = self
-            .cache
-            .get_mut(&cache_id)
-            .ok_or_else(|| eyre::eyre!("did not find cache entry {cache_id} in cache"))?;
-
-        lazy.evaluate()?;
-        Ok(())
-    }
-
-    pub fn get(&mut self, cache_id: CacheId) -> eyre::Result<&dyn Inspectable> {
-        let lazy = self
-            .cache
-            .get_mut(&cache_id)
-            .ok_or_else(|| eyre::eyre!("did not find cache entry {cache_id} in cache"))?;
-
-        lazy.get_parsed()
-            .ok_or_else(|| eyre::eyre!("inspectable has not been evaluated"))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct VirtualNode {
     pub label: String,
+    pub id: VirtualNodeId,
+    /// Determines how this node is displayed in the file tree.
+    ///
+    /// If the node kind is [`Container`], it will be displayed as a directory.
+    ///
+    /// [`Container`](VirtualNodeKind::Container)
     pub kind: VirtualNodeKind,
-    pub content: Option<CacheId>,
-    pub children: Vec<VirtualNode>,
+    pub content: Deferred<VirtualNodeContent>,
+}
+
+impl VirtualNode {
+    /// Forces a lazy node to be evaluated.
+    pub fn evaluate(&mut self) -> eyre::Result<()> {
+        todo!()
+    }
+
+    pub fn is_deferred(&self) -> bool {
+        self.content.is_deferred()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

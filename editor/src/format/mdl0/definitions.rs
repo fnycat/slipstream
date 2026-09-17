@@ -1,5 +1,5 @@
 use crate::{
-    format::{error::EncodingResult, mdl0::mdl0::SectionDeserialize},
+    format::{error::EncodingResult, mdl0::SectionDeserialize},
     shared::util::RefCursor,
 };
 

@@ -2,6 +2,10 @@ use std::{any::Any, collections::HashMap, ffi::CStr, io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 
+use crate::pages::editor::inspector::raw::Raw;
+use crate::shared::defer::Deferred;
+use crate::shared::refs::VirtualRefCache;
+use crate::shared::r#virtual::{VirtualNodeContent, VirtualNodeRef};
 use crate::{
     format::{
         brres::{self, BRRES_MAGIC},
@@ -12,7 +16,7 @@ use crate::{
     },
     shared::{
         util::RefCursor,
-        r#virtual::{CacheId, CacheStore, Inspectable, VirtualNode, VirtualNodeKind},
+        r#virtual::{Inspectable, VirtualNode, VirtualNodeKind},
     },
 };
 
@@ -151,30 +155,41 @@ impl Node {
 
 fn parse_leaf_node(
     reader: &mut RefCursor<[u8]>,
+    ref_cache: &mut VirtualRefCache,
     name: String,
-    res_cache: &mut CacheStore,
-) -> EncodingResult<VirtualNode> {
+) -> EncodingResult<VirtualNodeRef> {
     let magic: [u8; 4] = reader.read_u8_array()?;
     reader.set_position(reader.position() - 4);
 
     match magic {
-        ARC_MAGIC => deserialize_virtual(reader, res_cache, name),
-        BRRES_MAGIC => brres::deserialize_virtual(reader, res_cache, name),
-        _ => Ok(VirtualNode {
-            label: name,
-            content: None,
-            kind: VirtualNodeKind::Terminal,
-            children: Vec::new(),
-        }),
+        ARC_MAGIC => deserialize_virtual(reader, ref_cache, name),
+        BRRES_MAGIC => brres::deserialize_virtual(reader, ref_cache, name),
+        _ => {
+            let id = ref_cache.next_id();
+            let node = VirtualNodeRef::from(VirtualNode {
+                label: name,
+                id,
+                kind: VirtualNodeKind::Terminal,
+                content: Deferred::evaluated(VirtualNodeContent {
+                    inspectable: Some(Box::new(Raw {
+                        bytes: reader.clone(),
+                    })),
+                    children: Vec::new(),
+                }),
+            });
+
+            ref_cache.insert(id, Rc::downgrade(&node));
+            Ok(node)
+        }
     }
 }
 
 fn parse_directory_tree(
     node_list: &mut [Node],
-    res_cache: &mut CacheStore,
+    ref_cache: &mut VirtualRefCache,
     label: String,
     cursor: &mut usize,
-) -> EncodingResult<VirtualNode> {
+) -> EncodingResult<VirtualNodeRef> {
     let &NodeContent::Directory { skip_node, .. } = &node_list[*cursor].data else {
         return Err(CorruptionError {
             reason: "expected directory at root, found file instead".to_owned(),
@@ -192,11 +207,11 @@ fn parse_directory_tree(
         let name = std::mem::take(&mut curr_node.name);
         match &mut curr_node.data {
             NodeContent::Directory { .. } => {
-                let child = parse_directory_tree(node_list, res_cache, name, cursor)?;
+                let child = parse_directory_tree(node_list, ref_cache, name, cursor)?;
                 children.push(child);
             }
             NodeContent::File { data } => {
-                let sections = parse_leaf_node(data, name, res_cache)?;
+                let sections = parse_leaf_node(data, ref_cache, name)?;
                 children.push(sections);
 
                 *cursor += 1;
@@ -204,19 +219,26 @@ fn parse_directory_tree(
         }
     }
 
-    Ok(VirtualNode {
+    let id = ref_cache.next_id();
+    let node = VirtualNodeRef::from(VirtualNode {
         label,
+        id,
         kind: VirtualNodeKind::Container,
-        content: None,
-        children,
-    })
+        content: Deferred::evaluated(VirtualNodeContent {
+            inspectable: None,
+            children,
+        }),
+    });
+
+    ref_cache.insert(id, Rc::downgrade(&node));
+    Ok(node)
 }
 
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
-    res_store: &mut CacheStore,
+    ref_cache: &mut VirtualRefCache,
     name: String,
-) -> EncodingResult<VirtualNode> {
+) -> EncodingResult<VirtualNodeRef> {
     tracing::trace!("Parsing ARC file `{name}`");
 
     let header = Header::deserialize(reader)?;
@@ -265,7 +287,7 @@ pub fn deserialize_virtual(
     let mut cursor = 0;
 
     tracing::trace!("Constructing directory tree and parsing nodes...");
-    let ret = parse_directory_tree(&mut nodes, res_store, name, &mut cursor)?;
+    let ret = parse_directory_tree(&mut nodes, ref_cache, name, &mut cursor)?;
     tracing::trace!("Constructed directory tree successfully");
     Ok(ret)
 }
