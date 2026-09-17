@@ -45,9 +45,40 @@ pub enum VirtualNodeKind {
     /// This virtual node can contain other nodes.
     ///
     /// This is used for both directories and files that contain multiple subfiles/sections.
-    Container,
-    /// This is the final node in this branch.
-    ///
-    /// This is used for files that are not split up any further.
-    Terminal,
+    Directory,
+    DirectoryEmpty,
+    Bone,
+    BoneFinal,
+    Unknown,
+}
+
+impl VirtualNodeKind {
+    pub fn is_directory(&self) -> bool {
+        match self {
+            Self::BoneFinal | Self::Unknown => false,
+            _ => true,
+        }
+    }
+
+    /// The icon to use when the folder/file is open.
+    pub fn icon_open(&self) -> egui::RichText {
+        match self {
+            Self::Directory => reg_icon!(FOLDER_OPEN),
+            Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
+            Self::Bone => reg_icon!(BONE),
+            Self::BoneFinal => fill_icon!(BONE),
+            Self::Unknown => reg_icon!(QUESTION_MARK),
+        }
+    }
+
+    /// The icon to use when the folder/file is closed.
+    pub fn icon_closed(&self) -> egui::RichText {
+        match self {
+            Self::Directory => reg_icon!(FOLDER),
+            Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
+            Self::Bone => reg_icon!(BONE),
+            Self::BoneFinal => fill_icon!(BONE),
+            Self::Unknown => reg_icon!(QUESTION_MARK),
+        }
+    }
 }

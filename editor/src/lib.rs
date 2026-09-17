@@ -1,6 +1,8 @@
 #![feature(error_generic_member_access)]
 
 pub mod app;
+#[macro_use]
+pub mod icons;
 pub mod config;
 pub mod decorations;
 pub mod format;
@@ -9,12 +11,12 @@ pub mod pages;
 pub mod shared;
 pub mod r#virtual;
 
+pub mod error;
 #[cfg(target_arch = "wasm32")]
 mod web;
-pub mod error;
 
-use error::EditorResult;
 use crate::app::App;
+use error::EditorResult;
 
 fn setup_tracing() {
     #[cfg(target_arch = "wasm32")]

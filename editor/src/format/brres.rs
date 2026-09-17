@@ -360,7 +360,7 @@ fn deserialize_subfile(
                 label: String::from("TODO, UNPARSED FORMAT"),
                 id,
                 parent: Some(parent_id),
-                kind: VirtualNodeKind::Terminal,
+                kind: VirtualNodeKind::Unknown,
                 body: Deferred::evaluated(VirtualNodeBody {
                     children: Vec::new(),
                     inspectable: Some(Box::new(Raw {
@@ -447,7 +447,7 @@ pub fn deserialize_virtual(
                 label: dir_name,
                 id: dir_id,
                 parent: Some(brres_id),
-                kind: VirtualNodeKind::Container,
+                kind: VirtualNodeKind::Directory,
                 body: Deferred::evaluated(VirtualNodeBody {
                     children: subfiles,
                     inspectable: None,
@@ -468,7 +468,7 @@ pub fn deserialize_virtual(
         label: name,
         id: brres_id,
         parent: parent_id,
-        kind: VirtualNodeKind::Container,
+        kind: VirtualNodeKind::Directory,
         body: Deferred::defer((), parse_brres)?,
     });
 

@@ -318,7 +318,7 @@ pub fn deserialize_virtual(
             label: MDL0_SECTION_NAMES[i].to_owned(),
             id: section_id,
             parent: Some(mdl_node_id),
-            kind: VirtualNodeKind::Container,
+            kind: VirtualNodeKind::Directory,
             body: Deferred::defer((), section_parser)?,
         });
 
@@ -330,7 +330,7 @@ pub fn deserialize_virtual(
         label: name,
         id: mdl_node_id,
         parent: Some(parent_id),
-        kind: VirtualNodeKind::Container,
+        kind: VirtualNodeKind::Directory,
         body: Deferred::evaluated(VirtualNodeBody {
             children: files,
             inspectable: None,

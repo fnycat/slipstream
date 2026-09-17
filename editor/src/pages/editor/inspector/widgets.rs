@@ -1,3 +1,48 @@
+use crate::r#virtual::{node::VirtualNode, refs::VirtualNodeId};
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum DraggableNodeKind {
+    Directory,
+    Bone,
+}
+
+#[derive(Debug)]
+pub struct DraggableNodePayload {
+    pub id: VirtualNodeId,
+    pub kind: DraggableNodeKind,
+}
+
+pub fn draw_node_reference(id: egui::Id, node: Option<VirtualNodeId>, ui: &mut egui::Ui) {
+    let frame = egui::Frame::default().inner_margin(4.0);
+
+    let (response, payload) =
+        ui.dnd_drop_zone::<VirtualNodeId, Option<VirtualNodeId>>(frame, |ui| {
+            if let Some(node) = node {
+                let response = ui
+                    .dnd_drag_source(id, node, |ui| {
+                        ui.label(format!("label {node:?}"));
+                    })
+                    .response;
+
+                if let Some(hovered) = response.dnd_hover_payload::<VirtualNodeId>() {
+                    tracing::trace!("Hovering {:?}", *hovered);
+                }
+
+                if let Some(payload) = response.dnd_release_payload::<VirtualNodeId>() {
+                    tracing::trace!("Dropped {:?}", *payload);
+                }
+            } else {
+                ui.label("None");
+            }
+
+            None
+        });
+
+    if let Some(payload) = payload {
+        tracing::trace!("Dropped outer: {}", *payload);
+    }
+}
+
 pub fn draw_vec_drag_values<T: egui::emath::Numeric, const N: usize>(
     mut input_field_size: egui::Vec2,
     labels: [&str; N],
@@ -44,10 +89,10 @@ pub fn draw_inspector_section_header(name: String, ui: &mut egui::Ui) {
         let line_width = ((total_width - text_width - padding) / 2.0).max(0.0);
         let separator_size = egui::vec2(line_width, ui.available_height());
 
-        ui.add_space(0.01 * ui.available_height());
+        ui.add_space(0.05 * ui.available_height());
         ui.add_sized(separator_size, egui::Separator::default().horizontal());
         ui.label(name);
         ui.add_sized(separator_size, egui::Separator::default().horizontal());
-        ui.add_space(0.01 * ui.available_height());
+        ui.add_space(0.05 * ui.available_height());
     });
 }

@@ -1,6 +1,10 @@
-use egui_phosphor::regular::{MINUS, SQUARE, X};
-
 use crate::{app::App, config::APP_TITLE};
+
+egui_phosphor::subset! {
+    pub mod icons {
+        use regular::{MINUS, SQUARE, X};
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum WindowState {
@@ -138,7 +142,7 @@ impl App {
             ui.visuals_mut().widgets.inactive.weak_bg_fill = layout_bg;
             ui.spacing_mut().button_padding = egui::vec2(16.0, 8.0);
 
-            let close_button = egui::Button::new(X).corner_radius(0.0);
+            let close_button = egui::Button::new(icons::regular::X).corner_radius(0.0);
             if ui.add(close_button).clicked() {
                 ui.send_viewport_cmd(egui::ViewportCommand::Close);
             }
@@ -151,13 +155,13 @@ impl App {
                     self.toggle_maximized(ui);
                 }
             } else {
-                let maximize_button = egui::Button::new(SQUARE).corner_radius(0.0);
+                let maximize_button = egui::Button::new(icons::regular::SQUARE).corner_radius(0.0);
                 if ui.add(maximize_button).clicked() {
                     self.toggle_maximized(ui);
                 }
             }
 
-            let minimize_button = egui::Button::new(MINUS).corner_radius(0.0);
+            let minimize_button = egui::Button::new(icons::regular::MINUS).corner_radius(0.0);
             if ui.add(minimize_button).clicked() {
                 self.window_state = WindowState::Minimized;
                 ui.send_viewport_cmd(egui::ViewportCommand::Minimized(true));

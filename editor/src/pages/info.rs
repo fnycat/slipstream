@@ -1,5 +1,3 @@
-use egui_phosphor::regular::{CROSS, X};
-
 use crate::app::{App, CurrentPage};
 
 impl App {

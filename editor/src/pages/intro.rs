@@ -1,10 +1,14 @@
-use egui_phosphor::regular::{GEAR_FINE, GITHUB_LOGO, INFO, MOON, POWER, SUN};
-
 use crate::{
     app::{App, CurrentPage},
     model_renderer::ModelRenderer,
     pages::editor::Editor,
 };
+
+egui_phosphor::subset! {
+    pub mod icons {
+        use regular::{GEAR_FINE, GITHUB_LOGO, INFO, MOON, POWER, SUN};
+    }
+}
 
 impl App {
     pub fn draw_intro(&mut self, ui: &mut egui::Ui) {
@@ -129,7 +133,7 @@ impl App {
                     ui.spacing_mut().button_padding = egui::vec2(10.0, 10.0);
                     ui.spacing_mut().item_spacing = egui::vec2(5.0, 5.0);
 
-                    let power_button = egui::Button::new(POWER);
+                    let power_button = egui::Button::new(icons::regular::POWER);
                     if ui
                         .add(power_button)
                         .on_hover_text_at_pointer("Quit")
@@ -140,7 +144,7 @@ impl App {
 
                     if ui.theme() == egui::Theme::Dark {
                         if ui
-                            .button(SUN)
+                            .button(icons::regular::SUN)
                             .on_hover_text("Switch to light theme")
                             .clicked()
                         {
@@ -148,7 +152,7 @@ impl App {
                         }
                     } else {
                         if ui
-                            .button(MOON)
+                            .button(icons::regular::MOON)
                             .on_hover_text("Switch to dark theme")
                             .clicked()
                         {
@@ -157,19 +161,23 @@ impl App {
                     }
 
                     if ui
-                        .button(GEAR_FINE)
+                        .button(icons::regular::GEAR_FINE)
                         .on_hover_text("Open settings")
                         .clicked()
                     {
                         self.current_page = CurrentPage::Settings;
                     }
 
-                    if ui.button(INFO).on_hover_text("Open app info").clicked() {
+                    if ui
+                        .button(icons::regular::INFO)
+                        .on_hover_text("Open app info")
+                        .clicked()
+                    {
                         self.current_page = CurrentPage::Info;
                     }
 
                     if ui
-                        .button(GITHUB_LOGO)
+                        .button(icons::regular::GITHUB_LOGO)
                         .on_hover_text("Open the project on GitHub")
                         .clicked()
                     {

@@ -63,6 +63,11 @@ impl App {
 
         let mut fonts = egui::FontDefinitions::default();
         egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
+        egui_phosphor::add_font_bytes_as_family(
+            &mut fonts,
+            "mktools::icons::icons::fill",
+            egui_phosphor::bytes::fill::FONT,
+        );
 
         cc.egui_ctx.set_fonts(fonts);
         cc.egui_ctx.set_theme(egui::Theme::Dark);

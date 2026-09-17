@@ -1,6 +1,18 @@
-use crate::format::mdl0::bone::{BillboardSetting, Bone, BoneFlags};
-use crate::pages::editor::inspector::widgets::{draw_inspector_section_header, draw_vec_drag_values};
+use crate::format::mdl0::bone::{BillboardSetting, Bone, BoneFlags, VirtualBone};
+use crate::pages::editor::inspector::widgets::{
+    draw_inspector_section_header, draw_node_reference, draw_vec_drag_values,
+};
 use crate::r#virtual::node::Inspectable;
+
+const BILLBOARD_SETTING_DESCRIPTIONS: &[&str] = &[
+    "No influence",
+    "Influenced by rotation of the parent node. Z-axis is parallel to camera lens axis",
+    "Influenced by rotation of the parent node. Z-axis points toward camera direction",
+    "Not influenced by rotation of parent node, restricted to camera's up vector. Z-axis is parallel to camera lens axis",
+    "Not influenced by rotation of parent node, restricted to camera's up vector. Z-axis points toward camera direction",
+    "Influenced by rotation of parent node and rotates only around Y-axis. Z-axis is parallel to the camera lens axis",
+    "Influenced by rotation of parent node and rotates only around Y-axis. Z-axis points toward camera direction",
+];
 
 impl Inspectable for BoneFlags {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {
@@ -17,7 +29,7 @@ impl Inspectable for BoneFlags {
         ui.end_row();
 
         ui.checkbox(&mut self.disable_classic_scale, "Disable classic scale")
-            .on_hover_text("Controls the scale matrix algorithm. When set, disables traditional Maya/Wii scaling behaviour (where parent scale propagates directly down the hierarchy) in favour of standard matrix multiplication");;
+            .on_hover_text("Controls the scale matrix algorithm. When set, disables traditional Maya/Wii scaling behaviour (where parent scale propagates directly down the hierarchy) in favour of standard matrix multiplication");
 
         ui.checkbox(&mut self.is_billboard_child, "Billboard child")
             .on_hover_text(
@@ -55,7 +67,7 @@ impl Inspectable for BoneFlags {
     }
 }
 
-impl Inspectable for Bone {
+impl Inspectable for VirtualBone {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {
         let input_field_size = egui::vec2(180.0, 20.0);
 
@@ -118,38 +130,42 @@ impl Inspectable for Bone {
 
         draw_inspector_section_header("Skeleton hierarchy".to_owned(), ui);
 
-        ui.label("Parent bone:");
-        ui.add(egui::DragValue::new(&mut self.parent_offset));
-
-        ui.label("First child:");
-        ui.add(egui::DragValue::new(&mut self.first_child_offset));
-
-        ui.label("Next sibling:");
-        ui.add(egui::DragValue::new(&mut self.next_sibling_offset));
-
-        ui.label("Previous sibling:");
-        ui.add(egui::DragValue::new(&mut self.previous_sibling_offset));
+        ui.label(format!("Parent: {:?}", self.parent));
+        // ui.add(egui::DragValue::new(&mut self.parent));
 
         ui.separator();
 
-        ui.label("Bone index:");
-        ui.add(egui::DragValue::new(&mut self.index));
+        // ui.label(format!("Bone index: {}", self.index));
+        // ui.add(egui::DragValue::new(&mut self.index));
 
         // ui.end_row();
 
-        ui.label("Billboard transform:");
-        ui.add(egui::DragValue::new(&mut self.billboard_transform));
+        ui.horizontal(|ui| {
+            ui.label("Billboard reference:");
+            draw_node_reference(
+                egui::Id::new("billboard_bone_ref"),
+                self.billboard_reference,
+                ui,
+            );
+            // ui.add(egui::DragValue::new(&mut self.billboard_reference));
 
-        ui.label("Billboard setting:");
-        ui.menu_button(format!("{:?}", self.billboard_setting), |ui| {
-            for i in 0..BillboardSetting::len() {
-                let setting = BillboardSetting::try_from(i as u32)
-                    .expect("billboard setting size is outdated");
+            ui.add_space(0.1 * ui.available_width());
 
-                if ui.button(format!("{setting:?}")).clicked() {
-                    self.billboard_setting = setting;
+            ui.label("Billboard setting:");
+            ui.menu_button(format!("{:?}", self.billboard_setting), |ui| {
+                for i in 0..BillboardSetting::len() {
+                    let setting = BillboardSetting::try_from(i as u32)
+                        .expect("billboard setting size is outdated");
+
+                    if ui
+                        .button(format!("{setting:?}"))
+                        .on_hover_text(BILLBOARD_SETTING_DESCRIPTIONS[i])
+                        .clicked()
+                    {
+                        self.billboard_setting = setting;
+                    }
                 }
-            }
+            });
         });
 
         draw_inspector_section_header("Flags".to_owned(), ui);

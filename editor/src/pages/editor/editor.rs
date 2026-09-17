@@ -2,9 +2,9 @@ use std::cell::RefCell;
 use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
 
 use eframe::egui_wgpu;
-use egui_phosphor::regular::{CARET_DOWN, CARET_RIGHT, FOLDER, FOLDER_DASHED, FOLDER_OPEN};
 
 use crate::error::{EditorError, EditorResult, InvalidInputError};
+use crate::pages::editor::inspector::widgets::DraggableNodePayload;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeKind};
 use crate::r#virtual::refs::{
@@ -163,38 +163,45 @@ impl App {
         ref_cache: &VirtualRefCache,
         ui: &mut egui::Ui,
     ) -> EditorResult<Option<VirtualNodeId>> {
-        let base = ref_cache.get(base_id).ok_or_else(|| {
-            EditorError::from(InvalidInputError {
-                reason: format!("virtual node {base_id} does not exist"),
-                ..Default::default()
-            })
-        })?.clone();
+        ui.spacing_mut().item_spacing.y = 7.5;
+
+        let base = ref_cache
+            .get(base_id)
+            .ok_or_else(|| {
+                EditorError::from(InvalidInputError {
+                    reason: format!("virtual node {base_id} does not exist"),
+                    ..Default::default()
+                })
+            })?
+            .clone();
 
         let base_ref = base.borrow();
-        let is_deferred = base_ref.body.is_deferred();
 
         let mut opened_cache_id = None;
-        if base_ref.kind == VirtualNodeKind::Container {
-            // egui::CollapsingHeader::new(&base.label)
+
+        let node_kind = base_ref.kind;
+        if node_kind.is_directory() {
             let response = egui::CollapsingHeader::new(format!("{}: {}", base_id, &base_ref.label))
                 .icon(move |ui, openness, response| {
-                    let icon = if is_deferred {
-                        FOLDER_DASHED
-                    } else if openness < 0.5 {
-                        FOLDER
+                    let icon = if openness < 0.5 {
+                        node_kind.icon_closed()
                     } else {
-                        FOLDER_OPEN
+                        node_kind.icon_open()
                     };
-                    // let icon = if openness < 0.5 { FOLDER } else { FOLDER_OPEN };
 
-                    ui.painter().text(
-                        response.rect.center(),
-                        egui::Align2::CENTER_CENTER,
-                        icon,
-                        egui::FontId::default(),
-                        ui.visuals().text_color(),
+                    let galley = egui::WidgetText::from(icon).into_galley(
+                        ui,
+                        Some(egui::TextWrapMode::Extend),
+                        f32::INFINITY,
+                        egui::TextStyle::Body,
                     );
+
+                    let center_pos = response.rect.center() - (galley.size() * 0.5);
+
+                    ui.painter()
+                        .galley(center_pos, galley, ui.visuals().text_color());
                 })
+                .enabled(node_kind != VirtualNodeKind::DirectoryEmpty)
                 .show(ui, |ui| {
                     // Render children if this node has already been evaluated.
                     match &base_ref.body {
@@ -216,7 +223,9 @@ impl App {
                     base.borrow_mut().body.evaluate().unwrap();
 
                     let base_ref = base.borrow();
-                    let Deferred::Evaluated(body) = &base_ref.body else { unreachable!() };
+                    let Deferred::Evaluated(body) = &base_ref.body else {
+                        unreachable!()
+                    };
 
                     for &child in &body.children {
                         let ret = Self::draw_file_tree(child, ref_cache, ui).unwrap();
@@ -231,7 +240,10 @@ impl App {
                 return Ok(Some(base_id));
             }
         } else {
-            if ui.button(format!("{}: {}", base_id, &base_ref.label)).clicked() {
+            if ui
+                .button(format!("{}: {}", base_id, &base_ref.label))
+                .clicked()
+            {
                 return Ok(Some(base_id));
             }
         }

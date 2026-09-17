@@ -165,7 +165,7 @@ fn parse_leaf_node(
             let node = VirtualNode {
                 label: name,
                 id,
-                kind: VirtualNodeKind::Terminal,
+                kind: VirtualNodeKind::Unknown,
                 parent: Some(parent_id),
                 body: Deferred::evaluated(VirtualNodeBody {
                     children: Vec::new(),
@@ -223,7 +223,11 @@ fn parse_directory_tree(
         label,
         id,
         parent: parent_id,
-        kind: VirtualNodeKind::Container,
+        kind: if children.is_empty() {
+            VirtualNodeKind::DirectoryEmpty
+        } else {
+            VirtualNodeKind::Directory
+        },
         body: Deferred::evaluated(VirtualNodeBody {
             children,
             inspectable: None,
