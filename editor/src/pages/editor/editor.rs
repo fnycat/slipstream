@@ -163,8 +163,6 @@ impl App {
         ref_cache: &VirtualRefCache,
         ui: &mut egui::Ui,
     ) -> EditorResult<Option<VirtualNodeId>> {
-        ui.visuals_mut().collapsing_header_frame = true;
-
         let base = ref_cache.get(base_id).ok_or_else(|| {
             EditorError::from(InvalidInputError {
                 reason: format!("virtual node {base_id} does not exist"),

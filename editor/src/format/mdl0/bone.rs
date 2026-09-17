@@ -223,6 +223,9 @@ fn build_skeleton_tree(
     /// The offset between the start of the bone and the bone's index.
     const BONE_INDEX_OFFSET: u64 = 3 * 4;
 
+    // Create a virtual node for each of the bones.
+    //
+    // These will later be attached to each other to form a skeleton.
     let virtual_bones = bones
         .iter()
         .map(|bone| {
@@ -243,14 +246,12 @@ fn build_skeleton_tree(
         })
         .collect::<Vec<_>>();
 
-    let mut root = None;
-    let root_id = ref_cache.next_id();
-
+    let mut found_root = None; // The bone that was determined to be the root of the skeleton.
     for (i, bone) in bones.iter().enumerate() {
         let curr_id = virtual_bones[i];
 
         if bone.bone.parent_offset == 0 {
-            root = Some(curr_id);
+            found_root = Some(i);
             continue; // No parent
         }
 
@@ -296,19 +297,17 @@ fn build_skeleton_tree(
         curr_node.borrow_mut().parent = Some(parent_id);
     }
 
-    let node = VirtualNode {
-        label: String::from("skl_root_test"),
-        id: root_id,
-        kind: VirtualNodeKind::Container,
-        parent: Some(parent_id),
-        body: Deferred::evaluated(VirtualNodeBody {
-            children: Vec::new(),
-            inspectable: None,
-        }),
+    let Some(root_index) = found_root else {
+        return Err(InvalidInputError {
+            reason: String::from("skeleton contained no root bone"),
+            ..Default::default()
+        }.into());
     };
+    
+    tracing::trace!("Skeleton constructed");
 
-    ref_cache.insert(root_id, node);
-    Ok(root_id)
+    let root = virtual_bones[root_index];
+    Ok(root)
 }
 
 pub fn deserialize_skeleton(
