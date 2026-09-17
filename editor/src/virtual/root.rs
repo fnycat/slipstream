@@ -1,5 +1,8 @@
 use std::rc::Rc;
 
+use crate::error::{EditorResult, UnsupportedError};
+use crate::r#virtual::node::VirtualNode;
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
 use crate::{
     format::{
         arc,
@@ -7,9 +10,6 @@ use crate::{
     },
     shared::util::RefCursor,
 };
-use crate::error::{EditorResult, UnsupportedError};
-use crate::r#virtual::node::VirtualNodeRef;
-use crate::r#virtual::refs::{VirtualRefCache, VirtualRefCacheMap};
 
 /// Deserializes a possibly YAZ0-compressed file.
 ///
@@ -18,7 +18,7 @@ pub fn deserialize_maybe_compressed(
     mut reader: RefCursor<[u8]>,
     ref_cache: &VirtualRefCache,
     name: String,
-) -> EditorResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeId> {
     // Is this file compressed?
     if &reader.as_remaining()[..4] == YAZ0_MAGIC {
         // then decompress it.
@@ -37,13 +37,13 @@ pub fn deserialize_unknown_root(
     reader: &mut RefCursor<[u8]>,
     ref_cache: &VirtualRefCache,
     name: String,
-) -> EditorResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeId> {
     let magic: &[u8; 4] = reader.as_remaining()[..4]
         .try_into()
         .expect("array of size 4 does not have size 4?");
 
     let contents = match magic {
-        &arc::ARC_MAGIC => arc::deserialize_virtual(reader, ref_cache, name)?,
+        &arc::ARC_MAGIC => arc::deserialize_virtual(reader, None, ref_cache, name)?,
         // &brres::BRRES_MAGIC => deserialize_virtual_root_brres(reader, file_cache, name)?,
         _ => {
             return Err(UnsupportedError {

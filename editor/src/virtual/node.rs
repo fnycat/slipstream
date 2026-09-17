@@ -5,43 +5,14 @@ use std::cell::Ref;
 use std::rc::Weak;
 use std::{cell::RefCell, rc::Rc};
 
-pub type VirtualNodeRef = Rc<RefCell<VirtualNode>>;
-
-pub trait VirtualNodeRefExt {
-    /// Returns the name of the node, by cloning it.
-    fn label(&self) -> String;
-    fn id(&self) -> VirtualNodeId;
-    fn kind(&self) -> VirtualNodeKind;
-}
-
-impl VirtualNodeRefExt for VirtualNodeRef {
-    fn label(&self) -> String {
-        self.borrow().label.clone()
-    }
-
-    fn id(&self) -> VirtualNodeId {
-        self.borrow().id
-    }
-
-    fn kind(&self) -> VirtualNodeKind {
-        self.borrow().kind
-    }
-}
-
-impl From<VirtualNode> for VirtualNodeRef {
-    fn from(value: VirtualNode) -> Self {
-        Rc::new(RefCell::new(value))
-    }
-}
-
 pub trait Inspectable: std::fmt::Debug {
     fn draw_properties(&mut self, ui: &mut egui::Ui);
 }
 
 #[derive(Debug)]
-pub struct VirtualNodeContent {
+pub struct VirtualNodeBody {
+    pub children: Vec<VirtualNodeId>,
     pub inspectable: Option<Box<dyn Inspectable>>,
-    pub children: Vec<VirtualNodeRef>,
 }
 
 #[derive(Debug)]
@@ -54,18 +25,18 @@ pub struct VirtualNode {
     ///
     /// [`Container`](VirtualNodeKind::Container)
     pub kind: VirtualNodeKind,
-    pub parent: Weak<RefCell<VirtualNode>>,
-    pub content: Deferred<VirtualNodeContent>,
+    pub parent: Option<VirtualNodeId>,
+    pub body: Deferred<VirtualNodeBody>,
 }
 
 impl VirtualNode {
     pub fn evaluate(&mut self) -> EditorResult<()> {
-        self.content.evaluate()?;
+        self.body.evaluate()?;
         Ok(())
     }
 
     pub fn is_deferred(&self) -> bool {
-        self.content.is_deferred()
+        self.body.is_deferred()
     }
 }
 

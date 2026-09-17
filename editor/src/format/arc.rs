@@ -5,9 +5,8 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
 use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat, UnsupportedError};
 use crate::pages::editor::inspector::raw::Raw;
 use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{Inspectable, VirtualNode, VirtualNodeKind};
-use crate::r#virtual::node::{VirtualNodeContent, VirtualNodeRef};
-use crate::r#virtual::refs::{VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap};
+use crate::r#virtual::node::{Inspectable, VirtualNode, VirtualNodeBody, VirtualNodeKind};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
 use crate::{
     format::{
         brres::{self, BRRES_MAGIC},
@@ -151,41 +150,44 @@ impl Node {
 
 fn parse_leaf_node(
     reader: &mut RefCursor<[u8]>,
+    parent_id: VirtualNodeId,
     ref_cache: &VirtualRefCache,
     name: String,
-) -> EditorResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeId> {
     let magic: [u8; 4] = reader.read_u8_array()?;
     reader.set_position(reader.position() - 4);
 
     match magic {
-        ARC_MAGIC => deserialize_virtual(reader, ref_cache, name),
-        BRRES_MAGIC => brres::deserialize_virtual(reader, ref_cache, name),
+        ARC_MAGIC => deserialize_virtual(reader, Some(parent_id), ref_cache, name),
+        BRRES_MAGIC => brres::deserialize_virtual(reader, Some(parent_id), ref_cache, name),
         _ => {
             let id = ref_cache.next_id();
-            let node = VirtualNodeRef::from(VirtualNode {
+            let node = VirtualNode {
                 label: name,
                 id,
                 kind: VirtualNodeKind::Terminal,
-                content: Deferred::evaluated(VirtualNodeContent {
+                parent: Some(parent_id),
+                body: Deferred::evaluated(VirtualNodeBody {
+                    children: Vec::new(),
                     inspectable: Some(Box::new(Raw {
                         bytes: reader.clone(),
                     })),
-                    children: Vec::new(),
                 }),
-            });
+            };
 
-            ref_cache.insert(id, Rc::downgrade(&node));
-            Ok(node)
+            ref_cache.insert(id, node);
+            Ok(id)
         }
     }
 }
 
 fn parse_directory_tree(
     node_list: &mut [Node],
+    parent_id: Option<VirtualNodeId>,
     ref_cache: &VirtualRefCache,
     label: String,
     cursor: &mut usize,
-) -> EditorResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeId> {
     let &NodeContent::Directory { skip_node, .. } = &node_list[*cursor].data else {
         return Err(CorruptionError {
             reason: "expected directory at root, found file instead".to_owned(),
@@ -196,6 +198,8 @@ fn parse_directory_tree(
 
     *cursor += 1;
 
+    let id = ref_cache.next_id();
+
     let mut children = Vec::new();
     while *cursor < skip_node as usize && *cursor < node_list.len() {
         let curr_node = &mut node_list[*cursor];
@@ -203,11 +207,11 @@ fn parse_directory_tree(
         let name = std::mem::take(&mut curr_node.name);
         match &mut curr_node.data {
             NodeContent::Directory { .. } => {
-                let child = parse_directory_tree(node_list, ref_cache, name, cursor)?;
+                let child = parse_directory_tree(node_list, Some(id), ref_cache, name, cursor)?;
                 children.push(child);
             }
             NodeContent::File { data } => {
-                let sections = parse_leaf_node(data, ref_cache, name)?;
+                let sections = parse_leaf_node(data, id, ref_cache, name)?;
                 children.push(sections);
 
                 *cursor += 1;
@@ -215,26 +219,27 @@ fn parse_directory_tree(
         }
     }
 
-    let id = ref_cache.next_id();
-    let node = VirtualNodeRef::from(VirtualNode {
+    let node = VirtualNode {
         label,
         id,
+        parent: parent_id,
         kind: VirtualNodeKind::Container,
-        content: Deferred::evaluated(VirtualNodeContent {
-            inspectable: None,
+        body: Deferred::evaluated(VirtualNodeBody {
             children,
+            inspectable: None,
         }),
-    });
+    };
 
-    ref_cache.insert(id, Rc::downgrade(&node));
-    Ok(node)
+    ref_cache.insert(id, node);
+    Ok(id)
 }
 
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
+    parent_id: Option<VirtualNodeId>,
     ref_cache: &VirtualRefCache,
     name: String,
-) -> EditorResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeId> {
     tracing::trace!("Parsing ARC file `{name}`");
 
     let header = Header::deserialize(reader)?;
@@ -242,7 +247,7 @@ pub fn deserialize_virtual(
     let ty = NodeType::deserialize(reader)?;
     if ty != NodeType::Directory {
         return Err(CorruptionError {
-            reason: format!("expected directory at root, found file"),
+            reason: String::from("expected directory at root, found file"),
             ..Default::default()
         }
         .into());
@@ -283,7 +288,7 @@ pub fn deserialize_virtual(
     let mut cursor = 0;
 
     tracing::trace!("Constructing directory tree and parsing nodes...");
-    let ret = parse_directory_tree(&mut nodes, ref_cache, name, &mut cursor)?;
+    let ret = parse_directory_tree(&mut nodes, parent_id, ref_cache, name, &mut cursor)?;
     tracing::trace!("Constructed directory tree successfully");
     Ok(ret)
 }

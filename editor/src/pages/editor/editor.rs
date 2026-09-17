@@ -1,18 +1,21 @@
+use std::cell::RefCell;
 use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
 
 use eframe::egui_wgpu;
 use egui_phosphor::regular::{CARET_DOWN, CARET_RIGHT, FOLDER, FOLDER_DASHED, FOLDER_OPEN};
 
 use crate::error::{EditorError, EditorResult, InvalidInputError};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheMap};
-use crate::r#virtual::node::{VirtualNodeRef, VirtualNodeRefExt};
+use crate::r#virtual::defer::Deferred;
+use crate::r#virtual::node::{VirtualNode, VirtualNodeKind};
+use crate::r#virtual::refs::{
+    VirtualNodeId, VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap,
+};
+use crate::r#virtual::root::{self};
 use crate::{
     app::{App, CurrentPage},
     model_renderer::ModelRenderer,
     shared::util::RefCursor,
 };
-use crate::r#virtual::node::{VirtualNode, VirtualNodeKind};
-use crate::r#virtual::root::{self};
 
 pub struct Properties {
     pub label: String,
@@ -27,7 +30,7 @@ pub struct Editor {
     /// Not an internal URI.
     pub filepath: PathBuf,
     /// The whole file currently open in the editor.
-    pub root_node: VirtualNodeRef,
+    pub root_node: VirtualNodeId,
 
     pub open_node: Option<VirtualNodeId>,
     pub ref_cache: VirtualRefCache,
@@ -48,9 +51,9 @@ impl Editor {
             })?
             .to_string_lossy();
 
-        let mut ref_cache = VirtualRefCacheMap::new();
+        let ref_cache = Rc::new(RefCell::new(VirtualRefCacheMap::new()));
         let root_node =
-            root::deserialize_maybe_compressed(cursor, &mut ref_cache, file_name.into_owned())?;
+            root::deserialize_maybe_compressed(cursor, &ref_cache, file_name.into_owned())?;
 
         Ok(Self {
             root_node,
@@ -139,7 +142,7 @@ impl App {
         egui::Panel::left(panel_id).show(ui, |ui| {
             let editor = self.current_page.as_editor_mut().unwrap();
             if let Some(properties) =
-                Self::draw_file_tree(&editor.root_node, &editor.ref_cache, ui).unwrap()
+                Self::draw_file_tree(editor.root_node, &editor.ref_cache, ui).unwrap()
             {
                 editor.open_node = Some(properties);
             }
@@ -156,19 +159,26 @@ impl App {
     ///
     /// If a specific node has been opened, this function returns the ID of its cache entry.
     fn draw_file_tree(
-        base: &VirtualNodeRef,
+        base_id: VirtualNodeId,
         ref_cache: &VirtualRefCache,
         ui: &mut egui::Ui,
     ) -> EditorResult<Option<VirtualNodeId>> {
         ui.visuals_mut().collapsing_header_frame = true;
 
+        let base = ref_cache.get(base_id).ok_or_else(|| {
+            EditorError::from(InvalidInputError {
+                reason: format!("virtual node {base_id} does not exist"),
+                ..Default::default()
+            })
+        })?.clone();
+
         let base_ref = base.borrow();
-        let is_deferred = base_ref.content.is_deferred();
+        let is_deferred = base_ref.body.is_deferred();
 
         let mut opened_cache_id = None;
         if base_ref.kind == VirtualNodeKind::Container {
             // egui::CollapsingHeader::new(&base.label)
-            let response = egui::CollapsingHeader::new(format!("{}: {}", base_ref.id, base_ref.label))
+            let response = egui::CollapsingHeader::new(format!("{}: {}", base_id, &base_ref.label))
                 .icon(move |ui, openness, response| {
                     let icon = if is_deferred {
                         FOLDER_DASHED
@@ -188,16 +198,29 @@ impl App {
                     );
                 })
                 .show(ui, |ui| {
-                    drop(base_ref); // Ensure the ref is dropped so we can modify the node.
+                    // Render children if this node has already been evaluated.
+                    match &base_ref.body {
+                        Deferred::Evaluated(body) => {
+                            for &child in &body.children {
+                                let ret = Self::draw_file_tree(child, ref_cache, ui).unwrap();
+                                if ret.is_some() {
+                                    opened_cache_id = ret;
+                                }
+                            }
 
-                    // Check if the current node has been evaluated.
-                    base.borrow_mut().content.evaluate().unwrap();
+                            return;
+                        }
+                        _ => {}
+                    }
 
-                    // Then reborrow immutably to allow other code to access the node.
+                    drop(base_ref);
+
+                    base.borrow_mut().body.evaluate().unwrap();
+
                     let base_ref = base.borrow();
-                    let base_content = base_ref.content.get().expect("virtual node content not loaded");
+                    let Deferred::Evaluated(body) = &base_ref.body else { unreachable!() };
 
-                    for child in &base_content.children {
+                    for &child in &body.children {
                         let ret = Self::draw_file_tree(child, ref_cache, ui).unwrap();
                         if ret.is_some() {
                             opened_cache_id = ret;
@@ -207,23 +230,11 @@ impl App {
 
             // Open the properties window of the folder when clicked.
             if response.header_response.double_clicked() {
-                return Ok(Some(base.id()))
+                return Ok(Some(base_id));
             }
         } else {
-            if ui.button(format!("{}: {}", base_ref.id, base_ref.label)).clicked() {
-            // if ui.button(&base.label).clicked() {
-                // Open the inspector window for this file's content and
-                // force the node to be evaluated.
-
-                drop(base_ref); // Ensure the ref is dropped so we can modify the node.
-                base.borrow_mut().content.evaluate()?;
-
-                // Then reborrow immutably to allow other code to access the node.
-                let base_ref = base.borrow();
-
-                tracing::trace!("Opening file");
-
-                return Ok(Some(base_ref.id));
+            if ui.button(format!("{}: {}", base_id, &base_ref.label)).clicked() {
+                return Ok(Some(base_id));
             }
         }
 

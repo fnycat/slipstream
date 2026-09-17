@@ -1,4 +1,3 @@
-use crate::r#virtual::node::VirtualNodeRefExt;
 use byteorder::{BigEndian, ReadBytesExt};
 use std::cell::RefMut;
 use std::collections::HashMap;
@@ -7,7 +6,7 @@ use std::{io::Cursor, rc::Rc};
 use crate::error::{CorruptionError, EditorError, EditorResult, InvalidInputError};
 use crate::format::brres::IndexGroup;
 use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{VirtualNode, VirtualNodeContent, VirtualNodeKind, VirtualNodeRef};
+use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
 use crate::{
     format::{
@@ -218,8 +217,9 @@ pub struct VirtualBone {
 fn build_skeleton_tree(
     reader: &mut RefCursor<[u8]>,
     bones: &[NamedBone],
+    parent_id: VirtualNodeId,
     ref_cache: &VirtualRefCache,
-) -> EditorResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeId> {
     /// The offset between the start of the bone and the bone's index.
     const BONE_INDEX_OFFSET: u64 = 3 * 4;
 
@@ -227,27 +227,30 @@ fn build_skeleton_tree(
         .iter()
         .map(|bone| {
             let id = ref_cache.next_id();
-            let node = VirtualNodeRef::from(VirtualNode {
+            let node = VirtualNode {
                 label: bone.name.clone(),
                 id,
                 kind: VirtualNodeKind::Container,
-                content: Deferred::evaluated(VirtualNodeContent {
-                    inspectable: None,
+                parent: None,
+                body: Deferred::evaluated(VirtualNodeBody {
                     children: Vec::new(),
+                    inspectable: None,
                 }),
-            });
+            };
 
-            ref_cache.insert(id, Rc::downgrade(&node));
-            node
+            ref_cache.insert(id, node);
+            id
         })
         .collect::<Vec<_>>();
 
     let mut root = None;
+    let root_id = ref_cache.next_id();
+
     for (i, bone) in bones.iter().enumerate() {
-        let curr_bone = &virtual_bones[i];
+        let curr_id = virtual_bones[i];
 
         if bone.bone.parent_offset == 0 {
-            root = Some(Rc::clone(curr_bone));
+            root = Some(curr_id);
             continue; // No parent
         }
 
@@ -267,36 +270,52 @@ fn build_skeleton_tree(
             .into());
         }
 
-        let parent = &bones[parent_index as usize];
+        let parent_id = virtual_bones[parent_index as usize];
+        let parent_node = ref_cache
+            .get(parent_id)
+            .ok_or_else(|| {
+                EditorError::from(InvalidInputError {
+                    reason: format!("virtual node {parent_id} does not exist"),
+                    ..Default::default()
+                })
+        })?;
 
-        let parent_borrow = virtual_bones[parent_index as usize].borrow_mut();
-        parent_borrow.content.inspect_mut(|content| {
-            let child = Rc::clone(curr_bone);
-            content.children.push(child);
+        parent_node.borrow_mut().body.inspect_mut(|body| {
+            body.children.push(curr_id);
         });
 
-        let self_borrow = curr_bone.borrow_mut();
-        self_borrow.content.inspect_mut(|content| {});
+        let curr_node = ref_cache
+            .get(curr_id)
+            .ok_or_else(|| {
+                EditorError::from(InvalidInputError {
+                    reason: format!("virtual node {curr_id} does not exist"),
+                    ..Default::default()
+                })
+            })?;
+
+        curr_node.borrow_mut().parent = Some(parent_id);
     }
 
-    let node = VirtualNodeRef::from(VirtualNode {
+    let node = VirtualNode {
         label: String::from("skl_root_test"),
-        id,
+        id: root_id,
         kind: VirtualNodeKind::Container,
-        content: Deferred::evaluated(VirtualNodeContent {
-            inspectable: None,
+        parent: Some(parent_id),
+        body: Deferred::evaluated(VirtualNodeBody {
             children: Vec::new(),
+            inspectable: None,
         }),
-    });
+    };
 
-    ref_cache.insert(id, Rc::downgrade(&node));
-    Ok(node)
+    ref_cache.insert(root_id, node);
+    Ok(root_id)
 }
 
 pub fn deserialize_skeleton(
     reader: &mut RefCursor<[u8]>,
+    parent_id: VirtualNodeId,
     ref_cache: &VirtualRefCache,
-) -> EditorResult<VirtualNodeContent> {
+) -> EditorResult<VirtualNodeBody> {
     let section_index = IndexGroup::deserialize(reader)?;
     let mut bones = Vec::with_capacity(section_index.entries.len() - 1);
 
@@ -310,9 +329,9 @@ pub fn deserialize_skeleton(
         bones.push(NamedBone { name, bone });
     }
 
-    let node = build_skeleton_tree(reader, &bones, ref_cache)?;
+    let node = build_skeleton_tree(reader, &bones, parent_id, ref_cache)?;
 
-    Ok(VirtualNodeContent {
+    Ok(VirtualNodeBody {
         inspectable: None,
         children: vec![node],
     })

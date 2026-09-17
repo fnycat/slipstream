@@ -6,22 +6,19 @@ pub mod vertices;
 
 use std::{collections::HashMap, rc::Rc};
 
-use byteorder::{BigEndian, ReadBytesExt};
+use crate::error::{CorruptionError, EditorError, EditorResult, UnsupportedError};
+use crate::format::mdl0::bone::deserialize_skeleton;
+use crate::r#virtual::defer::Deferred;
+use crate::r#virtual::node::{Inspectable, VirtualNode, VirtualNodeBody, VirtualNodeKind};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
 use crate::{
     format::{
         brres::{self, IndexGroup, Subfile, SubfileHeader, SubfileType},
-        encoding::{Deserialize, ReadArrayExt, ReadStringExt}
-        ,
+        encoding::{Deserialize, ReadArrayExt, ReadStringExt},
     },
     shared::util::RefCursor,
 };
-use crate::error::{CorruptionError, EditorError, EditorResult, UnsupportedError};
-use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{
-    Inspectable, VirtualNode, VirtualNodeContent, VirtualNodeKind, VirtualNodeRef,
-};
-use crate::r#virtual::refs::{VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap};
-use crate::format::mdl0::bone::deserialize_skeleton;
+use byteorder::{BigEndian, ReadBytesExt};
 
 pub const MDL0_MAGIC: [u8; 4] = [0x4d, 0x44, 0x4c, 0x30]; // "MDL0"
 
@@ -268,9 +265,10 @@ impl Deserialize for BoneLinkTable {
 
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
+    parent_id: VirtualNodeId,
     ref_cache: &VirtualRefCache,
     name: String,
-) -> EditorResult<VirtualNodeRef> {
+) -> EditorResult<VirtualNodeId> {
     let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
 
     let expected_sections =
@@ -283,6 +281,8 @@ pub fn deserialize_virtual(
 
     let bone_links = BoneLinkTable::deserialize(reader)?;
     let index_group = IndexGroup::deserialize(reader)?;
+
+    let mdl_node_id = ref_cache.next_id();
 
     let mut files = Vec::with_capacity(subfile_header.offsets.len());
     for (i, &section_offset) in subfile_header.offsets.iter().enumerate() {
@@ -298,6 +298,7 @@ pub fn deserialize_virtual(
         let mut reader = reader.clone();
         let ref_cache2 = ref_cache.clone();
 
+        let section_id = ref_cache.next_id();
         let section_parser = move |_data| {
             let section_start = subfile_header.header_start as i64 + section_offset as i64;
             reader.set_position(section_start as u64);
@@ -305,37 +306,37 @@ pub fn deserialize_virtual(
             tracing::debug!("Parsing {section_ty:?}");
 
             match section_ty {
-                SectionType::Bones => deserialize_skeleton(&mut reader, &ref_cache2),
-                _ => Ok(VirtualNodeContent {
+                SectionType::Bones => deserialize_skeleton(&mut reader, section_id, &ref_cache2),
+                _ => Ok(VirtualNodeBody {
                     children: Vec::new(),
-                    inspectable: None
-                })
+                    inspectable: None,
+                }),
             }
         };
 
-        let id = ref_cache.next_id();
-        let node = VirtualNodeRef::from(VirtualNode {
+        let node = VirtualNode::from(VirtualNode {
             label: MDL0_SECTION_NAMES[i].to_owned(),
-            id,
+            id: section_id,
+            parent: Some(mdl_node_id),
             kind: VirtualNodeKind::Container,
-            content: Deferred::defer((), section_parser)?,
+            body: Deferred::defer((), section_parser)?,
         });
 
-        ref_cache.insert(id, Rc::downgrade(&node));
-        files.push(node);
+        ref_cache.insert(section_id, node);
+        files.push(section_id);
     }
 
-    let id = ref_cache.next_id();
-    let node = VirtualNodeRef::from(VirtualNode {
+    let node = VirtualNode::from(VirtualNode {
         label: name,
-        id,
+        id: mdl_node_id,
+        parent: Some(parent_id),
         kind: VirtualNodeKind::Container,
-        content: Deferred::evaluated(VirtualNodeContent {
-            inspectable: None,
+        body: Deferred::evaluated(VirtualNodeBody {
             children: files,
+            inspectable: None,
         }),
     });
 
-    ref_cache.insert(id, Rc::downgrade(&node));
-    Ok(node)
+    ref_cache.insert(mdl_node_id, node);
+    Ok(mdl_node_id)
 }
