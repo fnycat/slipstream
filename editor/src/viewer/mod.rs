@@ -1,74 +1,13 @@
 pub mod camera;
+mod vertex;
 
 use eframe::egui_wgpu;
 use wgpu::util::DeviceExt;
 
-use crate::viewer::camera::{Camera, CameraController, CameraUniformData, OrbitCamera};
-
-// const VERTICES: [[f32; 2]; 6] = [
-//     [-1.0, -1.0],
-//     [1.0, 1.0],
-//     [-1.0, 1.0],
-//     [1.0, -1.0],
-//     [1.0, 1.0],
-//     [-1.0, -1.0],
-// ];
-
-#[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(C)]
-struct Vertex {
-    coordinates: [f32; 3],
-}
-
-impl Vertex {
-    pub const fn layout() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Self>() as u64,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x3,
-                offset: 0,
-                shader_location: 0,
-            }],
-        }
-    }
-}
-
-const VERTICES: [Vertex; 8] = [
-    Vertex {
-        coordinates: [-0.5, -0.5, 0.5],
-    }, // 0: Bottom-left-front
-    Vertex {
-        coordinates: [0.5, -0.5, 0.5],
-    }, // 1: Bottom-right-front
-    Vertex {
-        coordinates: [0.5, 0.5, 0.5],
-    }, // 2: Top-right-front
-    Vertex {
-        coordinates: [-0.5, 0.5, 0.5],
-    }, // 3: Top-left-front
-    Vertex {
-        coordinates: [-0.5, -0.5, -0.5],
-    }, // 4: Bottom-left-back
-    Vertex {
-        coordinates: [0.5, -0.5, -0.5],
-    }, // 5: Bottom-right-back
-    Vertex {
-        coordinates: [0.5, 0.5, -0.5],
-    }, // 6: Top-right-back
-    Vertex {
-        coordinates: [-0.5, 0.5, -0.5],
-    }, // 7: Top-left-back
-];
-
-const INDICES: [u16; 36] = [
-    0, 1, 2, 2, 3, 0, // front
-    1, 5, 6, 6, 2, 1, // right
-    5, 4, 7, 7, 6, 5, // back
-    4, 0, 3, 3, 7, 4, // left
-    3, 2, 6, 6, 7, 3, // top
-    4, 5, 1, 1, 0, 4, // bottom
-];
+use crate::viewer::{
+    camera::{Camera, CameraController, CameraUniformData, OrbitCamera},
+    vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex},
+};
 
 const DEFAULT_VIEWPORT: egui::Rect =
     egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0));
@@ -76,12 +15,15 @@ const DEFAULT_VIEWPORT: egui::Rect =
 /// The usage flags for the offscreen render texture
 ///
 // This uses the `union` method instead of standard bit or because traits are not const right now.
-pub const OFFSCREEN_USAGE: wgpu::TextureUsages =
+pub const TEXTURE_USAGES: wgpu::TextureUsages =
     wgpu::TextureUsages::RENDER_ATTACHMENT.union(wgpu::TextureUsages::TEXTURE_BINDING);
 
-pub const OFFSCREEN_CLEAR_COLOR: wgpu::Color = wgpu::Color::BLACK;
-pub const OFFSCREEN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-pub const OFFSCREEN_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
+pub const DEPTH_USAGES: wgpu::TextureUsages = TEXTURE_USAGES;
+
+pub const CLEAR_COLOR: wgpu::Color = wgpu::Color::BLACK;
+pub const RENDER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+pub const TEXTURE_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
 
 pub struct ViewerCallback;
 
@@ -114,11 +56,18 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(OFFSCREEN_CLEAR_COLOR),
+                    load: wgpu::LoadOp::Clear(CLEAR_COLOR),
                     store: wgpu::StoreOp::Store,
                 },
             })],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &viewer.texture_data.depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
             timestamp_writes: None,
             occlusion_query_set: None,
             multiview_mask: None,
@@ -150,6 +99,10 @@ pub struct TextureData {
     pub texture: wgpu::Texture,
     pub texture_view: wgpu::TextureView,
     pub texture_id: egui::TextureId,
+
+    pub depth_texture: wgpu::Texture,
+    pub depth_view: wgpu::TextureView,
+    pub depth_sampler: wgpu::Sampler,
 }
 
 #[derive(Clone)]
@@ -217,16 +170,16 @@ impl ViewerState {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: OFFSCREEN_FORMAT,
-            usage: OFFSCREEN_USAGE,
+            format: RENDER_FORMAT,
+            usage: TEXTURE_USAGES,
             view_formats: &[],
         });
 
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor {
             label: Some("offscreen render view"),
-            format: Some(OFFSCREEN_FORMAT),
+            format: Some(RENDER_FORMAT),
             dimension: Some(wgpu::TextureViewDimension::D2),
-            usage: Some(OFFSCREEN_USAGE),
+            usage: Some(TEXTURE_USAGES),
             aspect: wgpu::TextureAspect::All,
             base_mip_level: 0,
             mip_level_count: None,
@@ -237,13 +190,59 @@ impl ViewerState {
         let texture_id = state.renderer.write().register_native_texture(
             &state.device,
             &texture_view,
-            OFFSCREEN_FILTER_MODE,
+            TEXTURE_FILTER_MODE,
         );
+
+        let depth_texture = state.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("depth texture"),
+            size: wgpu::Extent3d {
+                width: DEFAULT_VIEWPORT.width() as u32,
+                height: DEFAULT_VIEWPORT.height() as u32,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: DEPTH_FORMAT,
+            usage: DEPTH_USAGES,
+            view_formats: &[],
+        });
+
+        let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("depth texture view"),
+            format: Some(DEPTH_FORMAT),
+            dimension: Some(wgpu::TextureViewDimension::D2),
+            usage: Some(DEPTH_USAGES),
+            aspect: wgpu::TextureAspect::DepthOnly,
+            base_mip_level: 0,
+            mip_level_count: None,
+            base_array_layer: 0,
+            array_layer_count: None,
+        });
+
+        let depth_sampler = state.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("depth texture sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            compare: Some(wgpu::CompareFunction::LessEqual),
+            lod_min_clamp: 0.0,
+            lod_max_clamp: 100.0,
+            anisotropy_clamp: 1,
+            border_color: None,
+        });
 
         TextureData {
             texture,
             texture_view,
             texture_id,
+
+            depth_texture,
+            depth_view,
+            depth_sampler,
         }
     }
 
@@ -329,7 +328,22 @@ impl ViewerState {
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
+                stencil: wgpu::StencilState {
+                    front: wgpu::StencilFaceState::IGNORE,
+                    back: wgpu::StencilFaceState::IGNORE,
+                    read_mask: !0,
+                    write_mask: !0,
+                },
+                bias: wgpu::DepthBiasState {
+                    constant: 0,
+                    slope_scale: 0.0,
+                    clamp: 0.0,
+                },
+            }),
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -340,7 +354,7 @@ impl ViewerState {
                 entry_point: Some("fs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: OFFSCREEN_FORMAT,
+                    format: RENDER_FORMAT,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -351,13 +365,13 @@ impl ViewerState {
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("vertex buffer"),
-            contents: bytemuck::cast_slice(&VERTICES),
+            contents: bytemuck::cast_slice(&CUBE_VERTICES),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("index buffer"),
-            contents: bytemuck::cast_slice(&INDICES),
+            contents: bytemuck::cast_slice(&CUBE_INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
 
@@ -372,7 +386,7 @@ impl ViewerState {
     /// Attempts to resize the texture and returns whether the texture has actually been resized.
     ///
     /// If this function returns true, the texture view should be reregistered with egui.
-    pub fn resize_render_texture(&mut self, bounds: egui::Rect) -> bool {
+    pub fn resize_viewport(&mut self, bounds: egui::Rect) -> bool {
         let new_width = bounds.width() as u32;
         let new_height = bounds.height() as u32;
 
@@ -398,8 +412,8 @@ impl ViewerState {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: OFFSCREEN_FORMAT,
-                usage: OFFSCREEN_USAGE,
+                format: RENDER_FORMAT,
+                usage: TEXTURE_USAGES,
                 view_formats: &[],
             });
 
@@ -408,10 +422,41 @@ impl ViewerState {
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor {
                         label: Some("offscreen render view"),
-                        format: Some(OFFSCREEN_FORMAT),
+                        format: Some(RENDER_FORMAT),
                         dimension: Some(wgpu::TextureViewDimension::D2),
-                        usage: Some(OFFSCREEN_USAGE),
+                        usage: Some(TEXTURE_USAGES),
                         aspect: wgpu::TextureAspect::All,
+                        base_mip_level: 0,
+                        mip_level_count: None,
+                        base_array_layer: 0,
+                        array_layer_count: None,
+                    });
+
+            self.texture_data.depth_texture =
+                self.device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("depth texture"),
+                    size: wgpu::Extent3d {
+                        width: bounds.width() as u32,
+                        height: bounds.height() as u32,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: DEPTH_FORMAT,
+                    usage: DEPTH_USAGES,
+                    view_formats: &[],
+                });
+
+            self.texture_data.depth_view =
+                self.texture_data
+                    .depth_texture
+                    .create_view(&wgpu::TextureViewDescriptor {
+                        label: Some("depth texture view"),
+                        format: Some(DEPTH_FORMAT),
+                        dimension: Some(wgpu::TextureViewDimension::D2),
+                        usage: Some(DEPTH_USAGES),
+                        aspect: wgpu::TextureAspect::DepthOnly,
                         base_mip_level: 0,
                         mip_level_count: None,
                         base_array_layer: 0,

@@ -6,7 +6,7 @@ use eframe::egui_wgpu;
 use crate::error::{EditorError, EditorResult, InvalidInputError};
 use crate::pages::editor::inspector::widgets::DraggableNodePayload;
 use crate::viewer::camera::CameraController;
-use crate::viewer::{OFFSCREEN_FILTER_MODE, ViewerCallback};
+use crate::viewer::{TEXTURE_FILTER_MODE, ViewerCallback};
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeKind};
 use crate::r#virtual::refs::{
@@ -141,7 +141,7 @@ impl App {
                     .unwrap();
                 let texture_id = viewer.texture_data.texture_id;
 
-                let resized = viewer.resize_render_texture(panel_bounds);
+                let resized = viewer.resize_viewport(panel_bounds);
                 if resized {
                     let device = viewer.device.clone();
                     let tex_view = viewer.texture_data.texture_view.clone();
@@ -149,7 +149,7 @@ impl App {
                     renderer.update_egui_texture_from_wgpu_texture(
                         &device,
                         &tex_view,
-                        OFFSCREEN_FILTER_MODE,
+                        TEXTURE_FILTER_MODE,
                         texture_id,
                     );
                 }
