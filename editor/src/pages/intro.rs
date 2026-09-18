@@ -1,7 +1,7 @@
 use crate::{
     app::{App, CurrentPage},
-    model_renderer::ModelRenderer,
     pages::editor::Editor,
+    viewer::Viewer,
 };
 
 egui_phosphor::subset! {
@@ -72,10 +72,9 @@ impl App {
                                             .pick_file();
 
                                         if let Some(selected_file) = selected_file {
-                                            ModelRenderer::init(&self.render_state);
-
                                             self.current_page = CurrentPage::Editor(
-                                                Editor::new(selected_file).unwrap(),
+                                                Editor::new(selected_file, &self.render_state)
+                                                    .unwrap(),
                                             );
                                         }
                                     }

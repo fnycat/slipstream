@@ -6,9 +6,9 @@ pub mod icons;
 pub mod config;
 pub mod decorations;
 pub mod format;
-pub mod model_renderer;
 pub mod pages;
 pub mod shared;
+pub mod viewer;
 pub mod r#virtual;
 
 pub mod error;

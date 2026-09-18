@@ -8,7 +8,10 @@ pub const APP_TITLE: &str = "Mario Kart Wii Editor";
 pub fn configure_dark_style() -> egui::Style {
     egui::Style {
         visuals: egui::Visuals {
-            panel_fill: egui::Color32::from_rgb(40, 40, 40),
+            interact_cursor: Some(egui::CursorIcon::PointingHand),
+            window_fill: egui::Color32::from_gray(30),
+            // panel_fill: egui::Color32::from_gray(60),/
+            panel_fill: egui::Color32::from_gray(40),
             ..Default::default()
         },
         ..Default::default()
@@ -18,6 +21,7 @@ pub fn configure_dark_style() -> egui::Style {
 pub fn configure_light_style() -> egui::Style {
     egui::Style {
         visuals: egui::Visuals {
+            interact_cursor: Some(egui::CursorIcon::PointingHand),
             panel_fill: egui::Color32::WHITE,
             ..Default::default()
         },

@@ -11,6 +11,7 @@ use crate::{
     config::{APP_TITLE, DEFAULT_SIZE, LAUNCH_DELAY, configure_dark_style, configure_light_style},
     decorations::WindowState,
     pages::editor::Editor,
+    viewer::ViewerCallback,
 };
 
 pub enum CurrentPage {
@@ -77,6 +78,8 @@ impl App {
 
         cc.egui_ctx
             .set_style_of(egui::Theme::Light, configure_light_style());
+
+        ViewerCallback::init(cc.wgpu_render_state.as_ref().unwrap());
 
         Self {
             render_state: cc.wgpu_render_state.as_ref().unwrap().clone(),

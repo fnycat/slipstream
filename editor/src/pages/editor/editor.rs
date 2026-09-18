@@ -5,6 +5,7 @@ use eframe::egui_wgpu;
 
 use crate::error::{EditorError, EditorResult, InvalidInputError};
 use crate::pages::editor::inspector::widgets::DraggableNodePayload;
+use crate::viewer::{OFFSCREEN_FILTER_MODE, ViewerCallback};
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeKind};
 use crate::r#virtual::refs::{
@@ -13,8 +14,8 @@ use crate::r#virtual::refs::{
 use crate::r#virtual::root::{self};
 use crate::{
     app::{App, CurrentPage},
-    model_renderer::ModelRenderer,
     shared::util::RefCursor,
+    viewer::Viewer,
 };
 
 pub struct Properties {
@@ -32,12 +33,13 @@ pub struct Editor {
     /// The whole file currently open in the editor.
     pub root_node: VirtualNodeId,
 
+    pub viewer: Viewer,
     pub open_node: Option<VirtualNodeId>,
     pub ref_cache: VirtualRefCache,
 }
 
 impl Editor {
-    pub fn new(filepath: PathBuf) -> EditorResult<Self> {
+    pub fn new(filepath: PathBuf, render_state: &egui_wgpu::RenderState) -> EditorResult<Self> {
         let contents = std::fs::read(&filepath)?;
         let cursor = RefCursor::new(Rc::<[u8]>::from(contents));
 
@@ -56,6 +58,7 @@ impl Editor {
             root::deserialize_maybe_compressed(cursor, &ref_cache, file_name.into_owned())?;
 
         Ok(Self {
+            viewer: Viewer::new(render_state),
             root_node,
             ref_cache,
             open_node: None,
@@ -121,11 +124,44 @@ impl App {
 
     fn draw_editor_view(&self, ui: &mut egui::Ui) {
         egui::Frame::canvas(ui.style()).show(ui, |ui| {
-            let (rect, _response) =
+            let (panel_bounds, _response) =
                 ui.allocate_exact_size(ui.available_size(), egui::Sense::drag());
 
-            ui.painter()
-                .add(egui_wgpu::Callback::new_paint_callback(rect, ModelRenderer))
+            // We must update the panel size before the callback.
+            //
+            // Updating the texture ID requires locking the renderer, but the
+            // paint callback locks it too.
+            //
+            // All this nonsense down here is to avoid a deadlock with the paint callback.
+            {
+                let mut renderer = self.render_state.renderer.write();
+                let viewer = renderer.callback_resources.get_mut::<Viewer>().unwrap();
+
+                let resized = viewer.resize_render_texture(panel_bounds);
+                if resized {
+                    let device = viewer.device.clone();
+                    let old_tex_id = viewer.texture_id;
+                    let tex_view = viewer.texture_view.clone();
+
+                    renderer.free_texture(&old_tex_id);
+
+                    let new_tex_id =
+                        renderer.register_native_texture(&device, &tex_view, OFFSCREEN_FILTER_MODE);
+
+                    // As `viewer` borrows `renderer` mutably, we need to temporarily
+                    // drop the `viewer` borrow to modify `renderer`.
+                    renderer
+                        .callback_resources
+                        .get_mut::<Viewer>()
+                        .unwrap()
+                        .texture_id = new_tex_id;
+                }
+            }
+
+            ui.painter().add(egui_wgpu::Callback::new_paint_callback(
+                panel_bounds,
+                ViewerCallback,
+            ));
         });
     }
 
@@ -177,11 +213,12 @@ impl App {
 
         let base_ref = base.borrow();
 
-        let mut opened_cache_id = None;
+        let mut opened_node_id = None;
 
         let node_kind = base_ref.kind;
         if node_kind.is_directory() {
             let response = egui::CollapsingHeader::new(format!("{}: {}", base_id, &base_ref.label))
+                .id_salt(base_id) // Different folders might have the same name, use the unique node ID
                 .icon(move |ui, openness, response| {
                     let icon = if openness < 0.5 {
                         node_kind.icon_closed()
@@ -201,7 +238,6 @@ impl App {
                     ui.painter()
                         .galley(center_pos, galley, ui.visuals().text_color());
                 })
-                .enabled(node_kind != VirtualNodeKind::DirectoryEmpty)
                 .show(ui, |ui| {
                     // Render children if this node has already been evaluated.
                     match &base_ref.body {
@@ -209,7 +245,7 @@ impl App {
                             for &child in &body.children {
                                 let ret = Self::draw_file_tree(child, ref_cache, ui).unwrap();
                                 if ret.is_some() {
-                                    opened_cache_id = ret;
+                                    opened_node_id = ret;
                                 }
                             }
 
@@ -230,7 +266,7 @@ impl App {
                     for &child in &body.children {
                         let ret = Self::draw_file_tree(child, ref_cache, ui).unwrap();
                         if ret.is_some() {
-                            opened_cache_id = ret;
+                            opened_node_id = ret;
                         }
                     }
                 });
@@ -240,14 +276,19 @@ impl App {
                 return Ok(Some(base_id));
             }
         } else {
-            if ui
-                .button(format!("{}: {}", base_id, &base_ref.label))
-                .clicked()
-            {
-                return Ok(Some(base_id));
-            }
+            ui.horizontal(|ui| {
+                ui.label(base_ref.kind.icon_closed());
+                if ui.label(format!("{base_id}: {}", base_ref.label)).clicked() {
+                    opened_node_id = Some(base_ref.id);
+                }
+            });
+
+            // if response.
+            // {
+            //     return Ok(Some(base_id));
+            // }
         }
 
-        Ok(opened_cache_id)
+        Ok(opened_node_id)
     }
 }
