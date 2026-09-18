@@ -4,11 +4,26 @@ use std::sync::Arc;
 use eframe::egui_wgpu;
 use wgpu::util::DeviceExt;
 
-const VERTICES: [[f32; 3]; 3] = [[0.0, 0.5, 0.0], [-0.5, -0.5, 0.0], [0.5, -0.5, 0.0]];
+// const VERTICES: [[f32; 3]; 3] = [[0.0, 0.5, 0.0], [-0.5, -0.5, 0.0], [0.5, -0.5, 0.0]];
+const VERTICES: [[f32; 2]; 6] = [
+    [-1.0, -1.0],
+    [1.0, 1.0],
+    [-1.0, 1.0],
+    [-1.0, -1.0],
+    [1.0, -1.0],
+    [1.0, 1.0],
+];
 
 const DEFAULT_PANEL_SIZE: egui::Rect =
     egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0));
 
+/// The usage flags for the offscreen render texture
+///
+// This uses the `union` method instead of standard bit or because traits are not const right now.
+pub const OFFSCREEN_USAGE: wgpu::TextureUsages =
+    wgpu::TextureUsages::RENDER_ATTACHMENT.union(wgpu::TextureUsages::TEXTURE_BINDING);
+
+pub const OFFSCREEN_CLEAR_COLOR: wgpu::Color = wgpu::Color::RED;
 pub const OFFSCREEN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 pub const OFFSCREEN_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
 pub const VERTICAL_FOV: f32 = 90.0;
@@ -27,6 +42,8 @@ impl ViewerCallback {
 }
 
 impl egui_wgpu::CallbackTrait for ViewerCallback {
+    // Render the view to the texture before the UI render pass
+    // so that the UI can immediately use an up to date texture.
     fn prepare(
         &self,
         device: &wgpu::Device,
@@ -35,6 +52,29 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
         egui_encoder: &mut wgpu::CommandEncoder,
         resources: &mut egui_wgpu::CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
+        let viewer = resources.get::<Viewer>().unwrap();
+
+        let mut render_pass = egui_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("offscreen render pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &viewer.texture_view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(OFFSCREEN_CLEAR_COLOR),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+
+        render_pass.set_pipeline(&viewer.render_pipeline);
+        render_pass.set_vertex_buffer(0, viewer.vertex_buffer.slice(..));
+        render_pass.draw(0..3, 0..1);
+
         Vec::new()
     }
 
@@ -44,12 +84,6 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
         render_pass: &mut wgpu::RenderPass<'static>,
         resources: &egui_wgpu::CallbackResources,
     ) {
-        let viewer = resources.get::<Viewer>().unwrap();
-
-        render_pass.set_pipeline(&viewer.render_pipeline);
-        render_pass.set_vertex_buffer(0, viewer.vertex_buffer.slice(..));
-        render_pass.set_bind_group(0, &viewer.bind_group, &[]);
-        render_pass.draw(0..3, 0..1);
     }
 }
 
@@ -68,8 +102,6 @@ pub struct Viewer {
 
     pub pipeline_layout: wgpu::PipelineLayout,
     pub render_pipeline: wgpu::RenderPipeline,
-    pub bind_layout: wgpu::BindGroupLayout,
-    pub bind_group: wgpu::BindGroup,
 
     // pub render_texture: wgpu::Texture,
     /// Size of the panel that the view is being drawn into.
@@ -112,7 +144,7 @@ impl Viewer {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: OFFSCREEN_FORMAT,
-                usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: OFFSCREEN_USAGE,
                 view_formats: &[],
             });
 
@@ -120,24 +152,12 @@ impl Viewer {
                 label: Some("offscreen render view"),
                 format: Some(OFFSCREEN_FORMAT),
                 dimension: Some(wgpu::TextureViewDimension::D2),
-                usage: Some(
-                    wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
-                ),
+                usage: Some(OFFSCREEN_USAGE),
                 aspect: wgpu::TextureAspect::All,
                 base_mip_level: 0,
                 mip_level_count: None,
                 base_array_layer: 0,
                 array_layer_count: None,
-            });
-
-            // and also recreate the bind group
-            self.bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("offscreen render bind group"),
-                layout: &self.bind_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&self.texture_view),
-                }],
             });
 
             self.projection_matrix = glam::camera::lh::proj::directx::perspective(
@@ -167,7 +187,7 @@ impl Viewer {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: OFFSCREEN_FORMAT,
-            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+            usage: OFFSCREEN_USAGE,
             view_formats: &[],
         });
 
@@ -175,9 +195,7 @@ impl Viewer {
             label: Some("offscreen render view"),
             format: Some(OFFSCREEN_FORMAT),
             dimension: Some(wgpu::TextureViewDimension::D2),
-            usage: Some(
-                wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
-            ),
+            usage: Some(OFFSCREEN_USAGE),
             aspect: wgpu::TextureAspect::All,
             base_mip_level: 0,
             mip_level_count: None,
@@ -194,33 +212,10 @@ impl Viewer {
         let shader =
             device.create_shader_module(wgpu::include_wgsl!("../../shaders/viewer.wgsl").into());
 
-        let bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("texture bind group layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::StorageTexture {
-                    access: wgpu::StorageTextureAccess::WriteOnly,
-                    format: OFFSCREEN_FORMAT,
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                },
-                count: None,
-            }],
-        });
-
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("offscreen render pipeline layout"),
-            bind_group_layouts: &[Some(&bind_layout)],
+            bind_group_layouts: &[],
             immediate_size: 0,
-        });
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("texture bind group"),
-            layout: &bind_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&texture_view),
-            }],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -231,10 +226,10 @@ impl Viewer {
                 entry_point: Some("vs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 buffers: &[Some(wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<[f32; 3]>() as u64,
+                    array_stride: std::mem::size_of::<[f32; 2]>() as u64,
                     step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &[wgpu::VertexAttribute {
-                        format: wgpu::VertexFormat::Float32x3,
+                        format: wgpu::VertexFormat::Float32x2,
                         offset: 0,
                         shader_location: 0,
                     }],
@@ -260,7 +255,7 @@ impl Viewer {
                 entry_point: Some("fs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: state.target_format,
+                    format: OFFSCREEN_FORMAT,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -285,8 +280,6 @@ impl Viewer {
         Self {
             device,
 
-            bind_group,
-            bind_layout,
             pipeline_layout,
             render_pipeline,
             texture,

@@ -133,35 +133,37 @@ impl App {
             // paint callback locks it too.
             //
             // All this nonsense down here is to avoid a deadlock with the paint callback.
-            {
+
+            let texture_id = {
                 let mut renderer = self.render_state.renderer.write();
                 let viewer = renderer.callback_resources.get_mut::<Viewer>().unwrap();
+                let texture_id = viewer.texture_id;
 
                 let resized = viewer.resize_render_texture(panel_bounds);
                 if resized {
                     let device = viewer.device.clone();
-                    let old_tex_id = viewer.texture_id;
                     let tex_view = viewer.texture_view.clone();
 
-                    renderer.free_texture(&old_tex_id);
-
-                    let new_tex_id =
-                        renderer.register_native_texture(&device, &tex_view, OFFSCREEN_FILTER_MODE);
-
-                    // As `viewer` borrows `renderer` mutably, we need to temporarily
-                    // drop the `viewer` borrow to modify `renderer`.
-                    renderer
-                        .callback_resources
-                        .get_mut::<Viewer>()
-                        .unwrap()
-                        .texture_id = new_tex_id;
+                    renderer.update_egui_texture_from_wgpu_texture(
+                        &device,
+                        &tex_view,
+                        OFFSCREEN_FILTER_MODE,
+                        texture_id,
+                    );
                 }
-            }
+
+                texture_id
+            };
 
             ui.painter().add(egui_wgpu::Callback::new_paint_callback(
                 panel_bounds,
                 ViewerCallback,
             ));
+
+            ui.image(egui::load::SizedTexture {
+                id: texture_id,
+                size: panel_bounds.size(),
+            });
         });
     }
 
