@@ -358,7 +358,7 @@ impl Viewer {
             viewport: glam::vec2(DEFAULT_PANEL_SIZE.width(), DEFAULT_PANEL_SIZE.height()),
             lookat: glam::Vec3::ZERO,
             vertical_fov: 90.0f32.to_radians(),
-            rotation: glam::Vec2::ZERO,
+            orientation: glam::Quat::default(),
             radius: 2.0,
         }
         .into();

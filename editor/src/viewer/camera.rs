@@ -58,17 +58,19 @@ impl From<OrbitCamera> for CameraKind {
     }
 }
 
+/// A camera orbiting around a given point.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OrbitCamera {
+    pub orientation: glam::Quat,
     pub sensitivity: f32,
     pub vertical_fov: f32,
     pub viewport: glam::Vec2,
     pub lookat: glam::Vec3,
     pub radius: f32,
-    pub rotation: glam::Vec2,
 }
 
 impl OrbitCamera {
+    /// Generates the uniform buffer data for the current camera state.
     pub fn get_uniform(&self) -> CameraUniformData {
         let mat = self.proj_matrix() * self.camera_matrix();
 
@@ -78,21 +80,24 @@ impl OrbitCamera {
         }
     }
 
-    pub fn drag(&mut self, delta: glam::Vec2) {
-        self.rotation.x += self.sensitivity * delta.x;
-        self.rotation.y = (self.rotation.y + self.sensitivity * delta.y)
-            .clamp(MIN_ORBITAL_PITCH, MAX_ORBITAL_PITCH);
+    /// Rotates the camera using the given drag delta.
+    pub fn drag_delta(&mut self, delta: glam::Vec2) {
+        let yaw_rot = glam::Quat::from_axis_angle(UP_AXIS, delta.x * self.sensitivity);
+
+        let right = self.orientation * glam::Vec3::X;
+        let pitch_rot = glam::Quat::from_axis_angle(right, -delta.y * self.sensitivity);
+
+        self.orientation = (yaw_rot * pitch_rot * self.orientation).normalize();
     }
 
+    /// Computes the matrix to produce the given camera orientation.
     pub fn camera_matrix(&self) -> glam::Mat4 {
-        let (sin_pitch, cos_pitch) = self.rotation.y.sin_cos();
-        let (sin_yaw, cos_yaw) = self.rotation.x.sin_cos();
-
-        let eye = self.radius * glam::vec3(cos_pitch * sin_yaw, sin_pitch, cos_pitch * cos_yaw);
-
-        glam::camera::lh::view::look_at_mat4(eye, self.lookat, UP_AXIS)
+        let eye = self.lookat + self.orientation * (glam::Vec3::Z * self.radius);
+        let up = self.orientation * glam::Vec3::Y;
+        glam::camera::lh::view::look_at_mat4(eye, self.lookat, up)
     }
 
+    /// Computes the matrix for the projection onto the screen.
     pub fn proj_matrix(&self) -> glam::Mat4 {
         glam::camera::lh::proj::directx::perspective(
             self.vertical_fov,

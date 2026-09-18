@@ -174,7 +174,7 @@ impl App {
                 viewer
                     .camera
                     .as_orbit_mut()
-                    .drag(glam::vec2(delta.x, delta.y));
+                    .drag_delta(glam::vec2(delta.x, delta.y));
 
                 viewer.update_camera();
             }
