@@ -20,68 +20,96 @@ impl CameraUniformData {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum CameraKind {
+pub enum Camera {
     Orbit(OrbitCamera),
 }
 
-impl CameraKind {
-    pub fn get_uniform(&self) -> CameraUniformData {
-        match self {
-            Self::Orbit(x) => x.get_uniform(),
-        }
-    }
-
+impl Camera {
     pub fn as_orbit(&self) -> &OrbitCamera {
         match self {
             Self::Orbit(x) => x,
-            _ => panic!("camera is not an orbit camera"),
         }
     }
 
     pub fn as_orbit_mut(&mut self) -> &mut OrbitCamera {
         match self {
             Self::Orbit(x) => x,
-            _ => panic!("camera is not an orbit camera"),
-        }
-    }
-
-    pub fn set_viewport(&mut self, viewport: glam::Vec2) {
-        match self {
-            Self::Orbit(x) => x.viewport = viewport,
         }
     }
 }
 
-impl From<OrbitCamera> for CameraKind {
+impl CameraController for Camera {
+    fn set_fov(&mut self, fov: f32) {
+        match self {
+            Self::Orbit(x) => x.set_fov(fov),
+        }
+    }
+
+    fn set_aspect_ratio(&mut self, aspect_ratio: f32) {
+        match self {
+            Self::Orbit(x) => x.set_aspect_ratio(aspect_ratio),
+        }
+    }
+
+    fn scroll_delta(&mut self, delta: glam::Vec2) {
+        match self {
+            Self::Orbit(x) => x.scroll_delta(delta),
+        }
+    }
+
+    fn drag_delta(&mut self, delta: glam::Vec2) {
+        match self {
+            Self::Orbit(x) => x.drag_delta(delta),
+        }
+    }
+
+    fn compute_matrix(&self) -> glam::Mat4 {
+        match self {
+            Self::Orbit(x) => x.compute_matrix(),
+        }
+    }
+}
+
+impl From<OrbitCamera> for Camera {
     fn from(value: OrbitCamera) -> Self {
         Self::Orbit(value)
     }
+}
+
+pub trait CameraController {
+    fn set_fov(&mut self, fov: f32);
+    fn set_aspect_ratio(&mut self, aspect_ratio: f32);
+    fn drag_delta(&mut self, delta: glam::Vec2);
+    fn scroll_delta(&mut self, delta: glam::Vec2);
+    fn compute_matrix(&self) -> glam::Mat4;
 }
 
 /// A camera orbiting around a given point.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OrbitCamera {
     pub orientation: glam::Quat,
+    pub zoom_sensitivity: f32,
     pub sensitivity: f32,
     pub vertical_fov: f32,
-    pub viewport: glam::Vec2,
+    pub aspect_ratio: f32,
     pub lookat: glam::Vec3,
     pub radius: f32,
 }
 
-impl OrbitCamera {
-    /// Generates the uniform buffer data for the current camera state.
-    pub fn get_uniform(&self) -> CameraUniformData {
-        let mat = self.proj_matrix() * self.camera_matrix();
-
-        CameraUniformData {
-            viewport_size: glam::vec4(self.viewport.x, self.viewport.y, 0.0, 0.0),
-            view_proj: mat,
-        }
+impl CameraController for OrbitCamera {
+    fn set_fov(&mut self, fov: f32) {
+        self.vertical_fov = fov;
     }
 
-    /// Rotates the camera using the given drag delta.
-    pub fn drag_delta(&mut self, delta: glam::Vec2) {
+    fn set_aspect_ratio(&mut self, aspect_ratio: f32) {
+        self.aspect_ratio = aspect_ratio;
+    }
+
+    fn scroll_delta(&mut self, delta: glam::Vec2) {
+        self.radius -= delta.y * self.zoom_sensitivity * self.radius;
+    }
+
+    fn drag_delta(&mut self, delta: glam::Vec2) {
         let yaw_rot = glam::Quat::from_axis_angle(UP_AXIS, delta.x * self.sensitivity);
 
         let right = self.orientation * glam::Vec3::X;
@@ -90,20 +118,18 @@ impl OrbitCamera {
         self.orientation = (yaw_rot * pitch_rot * self.orientation).normalize();
     }
 
-    /// Computes the matrix to produce the given camera orientation.
-    pub fn camera_matrix(&self) -> glam::Mat4 {
+    fn compute_matrix(&self) -> glam::Mat4 {
         let eye = self.lookat + self.orientation * (glam::Vec3::Z * self.radius);
         let up = self.orientation * glam::Vec3::Y;
-        glam::camera::lh::view::look_at_mat4(eye, self.lookat, up)
-    }
+        let view_matrix = glam::camera::lh::view::look_at_mat4(eye, self.lookat, up);
 
-    /// Computes the matrix for the projection onto the screen.
-    pub fn proj_matrix(&self) -> glam::Mat4 {
-        glam::camera::lh::proj::directx::perspective(
+        let proj_matrix = glam::camera::lh::proj::directx::perspective(
             self.vertical_fov,
-            self.viewport.x / self.viewport.y,
+            self.aspect_ratio,
             NEAR_PLANE,
             FAR_PLANE,
-        )
+        );
+
+        proj_matrix * view_matrix
     }
 }

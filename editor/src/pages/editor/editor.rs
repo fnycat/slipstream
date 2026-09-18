@@ -5,6 +5,7 @@ use eframe::egui_wgpu;
 
 use crate::error::{EditorError, EditorResult, InvalidInputError};
 use crate::pages::editor::inspector::widgets::DraggableNodePayload;
+use crate::viewer::camera::CameraController;
 use crate::viewer::{OFFSCREEN_FILTER_MODE, ViewerCallback};
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeKind};
@@ -15,7 +16,7 @@ use crate::r#virtual::root::{self};
 use crate::{
     app::{App, CurrentPage},
     shared::util::RefCursor,
-    viewer::Viewer,
+    viewer::ViewerState,
 };
 
 pub struct Properties {
@@ -134,13 +135,16 @@ impl App {
 
             let texture_id = {
                 let mut renderer = self.render_state.renderer.write();
-                let viewer = renderer.callback_resources.get_mut::<Viewer>().unwrap();
-                let texture_id = viewer.texture_id;
+                let viewer = renderer
+                    .callback_resources
+                    .get_mut::<ViewerState>()
+                    .unwrap();
+                let texture_id = viewer.texture_data.texture_id;
 
                 let resized = viewer.resize_render_texture(panel_bounds);
                 if resized {
                     let device = viewer.device.clone();
-                    let tex_view = viewer.texture_view.clone();
+                    let tex_view = viewer.texture_data.texture_view.clone();
 
                     renderer.update_egui_texture_from_wgpu_texture(
                         &device,
@@ -167,7 +171,10 @@ impl App {
             let response = ui.add(image_widget);
             if response.dragged() {
                 let mut renderer = self.render_state.renderer.write();
-                let viewer = renderer.callback_resources.get_mut::<Viewer>().unwrap();
+                let viewer = renderer
+                    .callback_resources
+                    .get_mut::<ViewerState>()
+                    .unwrap();
 
                 let delta = response.drag_delta();
 
@@ -176,8 +183,22 @@ impl App {
                     .as_orbit_mut()
                     .drag_delta(glam::vec2(delta.x, delta.y));
 
-                viewer.update_camera();
+                viewer.on_camera_update();
             }
+
+            ui.input(|i| {
+                if i.is_scrolling() && response.contains_pointer() {
+                    let mut renderer = self.render_state.renderer.write();
+                    let viewer = renderer
+                        .callback_resources
+                        .get_mut::<ViewerState>()
+                        .unwrap();
+
+                    let delta = i.smooth_scroll_delta();
+                    viewer.camera.scroll_delta(glam::vec2(delta.x, delta.y));
+                    viewer.on_camera_update();
+                }
+            });
         });
     }
 

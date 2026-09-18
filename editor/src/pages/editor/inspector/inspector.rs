@@ -25,12 +25,8 @@ impl App {
             })
         })?;
 
-
-
         egui::Panel::right(egui::Id::new("property_panel")).show(ui, |ui| {
             let node_ref = open_node.borrow();
-
-            ui.set_max_width(475.0);
 
             ui.horizontal(|ui| {
                 ui.heading(&node_ref.label);
@@ -43,7 +39,6 @@ impl App {
                 });
             });
 
-            ui.label("TODO: ./driver_model.brres/3DModels(NW4R)/model/Bones/mouth_1");
             ui.add_space(0.02 * ui.available_height());
 
             drop(node_ref);

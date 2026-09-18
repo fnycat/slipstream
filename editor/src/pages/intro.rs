@@ -1,7 +1,7 @@
 use crate::{
     app::{App, CurrentPage},
     pages::editor::Editor,
-    viewer::Viewer,
+    viewer::ViewerState,
 };
 
 egui_phosphor::subset! {
