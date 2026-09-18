@@ -242,8 +242,8 @@ impl VirtualBone {
 
 fn build_skeleton_tree(
     reader: &mut RefCursor<[u8]>,
-    bones: &[NamedBone],
     parent_id: VirtualNodeId,
+    bones: &[NamedBone],
     ref_cache: &VirtualRefCache,
 ) -> EditorResult<VirtualNodeId> {
     /// The offset between the start of the bone and the bone's index.
@@ -289,6 +289,7 @@ fn build_skeleton_tree(
                 body.inspectable = Some(Box::new(VirtualBone::from_bone(&bone.bone, None, None)));
             });
 
+            borrow.parent = Some(parent_id);
             borrow.kind = VirtualNodeKind::Bone;
 
             continue; // No parent
@@ -362,6 +363,7 @@ fn build_skeleton_tree(
     tracing::trace!("Skeleton constructed");
 
     let root = virtual_bones[root_index];
+
     Ok(root)
 }
 
@@ -383,7 +385,7 @@ pub fn deserialize_skeleton(
         bones.push(NamedBone { name, bone });
     }
 
-    let node = build_skeleton_tree(reader, &bones, parent_id, ref_cache)?;
+    let node = build_skeleton_tree(reader, parent_id, &bones, ref_cache)?;
 
     Ok(VirtualNodeBody {
         inspectable: None,

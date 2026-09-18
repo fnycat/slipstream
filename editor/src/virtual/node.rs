@@ -49,6 +49,7 @@ pub enum VirtualNodeKind {
     DirectoryEmpty,
     Bone,
     BoneFinal,
+    Vertices,
     Unknown,
 }
 
@@ -67,7 +68,8 @@ impl VirtualNodeKind {
             Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
             Self::Bone => reg_icon!(BONE),
             Self::BoneFinal => fill_icon!(BONE),
-            Self::Unknown => reg_icon!(QUESTION_MARK),
+            Self::Vertices => reg_icon!(POLYGON),
+            Self::Unknown => reg_icon!(FILE),
         }
     }
 
@@ -78,7 +80,8 @@ impl VirtualNodeKind {
             Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
             Self::Bone => reg_icon!(BONE),
             Self::BoneFinal => fill_icon!(BONE),
-            Self::Unknown => reg_icon!(QUESTION_MARK),
+            Self::Vertices => reg_icon!(POLYGON),
+            Self::Unknown => reg_icon!(FILE),
         }
     }
 }
