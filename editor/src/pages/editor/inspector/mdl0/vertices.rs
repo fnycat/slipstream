@@ -1,5 +1,7 @@
 use crate::format::mdl0::vertices::Vertices;
-use crate::pages::editor::inspector::widgets::{draw_inspector_section_header, draw_vec_drag_values};
+use crate::pages::editor::inspector::widgets::{
+    draw_inspector_section_header, draw_vec_drag_values,
+};
 use crate::r#virtual::node::Inspectable;
 
 impl Inspectable for Vertices {
@@ -29,6 +31,8 @@ impl Inspectable for Vertices {
                     ui,
                 );
             });
+
+        draw_inspector_section_header("Vertices".to_owned(), ui);
 
         ui.label(format!("Vertex count: {}", self.vertices.len()));
         ui.label(format!("Vertex format: {:?}", self.format));

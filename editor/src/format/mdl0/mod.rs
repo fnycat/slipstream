@@ -7,8 +7,6 @@ pub mod vertices;
 use std::{collections::HashMap, rc::Rc};
 
 use crate::error::{CorruptionError, EditorError, EditorResult, UnsupportedError};
-use crate::format::mdl0::bone::deserialize_skeleton;
-use crate::format::mdl0::vertices::deserialize_vertices;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{Inspectable, VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
@@ -307,8 +305,16 @@ pub fn deserialize_virtual(
             tracing::debug!("Parsing {section_ty:?}");
 
             match section_ty {
-                SectionType::Bones => deserialize_skeleton(&mut reader, parent_id, &ref_cache2),
-                SectionType::Vertices => deserialize_vertices(
+                SectionType::Bones => {
+                    bone::deserialize_skeleton(&mut reader, parent_id, &ref_cache2)
+                }
+                SectionType::Vertices => vertices::deserialize_virtual(
+                    &mut reader,
+                    subfile_header.header_start,
+                    parent_id,
+                    &ref_cache2,
+                ),
+                SectionType::Normals => normals::deserialize_virtual(
                     &mut reader,
                     subfile_header.header_start,
                     parent_id,

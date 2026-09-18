@@ -114,6 +114,8 @@ impl App {
                                 ui.send_viewport_cmd(egui::ViewportCommand::Close);
                             }
                         });
+
+                        ui.menu_button("Settings", |ui| {});
                     });
 
                     self.draw_title_buttons(ui);

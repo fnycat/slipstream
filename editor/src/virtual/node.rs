@@ -50,6 +50,7 @@ pub enum VirtualNodeKind {
     Bone,
     BoneFinal,
     Vertices,
+    Normals,
     Unknown,
 }
 
@@ -69,6 +70,7 @@ impl VirtualNodeKind {
             Self::Bone => reg_icon!(BONE),
             Self::BoneFinal => fill_icon!(BONE),
             Self::Vertices => reg_icon!(POLYGON),
+            Self::Normals => reg_icon!(ARROW_ELBOW_RIGHT),
             Self::Unknown => reg_icon!(FILE),
         }
     }
@@ -81,6 +83,7 @@ impl VirtualNodeKind {
             Self::Bone => reg_icon!(BONE),
             Self::BoneFinal => fill_icon!(BONE),
             Self::Vertices => reg_icon!(POLYGON),
+            Self::Normals => reg_icon!(ARROW_ELBOW_RIGHT),
             Self::Unknown => reg_icon!(FILE),
         }
     }

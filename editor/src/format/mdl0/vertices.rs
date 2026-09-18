@@ -59,7 +59,7 @@ pub struct Vertices {
     pub vertices: VertexData,
 }
 
-pub fn deserialize_vertices(
+pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     header_start: u32,
     parent_id: VirtualNodeId,
