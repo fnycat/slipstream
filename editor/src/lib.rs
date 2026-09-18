@@ -29,14 +29,14 @@ fn setup_tracing() {
         use tracing_subscriber::Layer;
         use tracing_subscriber::layer::SubscriberExt;
 
-        color_eyre::config::HookBuilder::new()
-            .panic_section("report this issue at https://github.com/RadiatedMonkey/mktools")
-            // .issue_url("https://github.com/RadiatedMonkey/mktools/issues/new")
-            // .add_issue_metadata("version", "v0.1.0")
-            .display_location_section(true)
-            .display_env_section(true)
-            .install()
-            .unwrap();
+        // color_eyre::config::HookBuilder::new()
+        //     .panic_section("report this issue at https://github.com/RadiatedMonkey/mktools")
+        //     // .issue_url("https://github.com/RadiatedMonkey/mktools/issues/new")
+        //     // .add_issue_metadata("version", "v0.1.0")
+        //     .display_location_section(true)
+        //     .display_env_section(true)
+        //     .install()
+        //     .unwrap();
 
         let filter = tracing_subscriber::filter::filter_fn(|meta| !meta.target().contains("winit"));
 

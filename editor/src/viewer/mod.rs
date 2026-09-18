@@ -15,13 +15,14 @@ const DEFAULT_VIEWPORT: egui::Rect =
 /// The usage flags for the offscreen render texture
 ///
 // This uses the `union` method instead of standard bit or because traits are not const right now.
-pub const TEXTURE_USAGES: wgpu::TextureUsages =
+pub const TARGET_USAGES: wgpu::TextureUsages =
     wgpu::TextureUsages::RENDER_ATTACHMENT.union(wgpu::TextureUsages::TEXTURE_BINDING);
 
-pub const DEPTH_USAGES: wgpu::TextureUsages = TEXTURE_USAGES;
+pub const DEPTH_USAGES: wgpu::TextureUsages = TARGET_USAGES;
 
+pub const SAMPLE_COUNT: u32 = 4;
 pub const CLEAR_COLOR: wgpu::Color = wgpu::Color::BLACK;
-pub const RENDER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+pub const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const TEXTURE_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
 
@@ -52,9 +53,9 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
         let mut render_pass = egui_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("offscreen render pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &viewer.texture_data.texture_view,
+                view: &viewer.texture_data.msaa_texture_view,
                 depth_slice: None,
-                resolve_target: None,
+                resolve_target: Some(&viewer.texture_data.texture_view),
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(CLEAR_COLOR),
                     store: wgpu::StoreOp::Store,
@@ -99,6 +100,9 @@ pub struct TextureData {
     pub texture: wgpu::Texture,
     pub texture_view: wgpu::TextureView,
     pub texture_id: egui::TextureId,
+
+    pub msaa_texture: wgpu::Texture,
+    pub msaa_texture_view: wgpu::TextureView,
 
     pub depth_texture: wgpu::Texture,
     pub depth_view: wgpu::TextureView,
@@ -170,16 +174,16 @@ impl ViewerState {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: RENDER_FORMAT,
-            usage: TEXTURE_USAGES,
+            format: TARGET_FORMAT,
+            usage: TARGET_USAGES,
             view_formats: &[],
         });
 
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor {
             label: Some("offscreen render view"),
-            format: Some(RENDER_FORMAT),
+            format: Some(TARGET_FORMAT),
             dimension: Some(wgpu::TextureViewDimension::D2),
-            usage: Some(TEXTURE_USAGES),
+            usage: Some(TARGET_USAGES),
             aspect: wgpu::TextureAspect::All,
             base_mip_level: 0,
             mip_level_count: None,
@@ -193,6 +197,33 @@ impl ViewerState {
             TEXTURE_FILTER_MODE,
         );
 
+        let msaa_texture = state.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("msaa texture"),
+            size: wgpu::Extent3d {
+                width: DEFAULT_VIEWPORT.width() as u32,
+                height: DEFAULT_VIEWPORT.height() as u32,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: SAMPLE_COUNT,
+            dimension: wgpu::TextureDimension::D2,
+            format: TARGET_FORMAT,
+            usage: TARGET_USAGES,
+            view_formats: &[],
+        });
+
+        let msaa_texture_view = msaa_texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("msaa texture view"),
+            format: Some(TARGET_FORMAT),
+            dimension: Some(wgpu::TextureViewDimension::D2),
+            usage: Some(TARGET_USAGES),
+            aspect: wgpu::TextureAspect::All,
+            base_mip_level: 0,
+            mip_level_count: None,
+            base_array_layer: 0,
+            array_layer_count: None,
+        });
+
         let depth_texture = state.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("depth texture"),
             size: wgpu::Extent3d {
@@ -201,7 +232,7 @@ impl ViewerState {
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
-            sample_count: 1,
+            sample_count: SAMPLE_COUNT,
             dimension: wgpu::TextureDimension::D2,
             format: DEPTH_FORMAT,
             usage: DEPTH_USAGES,
@@ -239,6 +270,9 @@ impl ViewerState {
             texture,
             texture_view,
             texture_id,
+
+            msaa_texture,
+            msaa_texture_view,
 
             depth_texture,
             depth_view,
@@ -345,7 +379,7 @@ impl ViewerState {
                 },
             }),
             multisample: wgpu::MultisampleState {
-                count: 1,
+                count: SAMPLE_COUNT,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
@@ -354,7 +388,7 @@ impl ViewerState {
                 entry_point: Some("fs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: RENDER_FORMAT,
+                    format: TARGET_FORMAT,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -412,8 +446,8 @@ impl ViewerState {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: RENDER_FORMAT,
-                usage: TEXTURE_USAGES,
+                format: TARGET_FORMAT,
+                usage: TARGET_USAGES,
                 view_formats: &[],
             });
 
@@ -422,9 +456,39 @@ impl ViewerState {
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor {
                         label: Some("offscreen render view"),
-                        format: Some(RENDER_FORMAT),
+                        format: Some(TARGET_FORMAT),
                         dimension: Some(wgpu::TextureViewDimension::D2),
-                        usage: Some(TEXTURE_USAGES),
+                        usage: Some(TARGET_USAGES),
+                        aspect: wgpu::TextureAspect::All,
+                        base_mip_level: 0,
+                        mip_level_count: None,
+                        base_array_layer: 0,
+                        array_layer_count: None,
+                    });
+
+            self.texture_data.msaa_texture = self.device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("msaa texture"),
+                size: wgpu::Extent3d {
+                    width: bounds.width() as u32,
+                    height: bounds.height() as u32,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: SAMPLE_COUNT,
+                dimension: wgpu::TextureDimension::D2,
+                format: TARGET_FORMAT,
+                usage: TARGET_USAGES,
+                view_formats: &[],
+            });
+
+            self.texture_data.msaa_texture_view =
+                self.texture_data
+                    .msaa_texture
+                    .create_view(&wgpu::TextureViewDescriptor {
+                        label: Some("msaa texture view"),
+                        format: Some(TARGET_FORMAT),
+                        dimension: Some(wgpu::TextureViewDimension::D2),
+                        usage: Some(TARGET_USAGES),
                         aspect: wgpu::TextureAspect::All,
                         base_mip_level: 0,
                         mip_level_count: None,
@@ -441,7 +505,7 @@ impl ViewerState {
                         depth_or_array_layers: 1,
                     },
                     mip_level_count: 1,
-                    sample_count: 1,
+                    sample_count: SAMPLE_COUNT,
                     dimension: wgpu::TextureDimension::D2,
                     format: DEPTH_FORMAT,
                     usage: DEPTH_USAGES,

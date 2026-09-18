@@ -23,7 +23,7 @@ fn vs_main(model: VertexInput) -> VertexOutput {
 }
 
 fn linear_to_srgb(color: vec3<f32>) -> vec3<f32> {
-    return 1.055 * pow(input.original, vec3<f32>(1.0 / 2.4)) - 0.055;
+    return 1.055 * pow(color, vec3<f32>(1.0 / 2.4)) - 0.055;
 }
 
 @fragment
