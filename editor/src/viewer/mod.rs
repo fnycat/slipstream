@@ -1,17 +1,76 @@
+pub mod camera;
+
 use eframe::epaint::mutex::RwLockWriteGuard;
-use std::sync::Arc;
+use std::{num::NonZeroU64, sync::Arc};
 
 use eframe::egui_wgpu;
 use wgpu::util::DeviceExt;
 
-// const VERTICES: [[f32; 3]; 3] = [[0.0, 0.5, 0.0], [-0.5, -0.5, 0.0], [0.5, -0.5, 0.0]];
-const VERTICES: [[f32; 2]; 6] = [
-    [-1.0, -1.0],
-    [1.0, 1.0],
-    [-1.0, 1.0],
-    [1.0, -1.0],
-    [1.0, 1.0],
-    [-1.0, -1.0],
+use crate::viewer::camera::{CameraKind, CameraUniformData, OrbitCamera};
+
+// const VERTICES: [[f32; 2]; 6] = [
+//     [-1.0, -1.0],
+//     [1.0, 1.0],
+//     [-1.0, 1.0],
+//     [1.0, -1.0],
+//     [1.0, 1.0],
+//     [-1.0, -1.0],
+// ];
+
+#[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
+struct Vertex {
+    coordinates: [f32; 3],
+}
+
+impl Vertex {
+    pub const fn layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x3,
+                offset: 0,
+                shader_location: 0,
+            }],
+        }
+    }
+}
+
+const VERTICES: [Vertex; 8] = [
+    Vertex {
+        coordinates: [-0.5, -0.5, 0.5],
+    }, // 0: Bottom-left-front
+    Vertex {
+        coordinates: [0.5, -0.5, 0.5],
+    }, // 1: Bottom-right-front
+    Vertex {
+        coordinates: [0.5, 0.5, 0.5],
+    }, // 2: Top-right-front
+    Vertex {
+        coordinates: [-0.5, 0.5, 0.5],
+    }, // 3: Top-left-front
+    Vertex {
+        coordinates: [-0.5, -0.5, -0.5],
+    }, // 4: Bottom-left-back
+    Vertex {
+        coordinates: [0.5, -0.5, -0.5],
+    }, // 5: Bottom-right-back
+    Vertex {
+        coordinates: [0.5, 0.5, -0.5],
+    }, // 6: Top-right-back
+    Vertex {
+        coordinates: [-0.5, 0.5, -0.5],
+    }, // 7: Top-left-back
+];
+
+const INDICES: [u16; 36] = [
+    0, 1, 2, 2, 3, 0, // front
+    1, 5, 6, 6, 2, 1, // right
+    5, 4, 7, 7, 6, 5, // back
+    4, 0, 3, 3, 7, 4, // left
+    3, 2, 6, 6, 7, 3, // top
+    4, 5, 1, 1, 0, 4, // bottom
 ];
 
 const DEFAULT_PANEL_SIZE: egui::Rect =
@@ -23,12 +82,9 @@ const DEFAULT_PANEL_SIZE: egui::Rect =
 pub const OFFSCREEN_USAGE: wgpu::TextureUsages =
     wgpu::TextureUsages::RENDER_ATTACHMENT.union(wgpu::TextureUsages::TEXTURE_BINDING);
 
-pub const OFFSCREEN_CLEAR_COLOR: wgpu::Color = wgpu::Color::RED;
+pub const OFFSCREEN_CLEAR_COLOR: wgpu::Color = wgpu::Color::BLACK;
 pub const OFFSCREEN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 pub const OFFSCREEN_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
-pub const VERTICAL_FOV: f32 = 90.0;
-pub const NEAR_CLIP: f32 = 0.01;
-pub const FAR_CLIP: f32 = 100.0;
 
 pub struct ViewerCallback;
 
@@ -73,7 +129,9 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
 
         render_pass.set_pipeline(&viewer.render_pipeline);
         render_pass.set_vertex_buffer(0, viewer.vertex_buffer.slice(..));
-        render_pass.draw(0..6, 0..1);
+        render_pass.set_index_buffer(viewer.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        render_pass.set_bind_group(0, &viewer.uniform_bind_group, &[]);
+        render_pass.draw_indexed(0..36, 0, 0..1);
 
         Vec::new()
     }
@@ -90,25 +148,39 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
 #[derive(Clone)]
 pub struct Viewer {
     pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
 
-    pub projection_matrix: glam::Mat4,
     pub texture: wgpu::Texture,
     pub texture_view: wgpu::TextureView,
-    pub target_format: wgpu::TextureFormat,
-
     pub texture_id: egui::TextureId,
-
-    pub vertex_buffer: wgpu::Buffer,
 
     pub pipeline_layout: wgpu::PipelineLayout,
     pub render_pipeline: wgpu::RenderPipeline,
 
-    // pub render_texture: wgpu::Texture,
-    /// Size of the panel that the view is being drawn into.
-    pub is_occluded: bool,
+    pub vertex_buffer: wgpu::Buffer,
+    pub index_buffer: wgpu::Buffer,
+
+    pub data_buffer: wgpu::Buffer,
+    pub uniform_bind_layout: wgpu::BindGroupLayout,
+    pub uniform_bind_group: wgpu::BindGroup,
+
+    // Camera rotation on a flat plane, i.e. this comes directly from dragging the cursor
+    // and is converted to actual position using trigonometry.
+    pub camera: CameraKind,
 }
 
 impl Viewer {
+    /// Updates the camera rotation/position on the GPU side of things.
+    pub fn update_camera(&mut self) {
+        let camera_uniform_data = self.camera.get_uniform();
+        if let Some(mut buffer_view) =
+            self.queue
+                .write_buffer_with(&self.data_buffer, 0, CameraUniformData::size())
+        {
+            buffer_view.copy_from_slice(bytemuck::bytes_of(&camera_uniform_data));
+        }
+    }
+
     /// Attempts to resize the texture and returns whether the texture has actually been resized.
     ///
     /// If this function returns true, the texture view should be reregistered with egui.
@@ -160,12 +232,10 @@ impl Viewer {
                 array_layer_count: None,
             });
 
-            self.projection_matrix = glam::camera::lh::proj::directx::perspective(
-                VERTICAL_FOV,
-                bounds.aspect_ratio(),
-                NEAR_CLIP,
-                FAR_CLIP,
-            );
+            self.camera
+                .set_viewport(glam::vec2(bounds.width(), bounds.height()));
+
+            self.update_camera();
 
             return true;
         }
@@ -212,9 +282,24 @@ impl Viewer {
         let shader =
             device.create_shader_module(wgpu::include_wgsl!("../../shaders/viewer.wgsl").into());
 
+        let uniform_bind_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("uniform data bind group"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: Some(CameraUniformData::size()),
+                    },
+                    count: None,
+                }],
+            });
+
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("offscreen render pipeline layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[Some(&uniform_bind_layout)],
             immediate_size: 0,
         });
 
@@ -225,21 +310,13 @@ impl Viewer {
                 module: &shader,
                 entry_point: Some("vs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &[Some(wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<[f32; 2]>() as u64,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[wgpu::VertexAttribute {
-                        format: wgpu::VertexFormat::Float32x2,
-                        offset: 0,
-                        shader_location: 0,
-                    }],
-                })],
+                buffers: &[Some(Vertex::layout())],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode: None,
                 unclipped_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
@@ -270,25 +347,58 @@ impl Viewer {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let projection_matrix = glam::camera::lh::proj::directx::perspective(
-            VERTICAL_FOV,
-            DEFAULT_PANEL_SIZE.aspect_ratio(),
-            NEAR_CLIP,
-            FAR_CLIP,
-        );
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("index buffer"),
+            contents: bytemuck::cast_slice(&INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        let camera: CameraKind = OrbitCamera {
+            sensitivity: 0.01,
+            viewport: glam::vec2(DEFAULT_PANEL_SIZE.width(), DEFAULT_PANEL_SIZE.height()),
+            lookat: glam::Vec3::ZERO,
+            vertical_fov: 90.0f32.to_radians(),
+            rotation: glam::Vec2::ZERO,
+            radius: 2.0,
+        }
+        .into();
+
+        let uniform_data = camera.get_uniform();
+        let data_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("uniform data buffer"),
+            contents: bytemuck::bytes_of(&uniform_data),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("uniform data bind group"),
+            layout: &uniform_bind_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &data_buffer,
+                    offset: 0,
+                    size: Some(CameraUniformData::size()),
+                }),
+            }],
+        });
 
         Self {
             device,
+            queue: state.queue.clone(),
 
             pipeline_layout,
             render_pipeline,
             texture,
             texture_view,
             texture_id,
-            projection_matrix,
+            data_buffer,
             vertex_buffer,
-            target_format: state.target_format,
-            is_occluded: false,
+            index_buffer,
+            uniform_bind_group,
+            uniform_bind_layout,
+
+            camera,
         }
     }
 }

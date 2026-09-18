@@ -105,9 +105,8 @@ impl App {
         egui::Image::new(bg_image).paint_at(ui, viewport_rect);
 
         let bg_overlay = if ui.theme() == egui::Theme::Dark {
-            egui::Color32::from_black_alpha(160)
+            egui::Color32::from_black_alpha(100)
         } else {
-            // egui::Color32::from_white_alpha(160)
             egui::Color32::TRANSPARENT
         };
 

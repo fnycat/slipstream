@@ -33,7 +33,6 @@ pub struct Editor {
     /// The whole file currently open in the editor.
     pub root_node: VirtualNodeId,
 
-    pub viewer: Viewer,
     pub open_node: Option<VirtualNodeId>,
     pub ref_cache: VirtualRefCache,
 }
@@ -58,7 +57,6 @@ impl Editor {
             root::deserialize_maybe_compressed(cursor, &ref_cache, file_name.into_owned())?;
 
         Ok(Self {
-            viewer: Viewer::new(render_state),
             root_node,
             ref_cache,
             open_node: None,
@@ -168,7 +166,17 @@ impl App {
 
             let response = ui.add(image_widget);
             if response.dragged() {
-                tracing::trace!("dragged {:?}", response.drag_delta());
+                let mut renderer = self.render_state.renderer.write();
+                let viewer = renderer.callback_resources.get_mut::<Viewer>().unwrap();
+
+                let delta = response.drag_delta();
+
+                viewer
+                    .camera
+                    .as_orbit_mut()
+                    .drag(glam::vec2(delta.x, delta.y));
+
+                viewer.update_camera();
             }
         });
     }
