@@ -9,9 +9,9 @@ const VERTICES: [[f32; 2]; 6] = [
     [-1.0, -1.0],
     [1.0, 1.0],
     [-1.0, 1.0],
-    [-1.0, -1.0],
     [1.0, -1.0],
     [1.0, 1.0],
+    [-1.0, -1.0],
 ];
 
 const DEFAULT_PANEL_SIZE: egui::Rect =
@@ -73,7 +73,7 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
 
         render_pass.set_pipeline(&viewer.render_pipeline);
         render_pass.set_vertex_buffer(0, viewer.vertex_buffer.slice(..));
-        render_pass.draw(0..3, 0..1);
+        render_pass.draw(0..6, 0..1);
 
         Vec::new()
     }

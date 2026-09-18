@@ -124,8 +124,8 @@ impl App {
 
     fn draw_editor_view(&self, ui: &mut egui::Ui) {
         egui::Frame::canvas(ui.style()).show(ui, |ui| {
-            let (panel_bounds, _response) =
-                ui.allocate_exact_size(ui.available_size(), egui::Sense::drag());
+            let target_size = ui.available_size();
+            let panel_bounds = egui::Rect::from_min_size(ui.cursor().min, target_size);
 
             // We must update the panel size before the callback.
             //
@@ -160,10 +160,16 @@ impl App {
                 ViewerCallback,
             ));
 
-            ui.image(egui::load::SizedTexture {
+            let image_widget = egui::Image::new(egui::load::SizedTexture {
                 id: texture_id,
                 size: panel_bounds.size(),
-            });
+            })
+            .sense(egui::Sense::drag());
+
+            let response = ui.add(image_widget);
+            if response.dragged() {
+                tracing::trace!("dragged {:?}", response.drag_delta());
+            }
         });
     }
 
