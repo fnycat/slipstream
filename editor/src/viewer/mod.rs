@@ -21,7 +21,7 @@ pub const TEXTURE_USAGES: wgpu::TextureUsages =
 pub const DEPTH_USAGES: wgpu::TextureUsages = TEXTURE_USAGES;
 
 pub const CLEAR_COLOR: wgpu::Color = wgpu::Color::BLACK;
-pub const RENDER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+pub const RENDER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const TEXTURE_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
 

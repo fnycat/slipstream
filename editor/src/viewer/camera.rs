@@ -3,8 +3,6 @@ use std::num::NonZeroU64;
 const UP_AXIS: glam::Vec3 = glam::vec3(0.0, 1.0, 0.0);
 const NEAR_PLANE: f32 = 0.1;
 const FAR_PLANE: f32 = 100000.0;
-const MIN_ORBITAL_PITCH: f32 = -89.0f32.to_radians();
-const MAX_ORBITAL_PITCH: f32 = 89.0f32.to_radians();
 
 #[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
