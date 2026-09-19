@@ -31,8 +31,6 @@ wgpu = "30.0.1"
 glam = { version = "0.33.7", features = ["bytemuck"] }
 
 bytemuck = "1.25.2"
-color-eyre = "0.6.5"
-eyre = "0.6.14"
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
 tracing-tree = "0.4.1"
@@ -45,8 +43,8 @@ rfd = "0.17.2"
 thiserror = "2.0.20"
 byteorder = "1.5.0"
 paste = "1.0.15"
-const_format = "0.2.36"
 futures = "0.3.34"
+static_assertions = "1.1.0"
 
 [build-dependencies]
 vergen-gitcl = { version = "10.0.3", features = ["build", "cargo", "rustc", "si"] }

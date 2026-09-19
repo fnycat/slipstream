@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use crate::error::{EditorResult, UnsupportedError};
-use crate::r#virtual::node::VirtualNode;
 use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
 use crate::{
     format::{

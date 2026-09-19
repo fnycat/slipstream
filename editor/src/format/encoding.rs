@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use byteorder::{ReadBytesExt, WriteBytesExt};
+use byteorder::ReadBytesExt;
 
 use crate::error::{CorruptionError, EditorError, EditorResult};
 use crate::shared::util::RefCursor;

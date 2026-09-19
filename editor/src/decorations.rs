@@ -1,5 +1,4 @@
 use crate::{
-    app::App,
     cmd::AppCommandChannel,
     config::APP_TITLE,
     error::EditorResult,

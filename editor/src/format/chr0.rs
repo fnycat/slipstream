@@ -1,12 +1,11 @@
-use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::error::{CorruptionError, EditorError, EditorResult};
 use crate::{
     format::{
-        brres::{IndexGroup, IndexGroupEntry, Subfile, SubfileHeader, SubfileType},
-        encoding::{Deserialize, ReadStringExt},
+        brres::{IndexGroup, Subfile, SubfileHeader, SubfileType},
+        encoding::Deserialize,
     },
     shared::util::RefCursor,
 };

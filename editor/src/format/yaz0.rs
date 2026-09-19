@@ -1,4 +1,3 @@
-use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
@@ -61,7 +60,7 @@ pub fn decompress(compressed: &mut RefCursor<[u8]>) -> EditorResult<Vec<u8>> {
     Ok(yaz0_file.uncompressed)
 }
 
-pub fn compress_yaz0(uncompressed: &[u8]) -> Vec<u8> {
+pub fn compress_yaz0(_uncompressed: &[u8]) -> Vec<u8> {
     todo!()
 }
 

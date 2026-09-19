@@ -34,7 +34,7 @@ impl RoutablePage for SettingsPage {
     fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
         decorations::draw_background(&egui::Image::from_texture(self.bg_image), ui);
         decorations::draw_basic_title_bar(ui);
-        decorations::draw_tool_buttons(&mut self.cmd_channel, &self.render_state, ui);
+        decorations::draw_tool_buttons(&mut self.cmd_channel, &self.render_state, ui)?;
 
         let window_bg = ui.visuals().panel_fill;
 
@@ -55,14 +55,6 @@ impl RoutablePage for SettingsPage {
                             ui.separator();
 
                             ui.add_space(0.05 * ui.available_height());
-
-                            ui.menu_button("Theme", |ui| {
-                                ui.menu_button("Dark", |ui| {
-                                    ui.button("Hello");
-                                });
-
-                                ui.button("White");
-                            });
 
                             // if ui
                             //     .radio(ui.theme() == egui::Theme::Dark, "Dark mode")

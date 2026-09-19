@@ -1,9 +1,6 @@
 use crate::error::EditorResult;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::refs::VirtualNodeId;
-use std::cell::Ref;
-use std::rc::Weak;
-use std::{cell::RefCell, rc::Rc};
 
 pub trait Inspectable: std::fmt::Debug {
     fn draw_properties(&mut self, ui: &mut egui::Ui);

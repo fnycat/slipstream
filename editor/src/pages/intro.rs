@@ -1,11 +1,10 @@
-use eframe::egui_wgpu;
 
 use crate::{
     cmd::AppCommandChannel,
     decorations,
     error::EditorResult,
     pages::{
-        RoutablePage, editor::Editor, info::InfoPage, settings::SettingsPage,
+        RoutablePage, editor::Editor,
         splash::BACKGROUND_TEXTURE,
     },
     viewer,

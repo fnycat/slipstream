@@ -1,6 +1,6 @@
 use futures::{SinkExt, channel::mpsc};
 
-use crate::{decorations::WindowState, error::EditorResult, pages::RoutablePage};
+use crate::{error::EditorResult, pages::RoutablePage};
 
 pub enum AppCommand {
     Route(Box<dyn RoutablePage>),

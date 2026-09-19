@@ -139,8 +139,5 @@ pub fn run() -> EditorResult<()> {
         )?;
     }
 
-    #[cfg(target_arch = "wasm32")]
-    {}
-
     Ok(())
 }

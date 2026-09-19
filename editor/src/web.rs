@@ -12,10 +12,6 @@ impl WebHandle {
     #[expect(clippy::new_without_default)]
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        web_sys::console::info_1(JsValue::from_str("Initializing tracing..."));
-
-        setup_tracing();
-
         Self {
             runner: eframe::WebRunner::new(),
         }

@@ -1,16 +1,15 @@
-use std::{any::Any, collections::HashMap, ffi::CStr, io::Cursor, rc::Rc};
 
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat, UnsupportedError};
+use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat};
 use crate::pages::editor::inspector::raw::Raw;
 use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{Inspectable, VirtualNode, VirtualNodeBody, VirtualNodeKind};
+use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
 use crate::{
     format::{
         brres::{self, BRRES_MAGIC},
-        encoding::{Deserialize, ReadArrayExt, ReadStringExt, Serialize, WriteArrayExt},
+        encoding::{Deserialize, ReadArrayExt, ReadStringExt},
     },
     shared::util::RefCursor,
 };

@@ -5,7 +5,7 @@ use crate::{format::mdl0::SectionDeserialize, shared::util::RefCursor};
 pub struct Definitions {}
 
 impl SectionDeserialize for Definitions {
-    fn deserialize_section(reader: &mut RefCursor<[u8]>, _header_start: u32) -> EditorResult<Self> {
+    fn deserialize_section(_reader: &mut RefCursor<[u8]>, _header_start: u32) -> EditorResult<Self> {
         tracing::error!("TODO: draw lists");
         Ok(Self {})
     }

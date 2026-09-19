@@ -1,6 +1,4 @@
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::cell::RefCell;
-use std::{io::Cursor, rc::Rc};
+use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::error::{
     CorruptionError, EditorError, EditorResult, IncorrectFormat, RangeError, UnsupportedError,
@@ -10,11 +8,9 @@ use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
 use crate::{
     format::{
-        arc::{self, ARC_MAGIC},
         chr0::Chr0Subfile,
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
         mdl0::{self, MDL0_MAGIC},
-        pat0::Pat0Subfile,
     },
     pages::editor::inspector::raw::Raw,
     shared::util::RefCursor,

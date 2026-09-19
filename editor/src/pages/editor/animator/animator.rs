@@ -1,4 +1,4 @@
-use crate::{app::App, pages::editor::Editor};
+use crate::pages::editor::Editor;
 
 impl Editor {
     pub fn draw_animator_window(&mut self, ui: &mut egui::Ui) {

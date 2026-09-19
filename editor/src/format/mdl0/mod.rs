@@ -4,16 +4,16 @@ pub mod normals;
 pub mod util;
 pub mod vertices;
 
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
-use crate::error::{CorruptionError, EditorError, EditorResult, UnsupportedError};
+use crate::error::{CorruptionError, EditorError, EditorResult};
 use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{Inspectable, VirtualNode, VirtualNodeBody, VirtualNodeKind};
+use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
 use crate::{
     format::{
-        brres::{self, IndexGroup, Subfile, SubfileHeader, SubfileType},
-        encoding::{Deserialize, ReadArrayExt, ReadStringExt},
+        brres::{self, IndexGroup, SubfileHeader, SubfileType},
+        encoding::{Deserialize, ReadArrayExt},
     },
     shared::util::RefCursor,
 };
@@ -276,10 +276,10 @@ pub fn deserialize_virtual(
         todo!("invalid section count");
     }
 
-    let mdl0_header = Mdl0Header::deserialize(reader)?;
+    let _mdl0_header = Mdl0Header::deserialize(reader)?;
 
-    let bone_links = BoneLinkTable::deserialize(reader)?;
-    let index_group = IndexGroup::deserialize(reader)?;
+    let _bone_links = BoneLinkTable::deserialize(reader)?;
+    let _index_group = IndexGroup::deserialize(reader)?;
 
     let mdl_node_id = ref_cache.next_id();
 

@@ -1,6 +1,5 @@
-use std::sync::{LazyLock, Mutex};
+use std::sync::Mutex;
 
-use eframe::egui_wgpu;
 use egui::load::SizedTexture;
 
 use crate::{

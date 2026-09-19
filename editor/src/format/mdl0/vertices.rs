@@ -1,4 +1,3 @@
-use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
@@ -10,10 +9,7 @@ use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt}
 use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
-        mdl0::{
-            SectionDeserialize,
-            util::{ComponentFormat, deserialize_components},
-        },
+        mdl0::util::{ComponentFormat, deserialize_components},
     },
     shared::util::RefCursor,
 };

@@ -1,4 +1,4 @@
-use crate::r#virtual::{node::VirtualNode, refs::VirtualNodeId};
+use crate::r#virtual::refs::VirtualNodeId;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DraggableNodeKind {
@@ -15,7 +15,7 @@ pub struct DraggableNodePayload {
 pub fn draw_node_reference(id: egui::Id, node: Option<VirtualNodeId>, ui: &mut egui::Ui) {
     let frame = egui::Frame::default().inner_margin(4.0);
 
-    let (response, payload) =
+    let (_response, payload) =
         ui.dnd_drop_zone::<VirtualNodeId, Option<VirtualNodeId>>(frame, |ui| {
             if let Some(node) = node {
                 let response = ui

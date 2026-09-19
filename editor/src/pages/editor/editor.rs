@@ -1,19 +1,16 @@
 use std::cell::RefCell;
-use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
+use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 use eframe::egui_wgpu;
 use egui::mutex::RwLock;
-use futures::channel::mpsc;
 
-use crate::cmd::{AppCommand, AppCommandChannel};
+use crate::cmd::AppCommandChannel;
 use crate::decorations::{self, WindowState};
 use crate::error::{EditorError, EditorResult, InvalidInputError};
 use crate::pages::RoutablePage;
-use crate::pages::editor::inspector::widgets::DraggableNodePayload;
 use crate::viewer::camera::CameraController;
 use crate::viewer::{self, TEXTURE_FILTER_MODE, ViewerCallback};
 use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{VirtualNode, VirtualNodeKind};
 use crate::r#virtual::refs::{
     VirtualNodeId, VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap,
 };
@@ -157,7 +154,7 @@ impl Editor {
                             }
                         });
 
-                        ui.menu_button("Settings", |ui| {});
+                        ui.menu_button("Settings", |_ui| {});
                     });
 
                     decorations::draw_title_buttons(ui);

@@ -1,7 +1,4 @@
 use byteorder::{BigEndian, ReadBytesExt};
-use std::cell::RefMut;
-use std::collections::HashMap;
-use std::{io::Cursor, rc::Rc};
 
 use crate::error::{CorruptionError, EditorError, EditorResult, InvalidInputError};
 use crate::format::brres::IndexGroup;
@@ -9,10 +6,7 @@ use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
 use crate::{
-    format::{
-        encoding::{Deserialize, ReadArrayExt},
-        mdl0::SectionDeserialize,
-    },
+    format::encoding::{Deserialize, ReadArrayExt},
     shared::util::RefCursor,
 };
 

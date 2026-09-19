@@ -2,18 +2,16 @@ use std::{
     any::Any,
     panic::AssertUnwindSafe,
     sync::Arc,
-    time::{Duration, Instant},
 };
 
 use eframe::egui_wgpu;
-use egui_phosphor::regular::{MINUS, SQUARE, X};
 
 use crate::{
     cmd::{AppCommand, AppCommandChannel},
     config::{configure_dark_style, configure_light_style},
-    decorations::{WindowState, handle_frameless_resize},
-    pages::{RoutablePage, editor::Editor, splash::SplashPage},
-    viewer::{self, ViewerCallback},
+    decorations::handle_frameless_resize,
+    pages::{RoutablePage, splash::SplashPage},
+    viewer::{self},
 };
 
 const CHANNEL_SIZE: usize = 50;

@@ -1,4 +1,4 @@
-use crate::format::mdl0::bone::{BillboardSetting, Bone, BoneFlags, VirtualBone};
+use crate::format::mdl0::bone::{BillboardSetting, BoneFlags, VirtualBone};
 use crate::pages::editor::inspector::widgets::{
     draw_inspector_section_header, draw_node_reference, draw_vec_drag_values,
 };

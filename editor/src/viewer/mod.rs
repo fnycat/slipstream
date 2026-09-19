@@ -56,9 +56,9 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
     // so that the UI can immediately use an up to date texture.
     fn prepare(
         &self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        screen_descriptor: &egui_wgpu::ScreenDescriptor,
+        _device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+        _screen_descriptor: &egui_wgpu::ScreenDescriptor,
         egui_encoder: &mut wgpu::CommandEncoder,
         resources: &mut egui_wgpu::CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
@@ -102,9 +102,9 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
 
     fn paint(
         &self,
-        info: egui::PaintCallbackInfo,
-        render_pass: &mut wgpu::RenderPass<'static>,
-        resources: &egui_wgpu::CallbackResources,
+        _info: egui::PaintCallbackInfo,
+        _render_pass: &mut wgpu::RenderPass<'static>,
+        _resources: &egui_wgpu::CallbackResources,
     ) {
     }
 }
@@ -151,6 +151,9 @@ pub struct ViewerState {
     // and is converted to actual position using trigonometry.
     pub camera: Camera,
 }
+
+unsafe impl Send for ViewerState {}
+unsafe impl Sync for ViewerState {}
 
 impl ViewerState {
     pub fn viewport_size(&self) -> glam::Vec2 {

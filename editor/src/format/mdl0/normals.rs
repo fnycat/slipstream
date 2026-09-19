@@ -8,10 +8,7 @@ use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt}
 use crate::{
     format::{
         encoding::Deserialize,
-        mdl0::{
-            SectionDeserialize,
-            util::{ComponentFormat, deserialize_components},
-        },
+        mdl0::util::{ComponentFormat, deserialize_components},
     },
     shared::util::RefCursor,
 };
