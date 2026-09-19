@@ -1,10 +1,10 @@
-
 use crate::{
     cmd::AppCommandChannel,
     decorations,
     error::EditorResult,
     pages::{
-        RoutablePage, editor::Editor,
+        RoutablePage,
+        editor::{Editor, OpenedFileInfo},
         splash::BACKGROUND_TEXTURE,
     },
     viewer,
@@ -94,27 +94,77 @@ impl RoutablePage for IntroPage {
                                         {
                                             #[cfg(not(target_arch = "wasm32"))]
                                             {
-                                                let selected_file = rfd::FileDialog::new()
-                                                    .set_title("Select a file to edit")
-                                                    .pick_file();
+                                                let mut cmd_channel = self.cmd_channel.clone();
+                                                let render_state = self.render_state.clone();
 
-                                                if let Some(selected_file) = selected_file {
-                                                    let editor = Box::new(Editor::new(
-                                                        selected_file,
-                                                        self.cmd_channel.clone(),
-                                                        self.render_state.clone(),
-                                                    )?);
+                                                // Opening files does not happen often, so we just spawn a new thread
+                                                // to run the future to completion.
+                                                std::thread::spawn(move || {
+                                                    let future = async {
+                                                        let selected_file =
+                                                            rfd::AsyncFileDialog::new()
+                                                                .set_title("Select a file to edit")
+                                                                .pick_file()
+                                                                .await;
 
-                                                    self.cmd_channel.try_route(editor)?;
-                                                }
+                                                        if let Some(selected_file) = selected_file {
+                                                            let file_name =
+                                                                selected_file.file_name();
+                                                            let file_path =
+                                                                selected_file.path().to_path_buf();
+                                                            let content =
+                                                                selected_file.read().await;
+
+                                                            let editor = Editor::new(
+                                                                OpenedFileInfo::Native {
+                                                                    path: file_path,
+                                                                    file_name,
+                                                                    content,
+                                                                },
+                                                                cmd_channel.clone(),
+                                                                render_state,
+                                                            )
+                                                            .unwrap();
+
+                                                            cmd_channel.try_route(editor).unwrap();
+                                                        }
+                                                    };
+
+                                                    futures::executor::block_on(future);
+                                                });
                                             }
 
                                             #[cfg(target_arch = "wasm32")]
                                             {
+                                                let cmd_channel = self.cmd_channel.clone();
+                                                let render_state = self.render_state.clone();
+
                                                 wasm_bindgen_futures::spawn_local(async {
                                                     let selected_file = rfd::AsyncFileDialog::new()
                                                         .set_title("Select a file to edit")
-                                                        .pick_file();
+                                                        .pick_file()
+                                                        .await;
+
+                                                    if let Some(selected_file) = selected_file {
+                                                        let file_name = selected_file.file_name();
+                                                        let content = selected_file.read().await;
+
+                                                        tracing::info!(
+                                                            "Opening file `{file_name}`"
+                                                        );
+
+                                                        let editor = Editor::new(
+                                                            OpenedFileInfo::Web {
+                                                                file_name,
+                                                                content,
+                                                            },
+                                                            cmd_channel.clone(),
+                                                            render_state,
+                                                        )
+                                                        .unwrap();
+
+                                                        cmd_channel.try_route(editor);
+                                                    }
                                                 });
                                             }
                                         }

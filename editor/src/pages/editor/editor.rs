@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::{path::PathBuf, rc::Rc, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use eframe::egui_wgpu;
 use egui::mutex::RwLock;
@@ -11,15 +11,42 @@ use crate::pages::RoutablePage;
 use crate::viewer::camera::CameraController;
 use crate::viewer::{self, TEXTURE_FILTER_MODE, ViewerCallback};
 use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::refs::{
-    VirtualNodeId, VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap,
-};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheMap};
 use crate::r#virtual::root::{self};
 use crate::{shared::util::RefCursor, viewer::ViewerState};
 
 pub struct Properties {
     pub label: String,
     pub node_id: VirtualNodeId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OpenedFileInfo {
+    Native {
+        path: PathBuf,
+        file_name: String,
+        content: Vec<u8>,
+    },
+    Web {
+        file_name: String,
+        content: Vec<u8>,
+    },
+}
+
+impl OpenedFileInfo {
+    pub fn content(&self) -> &[u8] {
+        match self {
+            Self::Native { content, .. } => content,
+            Self::Web { content, .. } => content,
+        }
+    }
+
+    pub fn file_name(&self) -> &str {
+        match self {
+            Self::Native { file_name, .. } => file_name,
+            Self::Web { file_name, .. } => file_name,
+        }
+    }
 }
 
 /// Data specific to the editor page.
@@ -32,7 +59,7 @@ pub struct Editor {
     ///
     /// This is a regular filesystem path, pointing to the root file.
     /// Not an internal URI.
-    filepath: PathBuf,
+    file_info: OpenedFileInfo,
     /// The whole file currently open in the editor.
     root_node: VirtualNodeId,
 
@@ -40,66 +67,33 @@ pub struct Editor {
     pub(super) ref_cache: VirtualRefCache,
 }
 
-impl RoutablePage for Editor {
-    fn name(&self) -> &str {
-        "Editor"
-    }
-
-    fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
-        self.draw_upper_toolbar(ui);
-
-        // Draw file explorer
-        let panel_id = egui::Id::new("file_tree_panel");
-        egui::Panel::left(panel_id).show(ui, |ui| {
-            if let Some(properties) =
-                Self::draw_file_tree(self.root_node, &self.ref_cache, ui).unwrap()
-            {
-                self.open_node = Some(properties);
-            }
-        });
-
-        self.draw_inspector_window(ui)?;
-        self.draw_animator_window(ui);
-        self.draw_editor_view(ui);
-
-        Ok(())
-    }
-}
-
 impl Editor {
     pub fn new(
-        filepath: PathBuf,
+        file_info: OpenedFileInfo,
         cmd_channel: AppCommandChannel,
         render_state: viewer::RenderState,
-    ) -> EditorResult<Self> {
-        let contents = std::fs::read(&filepath)?;
-        let cursor = RefCursor::new(Rc::<[u8]>::from(contents));
-
-        let file_name = filepath
-            .file_name()
-            .ok_or_else(|| {
-                EditorError::from(InvalidInputError {
-                    reason: format!("unable to find file name of `{filepath:?}`"),
-                    ..Default::default()
-                })
-            })?
-            .to_string_lossy();
+    ) -> EditorResult<Box<dyn RoutablePage>> {
+        let contents = file_info.content();
+        let cursor = RefCursor::new(Arc::<[u8]>::from(contents));
 
         ViewerCallback::init(&render_state);
 
-        let ref_cache = Rc::new(RefCell::new(VirtualRefCacheMap::new()));
-        let root_node =
-            root::deserialize_maybe_compressed(cursor, &ref_cache, file_name.into_owned())?;
+        let ref_cache = Arc::new(VirtualRefCacheMap::new());
+        let root_node = root::deserialize_maybe_compressed(
+            cursor,
+            &ref_cache,
+            file_info.file_name().to_owned(),
+        )?;
 
-        Ok(Self {
+        Ok(Box::new(Self {
             cmd: cmd_channel,
             renderer: Arc::clone(&render_state.renderer),
 
             root_node,
             ref_cache,
             open_node: None,
-            filepath,
-        })
+            file_info,
+        }))
     }
 
     fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui) {
@@ -265,8 +259,7 @@ impl Editor {
             })?
             .clone();
 
-        let base_ref = base.borrow();
-
+        let mut base_ref = base.lock();
         let mut opened_node_id = None;
 
         let node_kind = base_ref.kind;
@@ -292,7 +285,7 @@ impl Editor {
                     ui.painter()
                         .galley(center_pos, galley, ui.visuals().text_color());
                 })
-                .show(ui, |ui| {
+                .show(ui, |ui| -> EditorResult<()> {
                     // Render children if this node has already been evaluated.
                     match &base_ref.body {
                         Deferred::Evaluated(body) => {
@@ -303,26 +296,25 @@ impl Editor {
                                 }
                             }
 
-                            return;
+                            return Ok(());
                         }
                         _ => {}
                     }
 
-                    drop(base_ref);
+                    base_ref.evaluate()?;
 
-                    base.borrow_mut().body.evaluate().unwrap();
-
-                    let base_ref = base.borrow();
                     let Deferred::Evaluated(body) = &base_ref.body else {
                         unreachable!()
                     };
 
                     for &child in &body.children {
-                        let ret = Self::draw_file_tree(child, ref_cache, ui).unwrap();
+                        let ret = Self::draw_file_tree(child, ref_cache, ui)?;
                         if ret.is_some() {
                             opened_node_id = ret;
                         }
                     }
+
+                    Ok(())
                 });
 
             // Open the properties window of the folder when clicked.
@@ -344,6 +336,32 @@ impl Editor {
         }
 
         Ok(opened_node_id)
+    }
+}
+
+impl RoutablePage for Editor {
+    fn name(&self) -> &str {
+        "Editor"
+    }
+
+    fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
+        self.draw_upper_toolbar(ui);
+
+        // Draw file explorer
+        let panel_id = egui::Id::new("file_tree_panel");
+        egui::Panel::left(panel_id).show(ui, |ui| {
+            if let Some(properties) =
+                Self::draw_file_tree(self.root_node, &self.ref_cache, ui).unwrap()
+            {
+                self.open_node = Some(properties);
+            }
+        });
+
+        self.draw_inspector_window(ui)?;
+        self.draw_animator_window(ui);
+        self.draw_editor_view(ui);
+
+        Ok(())
     }
 }
 

@@ -5,7 +5,7 @@ use crate::error::{
 };
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
 use crate::{
     format::{
         chr0::Chr0Subfile,

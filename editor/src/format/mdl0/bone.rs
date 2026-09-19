@@ -4,7 +4,7 @@ use crate::error::{CorruptionError, EditorError, EditorResult, InvalidInputError
 use crate::format::brres::IndexGroup;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
 use crate::{
     format::encoding::{Deserialize, ReadArrayExt},
     shared::util::RefCursor,
@@ -278,13 +278,13 @@ fn build_skeleton_tree(
                 .get(curr_id)
                 .expect("virtual node that was just added does not exist");
 
-            let mut borrow = node.borrow_mut();
-            borrow.body.inspect_mut(|body| {
+            let mut lock = node.lock();
+            lock.body.inspect_mut(|body| {
                 body.inspectable = Some(Box::new(VirtualBone::from_bone(&bone.bone, None, None)));
             });
 
-            borrow.parent = Some(parent_id);
-            borrow.kind = VirtualNodeKind::Bone;
+            lock.parent = Some(parent_id);
+            lock.kind = VirtualNodeKind::Bone;
 
             continue; // No parent
         }
@@ -316,13 +316,13 @@ fn build_skeleton_tree(
         })?;
 
         {
-            let mut borrow = parent_node.borrow_mut();
+            let mut lock = parent_node.lock();
 
             // Change the file tree kind to reflect that it now has children.
-            borrow.kind = VirtualNodeKind::Bone;
+            lock.kind = VirtualNodeKind::Bone;
 
             // Add this child to its parent.
-            borrow.body.inspect_mut(|body| {
+            lock.body.inspect_mut(|body| {
                 body.children.push(curr_id);
             });
         }
@@ -334,16 +334,18 @@ fn build_skeleton_tree(
             })
         })?;
 
-        // Set the bone's parent and its data.
-        let mut curr_node = curr_node.borrow_mut();
-        curr_node.parent = Some(parent_id);
-        curr_node.body.inspect_mut(|body| {
-            body.inspectable = Some(Box::new(VirtualBone::from_bone(
-                &bone.bone,
-                None,
-                Some(parent_id),
-            )));
-        });
+        {
+            // Set the bone's parent and its data.
+            let mut lock = curr_node.lock();
+            lock.parent = Some(parent_id);
+            lock.body.inspect_mut(|body| {
+                body.inspectable = Some(Box::new(VirtualBone::from_bone(
+                    &bone.bone,
+                    None,
+                    Some(parent_id),
+                )));
+            });
+        }
     }
 
     let Some(root_index) = found_root else {

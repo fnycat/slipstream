@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use crate::error::{CorruptionError, EditorError, EditorResult};
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
 use crate::{
     format::{
         brres::{self, IndexGroup, SubfileHeader, SubfileType},

@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::error::{EditorResult, UnsupportedError};
 use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
@@ -21,7 +22,7 @@ pub fn deserialize_maybe_compressed(
     // Is this file compressed?
     if &reader.as_remaining()[..4] == YAZ0_MAGIC {
         // then decompress it.
-        reader = RefCursor::new(Rc::from(yaz0::decompress(&mut reader)?));
+        reader = RefCursor::new(Arc::from(yaz0::decompress(&mut reader)?));
     }
 
     deserialize_unknown_root(&mut reader, ref_cache, name)

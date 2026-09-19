@@ -1,8 +1,9 @@
 use crate::error::EditorResult;
+use crate::shared::util::AssertSend;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::refs::VirtualNodeId;
 
-pub trait Inspectable: std::fmt::Debug {
+pub trait Inspectable: Send + std::fmt::Debug {
     fn draw_properties(&mut self, ui: &mut egui::Ui);
 }
 
@@ -25,6 +26,8 @@ pub struct VirtualNode {
     pub parent: Option<VirtualNodeId>,
     pub body: Deferred<VirtualNodeBody>,
 }
+
+impl AssertSend for VirtualNode {}
 
 impl VirtualNode {
     pub fn evaluate(&mut self) -> EditorResult<()> {

@@ -2,7 +2,6 @@ use egui_phosphor::regular::X;
 
 use crate::error::{EditorError, EditorResult, InvalidInputError};
 use crate::pages::editor::Editor;
-use crate::r#virtual::refs::VirtualRefCacheExt;
 
 impl Editor {
     pub fn draw_inspector_window(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
@@ -26,7 +25,7 @@ impl Editor {
         })?;
 
         egui::Panel::right(egui::Id::new("property_panel")).show(ui, |ui| {
-            let node_ref = open_node.borrow();
+            let mut node_ref = open_node.lock();
 
             ui.horizontal(|ui| {
                 ui.heading(&node_ref.label);
@@ -40,9 +39,6 @@ impl Editor {
             });
 
             ui.add_space(0.02 * ui.available_height());
-
-            drop(node_ref);
-            let mut node_ref = open_node.borrow_mut();
 
             let inspectable = node_ref.body.evaluate().unwrap().inspectable.as_mut();
             if let Some(node_content) = inspectable {

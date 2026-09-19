@@ -4,7 +4,7 @@ use crate::error::{CorruptionError, EditorResult};
 use crate::format::brres::IndexGroup;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheExt};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
 use crate::{
     format::{
         encoding::Deserialize,

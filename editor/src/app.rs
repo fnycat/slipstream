@@ -1,8 +1,4 @@
-use std::{
-    any::Any,
-    panic::AssertUnwindSafe,
-    sync::Arc,
-};
+use std::{any::Any, panic::AssertUnwindSafe, sync::Arc};
 
 use eframe::egui_wgpu;
 

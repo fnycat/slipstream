@@ -1,4 +1,3 @@
-
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat};

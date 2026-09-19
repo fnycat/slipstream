@@ -22,7 +22,11 @@ impl WebHandle {
         &self,
         canvas: web_sys::HtmlCanvasElement,
     ) -> Result<(), wasm_bindgen::JsValue> {
-        tracing::info!("Starting web frame...");
+        web_sys::console::info_1(&JsValue::from_str("Setting up tracing..."));
+
+        setup_tracing();
+
+        tracing::info!("Successfully initialised tracing");
 
         self.runner
             .start(

@@ -11,7 +11,9 @@ where
 
 impl<P, F, T> DeferParser<T> for DeferPayload<P, F, T>
 where
-    F: FnOnce(P) -> EditorResult<T>,
+    P: Send,
+    T: Send,
+    F: FnOnce(P) -> EditorResult<T> + Send,
 {
     fn load(&mut self) -> EditorResult<T> {
         let (data, parse_fn) = self.payload.take().ok_or_else(|| {
@@ -27,7 +29,7 @@ where
     }
 }
 
-pub trait DeferParser<T> {
+pub trait DeferParser<T>: Send {
     fn load(&mut self) -> EditorResult<T>;
 }
 
@@ -36,14 +38,18 @@ pub enum Deferred<T> {
     Evaluated(T),
 }
 
-impl<T: 'static> Deferred<T> {
+impl<T> Deferred<T>
+where
+    T: Send + 'static,
+{
     /// Creates deferred content.
     ///
     /// In other words, the given `data` will be parsed using the `parse_fn` only
     /// when requested.
-    pub fn defer<P: 'static, F: 'static>(data: P, parse_fn: F) -> EditorResult<Self>
+    pub fn defer<P, F>(data: P, parse_fn: F) -> EditorResult<Self>
     where
-        F: FnOnce(P) -> EditorResult<T>,
+        P: Send + 'static,
+        F: FnOnce(P) -> EditorResult<T> + Send + 'static,
     {
         if FORCE_EAGER_EVALUATION {
             let eval = parse_fn(data)?;

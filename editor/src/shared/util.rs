@@ -1,7 +1,10 @@
 use std::{
     io::{self, SeekFrom},
-    rc::Rc,
+    sync::Arc,
 };
+
+/// Asserts that the type implementing this trait is `Send`.
+pub trait AssertSend: Send {}
 
 /// A `RangedCursor` is very similar to the std's [`Cursor`]
 /// but instead stores its contents in a reference counter.
@@ -14,7 +17,7 @@ pub struct RefCursor<T>
 where
     T: AsRef<[u8]> + ?Sized,
 {
-    inner: Rc<T>,
+    inner: Arc<T>,
     /// The current position of the cursor.
     pos: u64,
     lower_bound: u64,
@@ -25,7 +28,7 @@ impl<T> RefCursor<T>
 where
     T: AsRef<[u8]> + ?Sized,
 {
-    pub fn new(inner: Rc<T>) -> Self {
+    pub fn new(inner: Arc<T>) -> Self {
         Self {
             inner,
             pos: 0,
