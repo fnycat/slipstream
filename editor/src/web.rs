@@ -1,4 +1,4 @@
-use crate::App;
+use crate::{App, setup_tracing};
 use wasm_bindgen::prelude::*;
 
 #[derive(Clone)]
@@ -12,6 +12,10 @@ impl WebHandle {
     #[expect(clippy::new_without_default)]
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
+        web_sys::console::info_1(JsValue::from_str("Initializing tracing..."));
+
+        setup_tracing();
+
         Self {
             runner: eframe::WebRunner::new(),
         }
@@ -22,6 +26,8 @@ impl WebHandle {
         &self,
         canvas: web_sys::HtmlCanvasElement,
     ) -> Result<(), wasm_bindgen::JsValue> {
+        tracing::info!("Starting web frame...");
+
         self.runner
             .start(
                 canvas,
@@ -29,10 +35,5 @@ impl WebHandle {
                 Box::new(|cc| Ok(Box::new(App::new(cc)))),
             )
             .await
-    }
-
-    #[wasm_bindgen]
-    pub fn destroy(&self) {
-        self.runner.destroy();
     }
 }

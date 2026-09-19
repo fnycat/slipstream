@@ -20,7 +20,10 @@ mod web;
 use crate::app::App;
 use error::EditorResult;
 
-fn setup_tracing() {
+/// Initialises the tracing subscriber for the current environment.
+///
+/// On web, it uses `tracing_wasm` and on native, `tracing_tree` is used.
+pub fn setup_tracing() {
     #[cfg(target_arch = "wasm32")]
     {
         tracing_wasm::set_as_global_default();
