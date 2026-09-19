@@ -172,8 +172,6 @@ impl Deserialize for DrawList {
 
         let mut opcode = reader.read_u8()?;
         while opcode != Self::END_OPCODE {
-            dbg!(opcode);
-
             let command = match opcode {
                 Self::NOPCODE => {
                     reader.set_position(reader.position() + 8);
@@ -225,7 +223,7 @@ pub fn deserialize_virtual(
         let node = VirtualNode {
             label: name,
             id,
-            kind: VirtualNodeKind::Definitions,
+            kind: VirtualNodeKind::DrawList,
             parent: Some(parent_id),
             body: Deferred::evaluated(VirtualNodeBody {
                 children: Vec::new(),

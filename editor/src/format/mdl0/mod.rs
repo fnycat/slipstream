@@ -88,7 +88,7 @@ impl Deserialize for TextureMatrixMode {
 }
 
 pub const MDL0_SECTION_NAMES: &[&str] = &[
-    "Definitions",
+    "Draw commands",
     "Bones",
     "Vertices",
     "Normals",
@@ -99,15 +99,15 @@ pub const MDL0_SECTION_NAMES: &[&str] = &[
     "Materials",
     "TEVs",
     "Objects",
-    "TextureLinks",
-    "PaletteLinks",
-    "UserData",
+    "Texture links",
+    "Palette links",
+    "User data",
 ];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum SectionType {
-    Definitions,
+    DrawLists,
     Bones,
     Vertices,
     Normals,
@@ -128,7 +128,7 @@ impl TryFrom<u32> for SectionType {
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         Ok(match value {
-            0 => Self::Definitions,
+            0 => Self::DrawLists,
             1 => Self::Bones,
             2 => Self::Vertices,
             3 => Self::Normals,
@@ -305,7 +305,7 @@ pub fn deserialize_virtual(
             tracing::debug!("Parsing {section_ty:?}");
 
             match section_ty {
-                SectionType::Definitions => {
+                SectionType::DrawLists => {
                     drawlist::deserialize_virtual(&mut reader, parent_id, &ref_cache2)
                 }
                 SectionType::Bones => {

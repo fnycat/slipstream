@@ -1,12 +1,9 @@
+use crate::editor::OpenedFileInfo;
 use crate::{
     cmd::AppCommandChannel,
     decorations,
     error::EditorResult,
-    pages::{
-        RoutablePage,
-        editor::{Editor, OpenedFileInfo},
-        splash::BACKGROUND_TEXTURE,
-    },
+    pages::{RoutablePage, splash::BACKGROUND_TEXTURE},
     viewer,
 };
 
@@ -108,6 +105,8 @@ impl RoutablePage for IntroPage {
                                                                 .await;
 
                                                         if let Some(selected_file) = selected_file {
+                                                            use crate::editor::Editor;
+
                                                             let file_name =
                                                                 selected_file.file_name();
                                                             let file_path =

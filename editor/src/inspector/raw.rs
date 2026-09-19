@@ -1,4 +1,4 @@
-use crate::pages::editor::Editor;
+use crate::editor::Editor;
 use crate::shared::util::RefCursor;
 use crate::r#virtual::node::Inspectable;
 

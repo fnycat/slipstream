@@ -1,5 +1,5 @@
+use crate::editor::Editor;
 use crate::error::EditorResult;
-use crate::pages::editor::Editor;
 use crate::shared::util::AssertSend;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::refs::VirtualNodeId;
@@ -48,7 +48,7 @@ pub enum VirtualNodeKind {
     /// This is used for both directories and files that contain multiple subfiles/sections.
     Directory,
     DirectoryEmpty,
-    Definitions,
+    DrawList,
     Bone,
     BoneFinal,
     Vertices,
@@ -59,7 +59,7 @@ pub enum VirtualNodeKind {
 impl VirtualNodeKind {
     pub fn is_directory(&self) -> bool {
         match self {
-            Self::Definitions | Self::BoneFinal | Self::Vertices | Self::Unknown => false,
+            Self::DrawList | Self::BoneFinal | Self::Vertices | Self::Unknown => false,
             _ => true,
         }
     }
@@ -69,7 +69,7 @@ impl VirtualNodeKind {
         match self {
             Self::Directory => reg_icon!(FOLDER_OPEN),
             Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
-            Self::Definitions => reg_icon!(FILE_CODE),
+            Self::DrawList => reg_icon!(FILE_CODE),
             Self::Bone => reg_icon!(BONE),
             Self::BoneFinal => fill_icon!(BONE),
             Self::Vertices => reg_icon!(POLYGON),
@@ -83,7 +83,7 @@ impl VirtualNodeKind {
         match self {
             Self::Directory => reg_icon!(FOLDER),
             Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
-            Self::Definitions => reg_icon!(FILE_CODE),
+            Self::DrawList => reg_icon!(FILE_CODE),
             Self::Bone => reg_icon!(BONE),
             Self::BoneFinal => fill_icon!(BONE),
             Self::Vertices => reg_icon!(POLYGON),

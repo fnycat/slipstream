@@ -1,8 +1,6 @@
+use crate::editor::Editor;
 use crate::format::mdl0::vertices::Vertices;
-use crate::pages::editor::Editor;
-use crate::pages::editor::inspector::widgets::{
-    draw_inspector_section_header, draw_vec_drag_values,
-};
+use crate::inspector::widgets::{draw_inspector_section_header, draw_vec_drag_values};
 use crate::viewer::{self, ViewerState};
 use crate::r#virtual::node::Inspectable;
 

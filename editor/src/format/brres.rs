@@ -12,7 +12,7 @@ use crate::{
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
         mdl0::{self, MDL0_MAGIC},
     },
-    pages::editor::inspector::raw::Raw,
+    inspector::raw::Raw,
     shared::util::RefCursor,
 };
 

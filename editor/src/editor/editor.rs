@@ -1,8 +1,6 @@
-use std::cell::RefCell;
 use std::{path::PathBuf, sync::Arc};
 
 use eframe::egui_wgpu;
-use egui::mutex::RwLock;
 
 use crate::cmd::AppCommandChannel;
 use crate::decorations::{self, WindowState};
@@ -52,20 +50,17 @@ impl OpenedFileInfo {
 
 /// Data specific to the editor page.
 pub struct Editor {
-    cmd: AppCommandChannel,
-
-    pub(super) render_state: viewer::RenderState,
-
+    pub cmd: AppCommandChannel,
+    pub render_state: viewer::RenderState,
     /// The path of the current file open in the editor.
     ///
     /// This is a regular filesystem path, pointing to the root file.
     /// Not an internal URI.
-    file_info: OpenedFileInfo,
+    pub file_info: OpenedFileInfo,
     /// The whole file currently open in the editor.
-    root_node: VirtualNodeId,
-
-    pub(super) open_node: Option<VirtualNodeId>,
-    pub(super) ref_cache: VirtualRefCache,
+    pub root_node: VirtualNodeId,
+    pub open_node: Option<VirtualNodeId>,
+    pub ref_cache: VirtualRefCache,
 }
 
 impl Editor {
