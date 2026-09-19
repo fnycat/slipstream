@@ -223,7 +223,7 @@ pub fn deserialize_virtual(
         let node = VirtualNode {
             label: name,
             id,
-            kind: VirtualNodeKind::DrawList,
+            kind: VirtualNodeKind::Definitions,
             parent: Some(parent_id),
             body: Deferred::evaluated(VirtualNodeBody {
                 children: Vec::new(),

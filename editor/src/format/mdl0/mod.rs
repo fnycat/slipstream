@@ -1,6 +1,8 @@
-pub mod bone;
-pub mod drawlist;
+pub mod bones;
+pub mod bytecode;
+pub mod colors;
 pub mod normals;
+pub mod objects;
 pub mod util;
 pub mod vertices;
 
@@ -88,7 +90,7 @@ impl Deserialize for TextureMatrixMode {
 }
 
 pub const MDL0_SECTION_NAMES: &[&str] = &[
-    "Draw commands",
+    "Definitions",
     "Bones",
     "Vertices",
     "Normals",
@@ -306,10 +308,10 @@ pub fn deserialize_virtual(
 
             match section_ty {
                 SectionType::DrawLists => {
-                    drawlist::deserialize_virtual(&mut reader, parent_id, &ref_cache2)
+                    bytecode::deserialize_virtual(&mut reader, parent_id, &ref_cache2)
                 }
                 SectionType::Bones => {
-                    bone::deserialize_skeleton(&mut reader, parent_id, &ref_cache2)
+                    bones::deserialize_skeleton(&mut reader, parent_id, &ref_cache2)
                 }
                 SectionType::Vertices => vertices::deserialize_virtual(
                     &mut reader,
@@ -318,6 +320,15 @@ pub fn deserialize_virtual(
                     &ref_cache2,
                 ),
                 SectionType::Normals => normals::deserialize_virtual(
+                    &mut reader,
+                    subfile_header.header_start,
+                    parent_id,
+                    &ref_cache2,
+                ),
+                SectionType::Colors => {
+                    colors::deserialize_virtual(&mut reader, parent_id, &ref_cache2)
+                }
+                SectionType::Objects => objects::deserialize_virtual(
                     &mut reader,
                     subfile_header.header_start,
                     parent_id,

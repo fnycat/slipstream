@@ -267,7 +267,7 @@ impl Editor {
 
         let node_kind = base_ref.kind;
         if node_kind.is_directory() {
-            let response = egui::CollapsingHeader::new(format!("{}: {}", base_id, &base_ref.label))
+            let response = egui::CollapsingHeader::new(&base_ref.label)
                 .id_salt(base_id) // Different folders might have the same name, use the unique node ID
                 .icon(move |ui, openness, response| {
                     let icon = if openness < 0.5 {
@@ -327,7 +327,7 @@ impl Editor {
         } else {
             ui.horizontal(|ui| {
                 ui.label(base_ref.kind.icon_closed());
-                if ui.label(format!("{base_id}: {}", base_ref.label)).clicked() {
+                if ui.label(&base_ref.label).clicked() {
                     opened_node_id = Some(base_ref.id);
                 }
             });

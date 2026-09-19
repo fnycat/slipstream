@@ -1,4 +1,4 @@
-use crate::editor::OpenedFileInfo;
+use crate::editor::{Editor, OpenedFileInfo};
 use crate::{
     cmd::AppCommandChannel,
     decorations,
@@ -105,8 +105,6 @@ impl RoutablePage for IntroPage {
                                                                 .await;
 
                                                         if let Some(selected_file) = selected_file {
-                                                            use crate::editor::Editor;
-
                                                             let file_name =
                                                                 selected_file.file_name();
                                                             let file_path =
@@ -135,10 +133,10 @@ impl RoutablePage for IntroPage {
 
                                             #[cfg(target_arch = "wasm32")]
                                             {
-                                                let cmd_channel = self.cmd_channel.clone();
+                                                let mut cmd_channel = self.cmd_channel.clone();
                                                 let render_state = self.render_state.clone();
 
-                                                wasm_bindgen_futures::spawn_local(async {
+                                                wasm_bindgen_futures::spawn_local(async move {
                                                     let selected_file = rfd::AsyncFileDialog::new()
                                                         .set_title("Select a file to edit")
                                                         .pick_file()

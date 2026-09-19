@@ -1,5 +1,5 @@
 use crate::editor::Editor;
-use crate::format::mdl0::bone::{BillboardSetting, BoneFlags, VirtualBone};
+use crate::format::mdl0::bones::{BillboardSetting, BoneFlags, VirtualBone};
 use crate::inspector::widgets::{
     draw_inspector_section_header, draw_node_reference, draw_vec_drag_values,
     draw_vec_drag_values_suffixed,
@@ -138,10 +138,10 @@ impl Inspectable for VirtualBone {
 
         ui.separator();
 
-        // ui.label(format!("Bone index: {}", self.index));
-        // ui.add(egui::DragValue::new(&mut self.index));
+        ui.label(format!("Bone index: {}", self.index));
+        ui.add(egui::DragValue::new(&mut self.index));
 
-        // ui.end_row();
+        ui.end_row();
 
         ui.horizontal(|ui| {
             ui.label("Billboard reference:");

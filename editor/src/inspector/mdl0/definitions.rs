@@ -1,5 +1,5 @@
 use crate::editor::Editor;
-use crate::format::mdl0::drawlist::DrawList;
+use crate::format::mdl0::bytecode::DrawList;
 use crate::r#virtual::node::Inspectable;
 
 impl Inspectable for DrawList {

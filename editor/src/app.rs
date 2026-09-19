@@ -123,7 +123,6 @@ impl eframe::App for App {
         if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
             self.draw_ui(ui);
         })) {
-            tracing::error!("{err:?}");
             self.panic_info = Some(err);
         }
     }

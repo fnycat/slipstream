@@ -48,18 +48,26 @@ pub enum VirtualNodeKind {
     /// This is used for both directories and files that contain multiple subfiles/sections.
     Directory,
     DirectoryEmpty,
-    DrawList,
+    Definitions,
     Bone,
     BoneFinal,
     Vertices,
     Normals,
+    Colors,
+    Object,
     Unknown,
 }
 
 impl VirtualNodeKind {
     pub fn is_directory(&self) -> bool {
         match self {
-            Self::DrawList | Self::BoneFinal | Self::Vertices | Self::Unknown => false,
+            Self::Definitions
+            | Self::BoneFinal
+            | Self::Vertices
+            | Self::Normals
+            | Self::Colors
+            | Self::Object
+            | Self::Unknown => false,
             _ => true,
         }
     }
@@ -69,11 +77,13 @@ impl VirtualNodeKind {
         match self {
             Self::Directory => reg_icon!(FOLDER_OPEN),
             Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
-            Self::DrawList => reg_icon!(FILE_CODE),
+            Self::Definitions => reg_icon!(FILE_CODE),
             Self::Bone => reg_icon!(BONE),
             Self::BoneFinal => fill_icon!(BONE),
             Self::Vertices => reg_icon!(POLYGON),
             Self::Normals => reg_icon!(ARROW_ELBOW_RIGHT),
+            Self::Colors => reg_icon!(PAINT_BRUSH_HOUSEHOLD),
+            Self::Object => reg_icon!(CUBE),
             Self::Unknown => reg_icon!(FILE),
         }
     }
@@ -82,13 +92,7 @@ impl VirtualNodeKind {
     pub fn icon_closed(&self) -> egui::RichText {
         match self {
             Self::Directory => reg_icon!(FOLDER),
-            Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
-            Self::DrawList => reg_icon!(FILE_CODE),
-            Self::Bone => reg_icon!(BONE),
-            Self::BoneFinal => fill_icon!(BONE),
-            Self::Vertices => reg_icon!(POLYGON),
-            Self::Normals => reg_icon!(ARROW_ELBOW_RIGHT),
-            Self::Unknown => reg_icon!(FILE),
+            _ => self.icon_open(),
         }
     }
 }
