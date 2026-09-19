@@ -48,13 +48,13 @@ impl Deserialize for BoneTable {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ObjectModifier {
+pub enum PolygonModifier {
     None,
     ChangeCurrentMatrix,
     Invisible,
 }
 
-impl TryFrom<u32> for ObjectModifier {
+impl TryFrom<u32> for PolygonModifier {
     type Error = EditorError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
@@ -73,7 +73,7 @@ impl TryFrom<u32> for ObjectModifier {
     }
 }
 
-impl Deserialize for ObjectModifier {
+impl Deserialize for PolygonModifier {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
@@ -81,7 +81,7 @@ impl Deserialize for ObjectModifier {
 }
 
 #[derive(Debug, Clone)]
-pub struct Object {
+pub struct Polygon {
     pub definitions_buffer_size: u32,
     pub definitions_size: u32,
     pub definitions_offset: i32,
@@ -91,7 +91,7 @@ pub struct Object {
     pub vertex_data_offset: i32,
 
     pub array_flags: u32,
-    pub modifier: ObjectModifier,
+    pub modifier: PolygonModifier,
 
     pub index: u32,
     pub vertex_count: u32,
@@ -102,7 +102,7 @@ pub struct Object {
     pub uv_array_ids: [u16; 8],
 }
 
-impl Deserialize for Object {
+impl Deserialize for Polygon {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let object_start = reader.position();
         let length = reader.read_u32::<BigEndian>()?;
@@ -125,7 +125,7 @@ impl Deserialize for Object {
         let vertex_data_size = reader.read_u32::<BigEndian>()?;
         let vertex_data_offset = reader.read_i32::<BigEndian>()?;
         let array_flags = reader.read_u32::<BigEndian>()?;
-        let modifier = ObjectModifier::deserialize(reader)?;
+        let modifier = PolygonModifier::deserialize(reader)?;
         let _name_offset = reader.read_u32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
 
@@ -176,14 +176,14 @@ pub fn deserialize_virtual(
 
         reader.set_position(data_start as u64);
 
-        let object = Object::deserialize(reader)?;
+        let object = Polygon::deserialize(reader)?;
         dbg!(&name, &object);
 
         let id = ref_cache.next_id();
         let node = VirtualNode {
             label: name,
             id,
-            kind: VirtualNodeKind::Object,
+            kind: VirtualNodeKind::Polygon,
             parent: Some(parent_id),
             body: Deferred::evaluated(VirtualNodeBody {
                 children: Vec::new(),

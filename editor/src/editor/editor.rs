@@ -266,7 +266,7 @@ impl Editor {
         let mut opened_node_id = None;
 
         let node_kind = base_ref.kind;
-        if node_kind.is_directory() {
+        if node_kind.is_expandable() {
             let response = egui::CollapsingHeader::new(&base_ref.label)
                 .id_salt(base_id) // Different folders might have the same name, use the unique node ID
                 .icon(move |ui, openness, response| {

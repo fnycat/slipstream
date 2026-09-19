@@ -2,7 +2,8 @@ pub mod bones;
 pub mod bytecode;
 pub mod colors;
 pub mod normals;
-pub mod objects;
+pub mod polygons;
+pub mod tex_links;
 pub mod util;
 pub mod uvs;
 pub mod vertices;
@@ -91,7 +92,7 @@ impl Deserialize for TextureMatrixMode {
 }
 
 pub const MDL0_SECTION_NAMES: &[&str] = &[
-    "Definitions",
+    "Bytecode",
     "Bones",
     "Vertices",
     "Normals",
@@ -101,7 +102,7 @@ pub const MDL0_SECTION_NAMES: &[&str] = &[
     "Fur layers",
     "Materials",
     "TEVs",
-    "Objects",
+    "Polygons",
     "Texture links",
     "Palette links",
     "User data",
@@ -335,12 +336,15 @@ pub fn deserialize_virtual(
                     parent_id,
                     &ref_cache2,
                 ),
-                SectionType::Objects => objects::deserialize_virtual(
+                SectionType::Objects => polygons::deserialize_virtual(
                     &mut reader,
                     subfile_header.header_start,
                     parent_id,
                     &ref_cache2,
                 ),
+                SectionType::TextureLinks => {
+                    tex_links::deserialize_virtual(&mut reader, parent_id, &ref_cache2)
+                }
                 _ => Ok(VirtualNodeBody {
                     children: Vec::new(),
                     inspectable: None,

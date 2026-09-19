@@ -48,27 +48,30 @@ pub enum VirtualNodeKind {
     /// This is used for both directories and files that contain multiple subfiles/sections.
     Directory,
     DirectoryEmpty,
-    Definitions,
+    Bytecode,
     Bone,
     BoneFinal,
     Vertices,
     Normals,
     Colors,
     Uvs,
-    Object,
+    Polygon,
+    TextureLinks,
     Unknown,
 }
 
 impl VirtualNodeKind {
-    pub fn is_directory(&self) -> bool {
+    pub fn is_expandable(&self) -> bool {
         match self {
-            Self::Definitions
+            Self::DirectoryEmpty
+            | Self::Bytecode
             | Self::BoneFinal
             | Self::Vertices
             | Self::Normals
             | Self::Colors
             | Self::Uvs
-            | Self::Object
+            | Self::Polygon
+            | Self::TextureLinks
             | Self::Unknown => false,
             _ => true,
         }
@@ -79,14 +82,15 @@ impl VirtualNodeKind {
         match self {
             Self::Directory => reg_icon!(FOLDER_OPEN),
             Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
-            Self::Definitions => reg_icon!(FILE_CODE),
+            Self::Bytecode => reg_icon!(FILE_CODE),
             Self::Bone => reg_icon!(BONE),
             Self::BoneFinal => fill_icon!(BONE),
             Self::Vertices => reg_icon!(POLYGON),
             Self::Normals => reg_icon!(ARROW_ELBOW_RIGHT),
             Self::Colors => reg_icon!(PAINT_BRUSH_HOUSEHOLD),
             Self::Uvs => reg_icon!(BOUNDING_BOX),
-            Self::Object => reg_icon!(CUBE),
+            Self::Polygon => reg_icon!(CUBE),
+            Self::TextureLinks => reg_icon!(LINK),
             Self::Unknown => reg_icon!(FILE),
         }
     }

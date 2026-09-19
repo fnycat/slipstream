@@ -1,0 +1,83 @@
+use byteorder::{BigEndian, ReadBytesExt};
+
+use crate::{
+    error::EditorResult,
+    format::{brres::IndexGroup, encoding::Deserialize},
+    shared::util::RefCursor,
+    r#virtual::{
+        defer::Deferred,
+        node::{VirtualNode, VirtualNodeBody, VirtualNodeKind},
+        refs::{VirtualNodeId, VirtualRefCache},
+    },
+};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TextureLink {
+    pub offset1: u32,
+    pub offset2: u32,
+}
+
+impl Deserialize for TextureLink {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let offset1 = reader.read_u32::<BigEndian>()?;
+        let offset2 = reader.read_u32::<BigEndian>()?;
+
+        Ok(Self { offset1, offset2 })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TextureLinks {
+    pub links: Vec<TextureLink>,
+}
+
+impl Deserialize for TextureLinks {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let link_count = reader.read_u32::<BigEndian>()?;
+
+        let mut links = Vec::with_capacity(link_count as usize);
+        for _ in 0..link_count {
+            links.push(TextureLink::deserialize(reader)?);
+        }
+
+        Ok(Self { links })
+    }
+}
+
+pub fn deserialize_virtual(
+    reader: &mut RefCursor<[u8]>,
+    parent_id: VirtualNodeId,
+    ref_cache: &VirtualRefCache,
+) -> EditorResult<VirtualNodeBody> {
+    let section_index = IndexGroup::deserialize(reader)?;
+
+    let mut children = Vec::with_capacity(section_index.entries.len() - 1);
+    for entry in &section_index.entries[1..] {
+        let name = section_index.get_entry_name(reader, entry)?;
+        let data_start = section_index.get_entry_data_start(entry);
+
+        reader.set_position(data_start as u64);
+
+        let links = TextureLinks::deserialize(reader)?;
+
+        let id = ref_cache.next_id();
+        let node = VirtualNode {
+            label: name,
+            id,
+            parent: Some(parent_id),
+            kind: VirtualNodeKind::TextureLinks,
+            body: Deferred::evaluated(VirtualNodeBody {
+                children: Vec::new(),
+                inspectable: Some(Box::new(links)),
+            }),
+        };
+
+        ref_cache.insert(id, node);
+        children.push(id);
+    }
+
+    Ok(VirtualNodeBody {
+        children,
+        inspectable: None,
+    })
+}

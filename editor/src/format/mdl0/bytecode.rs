@@ -157,16 +157,16 @@ pub enum DrawCommand {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct DrawList {
+pub struct Bytecode {
     commands: Vec<DrawCommand>,
 }
 
-impl DrawList {
+impl Bytecode {
     pub const NOPCODE: u8 = 0x00;
     pub const END_OPCODE: u8 = 0x01;
 }
 
-impl Deserialize for DrawList {
+impl Deserialize for Bytecode {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let mut commands = Vec::new();
 
@@ -217,13 +217,13 @@ pub fn deserialize_virtual(
         let data_start = section_index.get_entry_data_start(entry);
 
         reader.set_position(data_start as u64);
-        let draw_list = DrawList::deserialize(reader)?;
+        let draw_list = Bytecode::deserialize(reader)?;
 
         let id = ref_cache.next_id();
         let node = VirtualNode {
             label: name,
             id,
-            kind: VirtualNodeKind::Definitions,
+            kind: VirtualNodeKind::Bytecode,
             parent: Some(parent_id),
             body: Deferred::evaluated(VirtualNodeBody {
                 children: Vec::new(),

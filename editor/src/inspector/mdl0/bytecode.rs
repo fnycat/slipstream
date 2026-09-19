@@ -1,8 +1,8 @@
 use crate::editor::Editor;
-use crate::format::mdl0::bytecode::DrawList;
+use crate::format::mdl0::bytecode::Bytecode;
 use crate::r#virtual::node::Inspectable;
 
-impl Inspectable for DrawList {
+impl Inspectable for Bytecode {
     fn draw_properties(&mut self, _editor: &mut Editor, ui: &mut egui::Ui) {
         ui.label(format!("{self:?}"));
     }
