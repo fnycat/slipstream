@@ -23,6 +23,13 @@ pub enum VertexData {
 }
 
 impl VertexData {
+    pub const fn components(&self) -> usize {
+        match self {
+            Self::XY(_) => 2,
+            Self::XYZ(_) => 3,
+        }
+    }
+
     pub fn len(&self) -> usize {
         match self {
             Self::XY(verts) => verts.len(),

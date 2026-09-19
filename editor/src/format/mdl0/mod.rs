@@ -1,5 +1,5 @@
 pub mod bone;
-pub mod definitions;
+pub mod drawlist;
 pub mod normals;
 pub mod util;
 pub mod vertices;
@@ -305,6 +305,9 @@ pub fn deserialize_virtual(
             tracing::debug!("Parsing {section_ty:?}");
 
             match section_ty {
+                SectionType::Definitions => {
+                    drawlist::deserialize_virtual(&mut reader, parent_id, &ref_cache2)
+                }
                 SectionType::Bones => {
                     bone::deserialize_skeleton(&mut reader, parent_id, &ref_cache2)
                 }

@@ -1,10 +1,21 @@
+use crate::format::mdl0::vertices::VertexData;
+
+impl VertexData {
+    pub const fn format(&self) -> wgpu::VertexFormat {
+        match self {
+            Self::XY(_) => wgpu::VertexFormat::Float32x2,
+            Self::XYZ(_) => wgpu::VertexFormat::Float32x3,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
-pub struct Vertex {
+pub struct Vertex3 {
     coordinates: [f32; 3],
 }
 
-impl Vertex {
+impl Vertex3 {
     pub const fn layout() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Self>() as u64,
@@ -18,29 +29,29 @@ impl Vertex {
     }
 }
 
-pub const CUBE_VERTICES: [Vertex; 8] = [
-    Vertex {
+pub const CUBE_VERTICES: [Vertex3; 8] = [
+    Vertex3 {
         coordinates: [-0.5, -0.5, 0.5],
     }, // 0: Bottom-left-front
-    Vertex {
+    Vertex3 {
         coordinates: [0.5, -0.5, 0.5],
     }, // 1: Bottom-right-front
-    Vertex {
+    Vertex3 {
         coordinates: [0.5, 0.5, 0.5],
     }, // 2: Top-right-front
-    Vertex {
+    Vertex3 {
         coordinates: [-0.5, 0.5, 0.5],
     }, // 3: Top-left-front
-    Vertex {
+    Vertex3 {
         coordinates: [-0.5, -0.5, -0.5],
     }, // 4: Bottom-left-back
-    Vertex {
+    Vertex3 {
         coordinates: [0.5, -0.5, -0.5],
     }, // 5: Bottom-right-back
-    Vertex {
+    Vertex3 {
         coordinates: [0.5, 0.5, -0.5],
     }, // 6: Top-right-back
-    Vertex {
+    Vertex3 {
         coordinates: [-0.5, 0.5, -0.5],
     }, // 7: Top-left-back
 ];

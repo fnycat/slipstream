@@ -1,0 +1,9 @@
+use crate::format::mdl0::drawlist::DrawList;
+use crate::pages::editor::Editor;
+use crate::r#virtual::node::Inspectable;
+
+impl Inspectable for DrawList {
+    fn draw_properties(&mut self, _editor: &mut Editor, ui: &mut egui::Ui) {
+        ui.label(format!("{self:?}"));
+    }
+}

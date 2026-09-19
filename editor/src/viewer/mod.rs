@@ -10,10 +10,13 @@ use eframe::egui_wgpu;
 use egui::mutex::RwLock;
 use wgpu::util::DeviceExt;
 
-use crate::viewer::{
-    self,
-    camera::{Camera, CameraController, CameraUniformData, OrbitCamera},
-    vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex},
+use crate::{
+    format::mdl0::{normals::NormalData, vertices::VertexData},
+    viewer::{
+        self,
+        camera::{Camera, CameraController, CameraUniformData, OrbitCamera},
+        vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex3},
+    },
 };
 
 const DEFAULT_VIEWPORT: egui::Rect =
@@ -40,6 +43,8 @@ impl ViewerCallback {
         let viewer = ViewerState::new(state);
         state.renderer.write().callback_resources.insert(viewer);
 
+        tracing::trace!("Initialized model viewer");
+
         Self
     }
 
@@ -48,6 +53,8 @@ impl ViewerCallback {
         if let Some(viewer) = renderer.callback_resources.remove::<ViewerState>() {
             renderer.free_texture(&viewer.texture_data.texture_id);
         }
+
+        tracing::trace!("Deinitialized model viewer");
     }
 }
 
@@ -132,6 +139,8 @@ pub struct CameraBindGroupData {
 
 #[derive(Clone)]
 pub struct RenderPipelineData {
+    pub module: wgpu::ShaderModule,
+
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub pipeline_layout: wgpu::PipelineLayout,
@@ -139,10 +148,17 @@ pub struct RenderPipelineData {
 }
 
 #[derive(Clone)]
+pub struct ModelData {
+    pub vertices: VertexData,
+    // normals: NormalData,
+}
+
+#[derive(Clone)]
 pub struct ViewerState {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
 
+    pub model_data: Option<ModelData>,
     pub texture_data: TextureData,
     pub pipeline_data: RenderPipelineData,
     pub camera_data: CameraBindGroupData,
@@ -178,6 +194,85 @@ impl ViewerState {
                 viewport_size,
             }));
         }
+    }
+
+    pub fn on_model_update(&mut self) {
+        let Some(model) = &self.model_data else {
+            return;
+        };
+
+        tracing::trace!("Updating model view");
+
+        self.pipeline_data.vertex_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("vertex buffer"),
+                    contents: model.vertices.as_bytes(),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+
+        self.pipeline_data.render_pipeline =
+            self.device
+                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("render pipeline"),
+                    layout: Some(&self.pipeline_data.pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &self.pipeline_data.module,
+                        entry_point: Some("vs_main"),
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                        buffers: &[Some(wgpu::VertexBufferLayout {
+                            array_stride: (model.vertices.components() * size_of::<f32>()) as u64,
+                            step_mode: wgpu::VertexStepMode::Vertex,
+                            attributes: &[wgpu::VertexAttribute {
+                                format: model.vertices.format(),
+                                offset: 0,
+                                shader_location: 0,
+                            }],
+                        })],
+                    },
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList,
+                        strip_index_format: None,
+                        front_face: wgpu::FrontFace::Ccw,
+                        cull_mode: Some(wgpu::Face::Back),
+                        unclipped_depth: false,
+                        polygon_mode: wgpu::PolygonMode::Fill,
+                        conservative: false,
+                    },
+                    depth_stencil: Some(wgpu::DepthStencilState {
+                        format: DEPTH_FORMAT,
+                        depth_write_enabled: Some(true),
+                        depth_compare: Some(wgpu::CompareFunction::Less),
+                        stencil: wgpu::StencilState {
+                            front: wgpu::StencilFaceState::IGNORE,
+                            back: wgpu::StencilFaceState::IGNORE,
+                            read_mask: 0,
+                            write_mask: 0,
+                        },
+                        bias: wgpu::DepthBiasState {
+                            constant: 0,
+                            slope_scale: 0.0,
+                            clamp: 0.0,
+                        },
+                    }),
+                    multisample: wgpu::MultisampleState {
+                        count: SAMPLE_COUNT,
+                        mask: !0,
+                        alpha_to_coverage_enabled: false,
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &self.pipeline_data.module,
+                        entry_point: Some("fs_main"),
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: TARGET_FORMAT,
+                            blend: Some(wgpu::BlendState::REPLACE),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: None,
+                });
     }
 
     fn create_textures(state: &viewer::RenderState) -> TextureData {
@@ -352,7 +447,7 @@ impl ViewerState {
         device: &wgpu::Device,
         bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
     ) -> RenderPipelineData {
-        let shader =
+        let module =
             device.create_shader_module(wgpu::include_wgsl!("../../shaders/viewer.wgsl").into());
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -365,10 +460,10 @@ impl ViewerState {
             label: Some("texture render pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shader,
+                module: &module,
                 entry_point: Some("vs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &[Some(Vertex::layout())],
+                buffers: &[Some(Vertex3::layout())],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -401,7 +496,7 @@ impl ViewerState {
                 alpha_to_coverage_enabled: false,
             },
             fragment: Some(wgpu::FragmentState {
-                module: &shader,
+                module: &module,
                 entry_point: Some("fs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
@@ -427,6 +522,8 @@ impl ViewerState {
         });
 
         RenderPipelineData {
+            module,
+
             pipeline_layout,
             render_pipeline,
             vertex_buffer,
@@ -576,6 +673,8 @@ impl ViewerState {
         Self {
             device,
             queue: state.queue.clone(),
+
+            model_data: None,
 
             texture_data,
             pipeline_data,

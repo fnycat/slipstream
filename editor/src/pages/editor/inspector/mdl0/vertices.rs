@@ -1,11 +1,13 @@
 use crate::format::mdl0::vertices::Vertices;
+use crate::pages::editor::Editor;
 use crate::pages::editor::inspector::widgets::{
     draw_inspector_section_header, draw_vec_drag_values,
 };
+use crate::viewer::{self, ViewerState};
 use crate::r#virtual::node::Inspectable;
 
 impl Inspectable for Vertices {
-    fn draw_properties(&mut self, ui: &mut egui::Ui) {
+    fn draw_properties(&mut self, editor: &mut Editor, ui: &mut egui::Ui) {
         let input_field_size = egui::vec2(180.0, 20.0);
 
         draw_inspector_section_header("Bounding volume".to_owned(), ui);
@@ -38,5 +40,20 @@ impl Inspectable for Vertices {
         ui.label(format!("Vertex format: {:?}", self.format));
         ui.label(format!("Divisor: {}", self.divisor));
         ui.label(format!("Stride: {}", self.stride));
+
+        ui.input_mut(|i| {
+            if i.consume_key(egui::Modifiers::NONE, egui::Key::R) {
+                let mut renderer = editor.render_state.renderer.write();
+                let viewer = renderer
+                    .callback_resources
+                    .get_mut::<ViewerState>()
+                    .unwrap();
+
+                viewer.model_data = Some(viewer::ModelData {
+                    vertices: self.vertices.clone(),
+                });
+                viewer.on_model_update();
+            }
+        });
     }
 }

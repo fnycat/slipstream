@@ -1,6 +1,8 @@
 use crate::format::mdl0::bone::{BillboardSetting, BoneFlags, VirtualBone};
+use crate::pages::editor::Editor;
 use crate::pages::editor::inspector::widgets::{
     draw_inspector_section_header, draw_node_reference, draw_vec_drag_values,
+    draw_vec_drag_values_suffixed,
 };
 use crate::r#virtual::node::Inspectable;
 
@@ -15,7 +17,7 @@ const BILLBOARD_SETTING_DESCRIPTIONS: &[&str] = &[
 ];
 
 impl Inspectable for BoneFlags {
-    fn draw_properties(&mut self, ui: &mut egui::Ui) {
+    fn draw_properties(&mut self, _editor: &mut Editor, ui: &mut egui::Ui) {
         ui.checkbox(
             &mut self.apply_child_scale_compensate,
             "Enable child scale compensate",
@@ -68,7 +70,7 @@ impl Inspectable for BoneFlags {
 }
 
 impl Inspectable for VirtualBone {
-    fn draw_properties(&mut self, ui: &mut egui::Ui) {
+    fn draw_properties(&mut self, editor: &mut Editor, ui: &mut egui::Ui) {
         let input_field_size = egui::vec2(180.0, 20.0);
 
         draw_inspector_section_header("Transformation".to_owned(), ui);
@@ -89,9 +91,10 @@ impl Inspectable for VirtualBone {
                 ui.end_row();
 
                 ui.label("Rotation:");
-                draw_vec_drag_values(
+                draw_vec_drag_values_suffixed(
                     input_field_size,
                     ["X:", "Y:", "Z:"],
+                    " °",
                     &mut self.rotation_vector,
                     ui,
                 );
@@ -173,7 +176,7 @@ impl Inspectable for VirtualBone {
         egui::Grid::new("bone_inspector_grid2")
             .num_columns(2)
             .show(ui, |ui| {
-                self.flags.draw_properties(ui);
+                self.flags.draw_properties(editor, ui);
             });
 
         draw_inspector_section_header("User data".to_owned(), ui);

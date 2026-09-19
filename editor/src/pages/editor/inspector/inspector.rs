@@ -2,6 +2,8 @@ use egui_phosphor::regular::X;
 
 use crate::error::{EditorError, EditorResult, InvalidInputError};
 use crate::pages::editor::Editor;
+use crate::viewer::{self, ViewerState};
+use crate::r#virtual::node::VirtualNodeKind;
 
 impl Editor {
     pub fn draw_inspector_window(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
@@ -42,7 +44,7 @@ impl Editor {
 
             let inspectable = node_ref.body.evaluate().unwrap().inspectable.as_mut();
             if let Some(node_content) = inspectable {
-                node_content.draw_properties(ui);
+                node_content.draw_properties(self, ui);
             }
         });
 

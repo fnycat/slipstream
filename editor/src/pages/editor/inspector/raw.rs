@@ -1,3 +1,4 @@
+use crate::pages::editor::Editor;
 use crate::shared::util::RefCursor;
 use crate::r#virtual::node::Inspectable;
 
@@ -7,7 +8,7 @@ pub struct Raw {
 }
 
 impl Inspectable for Raw {
-    fn draw_properties(&mut self, ui: &mut egui::Ui) {
+    fn draw_properties(&mut self, _editor: &mut Editor, ui: &mut egui::Ui) {
         ui.label(format!("File size: {} bytes", self.bytes.remaining_len()));
     }
 }

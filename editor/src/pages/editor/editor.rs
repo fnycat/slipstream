@@ -8,6 +8,7 @@ use crate::cmd::AppCommandChannel;
 use crate::decorations::{self, WindowState};
 use crate::error::{EditorError, EditorResult, InvalidInputError};
 use crate::pages::RoutablePage;
+use crate::pages::intro::IntroPage;
 use crate::viewer::camera::CameraController;
 use crate::viewer::{self, TEXTURE_FILTER_MODE, ViewerCallback};
 use crate::r#virtual::defer::Deferred;
@@ -53,7 +54,7 @@ impl OpenedFileInfo {
 pub struct Editor {
     cmd: AppCommandChannel,
 
-    renderer: Arc<RwLock<egui_wgpu::Renderer>>,
+    pub(super) render_state: viewer::RenderState,
 
     /// The path of the current file open in the editor.
     ///
@@ -87,7 +88,7 @@ impl Editor {
 
         Ok(Box::new(Self {
             cmd: cmd_channel,
-            renderer: Arc::clone(&render_state.renderer),
+            render_state: render_state.clone(),
 
             root_node,
             ref_cache,
@@ -141,7 +142,14 @@ impl Editor {
                                 todo!()
                             }
 
-                            if ui.button("Close").clicked() {}
+                            if ui.button("Close").clicked() {
+                                self.cmd
+                                    .try_route(IntroPage::new(
+                                        self.cmd.clone(),
+                                        self.render_state.clone(),
+                                    ))
+                                    .unwrap();
+                            }
 
                             if ui.button("Quit").clicked() {
                                 ui.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -169,7 +177,7 @@ impl Editor {
             // All this nonsense down here is to avoid a deadlock with the paint callback.
 
             let texture_id = {
-                let mut renderer = self.renderer.write();
+                let mut renderer = self.render_state.renderer.write();
                 let viewer = renderer
                     .callback_resources
                     .get_mut::<ViewerState>()
@@ -205,7 +213,7 @@ impl Editor {
 
             let response = ui.add(image_widget);
             if response.dragged() {
-                let mut renderer = self.renderer.write();
+                let mut renderer = self.render_state.renderer.write();
                 let viewer = renderer
                     .callback_resources
                     .get_mut::<ViewerState>()
@@ -223,7 +231,7 @@ impl Editor {
 
             ui.input(|i| {
                 if i.is_scrolling() && response.contains_pointer() {
-                    let mut renderer = self.renderer.write();
+                    let mut renderer = self.render_state.renderer.write();
                     let viewer = renderer
                         .callback_resources
                         .get_mut::<ViewerState>()
@@ -367,6 +375,6 @@ impl RoutablePage for Editor {
 
 impl Drop for Editor {
     fn drop(&mut self) {
-        ViewerCallback::deinit(&self.renderer);
+        ViewerCallback::deinit(&self.render_state.renderer);
     }
 }

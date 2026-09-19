@@ -1,10 +1,11 @@
 use crate::error::EditorResult;
+use crate::pages::editor::Editor;
 use crate::shared::util::AssertSend;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::refs::VirtualNodeId;
 
 pub trait Inspectable: Send + std::fmt::Debug {
-    fn draw_properties(&mut self, ui: &mut egui::Ui);
+    fn draw_properties(&mut self, editor: &mut Editor, ui: &mut egui::Ui);
 }
 
 #[derive(Debug)]
@@ -47,6 +48,7 @@ pub enum VirtualNodeKind {
     /// This is used for both directories and files that contain multiple subfiles/sections.
     Directory,
     DirectoryEmpty,
+    Definitions,
     Bone,
     BoneFinal,
     Vertices,
@@ -57,7 +59,7 @@ pub enum VirtualNodeKind {
 impl VirtualNodeKind {
     pub fn is_directory(&self) -> bool {
         match self {
-            Self::BoneFinal | Self::Unknown => false,
+            Self::Definitions | Self::BoneFinal | Self::Vertices | Self::Unknown => false,
             _ => true,
         }
     }
@@ -67,6 +69,7 @@ impl VirtualNodeKind {
         match self {
             Self::Directory => reg_icon!(FOLDER_OPEN),
             Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
+            Self::Definitions => reg_icon!(FILE_CODE),
             Self::Bone => reg_icon!(BONE),
             Self::BoneFinal => fill_icon!(BONE),
             Self::Vertices => reg_icon!(POLYGON),
@@ -80,6 +83,7 @@ impl VirtualNodeKind {
         match self {
             Self::Directory => reg_icon!(FOLDER),
             Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
+            Self::Definitions => reg_icon!(FILE_CODE),
             Self::Bone => reg_icon!(BONE),
             Self::BoneFinal => fill_icon!(BONE),
             Self::Vertices => reg_icon!(POLYGON),
