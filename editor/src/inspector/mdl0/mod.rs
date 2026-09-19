@@ -2,6 +2,7 @@ pub mod bones;
 pub mod bytecode;
 pub mod colors;
 pub mod normals;
+pub mod pal_links;
 pub mod polygons;
 pub mod tex_links;
 pub mod uvs;

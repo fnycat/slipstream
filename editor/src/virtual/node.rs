@@ -57,6 +57,7 @@ pub enum VirtualNodeKind {
     Uvs,
     Polygon,
     TextureLinks,
+    PaletteLinks,
     Unknown,
 }
 
@@ -72,6 +73,7 @@ impl VirtualNodeKind {
             | Self::Uvs
             | Self::Polygon
             | Self::TextureLinks
+            | Self::PaletteLinks
             | Self::Unknown => false,
             _ => true,
         }
@@ -91,6 +93,7 @@ impl VirtualNodeKind {
             Self::Uvs => reg_icon!(BOUNDING_BOX),
             Self::Polygon => reg_icon!(CUBE),
             Self::TextureLinks => reg_icon!(LINK),
+            Self::PaletteLinks => reg_icon!(LINK),
             Self::Unknown => reg_icon!(FILE),
         }
     }
