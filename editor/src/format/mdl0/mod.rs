@@ -4,6 +4,7 @@ pub mod colors;
 pub mod normals;
 pub mod objects;
 pub mod util;
+pub mod uvs;
 pub mod vertices;
 
 use std::collections::HashMap;
@@ -328,6 +329,12 @@ pub fn deserialize_virtual(
                 SectionType::Colors => {
                     colors::deserialize_virtual(&mut reader, parent_id, &ref_cache2)
                 }
+                SectionType::UvCoordinates => uvs::deserialize_virtual(
+                    &mut reader,
+                    subfile_header.header_start,
+                    parent_id,
+                    &ref_cache2,
+                ),
                 SectionType::Objects => objects::deserialize_virtual(
                     &mut reader,
                     subfile_header.header_start,

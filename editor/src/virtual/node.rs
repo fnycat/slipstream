@@ -54,6 +54,7 @@ pub enum VirtualNodeKind {
     Vertices,
     Normals,
     Colors,
+    Uvs,
     Object,
     Unknown,
 }
@@ -66,6 +67,7 @@ impl VirtualNodeKind {
             | Self::Vertices
             | Self::Normals
             | Self::Colors
+            | Self::Uvs
             | Self::Object
             | Self::Unknown => false,
             _ => true,
@@ -83,6 +85,7 @@ impl VirtualNodeKind {
             Self::Vertices => reg_icon!(POLYGON),
             Self::Normals => reg_icon!(ARROW_ELBOW_RIGHT),
             Self::Colors => reg_icon!(PAINT_BRUSH_HOUSEHOLD),
+            Self::Uvs => reg_icon!(BOUNDING_BOX),
             Self::Object => reg_icon!(CUBE),
             Self::Unknown => reg_icon!(FILE),
         }

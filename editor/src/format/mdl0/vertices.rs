@@ -8,7 +8,7 @@ use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
 use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
-        mdl0::util::{ComponentFormat, deserialize_components},
+        mdl0::util::{VectorPrecision, deserialize_vector_data},
     },
     shared::util::RefCursor,
 };
@@ -18,42 +18,37 @@ const COMPONENTS_XYZ: u32 = 0x1;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum VertexData {
-    XY(Vec<[f32; 2]>),
-    XYZ(Vec<[f32; 3]>),
+    Xy(Vec<[f32; 2]>),
+    Xyz(Vec<[f32; 3]>),
 }
 
 impl VertexData {
     pub const fn components(&self) -> usize {
         match self {
-            Self::XY(_) => 2,
-            Self::XYZ(_) => 3,
+            Self::Xy(_) => 2,
+            Self::Xyz(_) => 3,
         }
     }
 
     pub fn len(&self) -> usize {
         match self {
-            Self::XY(verts) => verts.len(),
-            Self::XYZ(verts) => verts.len(),
+            Self::Xy(verts) => verts.len(),
+            Self::Xyz(verts) => verts.len(),
         }
     }
 
     pub fn as_bytes(&self) -> &[u8] {
         match self {
-            Self::XY(verts) => bytemuck::cast_slice(verts),
-            Self::XYZ(verts) => bytemuck::cast_slice(verts),
+            Self::Xy(verts) => bytemuck::cast_slice(verts),
+            Self::Xyz(verts) => bytemuck::cast_slice(verts),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Vertices {
-    /// Offsets are relative to this position.
-    pub header_start: u32,
     pub index: u32,
-    pub mdl0_offset: i32,
-    pub name_offset: i32,
-    pub data_offset: i32,
-    pub format: ComponentFormat,
+    pub format: VectorPrecision,
     pub divisor: u8,
     pub stride: u8,
     pub bounding_volume_min: [f32; 3],
@@ -103,12 +98,12 @@ pub fn deserialize_virtual(
 impl Vertices {
     pub fn deserialize(reader: &mut RefCursor<[u8]>, header_start: u32) -> EditorResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
-        let mdl0_offset = reader.read_i32::<BigEndian>()?;
+        let _mdl0_offset = reader.read_i32::<BigEndian>()?;
         let data_offset = reader.read_i32::<BigEndian>()?;
-        let name_offset = reader.read_i32::<BigEndian>()?;
+        let _name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let component_count = reader.read_u32::<BigEndian>()?;
-        let format = ComponentFormat::deserialize(reader)?;
+        let format = VectorPrecision::deserialize(reader)?;
         let divisor = reader.read_u8()?;
         let stride = reader.read_u8()?;
         let vertex_count = reader.read_u16::<BigEndian>()?;
@@ -123,13 +118,13 @@ impl Vertices {
         // FIXME: This vertex data is not included in the lazy buffer.
 
         let vertices = match component_count {
-            COMPONENTS_XY => VertexData::XY(deserialize_components::<2>(
+            COMPONENTS_XY => VertexData::Xy(deserialize_vector_data::<2>(
                 reader,
                 vertex_count,
                 format,
                 divisor,
             )?),
-            COMPONENTS_XYZ => VertexData::XYZ(deserialize_components::<3>(
+            COMPONENTS_XYZ => VertexData::Xyz(deserialize_vector_data::<3>(
                 reader,
                 vertex_count,
                 format,
@@ -148,12 +143,8 @@ impl Vertices {
         tracing::debug!("ended at {}", reader.position());
 
         Ok(Self {
-            header_start,
-            vertices,
             index,
-            mdl0_offset,
-            name_offset,
-            data_offset,
+            vertices,
             format,
             divisor,
             stride,

@@ -8,7 +8,7 @@ use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
 use crate::{
     format::{
         encoding::Deserialize,
-        mdl0::util::{ComponentFormat, deserialize_components},
+        mdl0::util::{VectorPrecision, deserialize_vector_data},
     },
     shared::util::RefCursor,
 };
@@ -39,12 +39,8 @@ impl NormalData {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Normals {
-    pub header_start: u32,
-    pub mdl0_offset: i32,
-    pub data_offset: i32,
-    pub name_offset: i32,
     pub index: u32,
-    pub format: ComponentFormat,
+    pub format: VectorPrecision,
     pub divisor: u8,
     pub stride: u8,
     pub normals: NormalData,
@@ -91,12 +87,12 @@ pub fn deserialize_virtual(
 impl Normals {
     pub fn deserialize(reader: &mut RefCursor<[u8]>, header_start: u32) -> EditorResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
-        let mdl0_offset = reader.read_i32::<BigEndian>()?;
+        let _mdl0_offset = reader.read_i32::<BigEndian>()?;
         let data_offset = reader.read_i32::<BigEndian>()?;
-        let name_offset = reader.read_i32::<BigEndian>()?;
+        let _name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let component_count = reader.read_u32::<BigEndian>()?;
-        let format = ComponentFormat::deserialize(reader)?;
+        let format = VectorPrecision::deserialize(reader)?;
         let divisor = reader.read_u8()?;
         let stride = reader.read_u8()?;
         let normal_count = reader.read_u16::<BigEndian>()?;
@@ -105,19 +101,19 @@ impl Normals {
         reader.set_position(normals_start as u64);
 
         let normals = match component_count {
-            COMPONENTS_NORMAL => NormalData::Normal(deserialize_components::<3>(
+            COMPONENTS_NORMAL => NormalData::Normal(deserialize_vector_data::<3>(
                 reader,
                 normal_count,
                 format,
                 divisor,
             )?),
-            COMPONENTS_ALL => NormalData::All(deserialize_components::<9>(
+            COMPONENTS_ALL => NormalData::All(deserialize_vector_data::<9>(
                 reader,
                 normal_count,
                 format,
                 divisor,
             )?),
-            COMPONENTS_ANY => NormalData::Any(deserialize_components::<3>(
+            COMPONENTS_ANY => NormalData::Any(deserialize_vector_data::<3>(
                 reader,
                 normal_count,
                 format,
@@ -134,10 +130,6 @@ impl Normals {
         };
 
         Ok(Self {
-            header_start,
-            mdl0_offset,
-            data_offset,
-            name_offset,
             index,
             format,
             divisor,

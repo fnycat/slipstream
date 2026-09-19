@@ -3,8 +3,8 @@ use crate::format::mdl0::vertices::VertexData;
 impl VertexData {
     pub const fn format(&self) -> wgpu::VertexFormat {
         match self {
-            Self::XY(_) => wgpu::VertexFormat::Float32x2,
-            Self::XYZ(_) => wgpu::VertexFormat::Float32x3,
+            Self::Xy(_) => wgpu::VertexFormat::Float32x2,
+            Self::Xyz(_) => wgpu::VertexFormat::Float32x3,
         }
     }
 }
