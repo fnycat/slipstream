@@ -1,8 +1,42 @@
-use egui::load::TexturePoll;
+use std::sync::{LazyLock, Mutex};
 
-use crate::{app::App, config::APP_TITLE};
+use eframe::egui_wgpu;
+use egui::load::SizedTexture;
 
-impl App {
+use crate::{
+    cmd::AppCommandChannel,
+    config::{APP_TITLE, DEFAULT_SIZE},
+    pages::{RoutablePage, intro::IntroPage},
+    viewer,
+};
+
+pub static BACKGROUND_TEXTURE: Mutex<Option<SizedTexture>> = Mutex::new(None);
+
+pub struct SplashPage {
+    ctx: egui::Context,
+    render_state: viewer::RenderState,
+    cmd_channel: AppCommandChannel,
+}
+
+impl SplashPage {
+    pub fn new(
+        ctx: egui::Context,
+        render_state: viewer::RenderState,
+        mut cmd_channel: AppCommandChannel,
+    ) -> Box<dyn RoutablePage> {
+        // Failing to center the window can be ignored.
+        let _ = cmd_channel.try_center_window();
+
+        ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(true));
+        ctx.send_viewport_cmd(egui::ViewportCommand::Title("Launching...".into()));
+
+        Box::new(Self {
+            ctx,
+            cmd_channel,
+            render_state,
+        })
+    }
+
     fn poll_preload(&mut self) -> Result<egui::load::TexturePoll, egui::load::LoadError> {
         let bg_image = egui::include_image!("../../images/intro_bg.png");
         bg_image.load(
@@ -20,9 +54,14 @@ impl App {
             },
         )
     }
+}
 
-    /// Renders the splash screen
-    pub fn draw_splash(&mut self, ui: &mut egui::Ui) {
+impl RoutablePage for SplashPage {
+    fn name(&self) -> &str {
+        "Splash"
+    }
+
+    fn draw(&mut self, ui: &mut egui::Ui) -> crate::error::EditorResult<()> {
         egui::Area::new(egui::Id::new("splash_panel"))
             .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
             .show(ui, |ui| {
@@ -42,18 +81,56 @@ impl App {
 
         let poll = self.poll_preload();
         match poll {
-            Ok(TexturePoll::Ready { texture }) => {
+            Ok(egui::load::TexturePoll::Ready { texture }) => {
                 tracing::trace!("Background image loaded");
 
-                self.bg_image = Some(texture);
-                self.preload_finished = true;
+                // Reset decorations
+
+                self.ctx
+                    .send_viewport_cmd(egui::ViewportCommand::Resizable(true));
+                self.ctx
+                    .send_viewport_cmd(egui::ViewportCommand::InnerSize(DEFAULT_SIZE));
+
+                self.ctx.send_viewport_cmd(egui::ViewportCommand::Title(
+                    "Mario Kart Wii editor".to_owned(),
+                ));
+
+                // `center_window` does not work here since it would still be using the old window size.
+
+                let mut window_rect = self.ctx.viewport_rect();
+                // adjust the existing window rect to include the new size.
+                window_rect.max = window_rect.min + DEFAULT_SIZE;
+
+                let sizex = window_rect.max.x - window_rect.min.x;
+                let sizey = window_rect.max.y - window_rect.min.y;
+
+                if let Some(monitor_size) = self.ctx.input(|i| i.viewport().monitor_size) {
+                    let monitor_pos = egui::pos2(0.0, 0.0);
+
+                    let center_x = monitor_pos.x + (monitor_size.x - sizex) / 2.0;
+                    let center_y = monitor_pos.y + (monitor_size.y - sizey) / 2.0;
+
+                    self.ctx
+                        .send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
+                            center_x, center_y,
+                        )));
+                }
+
+                *BACKGROUND_TEXTURE.lock().unwrap() = Some(texture);
+
+                self.cmd_channel.try_route(IntroPage::new(
+                    self.cmd_channel.clone(),
+                    self.render_state.clone(),
+                ))?;
             }
-            Ok(TexturePoll::Pending { .. }) => {
-                ui.ctx().request_repaint();
+            Ok(egui::load::TexturePoll::Pending { .. }) => {
+                // ui.ctx().request_repaint();
             }
             Err(err) => {
                 tracing::error!("failed to load background texture: {err}");
             }
         }
+
+        Ok(())
     }
 }

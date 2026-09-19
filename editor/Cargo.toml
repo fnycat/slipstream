@@ -18,6 +18,7 @@ crate-type = ["cdylib", "rlib"]
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
 tracing-wasm = "0.2.1"
+web-sys = "0.3.105"
 
 wgpu = { version = "30.0.1", features = ["webgl"] }
 wasm-bindgen = "0.2.128"
@@ -25,7 +26,6 @@ wasm-bindgen-futures = "0.4.30"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wgpu = "30.0.1"
-pollster = "1.0.1"
 
 [dependencies]
 glam = { version = "0.33.7", features = ["bytemuck"] }
@@ -46,6 +46,7 @@ thiserror = "2.0.20"
 byteorder = "1.5.0"
 paste = "1.0.15"
 const_format = "0.2.36"
+futures = "0.3.34"
 
 [build-dependencies]
 vergen-gitcl = { version = "10.0.3", features = ["build", "cargo", "rustc", "si"] }

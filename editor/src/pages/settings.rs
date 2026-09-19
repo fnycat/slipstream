@@ -1,10 +1,40 @@
-use crate::app::App;
+use crate::{
+    cmd::AppCommandChannel,
+    decorations,
+    error::EditorResult,
+    pages::{RoutablePage, splash::BACKGROUND_TEXTURE},
+    viewer,
+};
 
-impl App {
-    pub fn draw_settings(&mut self, ui: &mut egui::Ui) {
-        self.draw_background(ui);
-        self.draw_basic_title_bar(ui);
-        self.draw_tool_buttons(ui);
+pub struct SettingsPage {
+    bg_image: egui::load::SizedTexture,
+    render_state: viewer::RenderState,
+    cmd_channel: AppCommandChannel,
+}
+
+impl SettingsPage {
+    pub fn new(
+        cmd_channel: AppCommandChannel,
+        render_state: viewer::RenderState,
+    ) -> Box<dyn RoutablePage> {
+        let bg_image = BACKGROUND_TEXTURE.lock().unwrap().unwrap();
+        Box::new(Self {
+            cmd_channel,
+            render_state,
+            bg_image,
+        })
+    }
+}
+
+impl RoutablePage for SettingsPage {
+    fn name(&self) -> &str {
+        "Settings"
+    }
+
+    fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
+        decorations::draw_background(&egui::Image::from_texture(self.bg_image), ui);
+        decorations::draw_basic_title_bar(ui);
+        decorations::draw_tool_buttons(&mut self.cmd_channel, &self.render_state, ui);
 
         let window_bg = ui.visuals().panel_fill;
 
@@ -47,5 +77,7 @@ impl App {
                         })
                 });
             });
+
+        Ok(())
     }
 }

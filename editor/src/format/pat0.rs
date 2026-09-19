@@ -1,5 +1,6 @@
 use byteorder::{BigEndian, ReadBytesExt};
 
+use crate::error::EditorResult;
 use crate::{
     format::{
         brres::{IndexGroup, Subfile, SubfileHeader, SubfileType},
@@ -7,7 +8,6 @@ use crate::{
     },
     shared::util::RefCursor,
 };
-use crate::error::EditorResult;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pat0Header {

@@ -1,8 +1,5 @@
-use crate::{
-    format::mdl0::SectionDeserialize,
-    shared::util::RefCursor,
-};
 use crate::error::EditorResult;
+use crate::{format::mdl0::SectionDeserialize, shared::util::RefCursor};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Definitions {}

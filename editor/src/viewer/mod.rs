@@ -1,10 +1,17 @@
 pub mod camera;
+pub mod render_state;
+pub use render_state::*;
+
 mod vertex;
 
+use std::sync::Arc;
+
 use eframe::egui_wgpu;
+use egui::mutex::RwLock;
 use wgpu::util::DeviceExt;
 
 use crate::viewer::{
+    self,
     camera::{Camera, CameraController, CameraUniformData, OrbitCamera},
     vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex},
 };
@@ -29,11 +36,18 @@ pub const TEXTURE_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
 pub struct ViewerCallback;
 
 impl ViewerCallback {
-    pub fn init(state: &egui_wgpu::RenderState) -> Self {
+    pub fn init(state: &viewer::RenderState) -> Self {
         let viewer = ViewerState::new(state);
         state.renderer.write().callback_resources.insert(viewer);
 
         Self
+    }
+
+    pub fn deinit(renderer: &Arc<RwLock<egui_wgpu::Renderer>>) {
+        let mut renderer = renderer.write();
+        if let Some(viewer) = renderer.callback_resources.remove::<ViewerState>() {
+            renderer.free_texture(&viewer.texture_data.texture_id);
+        }
     }
 }
 
@@ -163,7 +177,7 @@ impl ViewerState {
         }
     }
 
-    fn create_textures(state: &egui_wgpu::RenderState) -> TextureData {
+    fn create_textures(state: &viewer::RenderState) -> TextureData {
         let texture = state.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("offscreen render texture"),
             size: wgpu::Extent3d {
@@ -538,7 +552,7 @@ impl ViewerState {
         false
     }
 
-    pub fn new(state: &egui_wgpu::RenderState) -> Self {
+    pub fn new(state: &viewer::RenderState) -> Self {
         let device = state.device.clone();
 
         let camera: Camera = OrbitCamera {

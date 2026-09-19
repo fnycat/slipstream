@@ -1,8 +1,10 @@
 #![feature(error_generic_member_access)]
 
 pub mod app;
+
 #[macro_use]
 pub mod icons;
+pub mod cmd;
 pub mod config;
 pub mod decorations;
 pub mod format;
@@ -135,9 +137,7 @@ pub fn run() -> EditorResult<()> {
     }
 
     #[cfg(target_arch = "wasm32")]
-    {
-        todo!();
-    }
+    {}
 
     Ok(())
 }

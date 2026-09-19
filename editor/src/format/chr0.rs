@@ -2,6 +2,7 @@ use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
+use crate::error::{CorruptionError, EditorError, EditorResult};
 use crate::{
     format::{
         brres::{IndexGroup, IndexGroupEntry, Subfile, SubfileHeader, SubfileType},
@@ -9,7 +10,6 @@ use crate::{
     },
     shared::util::RefCursor,
 };
-use crate::error::{CorruptionError, EditorError, EditorResult};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AnimationPolicy {

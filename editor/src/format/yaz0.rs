@@ -2,11 +2,11 @@ use std::{io::Cursor, rc::Rc};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
+use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat};
 use crate::{
     format::encoding::{Deserialize, ReadArrayExt, Serialize, WriteArrayExt},
     shared::util::RefCursor,
 };
-use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat};
 
 /// Magic of a YAZ0 file.
 pub const YAZ0_MAGIC: [u8; 4] = [0x59, 0x61, 0x7a, 0x30];

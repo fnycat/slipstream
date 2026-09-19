@@ -1,7 +1,33 @@
-use crate::app::{App, CurrentPage};
+use crate::{
+    cmd::AppCommandChannel,
+    error::EditorResult,
+    pages::{RoutablePage, intro::IntroPage},
+    viewer,
+};
 
-impl App {
-    pub fn draw_info(&mut self, ui: &mut egui::Ui) {
+pub struct InfoPage {
+    cmd_channel: AppCommandChannel,
+    render_state: viewer::RenderState,
+}
+
+impl InfoPage {
+    pub fn new(
+        cmd_channel: AppCommandChannel,
+        render_state: viewer::RenderState,
+    ) -> Box<dyn RoutablePage> {
+        Box::new(Self {
+            cmd_channel,
+            render_state,
+        })
+    }
+}
+
+impl RoutablePage for InfoPage {
+    fn name(&self) -> &str {
+        "Info"
+    }
+
+    fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
         let window_bg = ui.visuals().panel_fill;
 
         egui::Modal::new(egui::Id::new("app_info_modal"))
@@ -39,15 +65,27 @@ impl App {
 
                                 ui.add_space(ui.available_height() * 0.25);
                                 if ui.button("Close").clicked() {
-                                    self.current_page = CurrentPage::Intro;
+                                    self.cmd_channel
+                                        .try_route(IntroPage::new(
+                                            self.cmd_channel.clone(),
+                                            self.render_state.clone(),
+                                        ))
+                                        .unwrap();
                                 }
                             })
                             .response
                             .clicked_elsewhere()
                         {
-                            self.current_page = CurrentPage::Intro;
+                            self.cmd_channel
+                                .try_route(IntroPage::new(
+                                    self.cmd_channel.clone(),
+                                    self.render_state.clone(),
+                                ))
+                                .unwrap();
                         }
                     });
             });
+
+        Ok(())
     }
 }

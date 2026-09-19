@@ -1,9 +1,9 @@
+use std::ops::{Bound, RangeBounds};
 use std::{
     io::{self, SeekFrom},
     ops::Range,
     rc::Rc,
 };
-use std::ops::{Bound, RangeBounds};
 
 /// A `RangedCursor` is very similar to the std's [`Cursor`]
 /// but instead stores its contents in a reference counter.
@@ -19,7 +19,7 @@ where
     inner: Rc<T>,
     /// The current position of the cursor.
     pos: u64,
-    lower_bound: u64
+    lower_bound: u64,
 }
 
 /// This is a nearly exact copy of the standard library.
@@ -31,7 +31,7 @@ where
         Self {
             inner,
             pos: 0,
-            lower_bound: 0
+            lower_bound: 0,
         }
     }
 
@@ -40,7 +40,7 @@ where
         Self {
             inner: self.inner.clone(),
             pos: 0,
-            lower_bound: self.position()
+            lower_bound: self.position(),
         }
     }
 
@@ -94,7 +94,7 @@ where
         Self {
             inner: self.inner.clone(),
             pos: self.pos,
-            lower_bound: self.lower_bound
+            lower_bound: self.lower_bound,
         }
     }
 }

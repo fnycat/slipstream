@@ -1,6 +1,13 @@
+use crate::error::EditorResult;
+
 pub mod editor;
 pub mod info;
 pub mod intro;
 pub mod panic;
 pub mod settings;
 pub mod splash;
+
+pub trait RoutablePage {
+    fn name(&self) -> &str;
+    fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()>;
+}

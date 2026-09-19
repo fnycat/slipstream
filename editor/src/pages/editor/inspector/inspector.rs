@@ -1,13 +1,13 @@
 use egui_phosphor::regular::X;
 
-use crate::app::App;
 use crate::error::{EditorError, EditorResult, InvalidInputError};
+use crate::pages::editor::Editor;
 use crate::r#virtual::refs::VirtualRefCacheExt;
 
-impl App {
+impl Editor {
     pub fn draw_inspector_window(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
-        let editor = self.current_page.as_editor_mut().unwrap();
-        let Some(open_node_id) = editor.open_node else {
+        let Some(open_node_id) = self.open_node else {
+            // Cannot draw inspector window, as no file is open.
             return Ok(());
         };
 
@@ -15,7 +15,7 @@ impl App {
         // The properties field cannot be set immediately in the closure due to borrowing rules.
         let mut should_close = false;
 
-        let open_node = editor.ref_cache.get(open_node_id).ok_or_else(|| {
+        let open_node = self.ref_cache.get(open_node_id).ok_or_else(|| {
             EditorError::from(InvalidInputError {
                 reason: format!(
                     "attempted to open stale virtual node with ID {}",
@@ -51,7 +51,7 @@ impl App {
         });
 
         if should_close {
-            editor.open_node = None;
+            self.open_node = None;
         }
 
         Ok(())

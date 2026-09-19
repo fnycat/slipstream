@@ -161,6 +161,18 @@ pub enum EditorError {
         source: InvalidInputError,
         backtrace: Backtrace,
     },
+    #[error("channel send error: {source}")]
+    SendError {
+        #[from]
+        source: futures::channel::mpsc::SendError,
+        backtrace: Backtrace,
+    },
 }
 
 pub type EditorResult<T> = Result<T, EditorError>;
+
+impl<T> From<futures::channel::mpsc::TrySendError<T>> for EditorError {
+    fn from(value: futures::channel::mpsc::TrySendError<T>) -> Self {
+        value.into_send_error().into()
+    }
+}

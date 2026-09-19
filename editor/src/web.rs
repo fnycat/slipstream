@@ -1,3 +1,4 @@
+use crate::App;
 use wasm_bindgen::prelude::*;
 
 #[derive(Clone)]

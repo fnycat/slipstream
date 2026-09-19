@@ -2,8 +2,8 @@ use std::io::Read;
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use crate::shared::util::RefCursor;
 use crate::error::{CorruptionError, EditorError, EditorResult};
+use crate::shared::util::RefCursor;
 
 macro_rules! impl_byteorder_arrays {
     ($($ty: ty),*) => {

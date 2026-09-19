@@ -1,28 +1,53 @@
+use eframe::egui_wgpu;
+
 use crate::{
-    app::{App, CurrentPage},
-    pages::editor::Editor,
-    viewer::ViewerState,
+    cmd::AppCommandChannel,
+    decorations,
+    error::EditorResult,
+    pages::{
+        RoutablePage, editor::Editor, info::InfoPage, settings::SettingsPage,
+        splash::BACKGROUND_TEXTURE,
+    },
+    viewer,
 };
 
-egui_phosphor::subset! {
-    pub mod icons {
-        use regular::{GEAR_FINE, GITHUB_LOGO, INFO, MOON, POWER, SUN};
+pub struct IntroPage {
+    bg_image: egui::load::SizedTexture,
+    render_state: viewer::RenderState,
+    cmd_channel: AppCommandChannel,
+}
+
+impl IntroPage {
+    pub fn new(
+        cmd_channel: AppCommandChannel,
+        render_state: viewer::RenderState,
+    ) -> Box<dyn RoutablePage> {
+        let bg_image = BACKGROUND_TEXTURE.lock().unwrap().unwrap();
+        Box::new(Self {
+            cmd_channel,
+            bg_image,
+            render_state,
+        })
     }
 }
 
-impl App {
-    pub fn draw_intro(&mut self, ui: &mut egui::Ui) {
-        self.draw_version_details(ui);
-        self.draw_background(ui);
-        self.draw_basic_title_bar(ui);
+impl RoutablePage for IntroPage {
+    fn name(&self) -> &str {
+        "Intro"
+    }
+
+    fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
+        decorations::draw_version_details(ui);
+        decorations::draw_background(&egui::Image::from_texture(self.bg_image), ui);
+        decorations::draw_basic_title_bar(ui);
 
         let window_bg = ui.visuals().panel_fill;
 
-        egui::CentralPanel::default()
+        let egui::InnerResponse { inner, .. } = egui::CentralPanel::default()
             .frame(egui::Frame::default())
-            .show(ui, |ui| {
+            .show(ui, |ui| -> EditorResult<()> {
                 // Layout container to keep inner window centered
-                ui.vertical_centered(|ui| {
+                let egui::InnerResponse { inner, .. } = ui.vertical_centered(|ui| {
                     ui.add_space(ui.available_height() * 0.25); // Top spacing
                     ui.spacing_mut().button_padding = egui::vec2(12.0, 8.0);
 
@@ -53,32 +78,50 @@ impl App {
                             });
                         });
 
-                    egui::Frame::new()
+                    let egui::InnerResponse { inner, .. } = egui::Frame::new()
                         .fill(window_bg)
                         .corner_radius(0.0)
                         .inner_margin(24.0)
-                        .show(ui, |ui| {
+                        .show(ui, |ui| -> EditorResult<()> {
                             ui.set_width(frame_width);
                             ui.set_height(40.0);
 
-                            ui.columns_const(|[col1, col2]| {
-                                col1.vertical_centered(|ui| {
-                                    if ui
-                                        .button(egui::RichText::new("Open another file"))
-                                        .clicked()
-                                    {
-                                        let selected_file = rfd::FileDialog::new()
-                                            .set_title("Select a file to edit")
-                                            .pick_file();
+                            let inner = ui.columns_const(|[col1, col2]| -> EditorResult<()> {
+                                let egui::InnerResponse { inner, .. } =
+                                    col1.vertical_centered(|ui| -> EditorResult<()> {
+                                        if ui
+                                            .button(egui::RichText::new("Open another file"))
+                                            .clicked()
+                                        {
+                                            #[cfg(not(target_arch = "wasm32"))]
+                                            {
+                                                let selected_file = rfd::FileDialog::new()
+                                                    .set_title("Select a file to edit")
+                                                    .pick_file();
 
-                                        if let Some(selected_file) = selected_file {
-                                            self.current_page = CurrentPage::Editor(
-                                                Editor::new(selected_file, &self.render_state)
-                                                    .unwrap(),
-                                            );
+                                                if let Some(selected_file) = selected_file {
+                                                    let editor = Box::new(Editor::new(
+                                                        selected_file,
+                                                        self.cmd_channel.clone(),
+                                                        self.render_state.clone(),
+                                                    )?);
+
+                                                    self.cmd_channel.try_route(editor)?;
+                                                }
+                                            }
+
+                                            #[cfg(target_arch = "wasm32")]
+                                            {
+                                                wasm_bindgen_futures::spawn_local(async {
+                                                    let selected_file = rfd::AsyncFileDialog::new()
+                                                        .set_title("Select a file to edit")
+                                                        .pick_file();
+                                                });
+                                            }
                                         }
-                                    }
-                                });
+
+                                        Ok(())
+                                    });
 
                                 col2.vertical_centered(|ui| {
                                     ui.add_space(0.2 * ui.available_height());
@@ -86,12 +129,21 @@ impl App {
                                     let label = egui::RichText::new("Or drop a file here");
                                     ui.label(label)
                                 });
+
+                                inner
                             });
+
+                            inner
                         });
+
+                    inner
                 });
 
-                self.draw_tool_buttons(ui);
+                inner?;
+                decorations::draw_tool_buttons(&mut self.cmd_channel, &self.render_state, ui)
             });
+
+        inner?;
 
         let hovered_file =
             ui.input_mut(|input| input.raw.hovered_files.pop().map(|file| file.path.unwrap()));
@@ -122,70 +174,7 @@ impl App {
                     ui.label(heading);
                 });
         }
-    }
 
-    pub fn draw_tool_buttons(&mut self, ui: &mut egui::Ui) {
-        egui::Area::new(egui::Id::new("home_tool_buttons"))
-            .anchor(egui::Align2::RIGHT_CENTER, egui::vec2(-10.0, 0.0))
-            .show(ui, |ui| {
-                ui.vertical(|ui| {
-                    ui.spacing_mut().button_padding = egui::vec2(10.0, 10.0);
-                    ui.spacing_mut().item_spacing = egui::vec2(5.0, 5.0);
-
-                    let power_button = egui::Button::new(icons::regular::POWER);
-                    if ui
-                        .add(power_button)
-                        .on_hover_text_at_pointer("Quit")
-                        .clicked()
-                    {
-                        ui.send_viewport_cmd(egui::ViewportCommand::Close);
-                    };
-
-                    if ui.theme() == egui::Theme::Dark {
-                        if ui
-                            .button(icons::regular::SUN)
-                            .on_hover_text("Switch to light theme")
-                            .clicked()
-                        {
-                            ui.ctx().set_theme(egui::Theme::Light);
-                        }
-                    } else {
-                        if ui
-                            .button(icons::regular::MOON)
-                            .on_hover_text("Switch to dark theme")
-                            .clicked()
-                        {
-                            ui.ctx().set_theme(egui::Theme::Dark);
-                        }
-                    }
-
-                    if ui
-                        .button(icons::regular::GEAR_FINE)
-                        .on_hover_text("Open settings")
-                        .clicked()
-                    {
-                        self.current_page = CurrentPage::Settings;
-                    }
-
-                    if ui
-                        .button(icons::regular::INFO)
-                        .on_hover_text("Open app info")
-                        .clicked()
-                    {
-                        self.current_page = CurrentPage::Info;
-                    }
-
-                    if ui
-                        .button(icons::regular::GITHUB_LOGO)
-                        .on_hover_text("Open the project on GitHub")
-                        .clicked()
-                    {
-                        ui.ctx().open_url(egui::OpenUrl {
-                            url: "https://github.com/RadiatedMonkey/mktools".to_owned(),
-                            new_tab: true,
-                        });
-                    }
-                });
-            });
+        Ok(())
     }
 }

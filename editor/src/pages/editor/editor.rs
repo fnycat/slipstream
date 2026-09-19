@@ -2,22 +2,23 @@ use std::cell::RefCell;
 use std::{io::Cursor, path::PathBuf, rc::Rc, sync::Arc};
 
 use eframe::egui_wgpu;
+use egui::mutex::RwLock;
+use futures::channel::mpsc;
 
+use crate::cmd::{AppCommand, AppCommandChannel};
+use crate::decorations::{self, WindowState};
 use crate::error::{EditorError, EditorResult, InvalidInputError};
+use crate::pages::RoutablePage;
 use crate::pages::editor::inspector::widgets::DraggableNodePayload;
 use crate::viewer::camera::CameraController;
-use crate::viewer::{TEXTURE_FILTER_MODE, ViewerCallback};
+use crate::viewer::{self, TEXTURE_FILTER_MODE, ViewerCallback};
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeKind};
 use crate::r#virtual::refs::{
     VirtualNodeId, VirtualRefCache, VirtualRefCacheExt, VirtualRefCacheMap,
 };
 use crate::r#virtual::root::{self};
-use crate::{
-    app::{App, CurrentPage},
-    shared::util::RefCursor,
-    viewer::ViewerState,
-};
+use crate::{shared::util::RefCursor, viewer::ViewerState};
 
 pub struct Properties {
     pub label: String,
@@ -26,20 +27,54 @@ pub struct Properties {
 
 /// Data specific to the editor page.
 pub struct Editor {
+    cmd: AppCommandChannel,
+
+    renderer: Arc<RwLock<egui_wgpu::Renderer>>,
+
     /// The path of the current file open in the editor.
     ///
     /// This is a regular filesystem path, pointing to the root file.
     /// Not an internal URI.
-    pub filepath: PathBuf,
+    filepath: PathBuf,
     /// The whole file currently open in the editor.
-    pub root_node: VirtualNodeId,
+    root_node: VirtualNodeId,
 
-    pub open_node: Option<VirtualNodeId>,
-    pub ref_cache: VirtualRefCache,
+    pub(super) open_node: Option<VirtualNodeId>,
+    pub(super) ref_cache: VirtualRefCache,
+}
+
+impl RoutablePage for Editor {
+    fn name(&self) -> &str {
+        "Editor"
+    }
+
+    fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
+        self.draw_upper_toolbar(ui);
+
+        // Draw file explorer
+        let panel_id = egui::Id::new("file_tree_panel");
+        egui::Panel::left(panel_id).show(ui, |ui| {
+            if let Some(properties) =
+                Self::draw_file_tree(self.root_node, &self.ref_cache, ui).unwrap()
+            {
+                self.open_node = Some(properties);
+            }
+        });
+
+        self.draw_inspector_window(ui)?;
+        self.draw_animator_window(ui);
+        self.draw_editor_view(ui);
+
+        Ok(())
+    }
 }
 
 impl Editor {
-    pub fn new(filepath: PathBuf, render_state: &egui_wgpu::RenderState) -> EditorResult<Self> {
+    pub fn new(
+        filepath: PathBuf,
+        cmd_channel: AppCommandChannel,
+        render_state: viewer::RenderState,
+    ) -> EditorResult<Self> {
         let contents = std::fs::read(&filepath)?;
         let cursor = RefCursor::new(Rc::<[u8]>::from(contents));
 
@@ -53,20 +88,23 @@ impl Editor {
             })?
             .to_string_lossy();
 
+        ViewerCallback::init(&render_state);
+
         let ref_cache = Rc::new(RefCell::new(VirtualRefCacheMap::new()));
         let root_node =
             root::deserialize_maybe_compressed(cursor, &ref_cache, file_name.into_owned())?;
 
         Ok(Self {
+            cmd: cmd_channel,
+            renderer: Arc::clone(&render_state.renderer),
+
             root_node,
             ref_cache,
             open_node: None,
             filepath,
         })
     }
-}
 
-impl App {
     fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui) {
         let layout_bg = ui.style().visuals.panel_fill;
         let decorations_id = egui::Id::new("title_panel");
@@ -88,10 +126,16 @@ impl App {
                 );
 
                 if response.double_clicked() {
-                    self.toggle_maximized(ui);
+                    let window_state = WindowState::get_state(ui);
+                    if window_state == WindowState::Maximized {
+                        ui.send_viewport_cmd(egui::ViewportCommand::Maximized(false));
+                    } else {
+                        ui.send_viewport_cmd(egui::ViewportCommand::Maximized(true));
+                    }
                 }
 
                 if response.drag_started() {
+                    // ui.send_viewport_cmd(egui::ViewportCommand::Maximized(false));
                     ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
                 }
 
@@ -106,9 +150,7 @@ impl App {
                                 todo!()
                             }
 
-                            if ui.button("Close").clicked() {
-                                self.current_page = CurrentPage::Intro;
-                            }
+                            if ui.button("Close").clicked() {}
 
                             if ui.button("Quit").clicked() {
                                 ui.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -118,7 +160,7 @@ impl App {
                         ui.menu_button("Settings", |ui| {});
                     });
 
-                    self.draw_title_buttons(ui);
+                    decorations::draw_title_buttons(ui);
                 });
             });
     }
@@ -136,7 +178,7 @@ impl App {
             // All this nonsense down here is to avoid a deadlock with the paint callback.
 
             let texture_id = {
-                let mut renderer = self.render_state.renderer.write();
+                let mut renderer = self.renderer.write();
                 let viewer = renderer
                     .callback_resources
                     .get_mut::<ViewerState>()
@@ -172,7 +214,7 @@ impl App {
 
             let response = ui.add(image_widget);
             if response.dragged() {
-                let mut renderer = self.render_state.renderer.write();
+                let mut renderer = self.renderer.write();
                 let viewer = renderer
                     .callback_resources
                     .get_mut::<ViewerState>()
@@ -190,7 +232,7 @@ impl App {
 
             ui.input(|i| {
                 if i.is_scrolling() && response.contains_pointer() {
-                    let mut renderer = self.render_state.renderer.write();
+                    let mut renderer = self.renderer.write();
                     let viewer = renderer
                         .callback_resources
                         .get_mut::<ViewerState>()
@@ -202,30 +244,6 @@ impl App {
                 }
             });
         });
-    }
-
-    pub fn draw_editor(&mut self, ui: &mut egui::Ui) {
-        self.draw_upper_toolbar(ui);
-
-        // Check whether we have switched back to the home menu
-        if !self.current_page.is_editor() {
-            return;
-        }
-
-        // Draw file explorer
-        let panel_id = egui::Id::new("file_tree_panel");
-        egui::Panel::left(panel_id).show(ui, |ui| {
-            let editor = self.current_page.as_editor_mut().unwrap();
-            if let Some(properties) =
-                Self::draw_file_tree(editor.root_node, &editor.ref_cache, ui).unwrap()
-            {
-                editor.open_node = Some(properties);
-            }
-        });
-
-        self.draw_inspector_window(ui).unwrap();
-        self.draw_animator_window(ui);
-        self.draw_editor_view(ui);
     }
 
     /// Draws the file tree under the current node.
@@ -329,5 +347,11 @@ impl App {
         }
 
         Ok(opened_node_id)
+    }
+}
+
+impl Drop for Editor {
+    fn drop(&mut self) {
+        ViewerCallback::deinit(&self.renderer);
     }
 }
