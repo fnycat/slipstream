@@ -3,7 +3,10 @@ use std::{
     sync::LazyLock,
 };
 
-use crate::panes::{ContentSignature, Pane};
+use crate::{
+    panes::{ContentSignature, Pane},
+    shared::mem_logger::GLOBAL_MEM_LOGS,
+};
 
 /// All log panes have the same ID because they simply show the same content.
 static LOG_PANE_CONTENT_ID: LazyLock<ContentSignature> = LazyLock::new(|| {
@@ -30,7 +33,16 @@ impl Pane for LogPane {
         egui::WidgetText::Text(String::from("Logs"))
     }
 
-    fn draw(&mut self, ui: &mut egui::Ui, tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
-        todo!()
+    fn draw(&mut self, ui: &mut egui::Ui, _tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
+        egui::ScrollArea::vertical()
+            .stick_to_bottom(true)
+            .auto_shrink([false; 2])
+            .show(ui, |ui| {
+                for log in GLOBAL_MEM_LOGS.lock().iter() {
+                    ui.label(format!("{log:?}"));
+                }
+            });
+
+        egui_tiles::UiResponse::None
     }
 }

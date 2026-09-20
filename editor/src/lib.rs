@@ -38,23 +38,35 @@ pub fn setup_tracing() {
         use tracing_subscriber::layer::SubscriberExt;
         use tracing_subscriber::util::SubscriberInitExt;
 
-        use crate::shared::mem_logger::MemLogLayer;
+        use crate::shared::mem_logger::GlobalMemLogLayer;
 
         let target_filter =
             tracing_subscriber::filter::filter_fn(|meta| meta.target().contains("mktools"));
 
-        let layer = tracing_tree::HierarchicalLayer::new(2)
-            .with_indent_lines(true)
-            .with_targets(true)
-            .with_bracketed_fields(true);
+        let mem_layer =
+            GlobalMemLogLayer::new().with_filter(tracing_subscriber::EnvFilter::new("debug"));
 
-        let mem_layer = MemLogLayer::new().with_filter(tracing_subscriber::EnvFilter::new("debug"));
+        #[cfg(debug_assertions)]
+        {
+            let console_layer = tracing_tree::HierarchicalLayer::new(2)
+                .with_indent_lines(true)
+                .with_targets(true)
+                .with_bracketed_fields(true);
 
-        tracing_subscriber::registry()
-            .with(target_filter)
-            .with(mem_layer)
-            .with(layer)
-            .init();
+            tracing_subscriber::registry()
+                .with(target_filter)
+                .with(mem_layer)
+                .with(console_layer)
+                .init();
+        }
+
+        #[cfg(not(debug_assertions))]
+        {
+            tracing_subscriber::registry()
+                .with(target_filter)
+                .with(mem_layer)
+                .init();
+        }
     }
 
     tracing::debug!("Logging initialized");

@@ -44,9 +44,15 @@ impl VirtualNode {
             todo!("rename");
         }
 
-        if ui.button("Open in inspector").clicked() {
+        if ui.button("Open in Inspector").clicked() {
             cmd.send(PaneAction::RequestPane(OpenPaneRequest::Inspector {
                 inspected: self.id,
+            }));
+        }
+
+        if ui.button("Open in new Outliner").clicked() {
+            cmd.send(PaneAction::RequestPane(OpenPaneRequest::Outliner {
+                root: self.id,
             }));
         }
     }
