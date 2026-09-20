@@ -18,7 +18,7 @@ impl fmt::Display for VirtualNodeId {
     }
 }
 
-pub type VirtualRefCache = Arc<VirtualRefCacheMap>;
+pub type VirtualNodeMap = Arc<VirtualRefCacheMap>;
 pub type VirtualNodeRef = Arc<Mutex<VirtualNode>>;
 
 /// Maps between node IDs and the nodes that the IDs refer to.

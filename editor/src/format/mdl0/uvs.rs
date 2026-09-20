@@ -11,7 +11,7 @@ use crate::{
     r#virtual::{
         defer::Deferred,
         node::{VirtualNode, VirtualNodeBody, VirtualNodeKind},
-        refs::{VirtualNodeId, VirtualRefCache},
+        refs::{VirtualNodeId, VirtualNodeMap},
     },
 };
 
@@ -82,7 +82,7 @@ pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     header_start: u32,
     parent_id: VirtualNodeId,
-    ref_cache: &VirtualRefCache,
+    node_map: &VirtualNodeMap,
 ) -> EditorResult<VirtualNodeBody> {
     let section_index = IndexGroup::deserialize(reader)?;
 
@@ -95,7 +95,7 @@ pub fn deserialize_virtual(
 
         let uvs = Uvs::deserialize(reader, header_start)?;
 
-        let id = ref_cache.next_id();
+        let id = node_map.next_id();
         let node = VirtualNode {
             label: name,
             id,
@@ -107,7 +107,7 @@ pub fn deserialize_virtual(
             }),
         };
 
-        ref_cache.insert(id, node);
+        node_map.insert(id, node);
         children.push(id);
     }
 

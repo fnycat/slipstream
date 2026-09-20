@@ -10,7 +10,7 @@ use crate::{
     r#virtual::{
         defer::Deferred,
         node::{VirtualNode, VirtualNodeBody, VirtualNodeKind},
-        refs::{VirtualNodeId, VirtualRefCache},
+        refs::{VirtualNodeId, VirtualNodeMap},
     },
 };
 
@@ -116,8 +116,6 @@ impl Deserialize for Polygon {
         let cp_tex = reader.read_u32::<BigEndian>()?;
         let xf_nor_spec = reader.read_u32::<BigEndian>()?;
 
-        dbg!(cp_vtx, cp_tex, xf_nor_spec);
-
         let definitions_buffer_size = reader.read_u32::<BigEndian>()?;
         let definitions_size = reader.read_u32::<BigEndian>()?;
         let definitions_offset = reader.read_i32::<BigEndian>()?;
@@ -128,8 +126,6 @@ impl Deserialize for Polygon {
         let modifier = PolygonModifier::deserialize(reader)?;
         let _name_offset = reader.read_u32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
-
-        // Correct
         let vertex_count = reader.read_u32::<BigEndian>()?;
         let face_count = reader.read_u32::<BigEndian>()?;
         let vertex_array_id = reader.read_u16::<BigEndian>()?;
@@ -165,7 +161,7 @@ pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     header_start: u32,
     parent_id: VirtualNodeId,
-    ref_cache: &VirtualRefCache,
+    node_map: &VirtualNodeMap,
 ) -> EditorResult<VirtualNodeBody> {
     let section_index = IndexGroup::deserialize(reader)?;
 
@@ -179,7 +175,7 @@ pub fn deserialize_virtual(
         let object = Polygon::deserialize(reader)?;
         dbg!(&name, &object);
 
-        let id = ref_cache.next_id();
+        let id = node_map.next_id();
         let node = VirtualNode {
             label: name,
             id,
@@ -191,7 +187,7 @@ pub fn deserialize_virtual(
             }),
         };
 
-        ref_cache.insert(id, node);
+        node_map.insert(id, node);
         children.push(id);
     }
 

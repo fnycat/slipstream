@@ -5,7 +5,7 @@ use crate::error::{
 };
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::{
         chr0::Chr0Subfile,
@@ -341,17 +341,17 @@ impl Deserialize for IndexGroup {
 fn deserialize_subfile(
     reader: &mut RefCursor<[u8]>,
     parent_id: VirtualNodeId,
-    ref_cache: &VirtualRefCache,
+    node_map: &VirtualNodeMap,
     name: String,
 ) -> EditorResult<VirtualNodeId> {
     // Check magic
     let magic = reader.read_u8_array::<4>()?;
 
     match magic {
-        MDL0_MAGIC => mdl0::deserialize_virtual(reader, parent_id, ref_cache, name),
+        MDL0_MAGIC => mdl0::deserialize_virtual(reader, parent_id, node_map, name),
         // Chr0Subfile::MAGIC => Chr0Subfile::deserialize_lazy(reader),
         _ => {
-            let id = ref_cache.next_id();
+            let id = node_map.next_id();
             let node = VirtualNode::from(VirtualNode {
                 label: String::from("TODO, UNPARSED FORMAT"),
                 id,
@@ -365,7 +365,7 @@ fn deserialize_subfile(
                 }),
             });
 
-            ref_cache.insert(id, node);
+            node_map.insert(id, node);
             Ok(id)
         }
     }
@@ -374,13 +374,13 @@ fn deserialize_subfile(
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     parent_id: Option<VirtualNodeId>,
-    ref_cache: &VirtualRefCache,
+    node_map: &VirtualNodeMap,
     name: String,
 ) -> EditorResult<VirtualNodeId> {
     let mut reader = reader.clone();
-    let brres_id = ref_cache.next_id();
+    let brres_id = node_map.next_id();
 
-    let ref_cache2 = ref_cache.clone();
+    let node_map2 = node_map.clone();
 
     let name2 = name.clone();
     let parse_brres = move |_data| {
@@ -399,7 +399,7 @@ pub fn deserialize_virtual(
         // Do not include root subfile.
         for dir in &root_index.entries[1..] {
             let dir_name = root_index.get_entry_name(&mut reader, dir)?.to_owned();
-            let dir_id = ref_cache2.next_id();
+            let dir_id = node_map2.next_id();
 
             tracing::trace!(
                 "Discovered folder `{dir_name}` at location {}",
@@ -433,7 +433,7 @@ pub fn deserialize_virtual(
 
                 let file = tracing::trace_span!("deserialize_subfile", %dir_name, %subfile_name)
                     .in_scope(|| {
-                        deserialize_subfile(&mut reader, dir_id, &ref_cache2, subfile_name)
+                        deserialize_subfile(&mut reader, dir_id, &node_map2, subfile_name)
                     })?;
 
                 subfiles.push(file);
@@ -450,7 +450,7 @@ pub fn deserialize_virtual(
                 }),
             });
 
-            ref_cache2.insert(dir_id, node);
+            node_map2.insert(dir_id, node);
             directories.push(dir_id);
         }
 
@@ -468,6 +468,6 @@ pub fn deserialize_virtual(
         body: Deferred::defer((), parse_brres)?,
     });
 
-    ref_cache.insert(brres_id, node);
+    node_map.insert(brres_id, node);
     Ok(brres_id)
 }

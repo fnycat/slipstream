@@ -17,7 +17,7 @@ const BILLBOARD_SETTING_DESCRIPTIONS: &[&str] = &[
 ];
 
 impl Inspectable for BoneFlags {
-    fn draw_properties(&mut self, _editor: &mut Editor, ui: &mut egui::Ui) {
+    fn draw_properties(&mut self, ui: &mut egui::Ui) {
         ui.checkbox(
             &mut self.apply_child_scale_compensate,
             "Enable child scale compensate",
@@ -70,7 +70,7 @@ impl Inspectable for BoneFlags {
 }
 
 impl Inspectable for VirtualBone {
-    fn draw_properties(&mut self, editor: &mut Editor, ui: &mut egui::Ui) {
+    fn draw_properties(&mut self, ui: &mut egui::Ui) {
         let input_field_size = egui::vec2(180.0, 20.0);
 
         draw_inspector_section_header("Transformation".to_owned(), ui);
@@ -176,7 +176,7 @@ impl Inspectable for VirtualBone {
         egui::Grid::new("bone_inspector_grid2")
             .num_columns(2)
             .show(ui, |ui| {
-                self.flags.draw_properties(editor, ui);
+                self.flags.draw_properties(ui);
             });
 
         draw_inspector_section_header("User data".to_owned(), ui);

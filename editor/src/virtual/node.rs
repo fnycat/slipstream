@@ -1,11 +1,10 @@
-use crate::editor::Editor;
 use crate::error::EditorResult;
 use crate::shared::util::AssertSend;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::refs::VirtualNodeId;
 
 pub trait Inspectable: Send + std::fmt::Debug {
-    fn draw_properties(&mut self, editor: &mut Editor, ui: &mut egui::Ui);
+    fn draw_properties(&mut self, ui: &mut egui::Ui);
 }
 
 #[derive(Debug)]

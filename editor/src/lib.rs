@@ -11,6 +11,7 @@ pub mod editor;
 pub mod format;
 pub mod inspector;
 pub mod pages;
+pub mod panes;
 pub mod shared;
 pub mod viewer;
 pub mod r#virtual;

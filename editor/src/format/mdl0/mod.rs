@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use crate::error::{CorruptionError, EditorError, EditorResult};
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::{
         brres::{self, IndexGroup, SubfileHeader, SubfileType},
@@ -270,7 +270,7 @@ impl Deserialize for BoneLinkTable {
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     parent_id: VirtualNodeId,
-    ref_cache: &VirtualRefCache,
+    node_map: &VirtualNodeMap,
     name: String,
 ) -> EditorResult<VirtualNodeId> {
     let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
@@ -286,7 +286,7 @@ pub fn deserialize_virtual(
     let _bone_links = BoneLinkTable::deserialize(reader)?;
     let _index_group = IndexGroup::deserialize(reader)?;
 
-    let mdl_node_id = ref_cache.next_id();
+    let mdl_node_id = node_map.next_id();
 
     let mut files = Vec::with_capacity(subfile_header.offsets.len());
     for (i, &section_offset) in subfile_header.offsets.iter().enumerate() {
@@ -300,9 +300,9 @@ pub fn deserialize_virtual(
         let section_ty = SectionType::try_from(i as u32)?;
 
         let mut reader = reader.clone();
-        let ref_cache2 = ref_cache.clone();
+        let node_map2 = node_map.clone();
 
-        let section_id = ref_cache.next_id();
+        let section_id = node_map.next_id();
         let section_parser = move |_data| {
             let section_start = subfile_header.header_start as i64 + section_offset as i64;
             reader.set_position(section_start as u64);
@@ -311,40 +311,40 @@ pub fn deserialize_virtual(
 
             match section_ty {
                 SectionType::DrawLists => {
-                    bytecode::deserialize_virtual(&mut reader, parent_id, &ref_cache2)
+                    bytecode::deserialize_virtual(&mut reader, parent_id, &node_map2)
                 }
                 SectionType::Bones => {
-                    bones::deserialize_skeleton(&mut reader, parent_id, &ref_cache2)
+                    bones::deserialize_skeleton(&mut reader, parent_id, &node_map2)
                 }
                 SectionType::Vertices => vertices::deserialize_virtual(
                     &mut reader,
                     subfile_header.header_start,
                     parent_id,
-                    &ref_cache2,
+                    &node_map2,
                 ),
                 SectionType::Normals => normals::deserialize_virtual(
                     &mut reader,
                     subfile_header.header_start,
                     parent_id,
-                    &ref_cache2,
+                    &node_map2,
                 ),
                 SectionType::Colors => {
-                    colors::deserialize_virtual(&mut reader, parent_id, &ref_cache2)
+                    colors::deserialize_virtual(&mut reader, parent_id, &node_map2)
                 }
                 SectionType::UvCoordinates => uvs::deserialize_virtual(
                     &mut reader,
                     subfile_header.header_start,
                     parent_id,
-                    &ref_cache2,
+                    &node_map2,
                 ),
                 SectionType::Objects => polygons::deserialize_virtual(
                     &mut reader,
                     subfile_header.header_start,
                     parent_id,
-                    &ref_cache2,
+                    &node_map2,
                 ),
                 SectionType::TextureLinks => {
-                    tex_links::deserialize_virtual(&mut reader, parent_id, &ref_cache2)
+                    tex_links::deserialize_virtual(&mut reader, parent_id, &node_map2)
                 }
                 _ => Ok(VirtualNodeBody {
                     children: Vec::new(),
@@ -361,7 +361,7 @@ pub fn deserialize_virtual(
             body: Deferred::defer((), section_parser)?,
         });
 
-        ref_cache.insert(section_id, node);
+        node_map.insert(section_id, node);
         files.push(section_id);
     }
 
@@ -376,6 +376,6 @@ pub fn deserialize_virtual(
         }),
     });
 
-    ref_cache.insert(mdl_node_id, node);
+    node_map.insert(mdl_node_id, node);
     Ok(mdl_node_id)
 }

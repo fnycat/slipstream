@@ -10,7 +10,7 @@ use crate::{
     r#virtual::{
         defer::Deferred,
         node::{VirtualNode, VirtualNodeBody, VirtualNodeKind},
-        refs::{VirtualNodeId, VirtualRefCache},
+        refs::{VirtualNodeId, VirtualNodeMap},
     },
 };
 
@@ -242,7 +242,7 @@ impl Deserialize for Colors {
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     parent_id: VirtualNodeId,
-    ref_cache: &VirtualRefCache,
+    node_map: &VirtualNodeMap,
 ) -> EditorResult<VirtualNodeBody> {
     let section_index = IndexGroup::deserialize(reader)?;
 
@@ -255,7 +255,7 @@ pub fn deserialize_virtual(
 
         let colors = Colors::deserialize(reader)?;
 
-        let id = ref_cache.next_id();
+        let id = node_map.next_id();
         let node = VirtualNode {
             label: name,
             id,
@@ -267,7 +267,7 @@ pub fn deserialize_virtual(
             }),
         };
 
-        ref_cache.insert(id, node);
+        node_map.insert(id, node);
         children.push(id);
     }
 

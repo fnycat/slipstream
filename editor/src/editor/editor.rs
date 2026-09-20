@@ -1,3 +1,4 @@
+use std::sync::mpsc;
 use std::{path::PathBuf, sync::Arc};
 
 use eframe::egui_wgpu;
@@ -7,10 +8,13 @@ use crate::decorations::{self, WindowState};
 use crate::error::{EditorError, EditorResult, InvalidInputError};
 use crate::pages::RoutablePage;
 use crate::pages::intro::IntroPage;
+use crate::panes::outliner::OutlinerPane;
+use crate::panes::viewer::ViewerPane;
+use crate::panes::{Pane, PaneBehavior};
 use crate::viewer::camera::CameraController;
 use crate::viewer::{self, TEXTURE_FILTER_MODE, ViewerCallback};
 use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache, VirtualRefCacheMap};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap, VirtualRefCacheMap};
 use crate::r#virtual::root::{self};
 use crate::{shared::util::RefCursor, viewer::ViewerState};
 
@@ -48,41 +52,6 @@ impl OpenedFileInfo {
     }
 }
 
-pub struct EditorPane {
-    title: String,
-    nr: u32,
-}
-
-struct PaneBehavior {}
-
-impl egui_tiles::Behavior<EditorPane> for PaneBehavior {
-    fn tab_title_for_pane(&mut self, pane: &EditorPane) -> egui::WidgetText {
-        pane.title.clone().into()
-    }
-
-    fn pane_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _tile_id: egui_tiles::TileId,
-        pane: &mut EditorPane,
-    ) -> egui_tiles::UiResponse {
-        let color = egui::epaint::Hsva::new(0.103 * pane.nr as f32, 0.5, 0.5, 1.0);
-        ui.painter().rect_filled(ui.max_rect(), 0.0, color);
-
-        ui.label(format!("The contents of pane {}.", pane.nr));
-
-        // You can make your pane draggable like so:
-        if ui
-            .add(egui::Button::new("Drag me!").sense(egui::Sense::drag()))
-            .drag_started()
-        {
-            egui_tiles::UiResponse::DragStarted
-        } else {
-            egui_tiles::UiResponse::None
-        }
-    }
-}
-
 /// Data specific to the editor page.
 pub struct Editor {
     pub cmd: AppCommandChannel,
@@ -92,12 +61,12 @@ pub struct Editor {
     /// This is a regular filesystem path, pointing to the root file.
     /// Not an internal URI.
     pub file_info: OpenedFileInfo,
-    /// The whole file currently open in the editor.
-    pub root_node: VirtualNodeId,
-    pub open_node: Option<VirtualNodeId>,
-    pub ref_cache: VirtualRefCache,
+    /// The root node of the file.
+    pub file_base_node: VirtualNodeId,
+    pub node_map: VirtualNodeMap,
 
-    pub pane_tree: egui_tiles::Tree<EditorPane>,
+    pub pane_behavior: PaneBehavior,
+    pub pane_tree: egui_tiles::Tree<Box<dyn Pane>>,
 }
 
 impl Editor {
@@ -111,45 +80,40 @@ impl Editor {
 
         ViewerCallback::init(&render_state);
 
-        let ref_cache = Arc::new(VirtualRefCacheMap::new());
+        let node_map = Arc::new(VirtualRefCacheMap::new());
         let root_node = root::deserialize_maybe_compressed(
             cursor,
-            &ref_cache,
+            &node_map,
             file_info.file_name().to_owned(),
         )?;
 
         let mut tiles = egui_tiles::Tiles::default();
-        let root_id = tiles.insert_pane(EditorPane {
-            title: String::from("pane 1"),
-            nr: 1,
-        });
 
-        let cells = (0..=10)
-            .map(|nr| {
-                tiles.insert_pane(EditorPane {
-                    title: format!("{nr}"),
-                    nr,
-                })
-            })
-            .collect::<Vec<_>>();
+        let (tx, rx) = mpsc::channel();
 
-        let root_id2 = tiles.insert_grid_tile(cells);
+        let panes = [
+            OutlinerPane::new(tx.clone(), root_node, Arc::clone(&node_map)),
+            ViewerPane::new(),
+        ]
+        .into_iter()
+        .map(|pane| tiles.insert_pane(pane))
+        .collect::<Vec<_>>();
 
-        let tabs = vec![root_id, root_id2];
+        let grid = egui_tiles::Grid::new(panes);
+        let grid_id = tiles.insert_container(grid);
 
-        let root_id = tiles.insert_tab_tile(tabs);
-
-        let pane_tree = egui_tiles::Tree::new(egui::Id::new("editor_pane_tree"), root_id, tiles);
+        let pane_behavior = PaneBehavior { cmd_receiver: rx };
+        let pane_tree = egui_tiles::Tree::new(egui::Id::new("editor_pane_tree"), grid_id, tiles);
 
         Ok(Box::new(Self {
             cmd: cmd_channel,
             render_state: render_state.clone(),
 
-            root_node,
-            ref_cache,
-            open_node: None,
+            node_map,
             file_info,
+            file_base_node: root_node,
 
+            pane_behavior,
             pane_tree,
         }))
     }
@@ -301,107 +265,6 @@ impl Editor {
             });
         });
     }
-
-    /// Draws the file tree under the current node.
-    ///
-    /// Lazy nodes are automatically evaluated once their folder is opened.
-    ///
-    /// If a specific node has been opened, this function returns the ID of its cache entry.
-    fn draw_file_tree(
-        base_id: VirtualNodeId,
-        ref_cache: &VirtualRefCache,
-        ui: &mut egui::Ui,
-    ) -> EditorResult<Option<VirtualNodeId>> {
-        ui.spacing_mut().item_spacing.y = 7.5;
-
-        let base = ref_cache
-            .get(base_id)
-            .ok_or_else(|| {
-                EditorError::from(InvalidInputError {
-                    reason: format!("virtual node {base_id} does not exist"),
-                    ..Default::default()
-                })
-            })?
-            .clone();
-
-        let mut base_ref = base.lock();
-        let mut opened_node_id = None;
-
-        let node_kind = base_ref.kind;
-        if node_kind.is_expandable() {
-            let response = egui::CollapsingHeader::new(&base_ref.label)
-                .id_salt(base_id) // Different folders might have the same name, use the unique node ID
-                .icon(move |ui, openness, response| {
-                    let icon = if openness < 0.5 {
-                        node_kind.icon_closed()
-                    } else {
-                        node_kind.icon_open()
-                    };
-
-                    let galley = egui::WidgetText::from(icon).into_galley(
-                        ui,
-                        Some(egui::TextWrapMode::Extend),
-                        f32::INFINITY,
-                        egui::TextStyle::Body,
-                    );
-
-                    let center_pos = response.rect.center() - (galley.size() * 0.5);
-
-                    ui.painter()
-                        .galley(center_pos, galley, ui.visuals().text_color());
-                })
-                .show(ui, |ui| -> EditorResult<()> {
-                    // Render children if this node has already been evaluated.
-                    match &base_ref.body {
-                        Deferred::Evaluated(body) => {
-                            for &child in &body.children {
-                                let ret = Self::draw_file_tree(child, ref_cache, ui).unwrap();
-                                if ret.is_some() {
-                                    opened_node_id = ret;
-                                }
-                            }
-
-                            return Ok(());
-                        }
-                        _ => {}
-                    }
-
-                    base_ref.evaluate()?;
-
-                    let Deferred::Evaluated(body) = &base_ref.body else {
-                        unreachable!()
-                    };
-
-                    for &child in &body.children {
-                        let ret = Self::draw_file_tree(child, ref_cache, ui)?;
-                        if ret.is_some() {
-                            opened_node_id = ret;
-                        }
-                    }
-
-                    Ok(())
-                });
-
-            // Open the properties window of the folder when clicked.
-            if response.header_response.double_clicked() {
-                return Ok(Some(base_id));
-            }
-        } else {
-            ui.horizontal(|ui| {
-                ui.label(base_ref.kind.icon_closed());
-                if ui.label(&base_ref.label).clicked() {
-                    opened_node_id = Some(base_ref.id);
-                }
-            });
-
-            // if response.
-            // {
-            //     return Ok(Some(base_id));
-            // }
-        }
-
-        Ok(opened_node_id)
-    }
 }
 
 impl RoutablePage for Editor {
@@ -411,23 +274,7 @@ impl RoutablePage for Editor {
 
     fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
         self.draw_upper_toolbar(ui);
-
-        let mut behavior = PaneBehavior {};
-        self.pane_tree.ui(&mut behavior, ui);
-
-        // // Draw file explorer
-        // let panel_id = egui::Id::new("file_tree_panel");
-        // egui::Panel::left(panel_id).show(ui, |ui| {
-        //     if let Some(properties) =
-        //         Self::draw_file_tree(self.root_node, &self.ref_cache, ui).unwrap()
-        //     {
-        //         self.open_node = Some(properties);
-        //     }
-        // });
-
-        // self.draw_inspector_window(ui)?;
-        // self.draw_animator_window(ui);
-        // self.draw_editor_view(ui);
+        self.pane_tree.ui(&mut self.pane_behavior, ui);
 
         Ok(())
     }

@@ -4,7 +4,7 @@ use crate::error::{CorruptionError, EditorError, EditorResult, InvalidInputError
 use crate::format::brres::IndexGroup;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualRefCache};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::encoding::{Deserialize, ReadArrayExt},
     shared::util::RefCursor,
@@ -238,7 +238,7 @@ fn build_skeleton_tree(
     reader: &mut RefCursor<[u8]>,
     parent_id: VirtualNodeId,
     bones: &[NamedBone],
-    ref_cache: &VirtualRefCache,
+    node_map: &VirtualNodeMap,
 ) -> EditorResult<VirtualNodeId> {
     /// The offset between the start of the bone and the bone's index.
     const BONE_INDEX_OFFSET: u64 = 3 * 4;
@@ -249,7 +249,7 @@ fn build_skeleton_tree(
     let virtual_bones = bones
         .iter()
         .map(|bone| {
-            let id = ref_cache.next_id();
+            let id = node_map.next_id();
             let node = VirtualNode {
                 label: bone.name.clone(),
                 id,
@@ -261,7 +261,7 @@ fn build_skeleton_tree(
                 }),
             };
 
-            ref_cache.insert(id, node);
+            node_map.insert(id, node);
             id
         })
         .collect::<Vec<_>>();
@@ -274,7 +274,7 @@ fn build_skeleton_tree(
             found_root = Some(i);
 
             // Set the body of this bone to the virtual bone data.
-            let node = ref_cache
+            let node = node_map
                 .get(curr_id)
                 .expect("virtual node that was just added does not exist");
 
@@ -308,7 +308,7 @@ fn build_skeleton_tree(
         }
 
         let parent_id = virtual_bones[parent_index as usize];
-        let parent_node = ref_cache.get(parent_id).ok_or_else(|| {
+        let parent_node = node_map.get(parent_id).ok_or_else(|| {
             EditorError::from(InvalidInputError {
                 reason: format!("virtual node {parent_id} does not exist"),
                 ..Default::default()
@@ -327,7 +327,7 @@ fn build_skeleton_tree(
             });
         }
 
-        let curr_node = ref_cache.get(curr_id).ok_or_else(|| {
+        let curr_node = node_map.get(curr_id).ok_or_else(|| {
             EditorError::from(InvalidInputError {
                 reason: format!("virtual node {curr_id} does not exist"),
                 ..Default::default()
@@ -366,7 +366,7 @@ fn build_skeleton_tree(
 pub fn deserialize_skeleton(
     reader: &mut RefCursor<[u8]>,
     parent_id: VirtualNodeId,
-    ref_cache: &VirtualRefCache,
+    node_map: &VirtualNodeMap,
 ) -> EditorResult<VirtualNodeBody> {
     let section_index = IndexGroup::deserialize(reader)?;
     let mut bones = Vec::with_capacity(section_index.entries.len() - 1);
@@ -381,7 +381,7 @@ pub fn deserialize_skeleton(
         bones.push(NamedBone { name, bone });
     }
 
-    let node = build_skeleton_tree(reader, parent_id, &bones, ref_cache)?;
+    let node = build_skeleton_tree(reader, parent_id, &bones, node_map)?;
 
     Ok(VirtualNodeBody {
         inspectable: None,

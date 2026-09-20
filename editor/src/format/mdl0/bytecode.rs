@@ -5,7 +5,7 @@ use crate::format::brres::IndexGroup;
 use crate::format::encoding::Deserialize;
 use crate::r#virtual::defer::Deferred;
 use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeRef, VirtualRefCache};
+use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap, VirtualNodeRef};
 use crate::{format::mdl0::SectionDeserialize, shared::util::RefCursor};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -207,7 +207,7 @@ impl Deserialize for Bytecode {
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     parent_id: VirtualNodeId,
-    ref_cache: &VirtualRefCache,
+    node_map: &VirtualNodeMap,
 ) -> EditorResult<VirtualNodeBody> {
     let section_index = IndexGroup::deserialize(reader)?;
 
@@ -219,7 +219,7 @@ pub fn deserialize_virtual(
         reader.set_position(data_start as u64);
         let draw_list = Bytecode::deserialize(reader)?;
 
-        let id = ref_cache.next_id();
+        let id = node_map.next_id();
         let node = VirtualNode {
             label: name,
             id,
@@ -231,7 +231,7 @@ pub fn deserialize_virtual(
             }),
         };
 
-        ref_cache.insert(id, node);
+        node_map.insert(id, node);
         children.push(id);
     }
 
