@@ -1,4 +1,4 @@
-use crate::r#virtual::refs::VirtualNodeId;
+use crate::node::refs::VirtualNodeId;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DraggableNodeKind {

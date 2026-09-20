@@ -12,9 +12,9 @@ pub mod vertices;
 use std::collections::HashMap;
 
 use crate::error::{CorruptionError, EditorError, EditorResult};
-use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap};
+use crate::node::defer::Deferred;
+use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
+use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::{
         brres::{self, IndexGroup, SubfileHeader, SubfileType},
@@ -357,7 +357,7 @@ pub fn deserialize_virtual(
             label: MDL0_SECTION_NAMES[i].to_owned(),
             id: section_id,
             parent: Some(mdl_node_id),
-            kind: VirtualNodeKind::Directory,
+            kind: VirtualNodeKind::BrresDirectory,
             body: Deferred::defer((), section_parser)?,
         });
 
@@ -369,7 +369,7 @@ pub fn deserialize_virtual(
         label: name,
         id: mdl_node_id,
         parent: Some(parent_id),
-        kind: VirtualNodeKind::Directory,
+        kind: VirtualNodeKind::BrresDirectory,
         body: Deferred::evaluated(VirtualNodeBody {
             children: files,
             inspectable: None,

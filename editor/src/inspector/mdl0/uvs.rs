@@ -1,4 +1,4 @@
-use crate::{format::mdl0::uvs::Uvs, r#virtual::node::Inspectable};
+use crate::{format::mdl0::uvs::Uvs, node::node::Inspectable};
 
 impl Inspectable for Uvs {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {

@@ -2,9 +2,9 @@ use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat};
 use crate::inspector::raw::Raw;
-use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap};
+use crate::node::defer::Deferred;
+use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
+use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::{
         brres::{self, BRRES_MAGIC},
@@ -221,10 +221,8 @@ fn parse_directory_tree(
         label,
         id,
         parent: parent_id,
-        kind: if children.is_empty() {
-            VirtualNodeKind::DirectoryEmpty
-        } else {
-            VirtualNodeKind::Directory
+        kind: VirtualNodeKind::ArcDirectory {
+            empty: children.is_empty(),
         },
         body: Deferred::evaluated(VirtualNodeBody {
             children,

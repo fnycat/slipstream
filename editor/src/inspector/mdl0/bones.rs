@@ -4,7 +4,7 @@ use crate::inspector::widgets::{
     draw_inspector_section_header, draw_node_reference, draw_vec_drag_values,
     draw_vec_drag_values_suffixed,
 };
-use crate::r#virtual::node::Inspectable;
+use crate::node::node::Inspectable;
 
 const BILLBOARD_SETTING_DESCRIPTIONS: &[&str] = &[
     "No influence",

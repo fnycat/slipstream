@@ -2,7 +2,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::error::{EditorResult, UnsupportedError};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap};
+use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::{
         arc,

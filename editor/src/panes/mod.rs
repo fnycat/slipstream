@@ -1,30 +1,123 @@
-use std::sync::mpsc;
+use std::{
+    hash::{DefaultHasher, Hash, Hasher},
+    sync::mpsc,
+};
+
+use crate::node::refs::VirtualNodeId;
 
 pub mod inspector;
+pub mod log;
 pub mod outliner;
 pub mod viewer;
 
-pub trait Pane: Send {
-    fn title(&self) -> egui::WidgetText;
-    fn pane_ui(&mut self, ui: &mut egui::Ui, tile_id: egui_tiles::TileId)
-    -> egui_tiles::UiResponse;
+/// Unlike the `egui_tiles`'s [`TileId`], this ID is created based on the content of the pane.
+///
+/// This makes it possible to detect whether a newly created pane already exists.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ContentSignature(u64);
+
+impl From<u64> for ContentSignature {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
 }
 
-pub enum TreeAction {
-    AddTile {
-        parent: egui_tiles::TileId,
-        pane: Box<dyn Pane>,
-    },
+pub trait Pane: Send {
+    fn content_signature(&self) -> ContentSignature;
+    /// The title of the current pane.
+    fn title(&self) -> egui::WidgetText;
+    /// Draws the UI of the pane.
+    fn draw(&mut self, ui: &mut egui::Ui, tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse;
+
+    fn highlight(&self, painter: &mut egui::Painter) {
+        todo!()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum OpenPaneRequest {
+    Outliner { root: VirtualNodeId },
+    Inspector { inspected: VirtualNodeId },
+    Viewer { viewed: VirtualNodeId },
+    Log,
+}
+
+impl OpenPaneRequest {
+    pub fn content_signature(&self) -> ContentSignature {
+        let mut hasher = DefaultHasher::new();
+
+        match self {
+            OpenPaneRequest::Outliner { root } => {
+                "outliner".hash(&mut hasher);
+                root.hash(&mut hasher);
+            }
+            OpenPaneRequest::Inspector { inspected } => {
+                "inspector".hash(&mut hasher);
+                inspected.hash(&mut hasher);
+            }
+            OpenPaneRequest::Viewer { viewed } => {
+                "viewer".hash(&mut hasher);
+                viewed.hash(&mut hasher);
+            }
+            OpenPaneRequest::Log => {
+                "log".hash(&mut hasher);
+            }
+        }
+
+        ContentSignature::from(hasher.finish())
+    }
+}
+
+pub enum PaneAction {
+    /// Request a pane to be created.
+    ///
+    /// If this specific pane already exists, it will become active instead.
+    RequestPane(OpenPaneRequest),
+    /// Removes the pane with the given tile ID.
     RemoveTile(egui_tiles::TileId),
 }
 
 pub struct PaneBehavior {
-    pub cmd_receiver: mpsc::Receiver<TreeAction>,
+    pub sender: mpsc::Sender<PaneAction>,
+    pub receiver: mpsc::Receiver<PaneAction>,
+
+    pub focused_tile: Option<egui_tiles::TileId>,
 }
 
 impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
     fn tab_title_for_pane(&mut self, pane: &Box<dyn Pane>) -> egui::WidgetText {
         pane.title()
+    }
+
+    fn is_tab_closable(
+        &self,
+        _tiles: &egui_tiles::Tiles<Box<dyn Pane>>,
+        _tile_id: egui_tiles::TileId,
+    ) -> bool {
+        true
+    }
+
+    fn paint_drag_preview(
+        &self,
+        visuals: &egui::Visuals,
+        painter: &egui::Painter,
+        parent_rect: Option<egui::Rect>,
+        preview_rect: egui::Rect,
+    ) {
+        let preview_stroke = self.drag_preview_stroke(visuals);
+        let preview_color = self.drag_preview_color(visuals);
+
+        if let Some(parent_rect) = parent_rect {
+            painter.rect_stroke(parent_rect, 0.0, preview_stroke, egui::StrokeKind::Inside);
+        }
+
+        painter.rect(
+            preview_rect,
+            0.0,
+            preview_color,
+            preview_stroke,
+            egui::StrokeKind::Inside,
+        );
     }
 
     fn pane_ui(
@@ -33,6 +126,6 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
         tile_id: egui_tiles::TileId,
         pane: &mut Box<dyn Pane>,
     ) -> egui_tiles::UiResponse {
-        pane.pane_ui(ui, tile_id)
+        pane.draw(ui, tile_id)
     }
 }

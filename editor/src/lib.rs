@@ -10,11 +10,11 @@ pub mod decorations;
 pub mod editor;
 pub mod format;
 pub mod inspector;
+pub mod node;
 pub mod pages;
 pub mod panes;
 pub mod shared;
 pub mod viewer;
-pub mod r#virtual;
 
 pub mod error;
 #[cfg(target_arch = "wasm32")]
@@ -36,27 +36,25 @@ pub fn setup_tracing() {
     {
         use tracing_subscriber::Layer;
         use tracing_subscriber::layer::SubscriberExt;
+        use tracing_subscriber::util::SubscriberInitExt;
 
-        // color_eyre::config::HookBuilder::new()
-        //     .panic_section("report this issue at https://github.com/RadiatedMonkey/mktools")
-        //     // .issue_url("https://github.com/RadiatedMonkey/mktools/issues/new")
-        //     // .add_issue_metadata("version", "v0.1.0")
-        //     .display_location_section(true)
-        //     .display_env_section(true)
-        //     .install()
-        //     .unwrap();
+        use crate::shared::mem_logger::MemLogLayer;
 
-        let filter = tracing_subscriber::filter::filter_fn(|meta| !meta.target().contains("winit"));
+        let target_filter =
+            tracing_subscriber::filter::filter_fn(|meta| meta.target().contains("mktools"));
 
         let layer = tracing_tree::HierarchicalLayer::new(2)
             .with_indent_lines(true)
             .with_targets(true)
-            .with_bracketed_fields(true)
-            .with_filter(filter);
+            .with_bracketed_fields(true);
 
-        let subscriber = tracing_subscriber::Registry::default().with(layer);
+        let mem_layer = MemLogLayer::new().with_filter(tracing_subscriber::EnvFilter::new("debug"));
 
-        tracing::subscriber::set_global_default(subscriber).unwrap();
+        tracing_subscriber::registry()
+            .with(target_filter)
+            .with(mem_layer)
+            .with(layer)
+            .init();
     }
 
     tracing::debug!("Logging initialized");

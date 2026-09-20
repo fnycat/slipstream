@@ -1,5 +1,5 @@
+use crate::node::node::Inspectable;
 use crate::shared::util::RefCursor;
-use crate::r#virtual::node::Inspectable;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Raw {

@@ -3,9 +3,9 @@ use byteorder::{BigEndian, ReadBytesExt};
 use crate::error::{CorruptionError, EditorResult};
 use crate::format::brres::IndexGroup;
 use crate::format::encoding::Deserialize;
-use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap, VirtualNodeRef};
+use crate::node::defer::Deferred;
+use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
+use crate::node::refs::{VirtualNodeId, VirtualNodeMap, VirtualNodeRef};
 use crate::{format::mdl0::SectionDeserialize, shared::util::RefCursor};
 
 #[derive(Debug, Clone, PartialEq, Eq)]

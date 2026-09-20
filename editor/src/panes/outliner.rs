@@ -1,33 +1,36 @@
-use std::sync::mpsc;
+use std::{
+    hash::{DefaultHasher, Hash, Hasher},
+    sync::mpsc,
+};
 
 use crate::{
     error::{EditorError, EditorResult, InvalidInputError},
-    panes::{Pane, TreeAction, inspector::InspectorPane},
-    r#virtual::{
+    node::{
         defer::Deferred,
         refs::{VirtualNodeId, VirtualNodeMap},
     },
+    panes::{ContentSignature, OpenPaneRequest, Pane, PaneAction, inspector::InspectorPane},
 };
 
 pub struct OutlinerPane {
-    cmd_sender: mpsc::Sender<TreeAction>,
+    cmd_sender: mpsc::Sender<PaneAction>,
+    content_sig: ContentSignature,
 
-    parent: egui_tiles::TileId,
-    base_node: VirtualNodeId,
+    root: VirtualNodeId,
     node_map: VirtualNodeMap,
 }
 
 impl OutlinerPane {
     pub fn new(
-        cmd_sender: mpsc::Sender<TreeAction>,
-        parent: egui_tiles::TileId,
-        base_node: VirtualNodeId,
+        cmd_sender: mpsc::Sender<PaneAction>,
+        content_sig: ContentSignature,
+        root: VirtualNodeId,
         node_map: VirtualNodeMap,
     ) -> Box<dyn Pane> {
         Box::new(Self {
             cmd_sender,
-            parent,
-            base_node,
+            content_sig,
+            root,
             node_map,
         })
     }
@@ -37,7 +40,7 @@ impl OutlinerPane {
     /// Lazy nodes are automatically evaluated once their folder is opened.
     ///
     /// If a specific node has been opened, this function returns the ID of its cache entry.
-    fn draw_file_tree(&self, base_node: VirtualNodeId, ui: &mut egui::Ui) -> EditorResult<()> {
+    fn draw_file_tree(&mut self, base_node: VirtualNodeId, ui: &mut egui::Ui) -> EditorResult<()> {
         ui.spacing_mut().item_spacing.y = 7.5;
 
         let base = self
@@ -97,22 +100,33 @@ impl OutlinerPane {
                     Ok(())
                 });
 
+            response.header_response.context_menu(|ui| {
+                base_ref.draw_context_menu(&mut self.cmd_sender, ui);
+            });
+
             // Open the properties window of the folder when clicked.
             if response.header_response.double_clicked() {
-                self.cmd_sender.send(TreeAction::AddTile {
-                    parent: self.parent,
-                    pane: InspectorPane::new(base_ref.id, self.node_map.clone()),
-                });
+                self.cmd_sender
+                    .send(PaneAction::RequestPane(OpenPaneRequest::Inspector {
+                        inspected: base_ref.id,
+                    }));
             }
         } else {
             ui.horizontal(|ui| {
                 ui.label(base_ref.kind.icon_closed());
-                if ui.label(&base_ref.label).clicked() {
-                    self.cmd_sender.send(TreeAction::AddTile {
-                        parent: self.parent,
-                        pane: InspectorPane::new(base_ref.id, self.node_map.clone()),
-                    });
+
+                let response = ui.button(&base_ref.label);
+
+                if response.clicked() {
+                    self.cmd_sender
+                        .send(PaneAction::RequestPane(OpenPaneRequest::Inspector {
+                            inspected: base_ref.id,
+                        }));
                 }
+
+                response.context_menu(|ui| {
+                    base_ref.draw_context_menu(&mut self.cmd_sender, ui);
+                });
             });
         }
 
@@ -121,20 +135,20 @@ impl OutlinerPane {
 }
 
 impl Pane for OutlinerPane {
+    fn content_signature(&self) -> ContentSignature {
+        self.content_sig
+    }
+
     fn title(&self) -> egui::WidgetText {
         egui::WidgetText::Text(String::from("Outliner"))
     }
 
-    fn pane_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _tile_id: egui_tiles::TileId,
-    ) -> egui_tiles::UiResponse {
+    fn draw(&mut self, ui: &mut egui::Ui, _tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
         if ui.label("this is an outliner").drag_started() {
             return egui_tiles::UiResponse::DragStarted;
         }
 
-        self.draw_file_tree(self.base_node, ui).unwrap();
+        self.draw_file_tree(self.root, ui).unwrap();
 
         egui_tiles::UiResponse::None
     }

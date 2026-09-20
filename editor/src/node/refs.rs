@@ -2,8 +2,8 @@ use dashmap::DashMap;
 use dashmap::mapref::one::Ref;
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 
+use crate::node::node::VirtualNode;
 use crate::shared::util::AssertSend;
-use crate::r#virtual::node::VirtualNode;
 use std::fmt;
 use std::num::NonZeroUsize;
 use std::sync::Arc;

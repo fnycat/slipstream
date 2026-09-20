@@ -3,9 +3,9 @@ use byteorder::{BigEndian, ReadBytesExt};
 use crate::error::{
     CorruptionError, EditorError, EditorResult, IncorrectFormat, RangeError, UnsupportedError,
 };
-use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap};
+use crate::node::defer::Deferred;
+use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
+use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::{
         chr0::Chr0Subfile,
@@ -443,7 +443,7 @@ pub fn deserialize_virtual(
                 label: dir_name,
                 id: dir_id,
                 parent: Some(brres_id),
-                kind: VirtualNodeKind::Directory,
+                kind: VirtualNodeKind::BrresDirectory,
                 body: Deferred::evaluated(VirtualNodeBody {
                     children: subfiles,
                     inspectable: None,
@@ -464,7 +464,7 @@ pub fn deserialize_virtual(
         label: name,
         id: brres_id,
         parent: parent_id,
-        kind: VirtualNodeKind::Directory,
+        kind: VirtualNodeKind::BrresDirectory,
         body: Deferred::defer((), parse_brres)?,
     });
 

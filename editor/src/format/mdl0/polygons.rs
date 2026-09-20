@@ -6,12 +6,12 @@ use crate::{
         brres::IndexGroup,
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
     },
-    shared::util::RefCursor,
-    r#virtual::{
+    node::{
         defer::Deferred,
         node::{VirtualNode, VirtualNodeBody, VirtualNodeKind},
         refs::{VirtualNodeId, VirtualNodeMap},
     },
+    shared::util::RefCursor,
 };
 
 #[derive(Debug, Clone)]

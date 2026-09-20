@@ -1,7 +1,11 @@
+use std::sync::mpsc;
+
 use crate::error::EditorResult;
+use crate::node::defer::Deferred;
+use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
+use crate::panes::inspector::InspectorPane;
+use crate::panes::{OpenPaneRequest, PaneAction};
 use crate::shared::util::AssertSend;
-use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::refs::VirtualNodeId;
 
 pub trait Inspectable: Send + std::fmt::Debug {
     fn draw_properties(&mut self, ui: &mut egui::Ui);
@@ -27,9 +31,26 @@ pub struct VirtualNode {
     pub body: Deferred<VirtualNodeBody>,
 }
 
-impl AssertSend for VirtualNode {}
-
 impl VirtualNode {
+    /// Renders the context menu of this node.
+    pub fn draw_context_menu(&self, cmd: &mut mpsc::Sender<PaneAction>, ui: &mut egui::Ui) {
+        // REQUIRED: node map, command sender
+
+        if ui.button("Export").clicked() {
+            todo!("export");
+        }
+
+        if ui.button("Rename").clicked() {
+            todo!("rename");
+        }
+
+        if ui.button("Open in inspector").clicked() {
+            cmd.send(PaneAction::RequestPane(OpenPaneRequest::Inspector {
+                inspected: self.id,
+            }));
+        }
+    }
+
     pub fn evaluate(&mut self) -> EditorResult<()> {
         self.body.evaluate()?;
         Ok(())
@@ -45,11 +66,14 @@ pub enum VirtualNodeKind {
     /// This virtual node can contain other nodes.
     ///
     /// This is used for both directories and files that contain multiple subfiles/sections.
-    Directory,
-    DirectoryEmpty,
+    ArcDirectory {
+        empty: bool,
+    },
+    BrresDirectory,
     Bytecode,
-    Bone,
-    BoneFinal,
+    Bone {
+        end: bool,
+    },
     Vertices,
     Normals,
     Colors,
@@ -63,9 +87,9 @@ pub enum VirtualNodeKind {
 impl VirtualNodeKind {
     pub fn is_expandable(&self) -> bool {
         match self {
-            Self::DirectoryEmpty
+            Self::ArcDirectory { empty: true }
             | Self::Bytecode
-            | Self::BoneFinal
+            | Self::Bone { end: true }
             | Self::Vertices
             | Self::Normals
             | Self::Colors
@@ -81,11 +105,12 @@ impl VirtualNodeKind {
     /// The icon to use when the folder/file is open.
     pub fn icon_open(&self) -> egui::RichText {
         match self {
-            Self::Directory => reg_icon!(FOLDER_OPEN),
-            Self::DirectoryEmpty => reg_icon!(FOLDER_DASHED),
+            Self::ArcDirectory { empty: false } => reg_icon!(FOLDER_OPEN),
+            Self::ArcDirectory { empty: true } => reg_icon!(FOLDER_DASHED),
+            Self::BrresDirectory => reg_icon!(FOLDER_OPEN),
             Self::Bytecode => reg_icon!(FILE_CODE),
-            Self::Bone => reg_icon!(BONE),
-            Self::BoneFinal => fill_icon!(BONE),
+            Self::Bone { end: false } => reg_icon!(BONE),
+            Self::Bone { end: true } => fill_icon!(BONE),
             Self::Vertices => reg_icon!(POLYGON),
             Self::Normals => reg_icon!(ARROW_ELBOW_RIGHT),
             Self::Colors => reg_icon!(PAINT_BRUSH_HOUSEHOLD),
@@ -100,7 +125,7 @@ impl VirtualNodeKind {
     /// The icon to use when the folder/file is closed.
     pub fn icon_closed(&self) -> egui::RichText {
         match self {
-            Self::Directory => reg_icon!(FOLDER),
+            Self::ArcDirectory { empty: false } | Self::BrresDirectory => reg_icon!(FOLDER),
             _ => self.icon_open(),
         }
     }

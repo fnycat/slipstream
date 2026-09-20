@@ -1,21 +1,19 @@
 use std::sync::mpsc;
 use std::{path::PathBuf, sync::Arc};
 
-use eframe::egui_wgpu;
-
 use crate::cmd::AppCommandChannel;
 use crate::decorations::{self, WindowState};
 use crate::error::{EditorError, EditorResult, InvalidInputError};
+use crate::node::refs::{VirtualNodeId, VirtualNodeMap, VirtualRefCacheMap};
+use crate::node::root::{self};
 use crate::pages::RoutablePage;
 use crate::pages::intro::IntroPage;
+use crate::panes::inspector::InspectorPane;
+use crate::panes::log::LogPane;
 use crate::panes::outliner::OutlinerPane;
 use crate::panes::viewer::ViewerPane;
-use crate::panes::{Pane, PaneBehavior, TreeAction};
-use crate::viewer::camera::CameraController;
+use crate::panes::{ContentSignature, OpenPaneRequest, Pane, PaneAction, PaneBehavior};
 use crate::viewer::{self, TEXTURE_FILTER_MODE, ViewerCallback};
-use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap, VirtualRefCacheMap};
-use crate::r#virtual::root::{self};
 use crate::{shared::util::RefCursor, viewer::ViewerState};
 
 pub struct Properties {
@@ -91,25 +89,32 @@ impl Editor {
 
         let (tx, rx) = mpsc::channel();
 
-        let grid = egui_tiles::Grid::new(Vec::new());
-        let grid_id = tiles.insert_container(grid);
+        let container = egui_tiles::Linear::new(egui_tiles::LinearDir::Horizontal, Vec::new());
+        let container_id = tiles.insert_container(container);
 
+        let outliner_sig = OpenPaneRequest::Outliner { root: root_node }.content_signature();
         let panes = [
-            OutlinerPane::new(tx.clone(), grid_id, root_node, Arc::clone(&node_map)),
-            ViewerPane::new(),
+            OutlinerPane::new(tx.clone(), outliner_sig, root_node, Arc::clone(&node_map)),
+            // ViewerPane::new(),
         ]
         .into_iter()
         .map(|pane| tiles.insert_pane(pane))
         .collect::<Vec<_>>();
 
-        let egui_tiles::Tile::Container(grid) = tiles.get_mut(grid_id).unwrap() else {
+        let egui_tiles::Tile::Container(grid) = tiles.get_mut(container_id).unwrap() else {
             unreachable!()
         };
 
         panes.iter().for_each(|&id| grid.add_child(id));
 
-        let pane_behavior = PaneBehavior { cmd_receiver: rx };
-        let pane_tree = egui_tiles::Tree::new(egui::Id::new("editor_pane_tree"), grid_id, tiles);
+        let pane_behavior = PaneBehavior {
+            receiver: rx,
+            sender: tx,
+            focused_tile: None,
+        };
+
+        let pane_tree =
+            egui_tiles::Tree::new(egui::Id::new("editor_pane_tree"), container_id, tiles);
 
         Ok(Box::new(Self {
             cmd: cmd_channel,
@@ -122,6 +127,106 @@ impl Editor {
             pane_behavior,
             pane_tree,
         }))
+    }
+
+    pub fn get_active_pane(&self) -> Option<egui_tiles::TileId> {
+        self.pane_behavior.focused_tile
+    }
+
+    /// Returns the tile ID of the currently active container.
+    ///
+    /// This container will be the parent of the currently active pane.
+    pub fn get_active_container(&mut self) -> Option<egui_tiles::TileId> {
+        self.pane_tree.active_tiles().first().copied()
+    }
+
+    /// Handles a pane request.
+    pub fn on_pane_request(&mut self, request: OpenPaneRequest) -> egui_tiles::TileId {
+        // Check if this pane already exists.
+        // This is done using its content ID
+        let content_sig = request.content_signature();
+        if let Some(existing_tile) = self
+            .pane_tree
+            .tiles
+            .iter()
+            .find_map(|(id, pane)| {
+                let egui_tiles::Tile::Pane(pane) = pane else {
+                    return None;
+                };
+
+                (pane.content_signature() == content_sig).then_some(id)
+            })
+            .copied()
+        {
+            // An existing tile has been found, make it active.
+            todo!("Found existing pane: {existing_tile:?}");
+            return existing_tile;
+        }
+
+        // Pane was not found, create a new one
+        let new_pane = match request {
+            OpenPaneRequest::Outliner { root } => OutlinerPane::new(
+                self.pane_behavior.sender.clone(),
+                content_sig,
+                root,
+                self.node_map.clone(),
+            ),
+            OpenPaneRequest::Inspector { inspected } => InspectorPane::new(
+                self.pane_behavior.sender.clone(),
+                content_sig,
+                inspected,
+                self.node_map.clone(),
+            ),
+            OpenPaneRequest::Viewer { viewed } => ViewerPane::new(
+                self.pane_behavior.sender.clone(),
+                content_sig,
+                viewed,
+                self.node_map.clone(),
+            ),
+            OpenPaneRequest::Log => LogPane::new(),
+        };
+
+        let new_pane_id = self.pane_tree.tiles.insert_pane(new_pane);
+
+        match self.pane_tree.root {
+            None => {
+                // Tree is completely empty, just make the pane the root.
+                self.pane_tree.root = Some(new_pane_id);
+                tracing::trace!("Handled open pane request, setting it as root");
+            }
+            Some(root_id) => match self.pane_tree.tiles.get_mut(root_id) {
+                // Tree has some content
+                Some(egui_tiles::Tile::Container(container)) => {
+                    // If the root is a container, just add to it.
+                    container.add_child(new_pane_id);
+                    tracing::trace!("Handled open pane request, adding it to root");
+                }
+                Some(egui_tiles::Tile::Pane(_)) => {
+                    // If the root is a pane, we can't add another pane to it.
+                    // Thus we create a container and add both panes as children.
+                    // Then the container is set as root.
+
+                    let new_root = self
+                        .pane_tree
+                        .tiles
+                        .insert_horizontal_tile(vec![root_id, new_pane_id]);
+
+                    self.pane_tree.root = Some(new_root);
+                    tracing::trace!(
+                        "Handled open pane request, creating a new root container and moving the panes into it"
+                    );
+                }
+                None => {
+                    tracing::error!(
+                        "Tile root points to a non-existent tile, overriding root with new pane"
+                    );
+
+                    self.pane_tree.root = Some(new_pane_id);
+                }
+            },
+        }
+
+        new_pane_id
     }
 
     fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui) {
@@ -183,93 +288,16 @@ impl Editor {
                             }
                         });
 
+                        if ui.button("Logs").clicked() {
+                            self.on_pane_request(OpenPaneRequest::Log);
+                        }
+
                         ui.menu_button("Settings", |_ui| {});
                     });
 
                     decorations::draw_title_buttons(ui);
                 });
             });
-    }
-
-    fn draw_editor_view(&self, ui: &mut egui::Ui) {
-        egui::Frame::canvas(ui.style()).show(ui, |ui| {
-            let target_size = ui.available_size();
-            let panel_bounds = egui::Rect::from_min_size(ui.cursor().min, target_size);
-
-            // We must update the panel size before the callback.
-            //
-            // Updating the texture ID requires locking the renderer, but the
-            // paint callback locks it too.
-            //
-            // All this nonsense down here is to avoid a deadlock with the paint callback.
-
-            let texture_id = {
-                let mut renderer = self.render_state.renderer.write();
-                let viewer = renderer
-                    .callback_resources
-                    .get_mut::<ViewerState>()
-                    .unwrap();
-                let texture_id = viewer.texture_data.texture_id;
-
-                let resized = viewer.resize_viewport(panel_bounds);
-                if resized {
-                    let device = viewer.device.clone();
-                    let tex_view = viewer.texture_data.texture_view.clone();
-
-                    renderer.update_egui_texture_from_wgpu_texture(
-                        &device,
-                        &tex_view,
-                        TEXTURE_FILTER_MODE,
-                        texture_id,
-                    );
-                }
-
-                texture_id
-            };
-
-            ui.painter().add(egui_wgpu::Callback::new_paint_callback(
-                panel_bounds,
-                ViewerCallback,
-            ));
-
-            let image_widget = egui::Image::new(egui::load::SizedTexture {
-                id: texture_id,
-                size: panel_bounds.size(),
-            })
-            .sense(egui::Sense::drag());
-
-            let response = ui.add(image_widget);
-            if response.dragged() {
-                let mut renderer = self.render_state.renderer.write();
-                let viewer = renderer
-                    .callback_resources
-                    .get_mut::<ViewerState>()
-                    .unwrap();
-
-                let delta = response.drag_delta();
-
-                viewer
-                    .camera
-                    .as_orbit_mut()
-                    .drag_delta(glam::vec2(delta.x, delta.y));
-
-                viewer.on_camera_update();
-            }
-
-            ui.input(|i| {
-                if i.is_scrolling() && response.contains_pointer() {
-                    let mut renderer = self.render_state.renderer.write();
-                    let viewer = renderer
-                        .callback_resources
-                        .get_mut::<ViewerState>()
-                        .unwrap();
-
-                    let delta = i.smooth_scroll_delta();
-                    viewer.camera.scroll_delta(glam::vec2(delta.x, delta.y));
-                    viewer.on_camera_update();
-                }
-            });
-        });
     }
 }
 
@@ -279,22 +307,12 @@ impl RoutablePage for Editor {
     }
 
     fn update(&mut self) -> EditorResult<()> {
-        while let Ok(cmd) = self.pane_behavior.cmd_receiver.try_recv() {
+        while let Ok(cmd) = self.pane_behavior.receiver.try_recv() {
             match cmd {
-                TreeAction::AddTile { parent, pane } => {
-                    let new_id = self.pane_tree.tiles.insert_pane(pane);
-
-                    let Some(parent) = self.pane_tree.tiles.get_mut(parent) else {
-                        todo!();
-                    };
-
-                    let egui_tiles::Tile::Container(container) = parent else {
-                        todo!();
-                    };
-
-                    container.add_child(new_id);
+                PaneAction::RequestPane(request) => {
+                    self.on_pane_request(request);
                 }
-                TreeAction::RemoveTile(tile) => {
+                PaneAction::RemoveTile(tile) => {
                     self.pane_tree.tiles.remove(tile);
                 }
             }

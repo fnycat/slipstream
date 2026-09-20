@@ -3,12 +3,12 @@ use byteorder::{BigEndian, ReadBytesExt};
 use crate::{
     error::EditorResult,
     format::{brres::IndexGroup, encoding::Deserialize},
-    shared::util::RefCursor,
-    r#virtual::{
+    node::{
         defer::Deferred,
         node::{VirtualNode, VirtualNodeBody, VirtualNodeKind},
         refs::{VirtualNodeId, VirtualNodeMap},
     },
+    shared::util::RefCursor,
 };
 
 #[derive(Debug, Clone, PartialEq)]

@@ -2,9 +2,9 @@ use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::error::{CorruptionError, EditorError, EditorResult, InvalidInputError};
 use crate::format::brres::IndexGroup;
-use crate::r#virtual::defer::Deferred;
-use crate::r#virtual::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
-use crate::r#virtual::refs::{VirtualNodeId, VirtualNodeMap};
+use crate::node::defer::Deferred;
+use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
+use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::encoding::{Deserialize, ReadArrayExt},
     shared::util::RefCursor,
@@ -253,7 +253,7 @@ fn build_skeleton_tree(
             let node = VirtualNode {
                 label: bone.name.clone(),
                 id,
-                kind: VirtualNodeKind::BoneFinal, // Set as final bone by default.
+                kind: VirtualNodeKind::Bone { end: true }, // Set as final bone by default.
                 parent: None,
                 body: Deferred::evaluated(VirtualNodeBody {
                     children: Vec::new(),
@@ -284,7 +284,7 @@ fn build_skeleton_tree(
             });
 
             lock.parent = Some(parent_id);
-            lock.kind = VirtualNodeKind::Bone;
+            lock.kind = VirtualNodeKind::Bone { end: false };
 
             continue; // No parent
         }
@@ -319,7 +319,7 @@ fn build_skeleton_tree(
             let mut lock = parent_node.lock();
 
             // Change the file tree kind to reflect that it now has children.
-            lock.kind = VirtualNodeKind::Bone;
+            lock.kind = VirtualNodeKind::Bone { end: false };
 
             // Add this child to its parent.
             lock.body.inspect_mut(|body| {

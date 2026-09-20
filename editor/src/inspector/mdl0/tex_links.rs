@@ -1,4 +1,4 @@
-use crate::{format::mdl0::tex_links::TextureLinks, r#virtual::node::Inspectable};
+use crate::{format::mdl0::tex_links::TextureLinks, node::node::Inspectable};
 
 impl Inspectable for TextureLinks {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {

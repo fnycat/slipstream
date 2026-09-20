@@ -7,12 +7,12 @@ use crate::{
         encoding::{Deserialize, ReadArrayExt},
         mdl0::util::{VectorPrecision, deserialize_scalar_data, deserialize_vector_data},
     },
-    shared::util::RefCursor,
-    r#virtual::{
+    node::{
         defer::Deferred,
         node::{VirtualNode, VirtualNodeBody, VirtualNodeKind},
         refs::{VirtualNodeId, VirtualNodeMap},
     },
+    shared::util::RefCursor,
 };
 
 const COMPONENTS_S: u32 = 0x00;
