@@ -33,7 +33,7 @@ pub const DEPTH_USAGES: wgpu::TextureUsages = TARGET_USAGES;
 
 pub const SAMPLE_COUNT: u32 = 4;
 pub const CLEAR_COLOR: wgpu::Color = wgpu::Color::BLACK;
-pub const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+pub const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const TEXTURE_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
 
