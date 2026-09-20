@@ -47,6 +47,7 @@ futures = { version = "0.3.34", features = ["executor"] }
 static_assertions = "1.1.0"
 parking_lot = "0.12.5"
 dashmap = "6.2.1"
+egui_tiles = "0.17.1"
 
 [build-dependencies]
 vergen-gitcl = { version = "10.0.3", features = ["build", "cargo", "rustc", "si"] }

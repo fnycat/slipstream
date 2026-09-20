@@ -48,6 +48,41 @@ impl OpenedFileInfo {
     }
 }
 
+pub struct EditorPane {
+    title: String,
+    nr: u32,
+}
+
+struct PaneBehavior {}
+
+impl egui_tiles::Behavior<EditorPane> for PaneBehavior {
+    fn tab_title_for_pane(&mut self, pane: &EditorPane) -> egui::WidgetText {
+        pane.title.clone().into()
+    }
+
+    fn pane_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        _tile_id: egui_tiles::TileId,
+        pane: &mut EditorPane,
+    ) -> egui_tiles::UiResponse {
+        let color = egui::epaint::Hsva::new(0.103 * pane.nr as f32, 0.5, 0.5, 1.0);
+        ui.painter().rect_filled(ui.max_rect(), 0.0, color);
+
+        ui.label(format!("The contents of pane {}.", pane.nr));
+
+        // You can make your pane draggable like so:
+        if ui
+            .add(egui::Button::new("Drag me!").sense(egui::Sense::drag()))
+            .drag_started()
+        {
+            egui_tiles::UiResponse::DragStarted
+        } else {
+            egui_tiles::UiResponse::None
+        }
+    }
+}
+
 /// Data specific to the editor page.
 pub struct Editor {
     pub cmd: AppCommandChannel,
@@ -61,6 +96,8 @@ pub struct Editor {
     pub root_node: VirtualNodeId,
     pub open_node: Option<VirtualNodeId>,
     pub ref_cache: VirtualRefCache,
+
+    pub pane_tree: egui_tiles::Tree<EditorPane>,
 }
 
 impl Editor {
@@ -81,6 +118,29 @@ impl Editor {
             file_info.file_name().to_owned(),
         )?;
 
+        let mut tiles = egui_tiles::Tiles::default();
+        let root_id = tiles.insert_pane(EditorPane {
+            title: String::from("pane 1"),
+            nr: 1,
+        });
+
+        let cells = (0..=10)
+            .map(|nr| {
+                tiles.insert_pane(EditorPane {
+                    title: format!("{nr}"),
+                    nr,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        let root_id2 = tiles.insert_grid_tile(cells);
+
+        let tabs = vec![root_id, root_id2];
+
+        let root_id = tiles.insert_tab_tile(tabs);
+
+        let pane_tree = egui_tiles::Tree::new(egui::Id::new("editor_pane_tree"), root_id, tiles);
+
         Ok(Box::new(Self {
             cmd: cmd_channel,
             render_state: render_state.clone(),
@@ -89,6 +149,8 @@ impl Editor {
             ref_cache,
             open_node: None,
             file_info,
+
+            pane_tree,
         }))
     }
 
@@ -350,19 +412,22 @@ impl RoutablePage for Editor {
     fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {
         self.draw_upper_toolbar(ui);
 
-        // Draw file explorer
-        let panel_id = egui::Id::new("file_tree_panel");
-        egui::Panel::left(panel_id).show(ui, |ui| {
-            if let Some(properties) =
-                Self::draw_file_tree(self.root_node, &self.ref_cache, ui).unwrap()
-            {
-                self.open_node = Some(properties);
-            }
-        });
+        let mut behavior = PaneBehavior {};
+        self.pane_tree.ui(&mut behavior, ui);
 
-        self.draw_inspector_window(ui)?;
-        self.draw_animator_window(ui);
-        self.draw_editor_view(ui);
+        // // Draw file explorer
+        // let panel_id = egui::Id::new("file_tree_panel");
+        // egui::Panel::left(panel_id).show(ui, |ui| {
+        //     if let Some(properties) =
+        //         Self::draw_file_tree(self.root_node, &self.ref_cache, ui).unwrap()
+        //     {
+        //         self.open_node = Some(properties);
+        //     }
+        // });
+
+        // self.draw_inspector_window(ui)?;
+        // self.draw_animator_window(ui);
+        // self.draw_editor_view(ui);
 
         Ok(())
     }
