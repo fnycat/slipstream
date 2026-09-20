@@ -11,8 +11,6 @@ pub trait Pane: Send {
 }
 
 pub enum TreeAction {
-    None,
-    StartDrag,
     AddTile {
         parent: egui_tiles::TileId,
         pane: Box<dyn Pane>,

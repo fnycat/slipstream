@@ -9,4 +9,8 @@ pub mod splash;
 pub trait RoutablePage: Send {
     fn name(&self) -> &str;
     fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()>;
+
+    fn update(&mut self) -> EditorResult<()> {
+        Ok(())
+    }
 }

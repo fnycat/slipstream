@@ -2,7 +2,7 @@ use std::sync::mpsc;
 
 use crate::{
     error::{EditorError, EditorResult, InvalidInputError},
-    panes::{Pane, TreeAction},
+    panes::{Pane, TreeAction, inspector::InspectorPane},
     r#virtual::{
         defer::Deferred,
         refs::{VirtualNodeId, VirtualNodeMap},
@@ -11,6 +11,8 @@ use crate::{
 
 pub struct OutlinerPane {
     cmd_sender: mpsc::Sender<TreeAction>,
+
+    parent: egui_tiles::TileId,
     base_node: VirtualNodeId,
     node_map: VirtualNodeMap,
 }
@@ -18,11 +20,13 @@ pub struct OutlinerPane {
 impl OutlinerPane {
     pub fn new(
         cmd_sender: mpsc::Sender<TreeAction>,
+        parent: egui_tiles::TileId,
         base_node: VirtualNodeId,
         node_map: VirtualNodeMap,
     ) -> Box<dyn Pane> {
         Box::new(Self {
             cmd_sender,
+            parent,
             base_node,
             node_map,
         })
@@ -95,15 +99,19 @@ impl OutlinerPane {
 
             // Open the properties window of the folder when clicked.
             if response.header_response.double_clicked() {
-                todo!("send tree action");
+                self.cmd_sender.send(TreeAction::AddTile {
+                    parent: self.parent,
+                    pane: InspectorPane::new(base_ref.id, self.node_map.clone()),
+                });
             }
         } else {
             ui.horizontal(|ui| {
                 ui.label(base_ref.kind.icon_closed());
                 if ui.label(&base_ref.label).clicked() {
-                    // opened_node_id = Some(base_ref.id);
-
-                    todo!("send tree action");
+                    self.cmd_sender.send(TreeAction::AddTile {
+                        parent: self.parent,
+                        pane: InspectorPane::new(base_ref.id, self.node_map.clone()),
+                    });
                 }
             });
         }

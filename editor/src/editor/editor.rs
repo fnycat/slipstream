@@ -10,7 +10,7 @@ use crate::pages::RoutablePage;
 use crate::pages::intro::IntroPage;
 use crate::panes::outliner::OutlinerPane;
 use crate::panes::viewer::ViewerPane;
-use crate::panes::{Pane, PaneBehavior};
+use crate::panes::{Pane, PaneBehavior, TreeAction};
 use crate::viewer::camera::CameraController;
 use crate::viewer::{self, TEXTURE_FILTER_MODE, ViewerCallback};
 use crate::r#virtual::defer::Deferred;
@@ -91,16 +91,22 @@ impl Editor {
 
         let (tx, rx) = mpsc::channel();
 
+        let grid = egui_tiles::Grid::new(Vec::new());
+        let grid_id = tiles.insert_container(grid);
+
         let panes = [
-            OutlinerPane::new(tx.clone(), root_node, Arc::clone(&node_map)),
+            OutlinerPane::new(tx.clone(), grid_id, root_node, Arc::clone(&node_map)),
             ViewerPane::new(),
         ]
         .into_iter()
         .map(|pane| tiles.insert_pane(pane))
         .collect::<Vec<_>>();
 
-        let grid = egui_tiles::Grid::new(panes);
-        let grid_id = tiles.insert_container(grid);
+        let egui_tiles::Tile::Container(grid) = tiles.get_mut(grid_id).unwrap() else {
+            unreachable!()
+        };
+
+        panes.iter().for_each(|&id| grid.add_child(id));
 
         let pane_behavior = PaneBehavior { cmd_receiver: rx };
         let pane_tree = egui_tiles::Tree::new(egui::Id::new("editor_pane_tree"), grid_id, tiles);
@@ -270,6 +276,31 @@ impl Editor {
 impl RoutablePage for Editor {
     fn name(&self) -> &str {
         "Editor"
+    }
+
+    fn update(&mut self) -> EditorResult<()> {
+        while let Ok(cmd) = self.pane_behavior.cmd_receiver.try_recv() {
+            match cmd {
+                TreeAction::AddTile { parent, pane } => {
+                    let new_id = self.pane_tree.tiles.insert_pane(pane);
+
+                    let Some(parent) = self.pane_tree.tiles.get_mut(parent) else {
+                        todo!();
+                    };
+
+                    let egui_tiles::Tile::Container(container) = parent else {
+                        todo!();
+                    };
+
+                    container.add_child(new_id);
+                }
+                TreeAction::RemoveTile(tile) => {
+                    self.pane_tree.tiles.remove(tile);
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn draw(&mut self, ui: &mut egui::Ui) -> EditorResult<()> {

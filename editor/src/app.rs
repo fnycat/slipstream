@@ -117,6 +117,8 @@ impl eframe::App for App {
             self.handle_command(cmd);
             recv_result = self.rx.try_recv();
         }
+
+        self.page_state.update().unwrap();
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
