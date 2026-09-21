@@ -358,7 +358,7 @@ impl PipelineState {
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
+                    front_face: wgpu::FrontFace::Cw,
                     cull_mode: Some(wgpu::Face::Back),
                     polygon_mode: wgpu::PolygonMode::Fill,
                     unclipped_depth: false,
@@ -582,7 +582,7 @@ impl Pane for ViewerPane {
     }
 
     fn draw(&mut self, ui: &mut egui::Ui, _tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
-        let drag_started = ui.heading("Viewer").drag_started();
+        let drag_started = ui.heading("3D Viewer").drag_started();
 
         egui::Frame::canvas(ui.style()).show(ui, |ui| {
             let target_size = ui.available_size();
