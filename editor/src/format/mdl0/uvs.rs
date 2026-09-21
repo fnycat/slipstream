@@ -5,7 +5,7 @@ use crate::{
     format::{
         brres::IndexGroup,
         encoding::{Deserialize, ReadArrayExt},
-        mdl0::util::{VectorPrecision, deserialize_scalar_data, deserialize_vector_data},
+        mdl0::util::{VectorFormat, deserialize_scalar_data, deserialize_vector_data},
     },
     node::{
         defer::Deferred,
@@ -27,7 +27,7 @@ pub enum UvData {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Uvs {
     pub index: u32,
-    pub format: VectorPrecision,
+    pub format: VectorFormat,
     pub stride: u8,
     pub uvs: UvData,
     pub bounding_volume_min: [f32; 2],
@@ -42,7 +42,7 @@ impl Uvs {
         let _name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let component_count = reader.read_u32::<BigEndian>()?;
-        let format = VectorPrecision::deserialize(reader)?;
+        let format = VectorFormat::deserialize(reader)?;
         let divisor = reader.read_u8()?;
         let stride = reader.read_u8()?;
 

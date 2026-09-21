@@ -1,18 +1,23 @@
+use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::error::{CorruptionError, EditorError, EditorResult};
+use crate::error::{CorruptionError, EditorError, EditorResult, InvalidInputError};
 use crate::{
     format::encoding::{Deserialize, ReadArrayExt},
     shared::util::RefCursor,
 };
 
+#[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
 pub enum VectorFormat {
     Uint8 = 0,
     Int8 = 1,
     Uint16 = 2,
     Int16 = 3,
     Float = 4,
+    #[fallback]
+    Invalid = 5,
 }
 
 impl TryFrom<u32> for VectorFormat {
@@ -39,7 +44,15 @@ impl TryFrom<u32> for VectorFormat {
 impl Deserialize for VectorFormat {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
-        Self::try_from(word)
+        if word >= Self::Invalid as u32 {
+            return Err(CorruptionError {
+                reason: format!("invalid vector format: {word}, expected (0-4)"),
+                ..Default::default()
+            }
+            .into());
+        }
+
+        Ok(Self::from_bits(word as u8))
     }
 }
 
@@ -82,6 +95,13 @@ pub fn deserialize_scalar_data(
                 let raw = reader.read_f32::<BigEndian>()?;
                 components.push(raw);
             }
+        }
+        VectorFormat::Invalid => {
+            return Err(InvalidInputError {
+                reason: format!("cannot deserialize scalar data with format `Invalid`"),
+                ..Default::default()
+            }
+            .into());
         }
     }
 
@@ -137,6 +157,13 @@ pub fn deserialize_vector_data<const N: usize>(
 
                 components.push(raw_comps);
             }
+        }
+        VectorFormat::Invalid => {
+            return Err(InvalidInputError {
+                reason: format!("cannot deserialize vector data with format `Invalid`"),
+                ..Default::default()
+            }
+            .into());
         }
     }
 

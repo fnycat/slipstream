@@ -1,3 +1,4 @@
+use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::{
@@ -49,254 +50,135 @@ pub enum GxOpCodeId {
     DrawPoints = 0xb8,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum C1BitFlag {
-    NotPresent,
-    Direct,
-    Index8,
-    Index16,
+#[bitenum]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
+pub enum VectorStorageMethod {
+    #[fallback]
+    NotPresent = 0b00,
+    Direct = 0b01,
+    Index8 = 0b10,
+    Index16 = 0b11,
 }
 
-impl TryFrom<u8> for C1BitFlag {
-    type Error = EditorError;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0b00 => Self::NotPresent,
-            0b01 => Self::Direct,
-            0b10 => Self::Index8,
-            0b11 => Self::Index16,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid bit flag: {value} expected (0-3)"),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
-    }
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
+pub struct C1 {
+    pub pm: bool,
+    pub tm0: bool,
+    pub tm1: bool,
+    pub tm2: bool,
+    pub tm3: bool,
+    pub tm4: bool,
+    pub tm5: bool,
+    pub tm6: bool,
+    pub tm7: bool,
+    #[bits(2)]
+    pub pos: VectorStorageMethod,
+    #[bits(2)]
+    pub norm: VectorStorageMethod,
+    #[bits(2)]
+    pub col0: VectorStorageMethod,
+    #[bits(2)]
+    pub col1: VectorStorageMethod,
+    #[bits(15)]
+    pub _unused: u16,
 }
 
-macro_rules! impl_c1 {
-    ($($id:expr),*) => {
-        paste::paste! {
-            #[derive(Debug, Clone, PartialEq)]
-            pub struct C1 {
-                pub pm: bool,
-                $(pub [< tm $id >]: bool,)*
-                pub pos: C1BitFlag,
-                pub norm: C1BitFlag,
-                pub col0: C1BitFlag,
-                pub col1: C1BitFlag
-            }
-
-            impl Deserialize for C1 {
-                fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-                    let word = reader.read_u32::<BigEndian>()?;
-
-                    Ok(Self {
-                        pm: (word & 0x01) == 0x01,
-                        $(
-                            [< tm $id >]: ((word << $id + 1) & 0x01) == 0x01,
-                        )*
-                        pos: C1BitFlag::try_from(((word << 9) & 0x03) as u8)?,
-                        norm: C1BitFlag::try_from(((word << 11) & 0x03) as u8)?,
-                        col0: C1BitFlag::try_from(((word << 13) & 0x03) as u8)?,
-                        col1: C1BitFlag::try_from(((word << 15) & 0x03) as u8)?,
-                    })
-                }
-            }
-        }
-    }
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
+pub struct C2 {
+    #[bits(2)]
+    pub tex0: VectorStorageMethod,
+    #[bits(2)]
+    pub tex1: VectorStorageMethod,
+    #[bits(2)]
+    pub tex2: VectorStorageMethod,
+    #[bits(2)]
+    pub tex3: VectorStorageMethod,
+    #[bits(2)]
+    pub tex4: VectorStorageMethod,
+    #[bits(2)]
+    pub tex5: VectorStorageMethod,
+    #[bits(2)]
+    pub tex6: VectorStorageMethod,
+    #[bits(2)]
+    pub tex7: VectorStorageMethod,
+    #[bits(16)]
+    pub _unused: u16,
 }
 
-impl_c1!(0, 1, 2, 3, 4, 5, 6, 7);
-
-macro_rules! impl_c2 {
-    ($($id:expr),*) => {
-        paste::paste! {
-            #[derive(Debug, Clone, PartialEq)]
-            pub struct C2 {
-                $(pub [< tex $id >]: C1BitFlag),*
-            }
-
-            impl Deserialize for C2 {
-                fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-                    let word = reader.read_u32::<BigEndian>()?;
-
-                    Ok(Self {
-                        $(
-                           [< tex $id >]: C1BitFlag::try_from(((word << (2 * $id)) & 0x03) as u8)?
-                        ),*
-                    })
-                }
-            }
-        }
-    }
-}
-
-impl_c2!(0, 1, 2, 3, 4, 5, 6, 7);
-
-#[derive(Debug, Clone, PartialEq)]
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
 pub struct C3 {
     pub pos_e: bool,
+    #[bits(3)]
     pub pos_format: VectorFormat,
+    #[bits(5)]
     pub pos_divisor: u8,
     pub norm_e: bool,
+    #[bits(3)]
     pub norm_format: VectorFormat,
     pub col0_e: bool,
+    #[bits(3)]
     pub col0_format: VectorFormat,
     pub col1_e: bool,
+    #[bits(3)]
     pub col1_format: VectorFormat,
     pub tex0_e: bool,
+    #[bits(3)]
     pub tex0_format: VectorFormat,
+    #[bits(5)]
     pub tex0_divisor: u8,
     pub dequant: bool,
     pub norm_l3: bool,
 }
 
-impl Deserialize for C3 {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-        let word = reader.read_u32::<BigEndian>()?;
-
-        let pos_e = word & 0x01 == 0x01;
-        let pos_format = VectorFormat::try_from((word << 1) & 0x07)?;
-        let pos_divisor = ((word << 4) & 0x1f) as u8;
-
-        let norm_e = (word << 9) & 0x01 == 0x01;
-        let norm_format = VectorFormat::try_from((word << 10) & 0x07)?;
-
-        let col0_e = (word << 14) & 0x01 == 0x01;
-        let col0_format = VectorFormat::try_from((word << 15) & 0x07)?;
-
-        let col1_e = (word << 17) & 0x01 == 0x01;
-        let col1_format = VectorFormat::try_from((word << 18) & 0x07)?;
-
-        let tex0_e = (word << 21) & 0x01 == 0x01;
-        let tex0_format = VectorFormat::try_from((word << 22) & 0x07)?;
-        let tex0_divisor = ((word << 25) & 0x1f) as u8;
-
-        let dequant = (word << 30) & 0x01 == 0x01;
-        let norm_l3 = (word << 31) & 0x01 == 0x01;
-
-        Ok(Self {
-            pos_e,
-            pos_format,
-            pos_divisor,
-            norm_e,
-            norm_format,
-            col0_e,
-            col0_format,
-            col1_e,
-            col1_format,
-            tex0_e,
-            tex0_format,
-            tex0_divisor,
-            dequant,
-            norm_l3,
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
 pub struct C4 {
     pub tex1_e: bool,
+    #[bits(3)]
     pub tex1_format: VectorFormat,
+    #[bits(5)]
     pub tex1_divisor: u8,
     pub tex2_e: bool,
+    #[bits(3)]
     pub tex2_format: VectorFormat,
+    #[bits(5)]
     pub tex2_divisor: u8,
     pub tex3_e: bool,
+    #[bits(3)]
     pub tex3_format: VectorFormat,
+    #[bits(5)]
     pub tex3_divisor: u8,
     pub tex4_e: bool,
+    #[bits(3)]
     pub tex4_format: VectorFormat,
+    #[bits(1, default = false)]
+    pub _unused: bool,
 }
 
-impl Deserialize for C4 {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-        let word = reader.read_u32::<BigEndian>()?;
-
-        let tex1_e = word & 0x01 == 0x01;
-        let tex1_format = VectorFormat::try_from((word << 1) & 0x07)?;
-        let tex1_divisor = ((word << 4) & 0x1f) as u8;
-
-        let tex2_e = (word << 9) & 0x01 == 0x01;
-        let tex2_format = VectorFormat::try_from((word << 10) & 0x07)?;
-        let tex2_divisor = ((word << 13) & 0x1f) as u8;
-
-        let tex3_e = (word << 18) & 0x01 == 0x01;
-        let tex3_format = VectorFormat::try_from((word << 19) & 0x07)?;
-        let tex3_divisor = ((word << 22) & 0x1f) as u8;
-
-        let tex4_e = (word << 23) & 0x01 == 0x01;
-        let tex4_format = VectorFormat::try_from((word << 24) & 0x07)?;
-
-        Ok(Self {
-            tex1_e,
-            tex1_format,
-            tex1_divisor,
-            tex2_e,
-            tex2_format,
-            tex2_divisor,
-            tex3_e,
-            tex3_format,
-            tex3_divisor,
-            tex4_e,
-            tex4_format,
-        })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
 pub struct C5 {
+    #[bits(5)]
     pub tex4_divisor: u8,
-
     pub tex5_e: bool,
+    #[bits(3)]
     pub tex5_format: VectorFormat,
+    #[bits(5)]
     pub tex5_divisor: u8,
-
     pub tex6_e: bool,
+    #[bits(3)]
     pub tex6_format: VectorFormat,
+    #[bits(5)]
     pub tex6_divisor: u8,
-
     pub tex7_e: bool,
+    #[bits(3)]
     pub tex7_format: VectorFormat,
+    #[bits(5)]
     pub tex7_divisor: u8,
-}
-
-impl Deserialize for C5 {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-        let word = reader.read_u32::<BigEndian>()?;
-
-        let tex4_divisor = (word & 0x1f) as u8;
-
-        let tex5_e = (word << 5) & 0x01 == 0x01;
-        let tex5_format = VectorFormat::try_from((word << 6) & 0x07)?;
-        let tex5_divisor = ((word << 9) & 0x1f) as u8;
-
-        let tex6_e = (word << 14) & 0x01 == 0x01;
-        let tex6_format = VectorFormat::try_from((word << 15) & 0x07)?;
-        let tex6_divisor = ((word << 18) & 0x1f) as u8;
-
-        let tex7_e = (word << 23) & 0x01 == 0x01;
-        let tex7_format = VectorFormat::try_from((word << 24) & 0x07)?;
-        let tex7_divisor = ((word << 27) & 0x1f) as u8;
-
-        Ok(Self {
-            tex4_divisor,
-
-            tex5_e,
-            tex5_format,
-            tex5_divisor,
-            tex6_e,
-            tex6_format,
-            tex6_divisor,
-            tex7_e,
-            tex7_format,
-            tex7_divisor,
-        })
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -311,12 +193,14 @@ pub enum LoadCpSubCommand {
 impl Deserialize for LoadCpSubCommand {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let byte = reader.read_u8()?;
+        let word = reader.read_u32::<BigEndian>()?;
+
         Ok(match byte {
-            0x50 => Self::C1(C1::deserialize(reader)?),
-            0x60 => Self::C2(C2::deserialize(reader)?),
-            0x70 => Self::C3(C3::deserialize(reader)?),
-            0x80 => Self::C4(C4::deserialize(reader)?),
-            0x90 => Self::C5(C5::deserialize(reader)?),
+            0x50 => Self::C1(C1::from_bits(word)),
+            0x60 => Self::C2(C2::from_bits(word)),
+            0x70 => Self::C3(C3::from_bits(word)),
+            0x80 => Self::C4(C4::from_bits(word)),
+            0x90 => Self::C5(C5::from_bits(word)),
             _ => {
                 return Err(CorruptionError {
                     reason: format!("invalid LoadCP subcommand: {byte}"),
@@ -344,7 +228,7 @@ impl Deserialize for CpOpCode {
 
 pub enum GxOpCode {
     Nop,
-    LoadCp(LoadCpOpCode),
+    LoadCp(CpOpCode),
 }
 
 #[derive(Debug, Clone)]
