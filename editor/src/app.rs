@@ -7,7 +7,7 @@ use crate::{
     config::{configure_dark_style, configure_light_style},
     decorations::handle_frameless_resize,
     pages::{RoutablePage, splash::SplashPage},
-    viewer::{self},
+    shared::GraphicsState,
 };
 
 const CHANNEL_SIZE: usize = 50;
@@ -51,7 +51,7 @@ impl App {
         let cmd_channel = AppCommandChannel::new(tx);
 
         let egui_rs = cc.wgpu_render_state.as_ref().unwrap();
-        let render_state = viewer::GraphicsState {
+        let render_state = GraphicsState {
             instance: egui_rs.instance.clone(),
             device: egui_rs.device.clone(),
             queue: egui_rs.queue.clone(),

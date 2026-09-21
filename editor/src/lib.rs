@@ -14,7 +14,6 @@ pub mod node;
 pub mod pages;
 pub mod panes;
 pub mod shared;
-pub mod viewer;
 
 pub mod error;
 #[cfg(target_arch = "wasm32")]

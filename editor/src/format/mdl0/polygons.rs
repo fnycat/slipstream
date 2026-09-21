@@ -100,6 +100,8 @@ pub struct Polygon {
     pub normal_array_id: u16,
     pub color_array_ids: [u16; 2],
     pub uv_array_ids: [u16; 8],
+
+    pub bone_table: Option<BoneTable>,
 }
 
 impl Deserialize for Polygon {
@@ -133,7 +135,12 @@ impl Deserialize for Polygon {
         let color_array_ids = reader.read_u16_array::<2, BigEndian>()?;
         let uv_array_ids = reader.read_u16_array::<8, BigEndian>()?;
 
-        dbg!(object_start + length as u64, reader.position());
+        let bone_table = if bone_index.is_none() {
+            tracing::trace!("Deserializing bone table");
+            Some(BoneTable::deserialize(reader)?)
+        } else {
+            None
+        };
 
         Ok(Self {
             vertex_count,
@@ -153,6 +160,8 @@ impl Deserialize for Polygon {
             array_flags,
             modifier,
             index,
+
+            bone_table,
         })
     }
 }

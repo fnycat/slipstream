@@ -92,7 +92,7 @@ where
         Ok(match self {
             Self::Evaluated(x) => x,
             Self::Deferred(payload) => {
-                let eval = payload.load()?;
+                let eval = payload.load().unwrap();
                 *self = Self::Evaluated(eval);
 
                 let Self::Evaluated(eval) = self else {

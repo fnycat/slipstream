@@ -117,7 +117,7 @@ impl OutlinerPane {
                 ui.set_cursor_icon(egui::CursorIcon::PointingHand);
             }
 
-            collapsing_state.show_body_indented(&row_response, ui, |ui| {
+            let body_response = collapsing_state.show_body_indented(&row_response, ui, |ui| {
                 // Render children if this node has already been evaluated.
                 if let Deferred::Evaluated(body) = &curr_node.body {
                     for &child in &body.children {
@@ -137,6 +137,10 @@ impl OutlinerPane {
 
                 Ok::<(), EditorError>(())
             });
+
+            if let Some(response) = body_response {
+                response.inner?;
+            }
 
             row_response.context_menu(|ui| {
                 curr_node.draw_context_menu(&mut self.cmd_sender, ui);

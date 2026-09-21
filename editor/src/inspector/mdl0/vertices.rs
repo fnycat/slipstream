@@ -2,7 +2,6 @@ use crate::editor::Editor;
 use crate::format::mdl0::vertices::Vertices;
 use crate::inspector::widgets::{draw_inspector_section_header, draw_vec_drag_values};
 use crate::node::node::Inspectable;
-use crate::viewer::{self, ViewerState};
 
 impl Inspectable for Vertices {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {

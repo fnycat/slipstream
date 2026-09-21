@@ -13,8 +13,8 @@ use crate::panes::log::LogPane;
 use crate::panes::outliner::OutlinerPane;
 use crate::panes::viewer::ViewerPane;
 use crate::panes::{ContentSignature, Pane, PaneAction, PaneBehavior, RequestPane};
-use crate::viewer::{self, TEXTURE_FILTER_MODE, ViewerCallback};
-use crate::{shared::util::RefCursor, viewer::ViewerState};
+use crate::shared::GraphicsState;
+use crate::shared::util::RefCursor;
 
 pub struct Properties {
     pub label: String,
@@ -53,7 +53,7 @@ impl OpenedFileInfo {
 /// Data specific to the editor page.
 pub struct Editor {
     pub cmd: AppCommandChannel,
-    pub render_state: viewer::GraphicsState,
+    pub render_state: GraphicsState,
     /// The path of the current file open in the editor.
     ///
     /// This is a regular filesystem path, pointing to the root file.
@@ -71,12 +71,10 @@ impl Editor {
     pub fn new(
         file_info: OpenedFileInfo,
         cmd_channel: AppCommandChannel,
-        render_state: viewer::GraphicsState,
+        render_state: GraphicsState,
     ) -> EditorResult<Box<dyn RoutablePage>> {
         let contents = file_info.content();
         let cursor = RefCursor::new(Arc::<[u8]>::from(contents));
-
-        ViewerCallback::init(&render_state);
 
         let node_map = Arc::new(VirtualRefCacheMap::new());
         let root_node = root::deserialize_maybe_compressed(
@@ -336,11 +334,5 @@ impl RoutablePage for Editor {
         self.pane_tree.ui(&mut self.pane_behavior, ui);
 
         Ok(())
-    }
-}
-
-impl Drop for Editor {
-    fn drop(&mut self) {
-        ViewerCallback::deinit(&self.render_state.renderer);
     }
 }

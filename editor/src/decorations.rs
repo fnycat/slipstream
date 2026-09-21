@@ -4,7 +4,7 @@ use crate::{
     error::EditorResult,
     icons::icons,
     pages::{info::InfoPage, settings::SettingsPage},
-    viewer,
+    shared::GraphicsState,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
@@ -275,7 +275,7 @@ pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
 
 pub fn draw_tool_buttons(
     cmd_channel: &mut AppCommandChannel,
-    render_state: &viewer::GraphicsState,
+    gfx_state: &GraphicsState,
     ui: &mut egui::Ui,
 ) -> EditorResult<()> {
     let egui::InnerResponse { inner, .. } = egui::Area::new(egui::Id::new("home_tool_buttons"))
@@ -318,7 +318,7 @@ pub fn draw_tool_buttons(
                     .clicked()
                 {
                     cmd_channel
-                        .try_route(SettingsPage::new(cmd_channel.clone(), render_state.clone()))?;
+                        .try_route(SettingsPage::new(cmd_channel.clone(), gfx_state.clone()))?;
                 }
 
                 if ui
@@ -326,8 +326,7 @@ pub fn draw_tool_buttons(
                     .on_hover_text("Open app info")
                     .clicked()
                 {
-                    cmd_channel
-                        .try_route(InfoPage::new(cmd_channel.clone(), render_state.clone()))?;
+                    cmd_channel.try_route(InfoPage::new(cmd_channel.clone(), gfx_state.clone()))?;
                 }
 
                 if ui

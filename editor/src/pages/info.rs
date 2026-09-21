@@ -2,18 +2,18 @@ use crate::{
     cmd::AppCommandChannel,
     error::EditorResult,
     pages::{RoutablePage, intro::IntroPage},
-    viewer,
+    shared::GraphicsState,
 };
 
 pub struct InfoPage {
     cmd_channel: AppCommandChannel,
-    render_state: viewer::GraphicsState,
+    render_state: GraphicsState,
 }
 
 impl InfoPage {
     pub fn new(
         cmd_channel: AppCommandChannel,
-        render_state: viewer::GraphicsState,
+        render_state: GraphicsState,
     ) -> Box<dyn RoutablePage> {
         Box::new(Self {
             cmd_channel,

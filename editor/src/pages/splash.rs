@@ -6,21 +6,21 @@ use crate::{
     cmd::AppCommandChannel,
     config::{APP_TITLE, DEFAULT_SIZE},
     pages::{RoutablePage, intro::IntroPage},
-    viewer,
+    shared::GraphicsState,
 };
 
 pub static BACKGROUND_TEXTURE: Mutex<Option<SizedTexture>> = Mutex::new(None);
 
 pub struct SplashPage {
     ctx: egui::Context,
-    render_state: viewer::GraphicsState,
+    render_state: GraphicsState,
     cmd_channel: AppCommandChannel,
 }
 
 impl SplashPage {
     pub fn new(
         ctx: egui::Context,
-        render_state: viewer::GraphicsState,
+        render_state: GraphicsState,
         mut cmd_channel: AppCommandChannel,
     ) -> Box<dyn RoutablePage> {
         // Failing to center the window can be ignored.

@@ -3,19 +3,19 @@ use crate::{
     decorations,
     error::EditorResult,
     pages::{RoutablePage, splash::BACKGROUND_TEXTURE},
-    viewer,
+    shared::GraphicsState,
 };
 
 pub struct SettingsPage {
     bg_image: egui::load::SizedTexture,
-    render_state: viewer::GraphicsState,
+    render_state: GraphicsState,
     cmd_channel: AppCommandChannel,
 }
 
 impl SettingsPage {
     pub fn new(
         cmd_channel: AppCommandChannel,
-        render_state: viewer::GraphicsState,
+        render_state: GraphicsState,
     ) -> Box<dyn RoutablePage> {
         let bg_image = BACKGROUND_TEXTURE.lock().unwrap().unwrap();
         Box::new(Self {

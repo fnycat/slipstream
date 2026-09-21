@@ -158,7 +158,7 @@ pub enum DrawCommand {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Bytecode {
-    commands: Vec<DrawCommand>,
+    pub commands: Vec<DrawCommand>,
 }
 
 impl Bytecode {

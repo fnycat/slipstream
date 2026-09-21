@@ -10,10 +10,11 @@ use wgpu::util::DeviceExt;
 use crate::{
     node::refs::{VirtualNodeId, VirtualNodeMap},
     panes::{ContentSignature, Pane, PaneAction},
-    viewer::{
+    shared::{
         GraphicsState,
         camera::{Camera, CameraController, CameraUniformData, OrbitCamera},
         vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex3},
+        wgsl_include,
     },
 };
 
