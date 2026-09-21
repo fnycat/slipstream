@@ -7,7 +7,7 @@ use crate::{
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum VectorPrecision {
+pub enum VectorFormat {
     Uint8 = 0,
     Int8 = 1,
     Uint16 = 2,
@@ -15,7 +15,7 @@ pub enum VectorPrecision {
     Float = 4,
 }
 
-impl TryFrom<u32> for VectorPrecision {
+impl TryFrom<u32> for VectorFormat {
     type Error = EditorError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
@@ -36,7 +36,7 @@ impl TryFrom<u32> for VectorPrecision {
     }
 }
 
-impl Deserialize for VectorPrecision {
+impl Deserialize for VectorFormat {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
@@ -46,38 +46,38 @@ impl Deserialize for VectorPrecision {
 pub fn deserialize_scalar_data(
     reader: &mut RefCursor<[u8]>,
     count: u16,
-    format: VectorPrecision,
+    format: VectorFormat,
     divisor: u8,
 ) -> EditorResult<Vec<f32>> {
     let mut components = Vec::with_capacity(count as usize);
     let factor = 1.0 / 2.0f32.powi(divisor as i32);
 
     match format {
-        VectorPrecision::Uint8 => {
+        VectorFormat::Uint8 => {
             for _ in 0..count {
                 let raw = reader.read_u8()?;
                 components.push(raw as f32 * factor);
             }
         }
-        VectorPrecision::Int8 => {
+        VectorFormat::Int8 => {
             for _ in 0..count {
                 let raw = reader.read_i8()?;
                 components.push(raw as f32 * factor);
             }
         }
-        VectorPrecision::Uint16 => {
+        VectorFormat::Uint16 => {
             for _ in 0..count {
                 let raw = reader.read_u16::<BigEndian>()?;
                 components.push(raw as f32 * factor);
             }
         }
-        VectorPrecision::Int16 => {
+        VectorFormat::Int16 => {
             for _ in 0..count {
                 let raw = reader.read_i16::<BigEndian>()?;
                 components.push(raw as f32 * factor);
             }
         }
-        VectorPrecision::Float => {
+        VectorFormat::Float => {
             for _ in 0..count {
                 let raw = reader.read_f32::<BigEndian>()?;
                 components.push(raw);
@@ -92,14 +92,14 @@ pub fn deserialize_scalar_data(
 pub fn deserialize_vector_data<const N: usize>(
     reader: &mut RefCursor<[u8]>,
     count: u16,
-    format: VectorPrecision,
+    format: VectorFormat,
     divisor: u8,
 ) -> EditorResult<Vec<[f32; N]>> {
     let mut components = Vec::with_capacity(count as usize);
     let factor = 1.0 / 2.0f32.powi(divisor as i32);
 
     match format {
-        VectorPrecision::Uint8 => {
+        VectorFormat::Uint8 => {
             for _ in 0..count {
                 let raw_comps = reader.read_u8_array::<N>()?;
                 let comps = std::array::from_fn(|i| raw_comps[i] as f32 * factor);
@@ -107,7 +107,7 @@ pub fn deserialize_vector_data<const N: usize>(
                 components.push(comps);
             }
         }
-        VectorPrecision::Int8 => {
+        VectorFormat::Int8 => {
             for _ in 0..count {
                 let raw_comps = reader.read_i8_array::<N>()?;
                 let comps = std::array::from_fn(|i| raw_comps[i] as f32 * factor);
@@ -115,7 +115,7 @@ pub fn deserialize_vector_data<const N: usize>(
                 components.push(comps);
             }
         }
-        VectorPrecision::Uint16 => {
+        VectorFormat::Uint16 => {
             for _ in 0..count {
                 let raw_comps = reader.read_u16_array::<N, BigEndian>()?;
                 let comps = std::array::from_fn(|i| raw_comps[i] as f32 * factor);
@@ -123,7 +123,7 @@ pub fn deserialize_vector_data<const N: usize>(
                 components.push(comps);
             }
         }
-        VectorPrecision::Int16 => {
+        VectorFormat::Int16 => {
             for _ in 0..count {
                 let raw_comps = reader.read_i16_array::<N, BigEndian>()?;
                 let comps = std::array::from_fn(|i| raw_comps[i] as f32 * factor);
@@ -131,7 +131,7 @@ pub fn deserialize_vector_data<const N: usize>(
                 components.push(comps);
             }
         }
-        VectorPrecision::Float => {
+        VectorFormat::Float => {
             for _ in 0..count {
                 let raw_comps = reader.read_f32_array::<N, BigEndian>()?;
 
