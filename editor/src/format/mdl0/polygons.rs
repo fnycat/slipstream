@@ -5,6 +5,7 @@ use crate::{
     format::{
         brres::IndexGroup,
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
+        mdl0::gx_bytecode::GxBytecode,
     },
     node::{
         defer::Deferred,
@@ -102,6 +103,7 @@ pub struct Polygon {
     pub uv_array_ids: [u16; 8],
 
     pub bone_table: Option<BoneTable>,
+    pub gx_bytecode: GxBytecode,
 }
 
 impl Deserialize for Polygon {
@@ -134,6 +136,10 @@ impl Deserialize for Polygon {
         let normal_array_id = reader.read_u16::<BigEndian>()?;
         let color_array_ids = reader.read_u16_array::<2, BigEndian>()?;
         let uv_array_ids = reader.read_u16_array::<8, BigEndian>()?;
+        let _unknown = reader.read_u32::<BigEndian>()?;
+        let bone_table_offset = reader.read_u32::<BigEndian>()?;
+
+        reader.set_position(object_start + bone_table_offset as u64);
 
         let bone_table = if bone_index.is_none() {
             tracing::trace!("Deserializing bone table");
@@ -141,6 +147,16 @@ impl Deserialize for Polygon {
         } else {
             None
         };
+
+        // The definitions and vertices offsets are relative to their fields, not the the file start.
+        const DEFINITIONS_INTERNAL_OFFSET: u64 = 0x20;
+        const VERTICES_INTERNAL_OFFSET: u64 = 0x24;
+
+        let definitions_start =
+            object_start as i64 + DEFINITIONS_INTERNAL_OFFSET as i64 + definitions_offset as i64;
+
+        reader.set_position(definitions_start as u64);
+        let gx_bytecode = GxBytecode::deserialize(reader)?;
 
         Ok(Self {
             vertex_count,
@@ -162,6 +178,7 @@ impl Deserialize for Polygon {
             index,
 
             bone_table,
+            gx_bytecode,
         })
     }
 }
