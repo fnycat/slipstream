@@ -191,6 +191,7 @@ impl Editor {
                 content_sig,
                 viewed,
                 self.node_map.clone(),
+                self.render_state.clone(),
             ),
             RequestPane::Log => LogPane::new(),
         };

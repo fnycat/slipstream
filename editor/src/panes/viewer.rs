@@ -13,6 +13,7 @@ use crate::{
     viewer::{
         GraphicsState,
         camera::{Camera, CameraController, CameraUniformData, OrbitCamera},
+        vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex3},
     },
 };
 
@@ -32,6 +33,30 @@ pub const CLEAR_COLOR: wgpu::Color = wgpu::Color::BLACK;
 pub const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const TEXTURE_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
+
+struct ViewerCallback;
+
+impl egui_wgpu::CallbackTrait for ViewerCallback {
+    fn prepare(
+        &self,
+        _device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+        _screen_desc: &egui_wgpu::ScreenDescriptor,
+        egui_encoder: &mut wgpu::CommandEncoder,
+        callback_resources: &mut egui_wgpu::CallbackResources,
+    ) -> Vec<wgpu::CommandBuffer> {
+        let viewer = callback_resources.get::<ViewerPipeline>().unwrap();
+        viewer.draw(egui_encoder)
+    }
+
+    fn paint(
+        &self,
+        info: egui::PaintCallbackInfo,
+        render_pass: &mut wgpu::RenderPass<'static>,
+        callback_resources: &egui_wgpu::CallbackResources,
+    ) {
+    }
+}
 
 struct ScreenTextureState {
     output: wgpu::Texture,
@@ -147,6 +172,8 @@ impl ScreenTextureState {
         }
     }
 
+    /// Due to the render lock being required, this function cannot update the egui texture
+    /// by itself.
     pub fn on_resize(&mut self, state: &GraphicsState, new_size: glam::UVec2) {
         self.output = state.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("offscreen render texture"),
@@ -162,16 +189,6 @@ impl ScreenTextureState {
             usage: TARGET_USAGES,
             view_formats: &[],
         });
-
-        state
-            .renderer
-            .write()
-            .update_egui_texture_from_wgpu_texture(
-                &state.device,
-                &self.output_view,
-                TEXTURE_FILTER_MODE,
-                self.egui_texture_id,
-            );
 
         self.output_view = self.output.create_view(&wgpu::TextureViewDescriptor {
             label: Some("offscreen render view"),
@@ -243,6 +260,7 @@ impl ScreenTextureState {
 
 struct CameraState {
     camera: Camera,
+    viewport_size: glam::Vec4,
 
     bind_group: wgpu::BindGroup,
     bind_group_layout: wgpu::BindGroupLayout,
@@ -251,26 +269,13 @@ struct CameraState {
 }
 
 impl CameraState {
-    pub fn new(camera: Camera, state: &GraphicsState, viewport: glam::UVec2) -> Self {
-        let bind_group_layout =
-            state
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("uniform data bind group"),
-                    entries: &[wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: Some(CameraUniformData::size()),
-                        },
-                        count: None,
-                    }],
-                });
+    pub fn new(camera: Camera, state: &GraphicsState, viewport_size: glam::UVec2) -> Self {
+        let bind_group_layout = state
+            .device
+            .create_bind_group_layout(&CameraUniformData::layout());
 
         let uniform_data = CameraUniformData {
-            viewport_size: glam::vec4(viewport.x as f32, viewport.y as f32, 0.0, 0.0),
+            viewport_size: glam::vec4(viewport_size.x as f32, viewport_size.y as f32, 0.0, 0.0),
             view_proj: camera.compute_matrix(),
         };
 
@@ -297,14 +302,137 @@ impl CameraState {
 
         Self {
             camera,
+            viewport_size: uniform_data.viewport_size,
             bind_group,
             bind_group_layout,
             uniform_buffer,
         }
     }
 
-    pub fn on_resize(&mut self, new_viewport: glam::UVec2) {
-        todo!()
+    pub fn update(&self, graphics_state: &GraphicsState) {
+        if let Some(mut buffer_view) = graphics_state.queue.write_buffer_with(
+            &self.uniform_buffer,
+            0,
+            CameraUniformData::size(),
+        ) {
+            let view_proj = self.camera.compute_matrix();
+            buffer_view.copy_from_slice(bytemuck::bytes_of(&CameraUniformData {
+                view_proj,
+                viewport_size: self.viewport_size,
+            }))
+        }
+    }
+}
+
+struct PipelineState {
+    pipeline_layout: wgpu::PipelineLayout,
+    pipeline: wgpu::RenderPipeline,
+}
+
+impl PipelineState {
+    pub fn new(state: &GraphicsState, camera_state: &CameraState) -> Self {
+        let shader = state
+            .device
+            .create_shader_module(wgpu::include_wgsl!("../../shaders/viewer.wgsl").into());
+
+        let pipeline_layout =
+            state
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("viewer pipeline layout"),
+                    bind_group_layouts: &[Some(&camera_state.bind_group_layout)],
+                    immediate_size: 0,
+                });
+
+        let pipeline = state
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("viewer render pipeline"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_main"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    buffers: &[Some(Vertex3::layout())],
+                },
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(wgpu::Face::Back),
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false,
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: DEPTH_FORMAT,
+                    depth_write_enabled: Some(true),
+                    depth_compare: Some(wgpu::CompareFunction::Less),
+                    stencil: wgpu::StencilState {
+                        front: wgpu::StencilFaceState::IGNORE,
+                        back: wgpu::StencilFaceState::IGNORE,
+                        read_mask: 0,
+                        write_mask: 0,
+                    },
+                    bias: wgpu::DepthBiasState {
+                        clamp: 0.0,
+                        constant: 0,
+                        slope_scale: 0.0,
+                    },
+                }),
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some("fs_main"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: TARGET_FORMAT,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multisample: wgpu::MultisampleState {
+                    count: MSAA_SAMPLE_COUNT,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                multiview_mask: None,
+                cache: None,
+            });
+
+        Self {
+            pipeline_layout,
+            pipeline,
+        }
+    }
+}
+
+struct ModelState {
+    pub vertex_buffer: wgpu::Buffer,
+    pub index_buffer: wgpu::Buffer,
+}
+
+impl ModelState {
+    pub fn new(state: &GraphicsState) -> Self {
+        let vertex_buffer = state
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("viewer vertex buffer"),
+                usage: wgpu::BufferUsages::VERTEX,
+                contents: bytemuck::cast_slice(&CUBE_VERTICES),
+            });
+
+        let index_buffer = state
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("viewer index buffer"),
+                usage: wgpu::BufferUsages::INDEX,
+                contents: bytemuck::cast_slice(&CUBE_INDICES),
+            });
+
+        Self {
+            vertex_buffer,
+            index_buffer,
+        }
     }
 }
 
@@ -313,43 +441,98 @@ pub struct ViewerPipeline {
 
     camera_state: CameraState,
     screen_texture_state: ScreenTextureState,
+    pipeline_state: PipelineState,
+    model_state: ModelState,
 
-    pipeline_layout: wgpu::PipelineLayout,
-    pipeline: wgpu::RenderPipeline,
+    viewport_size: glam::UVec2,
 }
 
 impl ViewerPipeline {
     pub fn new(graphics_state: GraphicsState) -> Self {
-        let viewport = glam::uvec2(800, 600);
+        let viewport_size = glam::uvec2(800, 600);
 
         let camera = Camera::Orbit(OrbitCamera {
             radius: 2.0,
             sensitivity: 0.01,
             vertical_fov: 90.0,
-            aspect_ratio: viewport.x as f32 / viewport.y as f32,
+            aspect_ratio: viewport_size.x as f32 / viewport_size.y as f32,
             zoom_sensitivity: 0.01,
             orientation: glam::Quat::default(),
             lookat: glam::Vec3::ZERO,
         });
 
-        let camera_state = CameraState::new(camera, &graphics_state, viewport);
-        let screen_texture_state = ScreenTextureState::new(&graphics_state, viewport);
+        let camera_state = CameraState::new(camera, &graphics_state, viewport_size);
+        let screen_texture_state = ScreenTextureState::new(&graphics_state, viewport_size);
+        let pipeline_state = PipelineState::new(&graphics_state, &camera_state);
 
-        todo!("pipeline state");
+        let model_state = ModelState::new(&graphics_state);
 
         Self {
             camera_state,
             screen_texture_state,
+            pipeline_state,
+            model_state,
 
+            viewport_size,
             graphics_state,
         }
     }
 
-    pub fn on_resize(&mut self, new_size: glam::UVec2) {
-        self.screen_texture_state
-            .on_resize(&self.graphics_state, new_size);
+    pub fn update_size(&mut self, new_size: glam::UVec2) -> bool {
+        if new_size.x == 0 || new_size.y == 0 {
+            return false;
+        }
 
-        self.camera_state.on_resize(new_size);
+        if new_size != self.viewport_size {
+            self.screen_texture_state
+                .on_resize(&self.graphics_state, new_size);
+
+            self.camera_state.viewport_size =
+                glam::vec4(new_size.x as f32, new_size.y as f32, 0.0, 0.0);
+
+            self.camera_state.update(&self.graphics_state);
+
+            return true;
+        }
+
+        false
+    }
+
+    pub fn draw(&self, encoder: &mut wgpu::CommandEncoder) -> Vec<wgpu::CommandBuffer> {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("viewer render pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &self.screen_texture_state.msaa_output_view,
+                depth_slice: None,
+                resolve_target: Some(&self.screen_texture_state.output_view),
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(CLEAR_COLOR),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.screen_texture_state.depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Discard,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+
+        render_pass.set_pipeline(&self.pipeline_state.pipeline);
+        render_pass.set_bind_group(0, &self.camera_state.bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.model_state.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(
+            self.model_state.index_buffer.slice(..),
+            wgpu::IndexFormat::Uint16,
+        );
+        render_pass.draw_indexed(0..36, 0, 0..1);
+
+        Vec::new()
     }
 }
 
@@ -359,7 +542,7 @@ pub struct ViewerPane {
     node: Option<VirtualNodeId>,
     node_map: VirtualNodeMap,
 
-    pipeline: ViewerPipeline,
+    render_state: GraphicsState,
 }
 
 impl ViewerPane {
@@ -370,14 +553,21 @@ impl ViewerPane {
         node_map: VirtualNodeMap,
         render_state: GraphicsState,
     ) -> Box<dyn Pane> {
-        let pipeline = ViewerPipeline::new(render_state);
+        let pipeline = ViewerPipeline::new(render_state.clone());
+        render_state
+            .renderer
+            .write()
+            .callback_resources
+            .insert(pipeline);
+
+        tracing::trace!("Viewer pipeline initialized");
 
         Box::new(Self {
             cmd_sender,
             content_sig,
             node,
             node_map,
-            pipeline,
+            render_state,
         })
     }
 }
@@ -391,10 +581,95 @@ impl Pane for ViewerPane {
         egui::WidgetText::Text(String::from("3D Viewer"))
     }
 
-    fn draw(&mut self, ui: &mut egui::Ui, tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
-        // ui.label("Viewing `{}`")
-
+    fn draw(&mut self, ui: &mut egui::Ui, _tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
         let drag_started = ui.heading("Viewer").drag_started();
+
+        egui::Frame::canvas(ui.style()).show(ui, |ui| {
+            let target_size = ui.available_size();
+            let panel_bounds = egui::Rect::from_min_size(ui.cursor().min, target_size);
+
+            let mut renderer = self.render_state.renderer.write();
+            let mut pipeline = renderer
+                .callback_resources
+                .get_mut::<ViewerPipeline>()
+                .unwrap();
+
+            let has_resized =
+                pipeline.update_size(glam::uvec2(target_size.x as u32, target_size.y as u32));
+
+            if has_resized {
+                // Create copies to temporarily drop the pipeline borrow.
+                //
+                // This allows us to mutably borrow renderer, which would otherwise be borrowed
+                // by the viewer pipeline.
+                let output_view = pipeline.screen_texture_state.output_view.clone();
+                let egui_tex_id = pipeline.screen_texture_state.egui_texture_id;
+
+                renderer.update_egui_texture_from_wgpu_texture(
+                    &self.render_state.device,
+                    &output_view,
+                    TEXTURE_FILTER_MODE,
+                    egui_tex_id,
+                );
+
+                // Then reborrow the pipeline.
+                pipeline = renderer
+                    .callback_resources
+                    .get_mut::<ViewerPipeline>()
+                    .unwrap();
+            }
+
+            ui.painter().add(egui_wgpu::Callback::new_paint_callback(
+                panel_bounds,
+                ViewerCallback,
+            ));
+
+            let image_widget = egui::Image::new(egui::load::SizedTexture {
+                id: pipeline.screen_texture_state.egui_texture_id,
+                size: panel_bounds.size(),
+            })
+            .sense(egui::Sense::click_and_drag());
+
+            // Camera
+            // =============================================================================
+
+            pipeline
+                .camera_state
+                .camera
+                .set_aspect_ratio(target_size.x / target_size.y);
+
+            // If the screen has resized, we need to update to adjust the aspect ratio.
+            let mut camera_updated = has_resized;
+
+            let response = ui.add(image_widget);
+            if response.dragged() {
+                let drag_delta = response.drag_delta();
+
+                pipeline
+                    .camera_state
+                    .camera
+                    .drag_delta(glam::vec2(drag_delta.x, drag_delta.y));
+
+                camera_updated = true;
+            }
+
+            ui.input(|i| {
+                if i.is_scrolling() && response.contains_pointer() {
+                    let scroll_delta = i.smooth_scroll_delta();
+
+                    pipeline
+                        .camera_state
+                        .camera
+                        .scroll_delta(glam::vec2(scroll_delta.x, scroll_delta.y));
+
+                    camera_updated = true;
+                }
+            });
+
+            if camera_updated {
+                pipeline.camera_state.update(&self.render_state);
+            }
+        });
 
         if drag_started {
             egui_tiles::UiResponse::DragStarted

@@ -3,7 +3,7 @@ pub mod graphics_state;
 
 pub use graphics_state::*;
 
-mod vertex;
+pub mod vertex;
 
 use std::sync::Arc;
 
