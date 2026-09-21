@@ -199,10 +199,113 @@ impl Deserialize for C3 {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct C4 {
+    pub tex1_e: bool,
+    pub tex1_format: VectorFormat,
+    pub tex1_divisor: u8,
+    pub tex2_e: bool,
+    pub tex2_format: VectorFormat,
+    pub tex2_divisor: u8,
+    pub tex3_e: bool,
+    pub tex3_format: VectorFormat,
+    pub tex3_divisor: u8,
+    pub tex4_e: bool,
+    pub tex4_format: VectorFormat,
+}
+
+impl Deserialize for C4 {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let word = reader.read_u32::<BigEndian>()?;
+
+        let tex1_e = word & 0x01 == 0x01;
+        let tex1_format = VectorFormat::try_from((word << 1) & 0x07)?;
+        let tex1_divisor = ((word << 4) & 0x1f) as u8;
+
+        let tex2_e = (word << 9) & 0x01 == 0x01;
+        let tex2_format = VectorFormat::try_from((word << 10) & 0x07)?;
+        let tex2_divisor = ((word << 13) & 0x1f) as u8;
+
+        let tex3_e = (word << 18) & 0x01 == 0x01;
+        let tex3_format = VectorFormat::try_from((word << 19) & 0x07)?;
+        let tex3_divisor = ((word << 22) & 0x1f) as u8;
+
+        let tex4_e = (word << 23) & 0x01 == 0x01;
+        let tex4_format = VectorFormat::try_from((word << 24) & 0x07)?;
+
+        Ok(Self {
+            tex1_e,
+            tex1_format,
+            tex1_divisor,
+            tex2_e,
+            tex2_format,
+            tex2_divisor,
+            tex3_e,
+            tex3_format,
+            tex3_divisor,
+            tex4_e,
+            tex4_format,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct C5 {
+    pub tex4_divisor: u8,
+
+    pub tex5_e: bool,
+    pub tex5_format: VectorFormat,
+    pub tex5_divisor: u8,
+
+    pub tex6_e: bool,
+    pub tex6_format: VectorFormat,
+    pub tex6_divisor: u8,
+
+    pub tex7_e: bool,
+    pub tex7_format: VectorFormat,
+    pub tex7_divisor: u8,
+}
+
+impl Deserialize for C5 {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let word = reader.read_u32::<BigEndian>()?;
+
+        let tex4_divisor = (word & 0x1f) as u8;
+
+        let tex5_e = (word << 5) & 0x01 == 0x01;
+        let tex5_format = VectorFormat::try_from((word << 6) & 0x07)?;
+        let tex5_divisor = ((word << 9) & 0x1f) as u8;
+
+        let tex6_e = (word << 14) & 0x01 == 0x01;
+        let tex6_format = VectorFormat::try_from((word << 15) & 0x07)?;
+        let tex6_divisor = ((word << 18) & 0x1f) as u8;
+
+        let tex7_e = (word << 23) & 0x01 == 0x01;
+        let tex7_format = VectorFormat::try_from((word << 24) & 0x07)?;
+        let tex7_divisor = ((word << 27) & 0x1f) as u8;
+
+        Ok(Self {
+            tex4_divisor,
+
+            tex5_e,
+            tex5_format,
+            tex5_divisor,
+            tex6_e,
+            tex6_format,
+            tex6_divisor,
+            tex7_e,
+            tex7_format,
+            tex7_divisor,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum LoadCpSubCommand {
     C1(C1),
     C2(C2),
     C3(C3),
+    C4(C4),
+    C5(C5),
 }
 
 impl Deserialize for LoadCpSubCommand {
@@ -212,7 +315,15 @@ impl Deserialize for LoadCpSubCommand {
             0x50 => Self::C1(C1::deserialize(reader)?),
             0x60 => Self::C2(C2::deserialize(reader)?),
             0x70 => Self::C3(C3::deserialize(reader)?),
-            _ => todo!(),
+            0x80 => Self::C4(C4::deserialize(reader)?),
+            0x90 => Self::C5(C5::deserialize(reader)?),
+            _ => {
+                return Err(CorruptionError {
+                    reason: format!("invalid LoadCP subcommand: {byte}"),
+                    ..Default::default()
+                }
+                .into());
+            }
         })
     }
 }

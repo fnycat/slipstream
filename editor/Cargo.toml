@@ -48,6 +48,7 @@ static_assertions = "1.1.0"
 parking_lot = "0.12.5"
 dashmap = "6.2.1"
 egui_tiles = "0.17.1"
+bitfield-struct = "0.13.0"
 
 [build-dependencies]
 vergen-gitcl = { version = "10.0.3", features = ["build", "cargo", "rustc", "si"] }
