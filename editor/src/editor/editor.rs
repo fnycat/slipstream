@@ -12,7 +12,7 @@ use crate::panes::inspector::InspectorPane;
 use crate::panes::log::LogPane;
 use crate::panes::outliner::OutlinerPane;
 use crate::panes::viewer::ViewerPane;
-use crate::panes::{ContentSignature, OpenPaneRequest, Pane, PaneAction, PaneBehavior};
+use crate::panes::{ContentSignature, Pane, PaneAction, PaneBehavior, RequestPane};
 use crate::viewer::{self, TEXTURE_FILTER_MODE, ViewerCallback};
 use crate::{shared::util::RefCursor, viewer::ViewerState};
 
@@ -53,7 +53,7 @@ impl OpenedFileInfo {
 /// Data specific to the editor page.
 pub struct Editor {
     pub cmd: AppCommandChannel,
-    pub render_state: viewer::RenderState,
+    pub render_state: viewer::GraphicsState,
     /// The path of the current file open in the editor.
     ///
     /// This is a regular filesystem path, pointing to the root file.
@@ -71,7 +71,7 @@ impl Editor {
     pub fn new(
         file_info: OpenedFileInfo,
         cmd_channel: AppCommandChannel,
-        render_state: viewer::RenderState,
+        render_state: viewer::GraphicsState,
     ) -> EditorResult<Box<dyn RoutablePage>> {
         let contents = file_info.content();
         let cursor = RefCursor::new(Arc::<[u8]>::from(contents));
@@ -92,14 +92,23 @@ impl Editor {
         let container = egui_tiles::Linear::new(egui_tiles::LinearDir::Horizontal, Vec::new());
         let container_id = tiles.insert_container(container);
 
-        let outliner_sig = OpenPaneRequest::Outliner { root: root_node }.content_signature();
-        let panes = [
-            OutlinerPane::new(tx.clone(), outliner_sig, root_node, Arc::clone(&node_map)),
-            // ViewerPane::new(),
-        ]
-        .into_iter()
-        .map(|pane| tiles.insert_pane(pane))
-        .collect::<Vec<_>>();
+        let outliner_sig = RequestPane::Outliner { root: root_node }.content_signature();
+        let outliner =
+            OutlinerPane::new(tx.clone(), outliner_sig, root_node, Arc::clone(&node_map));
+
+        let viewer_sig = RequestPane::Viewer { viewed: None }.content_signature();
+        let viewer = ViewerPane::new(
+            tx.clone(),
+            viewer_sig,
+            None,
+            Arc::clone(&node_map),
+            render_state.clone(),
+        );
+
+        let panes = [outliner, viewer]
+            .into_iter()
+            .map(|pane| tiles.insert_pane(pane))
+            .collect::<Vec<_>>();
 
         let egui_tiles::Tile::Container(grid) = tiles.get_mut(container_id).unwrap() else {
             unreachable!()
@@ -141,7 +150,7 @@ impl Editor {
     }
 
     /// Handles a pane request.
-    pub fn on_pane_request(&mut self, request: OpenPaneRequest) -> egui_tiles::TileId {
+    pub fn on_pane_request(&mut self, request: RequestPane) -> egui_tiles::TileId {
         // Check if this pane already exists.
         // This is done using its content ID
         let content_sig = request.content_signature();
@@ -165,25 +174,25 @@ impl Editor {
 
         // Pane was not found, create a new one
         let new_pane = match request {
-            OpenPaneRequest::Outliner { root } => OutlinerPane::new(
+            RequestPane::Outliner { root } => OutlinerPane::new(
                 self.pane_behavior.sender.clone(),
                 content_sig,
                 root,
                 self.node_map.clone(),
             ),
-            OpenPaneRequest::Inspector { inspected } => InspectorPane::new(
+            RequestPane::Inspector { inspected } => InspectorPane::new(
                 self.pane_behavior.sender.clone(),
                 content_sig,
                 inspected,
                 self.node_map.clone(),
             ),
-            OpenPaneRequest::Viewer { viewed } => ViewerPane::new(
+            RequestPane::Viewer { viewed } => ViewerPane::new(
                 self.pane_behavior.sender.clone(),
                 content_sig,
                 viewed,
                 self.node_map.clone(),
             ),
-            OpenPaneRequest::Log => LogPane::new(),
+            RequestPane::Log => LogPane::new(),
         };
 
         let new_pane_id = self.pane_tree.tiles.insert_pane(new_pane);
@@ -289,7 +298,7 @@ impl Editor {
                         });
 
                         if ui.button("Logs").clicked() {
-                            self.on_pane_request(OpenPaneRequest::Log);
+                            self.on_pane_request(RequestPane::Log);
                         }
 
                         ui.menu_button("Settings", |_ui| {});

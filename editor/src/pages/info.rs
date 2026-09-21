@@ -7,13 +7,13 @@ use crate::{
 
 pub struct InfoPage {
     cmd_channel: AppCommandChannel,
-    render_state: viewer::RenderState,
+    render_state: viewer::GraphicsState,
 }
 
 impl InfoPage {
     pub fn new(
         cmd_channel: AppCommandChannel,
-        render_state: viewer::RenderState,
+        render_state: viewer::GraphicsState,
     ) -> Box<dyn RoutablePage> {
         Box::new(Self {
             cmd_channel,

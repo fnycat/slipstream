@@ -34,6 +34,8 @@ impl Pane for LogPane {
     }
 
     fn draw(&mut self, ui: &mut egui::Ui, _tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
+        let drag_started = ui.heading("Logs").drag_started();
+
         egui::ScrollArea::vertical()
             .stick_to_bottom(true)
             .auto_shrink([false; 2])
@@ -43,6 +45,10 @@ impl Pane for LogPane {
                 }
             });
 
-        egui_tiles::UiResponse::None
+        if drag_started {
+            egui_tiles::UiResponse::DragStarted
+        } else {
+            egui_tiles::UiResponse::None
+        }
     }
 }

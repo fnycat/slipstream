@@ -35,31 +35,31 @@ pub trait Pane: Send {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum OpenPaneRequest {
+pub enum RequestPane {
     Outliner { root: VirtualNodeId },
     Inspector { inspected: VirtualNodeId },
-    Viewer { viewed: VirtualNodeId },
+    Viewer { viewed: Option<VirtualNodeId> },
     Log,
 }
 
-impl OpenPaneRequest {
+impl RequestPane {
     pub fn content_signature(&self) -> ContentSignature {
         let mut hasher = DefaultHasher::new();
 
         match self {
-            OpenPaneRequest::Outliner { root } => {
+            RequestPane::Outliner { root } => {
                 "outliner".hash(&mut hasher);
                 root.hash(&mut hasher);
             }
-            OpenPaneRequest::Inspector { inspected } => {
+            RequestPane::Inspector { inspected } => {
                 "inspector".hash(&mut hasher);
                 inspected.hash(&mut hasher);
             }
-            OpenPaneRequest::Viewer { viewed } => {
+            RequestPane::Viewer { viewed } => {
                 "viewer".hash(&mut hasher);
                 viewed.hash(&mut hasher);
             }
-            OpenPaneRequest::Log => {
+            RequestPane::Log => {
                 "log".hash(&mut hasher);
             }
         }
@@ -72,7 +72,7 @@ pub enum PaneAction {
     /// Request a pane to be created.
     ///
     /// If this specific pane already exists, it will become active instead.
-    RequestPane(OpenPaneRequest),
+    RequestPane(RequestPane),
     /// Removes the pane with the given tile ID.
     RemoveTile(egui_tiles::TileId),
 }

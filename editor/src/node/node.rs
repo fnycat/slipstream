@@ -4,7 +4,7 @@ use crate::error::EditorResult;
 use crate::node::defer::Deferred;
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::panes::inspector::InspectorPane;
-use crate::panes::{OpenPaneRequest, PaneAction};
+use crate::panes::{PaneAction, RequestPane};
 use crate::shared::util::AssertSend;
 
 pub trait Inspectable: Send + std::fmt::Debug {
@@ -44,14 +44,14 @@ impl VirtualNode {
             todo!("rename");
         }
 
-        if ui.button("Open in Inspector").clicked() {
-            cmd.send(PaneAction::RequestPane(OpenPaneRequest::Inspector {
+        if ui.button("Inspect").clicked() {
+            cmd.send(PaneAction::RequestPane(RequestPane::Inspector {
                 inspected: self.id,
             }));
         }
 
         if ui.button("Open in new Outliner").clicked() {
-            cmd.send(PaneAction::RequestPane(OpenPaneRequest::Outliner {
+            cmd.send(PaneAction::RequestPane(RequestPane::Outliner {
                 root: self.id,
             }));
         }
@@ -91,6 +91,9 @@ pub enum VirtualNodeKind {
 }
 
 impl VirtualNodeKind {
+    /// Whether this node is expandable.
+    ///
+    /// This determines whether this node will have a collapsible header.
     pub fn is_expandable(&self) -> bool {
         match self {
             Self::ArcDirectory { empty: true }

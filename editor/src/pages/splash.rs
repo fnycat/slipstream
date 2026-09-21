@@ -13,14 +13,14 @@ pub static BACKGROUND_TEXTURE: Mutex<Option<SizedTexture>> = Mutex::new(None);
 
 pub struct SplashPage {
     ctx: egui::Context,
-    render_state: viewer::RenderState,
+    render_state: viewer::GraphicsState,
     cmd_channel: AppCommandChannel,
 }
 
 impl SplashPage {
     pub fn new(
         ctx: egui::Context,
-        render_state: viewer::RenderState,
+        render_state: viewer::GraphicsState,
         mut cmd_channel: AppCommandChannel,
     ) -> Box<dyn RoutablePage> {
         // Failing to center the window can be ignored.

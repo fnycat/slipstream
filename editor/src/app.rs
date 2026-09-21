@@ -51,7 +51,7 @@ impl App {
         let cmd_channel = AppCommandChannel::new(tx);
 
         let egui_rs = cc.wgpu_render_state.as_ref().unwrap();
-        let render_state = viewer::RenderState {
+        let render_state = viewer::GraphicsState {
             instance: egui_rs.instance.clone(),
             device: egui_rs.device.clone(),
             queue: egui_rs.queue.clone(),

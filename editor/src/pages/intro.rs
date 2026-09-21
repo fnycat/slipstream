@@ -9,14 +9,14 @@ use crate::{
 
 pub struct IntroPage {
     bg_image: egui::load::SizedTexture,
-    render_state: viewer::RenderState,
+    render_state: viewer::GraphicsState,
     cmd_channel: AppCommandChannel,
 }
 
 impl IntroPage {
     pub fn new(
         cmd_channel: AppCommandChannel,
-        render_state: viewer::RenderState,
+        render_state: viewer::GraphicsState,
     ) -> Box<dyn RoutablePage> {
         let bg_image = BACKGROUND_TEXTURE.lock().unwrap().unwrap();
         Box::new(Self {

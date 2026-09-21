@@ -1,7 +1,7 @@
 pub mod camera;
-pub mod render_state;
+pub mod graphics_state;
 
-pub use render_state::*;
+pub use graphics_state::*;
 
 mod vertex;
 
@@ -40,7 +40,7 @@ pub const TEXTURE_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
 pub struct ViewerCallback;
 
 impl ViewerCallback {
-    pub fn init(state: &viewer::RenderState) -> Self {
+    pub fn init(state: &viewer::GraphicsState) -> Self {
         let viewer = ViewerState::new(state);
         state.renderer.write().callback_resources.insert(viewer);
 
@@ -276,7 +276,7 @@ impl ViewerState {
                 });
     }
 
-    fn create_textures(state: &viewer::RenderState) -> TextureData {
+    fn create_textures(state: &viewer::GraphicsState) -> TextureData {
         let texture = state.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("offscreen render texture"),
             size: wgpu::Extent3d {
@@ -653,7 +653,7 @@ impl ViewerState {
         false
     }
 
-    pub fn new(state: &viewer::RenderState) -> Self {
+    pub fn new(state: &viewer::GraphicsState) -> Self {
         let device = state.device.clone();
 
         let camera: Camera = OrbitCamera {

@@ -275,7 +275,7 @@ pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
 
 pub fn draw_tool_buttons(
     cmd_channel: &mut AppCommandChannel,
-    render_state: &viewer::RenderState,
+    render_state: &viewer::GraphicsState,
     ui: &mut egui::Ui,
 ) -> EditorResult<()> {
     let egui::InnerResponse { inner, .. } = egui::Area::new(egui::Id::new("home_tool_buttons"))
