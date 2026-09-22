@@ -1,6 +1,7 @@
+use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::error::{CorruptionError, EditorResult};
+use crate::error::{CorruptionError, EditorError, EditorResult};
 use crate::format::brres::IndexGroup;
 use crate::format::mdl0::util::VectorDivisor;
 use crate::node::defer::Deferred;
@@ -9,7 +10,7 @@ use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::{
         encoding::Deserialize,
-        mdl0::util::{VectorFormat, deserialize_vector_data},
+        mdl0::util::{VertexFormat, deserialize_vector_data},
     },
     shared::util::RefCursor,
 };
@@ -17,6 +18,48 @@ use crate::{
 const COMPONENTS_NORMAL: u32 = 0x0;
 const COMPONENTS_ALL: u32 = 0x1;
 const COMPONENTS_ANY: u32 = 0x2;
+
+#[bitenum]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
+pub enum NormalFormat {
+    Int8,
+    Int16,
+    Float32,
+    /// Fallback value for `bitenum`, this variant should never be used.
+    #[fallback]
+    Invalid,
+}
+
+impl TryFrom<u32> for NormalFormat {
+    type Error = EditorError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        // Literally the same as VertexFormat, except that it only supports signed
+        // formats.
+        Ok(match value {
+            // 0 => Self::Uint8,
+            1 => Self::Int8,
+            // 2 => Self::Uint16,
+            3 => Self::Int16,
+            4 => Self::Float32,
+            v => {
+                return Err(CorruptionError {
+                    reason: format!("invalid vertex format: {v} (expected 1, 3 or 4)"),
+                    ..Default::default()
+                }
+                .into());
+            }
+        })
+    }
+}
+
+impl Deserialize for NormalFormat {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let word = reader.read_u32::<BigEndian>()?;
+        Self::try_from(word)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum NormalBufData {
@@ -41,7 +84,7 @@ impl NormalBufData {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NormalBuf {
     pub index: u32,
-    pub format: VectorFormat,
+    pub format: NormalFormat,
     pub divisor: u8,
     pub stride: u8,
     pub normals: NormalBufData,
@@ -93,7 +136,7 @@ impl NormalBuf {
         let _name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let component_count = reader.read_u32::<BigEndian>()?;
-        let format = VectorFormat::deserialize(reader)?;
+        let format = NormalFormat::deserialize(reader)?;
         let divisor = reader.read_u8()?;
         let stride = reader.read_u8()?;
         let normal_count = reader.read_u16::<BigEndian>()?;
@@ -105,19 +148,19 @@ impl NormalBuf {
             COMPONENTS_NORMAL => NormalBufData::Normal(deserialize_vector_data::<3>(
                 reader,
                 normal_count as usize,
-                format,
+                VertexFormat::from(format),
                 VectorDivisor::Custom(divisor),
             )?),
             COMPONENTS_ALL => NormalBufData::All(deserialize_vector_data::<9>(
                 reader,
                 normal_count as usize,
-                format,
+                VertexFormat::from(format),
                 VectorDivisor::Custom(divisor),
             )?),
             COMPONENTS_ANY => NormalBufData::Any(deserialize_vector_data::<3>(
                 reader,
                 normal_count as usize,
-                format,
+                VertexFormat::from(format),
                 VectorDivisor::Custom(divisor),
             )?),
             v => {

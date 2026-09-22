@@ -6,7 +6,7 @@ use crate::{
         brres::IndexGroup,
         encoding::{Deserialize, ReadArrayExt},
         mdl0::util::{
-            VectorDivisor, VectorFormat, deserialize_scalar_data, deserialize_vector_data,
+            VectorDivisor, VertexFormat, deserialize_scalar_data, deserialize_vector_data,
         },
     },
     node::{
@@ -29,7 +29,7 @@ pub enum UvBufData {
 #[derive(Debug, Clone, PartialEq)]
 pub struct UvBuf {
     pub index: u32,
-    pub format: VectorFormat,
+    pub format: VertexFormat,
     pub stride: u8,
     pub uvs: UvBufData,
     pub bounding_volume_min: [f32; 2],
@@ -44,7 +44,7 @@ impl UvBuf {
         let _name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let component_count = reader.read_u32::<BigEndian>()?;
-        let format = VectorFormat::deserialize(reader)?;
+        let format = VertexFormat::deserialize(reader)?;
         let divisor = reader.read_u8()?;
         let stride = reader.read_u8()?;
 

@@ -9,7 +9,7 @@ use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
-        mdl0::util::{VectorFormat, deserialize_vector_data},
+        mdl0::util::{VertexFormat, deserialize_vector_data},
     },
     shared::util::RefCursor,
 };
@@ -49,7 +49,7 @@ impl VertexBufData {
 #[derive(Debug, Clone, PartialEq)]
 pub struct VertexBuf {
     pub index: u32,
-    pub format: VectorFormat,
+    pub format: VertexFormat,
     pub divisor: u8,
     pub stride: u8,
     pub bounding_volume_min: [f32; 3],
@@ -104,7 +104,7 @@ impl VertexBuf {
         let _name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let component_count = reader.read_u32::<BigEndian>()?;
-        let format = VectorFormat::deserialize(reader)?;
+        let format = VertexFormat::deserialize(reader)?;
         let divisor = reader.read_u8()?;
         let stride = reader.read_u8()?;
         let vertex_count = reader.read_u16::<BigEndian>()?;

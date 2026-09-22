@@ -10,7 +10,7 @@ use crate::{
         mdl0::{
             colors::deserialize_color,
             gx::load_cp::{LoadCpOpCode, MergedCpLoad, VectorStorage},
-            util::{VectorDivisor, VectorFormat, deserialize_scalar, deserialize_vector},
+            util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector},
         },
     },
     shared::util::RefCursor,
@@ -73,13 +73,13 @@ impl DirectNormal {
         Ok(if cp.cp3.norm_e() {
             Self::Single(deserialize_vector::<3>(
                 reader,
-                cp.cp3.norm_format(),
+                VertexFormat::from(cp.cp3.norm_format()),
                 VectorDivisor::Normalize,
             )?)
         } else {
             Self::Triple(deserialize_vector::<9>(
                 reader,
-                cp.cp3.norm_format(),
+                VertexFormat::from(cp.cp3.norm_format()),
                 VectorDivisor::Normalize,
             )?)
         })
@@ -168,6 +168,7 @@ pub struct OpVertex {
     pub normals: NormalData,
     pub color0: ColorData,
     pub color1: ColorData,
+    // pub uvs: [Option<UvData>; 8],
 }
 
 impl OpVertex {
@@ -189,8 +190,9 @@ impl OpVertex {
         let color0 = ColorData::deserialize_col0(reader, cp)?;
         let color1 = ColorData::deserialize_col1(reader, cp)?;
 
-        dbg!(&position, &normals, &color0, &color1);
-        todo!();
+        // let uvs = [
+
+        // ];
 
         Ok(OpVertex {
             pm,

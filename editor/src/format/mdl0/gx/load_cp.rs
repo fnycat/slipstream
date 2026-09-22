@@ -7,7 +7,7 @@ use crate::{
     error::{CorruptionError, EditorError, EditorResult, InvalidInputError},
     format::{
         encoding::Deserialize,
-        mdl0::{colors::ColorFormat, gx::GxOpCode, util::VectorFormat},
+        mdl0::{colors::ColorFormat, gx::GxOpCode, normals::NormalFormat, util::VertexFormat},
     },
     shared::util::RefCursor,
 };
@@ -75,12 +75,12 @@ pub struct CpSubCommand2 {
 pub struct CpSubCommand3 {
     pub pos_e: bool,
     #[bits(3)]
-    pub pos_format: VectorFormat,
+    pub pos_format: VertexFormat,
     #[bits(5)]
     pub pos_divisor: u8,
     pub norm_e: bool,
     #[bits(3)]
-    pub norm_format: VectorFormat,
+    pub norm_format: NormalFormat,
     pub col0_e: bool,
     #[bits(3)]
     pub col0_format: ColorFormat,
@@ -89,7 +89,7 @@ pub struct CpSubCommand3 {
     pub col1_format: ColorFormat,
     pub tex0_e: bool,
     #[bits(3)]
-    pub tex0_format: VectorFormat,
+    pub tex0_format: VertexFormat,
     #[bits(5)]
     pub tex0_divisor: u8,
     pub dequant: bool,
@@ -101,22 +101,22 @@ pub struct CpSubCommand3 {
 pub struct CpSubCommand4 {
     pub tex1_e: bool,
     #[bits(3)]
-    pub tex1_format: VectorFormat,
+    pub tex1_format: VertexFormat,
     #[bits(5)]
     pub tex1_divisor: u8,
     pub tex2_e: bool,
     #[bits(3)]
-    pub tex2_format: VectorFormat,
+    pub tex2_format: VertexFormat,
     #[bits(5)]
     pub tex2_divisor: u8,
     pub tex3_e: bool,
     #[bits(3)]
-    pub tex3_format: VectorFormat,
+    pub tex3_format: VertexFormat,
     #[bits(5)]
     pub tex3_divisor: u8,
     pub tex4_e: bool,
     #[bits(3)]
-    pub tex4_format: VectorFormat,
+    pub tex4_format: VertexFormat,
     #[bits(1)]
     _padding: bool,
 }
@@ -128,17 +128,17 @@ pub struct CpSubCommand5 {
     pub tex4_divisor: u8,
     pub tex5_e: bool,
     #[bits(3)]
-    pub tex5_format: VectorFormat,
+    pub tex5_format: VertexFormat,
     #[bits(5)]
     pub tex5_divisor: u8,
     pub tex6_e: bool,
     #[bits(3)]
-    pub tex6_format: VectorFormat,
+    pub tex6_format: VertexFormat,
     #[bits(5)]
     pub tex6_divisor: u8,
     pub tex7_e: bool,
     #[bits(3)]
-    pub tex7_format: VectorFormat,
+    pub tex7_format: VertexFormat,
     #[bits(5)]
     pub tex7_divisor: u8,
 }
