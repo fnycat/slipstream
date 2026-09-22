@@ -167,8 +167,8 @@ impl Deserialize for Colors {
 
                     // rescale the components to the full 0-255 range.
                     let r = (r << 3) | (r >> 2);
-                    let g = (r << 2) | (r >> 4);
-                    let g = (r << 3) | (r >> 2);
+                    let g = (g << 2) | (g >> 4);
+                    let b = (b << 3) | (b >> 2);
 
                     glam::u8vec4(r, g, b, 255)
                 }

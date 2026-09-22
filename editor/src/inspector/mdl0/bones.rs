@@ -18,54 +18,59 @@ const BILLBOARD_SETTING_DESCRIPTIONS: &[&str] = &[
 
 impl Inspectable for BoneFlags {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {
-        ui.checkbox(
-            &mut self.apply_child_scale_compensate,
-            "Enable child scale compensate",
-        )
-        .on_hover_text("Whether this bone compensates for a parent's non-uniform scaling, preventing child meshes from stretching unnaturally.");
+        todo!("make checkboxes work with bit struct");
 
-        ui.checkbox(&mut self.apply_scale_compensate, "Enable scale compensate")
-            .on_hover_text(
-                "Reverses parent scale on the current so local transformations remain unscaled.",
-            );
-        ui.end_row();
+        // ui.checkbox(
+        //     &mut self.apply_child_scale_compensate(),
+        //     "Enable child scale compensate",
+        // )
+        // .on_hover_text("Whether this bone compensates for a parent's non-uniform scaling, preventing child meshes from stretching unnaturally.");
 
-        ui.checkbox(&mut self.disable_classic_scale, "Disable classic scale")
-            .on_hover_text("Controls the scale matrix algorithm. When set, disables traditional Maya/Wii scaling behaviour (where parent scale propagates directly down the hierarchy) in favour of standard matrix multiplication");
+        // ui.checkbox(
+        //     &mut self.apply_scale_compensate(),
+        //     "Enable scale compensate",
+        // )
+        // .on_hover_text(
+        //     "Reverses parent scale on the current so local transformations remain unscaled.",
+        // );
+        // ui.end_row();
 
-        ui.checkbox(&mut self.is_billboard_child, "Billboard child")
-            .on_hover_text(
-                "Indicates that this bone's parent is a billboard, i.e. always facing the camera",
-            );
-        ui.end_row();
+        // ui.checkbox(&mut self.disable_classic_scale(), "Disable classic scale")
+        //     .on_hover_text("Controls the scale matrix algorithm. When set, disables traditional Maya/Wii scaling behaviour (where parent scale propagates directly down the hierarchy) in favour of standard matrix multiplication");
 
-        ui.checkbox(&mut self.is_display_matrix, "Is display matrix")
-            .on_hover_text("Set if this bone is directly tied to a draw element/mesh node and requires a matrix in the draw matrix table for GPU skinning and rendering");
+        // ui.checkbox(&mut self.is_billboard_child(), "Billboard child")
+        //     .on_hover_text(
+        //         "Indicates that this bone's parent is a billboard, i.e. always facing the camera",
+        //     );
+        // ui.end_row();
 
-        ui.checkbox(&mut self.is_visible, "Visible")
-            .on_hover_text("Whether the geometry attached to this bone is visible");
-        ui.end_row();
+        // ui.checkbox(&mut self.is_display_matrix(), "Is display matrix")
+        //     .on_hover_text("Set if this bone is directly tied to a draw element/mesh node and requires a matrix in the draw matrix table for GPU skinning and rendering");
 
-        ui.checkbox(
-            &mut self.translation_isotropic,
-            "Enable isotropic translation",
-        )
-        .on_hover_text("Set when the translation vector is isotropic, i.e. all values are equal");
+        // ui.checkbox(&mut self.is_visible(), "Visible")
+        //     .on_hover_text("Whether the geometry attached to this bone is visible");
+        // ui.end_row();
 
-        ui.checkbox(&mut self.rotation_isotropic, "Enable isotropic rotation")
-            .on_hover_text("Set when the rotation vector is isotropic, i.e. all values are equal");
+        // ui.checkbox(
+        //     &mut self.translation_isotropic(),
+        //     "Enable isotropic translation",
+        // )
+        // .on_hover_text("Set when the translation vector is isotropic, i.e. all values are equal");
 
-        ui.end_row();
+        // ui.checkbox(&mut self.rotation_isotropic(), "Enable isotropic rotation")
+        //     .on_hover_text("Set when the rotation vector is isotropic, i.e. all values are equal");
 
-        ui.checkbox(&mut self.scale_isotropic, "Enable isotropic scaling")
-            .on_hover_text("Set when the scaling vector is isotropic, i.e. all values are equal");
+        // ui.end_row();
 
-        ui.checkbox(&mut self.scale_uniform, "Enable uniform scaling")
-            .on_hover_text("Optimization flag set when all scaling factors are equal");
-        ui.end_row();
+        // ui.checkbox(&mut self.scale_isotropic(), "Enable isotropic scaling")
+        //     .on_hover_text("Set when the scaling vector is isotropic, i.e. all values are equal");
 
-        ui.checkbox(&mut self.use_identity, "Use identity").on_hover_text("Fast-path for rendering, forces the engine to use the identity matrix for this bone (i.e. no translation, rotation or scale)");
-        ui.end_row();
+        // ui.checkbox(&mut self.scale_uniform(), "Enable uniform scaling")
+        //     .on_hover_text("Optimization flag set when all scaling factors are equal");
+        // ui.end_row();
+
+        // ui.checkbox(&mut self.use_identity(), "Use identity").on_hover_text("Fast-path for rendering, forces the engine to use the identity matrix for this bone (i.e. no translation, rotation or scale)");
+        // ui.end_row();
     }
 }
 

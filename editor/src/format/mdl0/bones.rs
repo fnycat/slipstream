@@ -1,3 +1,4 @@
+use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::error::{CorruptionError, EditorError, EditorResult, InvalidInputError};
@@ -10,42 +11,22 @@ use crate::{
     shared::util::RefCursor,
 };
 
-const IS_BILLBOARD_CHILD_MASK: u32 = 0x00000400;
-const IS_DISPLAY_MATRIX_MASK: u32 = 0x00000200;
-const IS_VISIBLE_MASK: u32 = 0x00000100;
-const DISABLE_CLASSIC_SCALE_MASK: u32 = 0x00000080;
-const APPLY_CHILD_SCALE_COMPENSATE_MASK: u32 = 0x00000040;
-const APPLY_SCALE_COMPENSATE_MASK: u32 = 0x00000020;
-const SCALE_UNIFORM_MASK: u32 = 0x00000010;
-const SCALE_ISOTROPIC_MASK: u32 = 0x00000008;
-const ROTATION_ISOTROPIC_MASK: u32 = 0x00000004;
-const TRANSLATION_ISOTROPIC_MASK: u32 = 0x00000002;
-const USE_IDENTITY_MASK: u32 = 0x00000001;
-
-macro_rules! impl_bone_flags {
-    ($($flag:ident),*) => {
-        paste::paste! {
-            #[derive(Debug, Clone, PartialEq, Eq)]
-            pub struct BoneFlags {
-                $(pub $flag: bool),*
-            }
-
-            impl Deserialize for BoneFlags {
-                fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-                    let word = reader.read_u32::<BigEndian>()?;
-
-                    Ok(Self {
-                        $($flag: (word & [< $flag:upper _MASK >]) == [< $flag:upper _MASK >]),*
-                    })
-                }
-            }
-        }
-    }
-}
-
-impl_bone_flags! {
-    is_billboard_child, is_display_matrix, is_visible, disable_classic_scale, apply_child_scale_compensate,
-    apply_scale_compensate, scale_uniform, scale_isotropic, rotation_isotropic, translation_isotropic, use_identity
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
+pub struct BoneFlags {
+    pub use_identity: bool,
+    pub translation_isotropic: bool,
+    pub rotation_isotropic: bool,
+    pub scale_isotropic: bool,
+    pub scale_uniform: bool,
+    pub apply_scale_compensate: bool,
+    pub apply_child_scale_compensate: bool,
+    pub disable_classic_scale: bool,
+    pub is_visible: bool,
+    pub is_display_matrix: bool,
+    pub is_billboard_child: bool,
+    #[bits(21)]
+    pub _unused: u32,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -139,7 +120,7 @@ impl Bone {
         let name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let id = reader.read_u32::<BigEndian>()?;
-        let flags = BoneFlags::deserialize(reader)?;
+        let flags = BoneFlags::from_bits(reader.read_u32::<BigEndian>()?);
         let billboard_setting = BillboardSetting::deserialize(reader)?;
         let billboard_transform = reader.read_u32::<BigEndian>()?;
 
