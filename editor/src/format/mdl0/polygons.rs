@@ -82,6 +82,12 @@ impl Deserialize for PolygonModifier {
 }
 
 #[derive(Debug, Clone)]
+pub enum BoneBind {
+    Single(u32),
+    Table(BoneTable),
+}
+
+#[derive(Debug, Clone)]
 pub struct Polygon {
     pub definitions_buffer_size: u32,
     pub definitions_size: u32,
@@ -102,7 +108,7 @@ pub struct Polygon {
     pub color_array_ids: [u16; 2],
     pub uv_array_ids: [u16; 8],
 
-    pub bone_table: Option<BoneTable>,
+    pub bone_bind: BoneBind,
     pub gx_bytecode: GxBytecode,
 }
 
@@ -141,11 +147,9 @@ impl Deserialize for Polygon {
 
         reader.set_position(object_start + bone_table_offset as u64);
 
-        let bone_table = if bone_index.is_none() {
-            tracing::trace!("Deserializing bone table");
-            Some(BoneTable::deserialize(reader)?)
-        } else {
-            None
+        let bone_bind = match bone_index {
+            Some(index) => BoneBind::Single(index),
+            None => BoneBind::Table(BoneTable::deserialize(reader)?),
         };
 
         // The definitions and vertices offsets are relative to their fields, not the the file start.
@@ -155,8 +159,12 @@ impl Deserialize for Polygon {
         let definitions_start =
             object_start as i64 + DEFINITIONS_INTERNAL_OFFSET as i64 + definitions_offset as i64;
 
+        let definitions_end = definitions_start + definitions_size as i64;
+
         reader.set_position(definitions_start as u64);
-        let gx_bytecode = GxBytecode::deserialize(reader)?;
+        let gx_bytecode = GxBytecode::deserialize(reader, definitions_end as u64)?;
+
+        dbg!(&gx_bytecode);
 
         Ok(Self {
             vertex_count,
@@ -177,7 +185,7 @@ impl Deserialize for Polygon {
             modifier,
             index,
 
-            bone_table,
+            bone_bind,
             gx_bytecode,
         })
     }

@@ -751,10 +751,24 @@ pub enum GxOpCode {
 }
 
 #[derive(Debug, Clone)]
-pub struct GxBytecode {}
+pub struct GxBytecode {
+    commands: Vec<GxOpCode>,
+}
 
-impl Deserialize for GxBytecode {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-        todo!()
+impl GxBytecode {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>, section_end: u64) -> EditorResult<Self> {
+        let mut commands = Vec::new();
+        while reader.position() < section_end {
+            let opcode = reader.read_u8()?;
+            commands.push(match opcode {
+                0x00 => continue,
+                0x08 => GxOpCode::LoadCp(LoadCpOpCode::deserialize(reader)?),
+                0x10 => GxOpCode::LoadXf(LoadXfOpCode::deserialize(reader)?),
+                0x61 => GxOpCode::LoadBp(LoadBpOpCode::deserialize(reader)?),
+                _ => todo!("{opcode:#04x}"),
+            });
+        }
+
+        Ok(Self { commands })
     }
 }
