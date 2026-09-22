@@ -1,9 +1,9 @@
 use crate::editor::Editor;
-use crate::format::mdl0::vertices::Vertices;
+use crate::format::mdl0::vertices::VertexBuf;
 use crate::inspector::widgets::{draw_inspector_section_header, draw_vec_drag_values};
 use crate::node::node::Inspectable;
 
-impl Inspectable for Vertices {
+impl Inspectable for VertexBuf {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {
         let input_field_size = egui::vec2(180.0, 20.0);
 

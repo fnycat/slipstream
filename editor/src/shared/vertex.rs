@@ -1,6 +1,6 @@
-use crate::format::mdl0::vertices::VertexData;
+use crate::format::mdl0::vertices::VertexBufData;
 
-impl VertexData {
+impl VertexBufData {
     pub const fn format(&self) -> wgpu::VertexFormat {
         match self {
             Self::Xy(_) => wgpu::VertexFormat::Float32x2,

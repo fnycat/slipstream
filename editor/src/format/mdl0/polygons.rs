@@ -109,7 +109,9 @@ pub struct Polygon {
     pub uv_array_ids: [u16; 8],
 
     pub bone_bind: BoneBind,
-    pub gx_bytecode: GxBytecode,
+
+    pub vertex_decl_gx: GxBytecode,
+    // pub vertex_data_gx: GxBytecode,
 }
 
 impl Deserialize for Polygon {
@@ -162,7 +164,16 @@ impl Deserialize for Polygon {
         let definitions_end = definitions_start + definitions_size as i64;
 
         reader.set_position(definitions_start as u64);
-        let gx_bytecode = GxBytecode::deserialize(reader, definitions_end as u64)?;
+        let vertex_decl_gx =
+            GxBytecode::deserialize_vertex_declaration(reader, definitions_end as u64)?;
+
+        let vertices_start =
+            object_start as i64 + VERTICES_INTERNAL_OFFSET as i64 + vertex_data_offset as i64;
+        let vertices_end = vertices_start + vertex_data_size as i64;
+
+        reader.set_position(vertices_start as u64);
+        let vertex_data_gx =
+            GxBytecode::deserialize_vertex_data(reader, &vertex_decl_gx, vertices_end as u64);
 
         Ok(Self {
             vertex_count,
@@ -184,7 +195,8 @@ impl Deserialize for Polygon {
             index,
 
             bone_bind,
-            gx_bytecode,
+            vertex_decl_gx,
+            // vertex_data_gx,
         })
     }
 }
@@ -205,7 +217,6 @@ pub fn deserialize_virtual(
         reader.set_position(data_start as u64);
 
         let object = Polygon::deserialize(reader)?;
-        dbg!(&name, &object);
 
         let id = node_map.next_id();
         let node = VirtualNode {

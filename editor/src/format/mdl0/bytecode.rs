@@ -148,7 +148,7 @@ impl Deserialize for DuplicateMatrix {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum DrawCommand {
+pub enum BytecodeCommand {
     MapNode(MapNode),
     Weights(Weights),
     DrawPolygon(DrawPolygon),
@@ -158,7 +158,7 @@ pub enum DrawCommand {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Bytecode {
-    pub commands: Vec<DrawCommand>,
+    pub commands: Vec<BytecodeCommand>,
 }
 
 impl Bytecode {
@@ -179,12 +179,16 @@ impl Deserialize for Bytecode {
 
                     continue;
                 } // This command is empty
-                MapNode::OPCODE => DrawCommand::MapNode(MapNode::deserialize(reader)?),
-                Weights::OPCODE => DrawCommand::Weights(Weights::deserialize(reader)?),
-                DrawPolygon::OPCODE => DrawCommand::DrawPolygon(DrawPolygon::deserialize(reader)?),
-                WeightIndex::OPCODE => DrawCommand::WeightIndex(WeightIndex::deserialize(reader)?),
+                MapNode::OPCODE => BytecodeCommand::MapNode(MapNode::deserialize(reader)?),
+                Weights::OPCODE => BytecodeCommand::Weights(Weights::deserialize(reader)?),
+                DrawPolygon::OPCODE => {
+                    BytecodeCommand::DrawPolygon(DrawPolygon::deserialize(reader)?)
+                }
+                WeightIndex::OPCODE => {
+                    BytecodeCommand::WeightIndex(WeightIndex::deserialize(reader)?)
+                }
                 DuplicateMatrix::OPCODE => {
-                    DrawCommand::DuplicateMatrix(DuplicateMatrix::deserialize(reader)?)
+                    BytecodeCommand::DuplicateMatrix(DuplicateMatrix::deserialize(reader)?)
                 }
                 _ => {
                     return Err(CorruptionError {

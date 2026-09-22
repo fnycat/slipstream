@@ -1,16 +1,21 @@
+use std::mem::MaybeUninit;
+
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::{
-    error::{CorruptionError, EditorResult},
-    format::{encoding::Deserialize, mdl0::util::VectorFormat},
+    error::{CorruptionError, EditorError, EditorResult, InvalidInputError},
+    format::{
+        encoding::Deserialize,
+        mdl0::{colors::ColorFormat, gx::GxOpCode, util::VectorFormat},
+    },
     shared::util::RefCursor,
 };
 
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
-pub enum VectorStorageMethod {
+pub enum VectorStorage {
     #[fallback]
     NotPresent = 0b00,
     Direct = 0b01,
@@ -31,13 +36,13 @@ pub struct CpSubCommand1 {
     pub tm6: bool,
     pub tm7: bool,
     #[bits(2)]
-    pub pos: VectorStorageMethod,
+    pub pos_storage: VectorStorage,
     #[bits(2)]
-    pub norm: VectorStorageMethod,
+    pub norm_storage: VectorStorage,
     #[bits(2)]
-    pub col0: VectorStorageMethod,
+    pub col0_storage: VectorStorage,
     #[bits(2)]
-    pub col1: VectorStorageMethod,
+    pub col1_storage: VectorStorage,
     #[bits(15)]
     _padding: u16,
 }
@@ -46,21 +51,21 @@ pub struct CpSubCommand1 {
 #[derive(PartialEq, Eq)]
 pub struct CpSubCommand2 {
     #[bits(2)]
-    pub tex0: VectorStorageMethod,
+    pub tex0_storage: VectorStorage,
     #[bits(2)]
-    pub tex1: VectorStorageMethod,
+    pub tex1_storage: VectorStorage,
     #[bits(2)]
-    pub tex2: VectorStorageMethod,
+    pub tex2_storage: VectorStorage,
     #[bits(2)]
-    pub tex3: VectorStorageMethod,
+    pub tex3_storage: VectorStorage,
     #[bits(2)]
-    pub tex4: VectorStorageMethod,
+    pub tex4_storage: VectorStorage,
     #[bits(2)]
-    pub tex5: VectorStorageMethod,
+    pub tex5_storage: VectorStorage,
     #[bits(2)]
-    pub tex6: VectorStorageMethod,
+    pub tex6_storage: VectorStorage,
     #[bits(2)]
-    pub tex7: VectorStorageMethod,
+    pub tex7_storage: VectorStorage,
     #[bits(16)]
     _padding: u16,
 }
@@ -78,10 +83,10 @@ pub struct CpSubCommand3 {
     pub norm_format: VectorFormat,
     pub col0_e: bool,
     #[bits(3)]
-    pub col0_format: VectorFormat,
+    pub col0_format: ColorFormat,
     pub col1_e: bool,
     #[bits(3)]
-    pub col1_format: VectorFormat,
+    pub col1_format: ColorFormat,
     pub tex0_e: bool,
     #[bits(3)]
     pub tex0_format: VectorFormat,
@@ -168,3 +173,44 @@ impl Deserialize for LoadCpOpCode {
         })
     }
 }
+
+macro_rules! impl_merged_cp_load {
+    ($($id:literal),*) => {
+        paste::paste! {
+            /// Merged all `LoadCP` subcommands into a single large structure.
+            #[derive(Debug, Clone, PartialEq, Eq)]
+            pub struct MergedCpLoad {
+                $(pub [< cp $id >]: [< CpSubCommand $id >]),*
+            }
+
+            impl TryFrom<&[GxOpCode]> for MergedCpLoad {
+                type Error = EditorError;
+
+                fn try_from(value: &[GxOpCode]) -> Result<Self, Self::Error> {
+                    $(
+                        let mut [< cp $id >] = None;
+                    )*
+
+                    for opcode in value {
+                        let GxOpCode::LoadCp(cp) = opcode else {
+                            continue;
+                        };
+
+                        match cp {
+                            $(LoadCpOpCode::[< C $id >](x) => [< cp $id >] = Some(*x),)*
+                        }
+                    }
+
+                    Ok(Self {
+                        $([< cp $id >]: [< cp $id >].ok_or_else(|| EditorError::from(InvalidInputError {
+                            reason: format!("missing CP{} in merged CP load", $id),
+                            ..Default::default()
+                        }))?,)*
+                    })
+                }
+            }
+        }
+    }
+}
+
+impl_merged_cp_load!(1, 2, 3, 4, 5);

@@ -1,8 +1,8 @@
 use crate::{
     format::mdl0::{
-        bytecode::{Bytecode, DrawCommand},
+        bytecode::{Bytecode, BytecodeCommand},
         polygons::Polygon,
-        vertices::Vertices,
+        vertices::VertexBuf,
     },
     node::refs::{VirtualNodeId, VirtualNodeMap},
 };

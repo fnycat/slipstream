@@ -2,6 +2,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::error::{CorruptionError, EditorResult};
 use crate::format::brres::IndexGroup;
+use crate::format::mdl0::util::VectorDivisor;
 use crate::node::defer::Deferred;
 use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
@@ -18,7 +19,7 @@ const COMPONENTS_ALL: u32 = 0x1;
 const COMPONENTS_ANY: u32 = 0x2;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum NormalData {
+pub enum NormalBufData {
     /// Only the normal.
     Normal(Vec<[f32; 3]>),
     /// Includes all of the normal, bi-normal and tangent
@@ -27,7 +28,7 @@ pub enum NormalData {
     Any(Vec<[f32; 3]>),
 }
 
-impl NormalData {
+impl NormalBufData {
     pub fn len(&self) -> usize {
         match self {
             Self::Normal(x) => x.len(),
@@ -38,12 +39,12 @@ impl NormalData {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Normals {
+pub struct NormalBuf {
     pub index: u32,
     pub format: VectorFormat,
     pub divisor: u8,
     pub stride: u8,
-    pub normals: NormalData,
+    pub normals: NormalBufData,
 }
 
 pub fn deserialize_virtual(
@@ -61,7 +62,7 @@ pub fn deserialize_virtual(
 
         reader.set_position(data_start as u64);
 
-        let normals = Normals::deserialize(reader, header_start)?;
+        let normals = NormalBuf::deserialize(reader, header_start)?;
 
         let id = node_map.next_id();
         let node = VirtualNode {
@@ -84,7 +85,7 @@ pub fn deserialize_virtual(
     })
 }
 
-impl Normals {
+impl NormalBuf {
     pub fn deserialize(reader: &mut RefCursor<[u8]>, header_start: u32) -> EditorResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let _mdl0_offset = reader.read_i32::<BigEndian>()?;
@@ -101,23 +102,23 @@ impl Normals {
         reader.set_position(normals_start as u64);
 
         let normals = match component_count {
-            COMPONENTS_NORMAL => NormalData::Normal(deserialize_vector_data::<3>(
+            COMPONENTS_NORMAL => NormalBufData::Normal(deserialize_vector_data::<3>(
                 reader,
-                normal_count,
+                normal_count as usize,
                 format,
-                divisor,
+                VectorDivisor::Custom(divisor),
             )?),
-            COMPONENTS_ALL => NormalData::All(deserialize_vector_data::<9>(
+            COMPONENTS_ALL => NormalBufData::All(deserialize_vector_data::<9>(
                 reader,
-                normal_count,
+                normal_count as usize,
                 format,
-                divisor,
+                VectorDivisor::Custom(divisor),
             )?),
-            COMPONENTS_ANY => NormalData::Any(deserialize_vector_data::<3>(
+            COMPONENTS_ANY => NormalBufData::Any(deserialize_vector_data::<3>(
                 reader,
-                normal_count,
+                normal_count as usize,
                 format,
-                divisor,
+                VectorDivisor::Custom(divisor),
             )?),
             v => {
                 return Err(CorruptionError {

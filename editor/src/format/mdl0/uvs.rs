@@ -5,7 +5,9 @@ use crate::{
     format::{
         brres::IndexGroup,
         encoding::{Deserialize, ReadArrayExt},
-        mdl0::util::{VectorFormat, deserialize_scalar_data, deserialize_vector_data},
+        mdl0::util::{
+            VectorDivisor, VectorFormat, deserialize_scalar_data, deserialize_vector_data,
+        },
     },
     node::{
         defer::Deferred,
@@ -19,22 +21,22 @@ const COMPONENTS_S: u32 = 0x00;
 const COMPONENTS_ST: u32 = 0x01;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum UvData {
+pub enum UvBufData {
     S(Vec<f32>),
     St(Vec<[f32; 2]>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Uvs {
+pub struct UvBuf {
     pub index: u32,
     pub format: VectorFormat,
     pub stride: u8,
-    pub uvs: UvData,
+    pub uvs: UvBufData,
     pub bounding_volume_min: [f32; 2],
     pub bounding_volume_max: [f32; 2],
 }
 
-impl Uvs {
+impl UvBuf {
     pub fn deserialize(reader: &mut RefCursor<[u8]>, header_start: u32) -> EditorResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let _mdl0_offset = reader.read_i32::<BigEndian>()?;
@@ -54,9 +56,17 @@ impl Uvs {
         reader.set_position(uv_start as u64);
 
         let uvs = match component_count {
-            COMPONENTS_S => UvData::S(deserialize_scalar_data(reader, uv_count, format, divisor)?),
-            COMPONENTS_ST => UvData::St(deserialize_vector_data::<2>(
-                reader, uv_count, format, divisor,
+            COMPONENTS_S => UvBufData::S(deserialize_scalar_data(
+                reader,
+                uv_count as usize,
+                format,
+                VectorDivisor::Custom(divisor),
+            )?),
+            COMPONENTS_ST => UvBufData::St(deserialize_vector_data::<2>(
+                reader,
+                uv_count as usize,
+                format,
+                VectorDivisor::Custom(divisor),
             )?),
             _ => {
                 return Err(CorruptionError {
@@ -93,7 +103,7 @@ pub fn deserialize_virtual(
 
         reader.set_position(data_start as u64);
 
-        let uvs = Uvs::deserialize(reader, header_start)?;
+        let uvs = UvBuf::deserialize(reader, header_start)?;
 
         let id = node_map.next_id();
         let node = VirtualNode {

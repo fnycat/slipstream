@@ -2,6 +2,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::error::{CorruptionError, EditorResult};
 use crate::format::brres::IndexGroup;
+use crate::format::mdl0::util::VectorDivisor;
 use crate::node::defer::Deferred;
 use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
@@ -17,12 +18,12 @@ const COMPONENTS_XY: u32 = 0x0;
 const COMPONENTS_XYZ: u32 = 0x1;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum VertexData {
+pub enum VertexBufData {
     Xy(Vec<[f32; 2]>),
     Xyz(Vec<[f32; 3]>),
 }
 
-impl VertexData {
+impl VertexBufData {
     pub const fn components(&self) -> usize {
         match self {
             Self::Xy(_) => 2,
@@ -46,14 +47,14 @@ impl VertexData {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Vertices {
+pub struct VertexBuf {
     pub index: u32,
     pub format: VectorFormat,
     pub divisor: u8,
     pub stride: u8,
     pub bounding_volume_min: [f32; 3],
     pub bounding_volume_max: [f32; 3],
-    pub vertices: VertexData,
+    pub vertices: VertexBufData,
 }
 
 pub fn deserialize_virtual(
@@ -71,7 +72,7 @@ pub fn deserialize_virtual(
         let data_start = section_index.get_entry_data_start(entry);
         reader.set_position(data_start as u64);
 
-        let model = Vertices::deserialize(reader, header_start)?;
+        let model = VertexBuf::deserialize(reader, header_start)?;
 
         let id = node_map.next_id();
         let node = VirtualNode {
@@ -95,7 +96,7 @@ pub fn deserialize_virtual(
     })
 }
 
-impl Vertices {
+impl VertexBuf {
     pub fn deserialize(reader: &mut RefCursor<[u8]>, header_start: u32) -> EditorResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let _mdl0_offset = reader.read_i32::<BigEndian>()?;
@@ -118,17 +119,17 @@ impl Vertices {
         // FIXME: This vertex data is not included in the lazy buffer.
 
         let vertices = match component_count {
-            COMPONENTS_XY => VertexData::Xy(deserialize_vector_data::<2>(
+            COMPONENTS_XY => VertexBufData::Xy(deserialize_vector_data::<2>(
                 reader,
-                vertex_count,
+                vertex_count as usize,
                 format,
-                divisor,
+                VectorDivisor::Custom(divisor),
             )?),
-            COMPONENTS_XYZ => VertexData::Xyz(deserialize_vector_data::<3>(
+            COMPONENTS_XYZ => VertexBufData::Xyz(deserialize_vector_data::<3>(
                 reader,
-                vertex_count,
+                vertex_count as usize,
                 format,
-                divisor,
+                VectorDivisor::Custom(divisor),
             )?),
             v => {
                 return Err(CorruptionError {
