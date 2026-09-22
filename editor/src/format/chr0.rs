@@ -1,3 +1,4 @@
+use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::error::{CorruptionError, EditorError, EditorResult};
@@ -98,6 +99,7 @@ impl Deserialize for Chr0Header {
     }
 }
 
+#[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum AnimationFormat {
@@ -107,6 +109,8 @@ pub enum AnimationFormat {
     Interpolated12 = 0b011,
     Linear1 = 0b100,
     Linear4 = 0b110,
+    #[fallback]
+    Invalid,
 }
 
 impl AnimationFormat {
@@ -114,129 +118,50 @@ impl AnimationFormat {
         const LINEAR_MASK: u8 = 0b100;
         (*self as u8) & LINEAR_MASK != 0
     }
-
-    /// Applies the given bitmask to the flags, shifts it to the given position and converts it into
-    /// an [`AnimationFormat`].
-    pub fn from_flag(flag: u32, mask: u32, shift_by: u32) -> EditorResult<Self> {
-        let b = ((flag & mask) >> shift_by) as u8;
-        AnimationFormat::try_from(b)
-    }
 }
 
-impl TryFrom<u8> for AnimationFormat {
-    type Error = EditorError;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0b000 => Self::Fixed,
-            0b001 => Self::Interpolated4,
-            0b010 => Self::Interpolated6,
-            0b011 => Self::Interpolated12,
-            0b100 => Self::Linear1,
-            0b110 => Self::Linear4,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid animation format: {value:#b}"),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
-    }
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
+pub struct AnimationCode {
+    #[bits(1, default = true)]
+    _unused: bool,
+    pub use_identity: bool,
+    pub rotation_translation_isotropic: bool,
+    pub scale_isotropic: bool,
+    pub scale_uniform: bool,
+    pub rotation_isotropic: bool,
+    pub translation_isotropic: bool,
+    pub use_model_scale: bool,
+    pub use_model_rotation: bool,
+    pub use_model_translation: bool,
+    pub apply_scale_compensate: bool,
+    pub apply_child_scale_compensate: bool,
+    pub disable_classic_scale: bool,
+    pub scale_x_fixed: bool,
+    pub scale_y_fixed: bool,
+    pub scale_z_fixed: bool,
+    pub rotation_x_fixed: bool,
+    pub rotation_y_fixed: bool,
+    pub rotation_z_fixed: bool,
+    pub x_fixed: bool,
+    pub y_fixed: bool,
+    pub z_fixed: bool,
+    pub has_scale: bool,
+    pub has_rotation: bool,
+    pub has_translation: bool,
+    #[bits(2)]
+    pub scale_format: AnimationFormat,
+    #[bits(3)]
+    pub rotation_format: AnimationFormat,
+    #[bits(2)]
+    pub translation_format: AnimationFormat,
 }
 
-const TRANSLATION_FORMAT_MASK: u32 = 0xc0000000; // Bits 32-31
-const ROTATION_FORMAT_MASK: u32 = 0x38000000; // Bits 30-28
-const SCALE_FORMAT_MASK: u32 = 0x06000000; // Bits 27-26
-const HAS_TRANSLATION_MASK: u32 = 0x01000000; // Bit 25
-const HAS_ROTATION_MASK: u32 = 0x00800000; // Bit 24
-const HAS_SCALE_MASK: u32 = 0x00400000; // Bit 23
-const Z_FIXED_MASK: u32 = 0x00200000; // Bit 22
-const Y_FIXED_MASK: u32 = 0x00100000; // Bit 21
-const X_FIXED_MASK: u32 = 0x00080000; // Bit 20
-const ROTATION_Z_FIXED_MASK: u32 = 0x00040000; // Bit 19
-const ROTATION_Y_FIXED_MASK: u32 = 0x00020000; // Bit 18
-const ROTATION_X_FIXED_MASK: u32 = 0x00010000; // Bit 17
-const SCALE_Z_FIXED_MASK: u32 = 0x00008000; // Bit 16
-const SCALE_Y_FIXED_MASK: u32 = 0x00004000; // Bit 15
-const SCALE_X_FIXED_MASK: u32 = 0x00002000; // Bit 14
-const DISABLE_CLASSIC_SCALE_MASK: u32 = 0x00001000; // Bit 13
-const APPLY_CHILD_SCALE_COMPENSATE_MASK: u32 = 0x00000800; // Bit 12
-const APPLY_SCALE_COMPENSATE_MASK: u32 = 0x00000400; // Bit 11
-const USE_MODEL_TRANSLATION_MASK: u32 = 0x00000200; // Bit 10
-const USE_MODEL_ROTATION_MASK: u32 = 0x00000100; // Bit 9
-const USE_MODEL_SCALE_MASK: u32 = 0x00000080; // Bit 8
-const TRANSLATION_ISOTROPIC_MASK: u32 = 0x00000040; // Bit 7
-const ROTATION_ISOTROPIC_MASK: u32 = 0x0000020; // Bit 6
-const SCALE_UNIFORM_MASK: u32 = 0x00000010; // Bit 5
-const SCALE_ISOTROPIC_MASK: u32 = 0x00000008; // Bit 4
-const ROTATION_TRANSLATION_ISOTROPIC_MASK: u32 = 0x00000004; // Bit 3
-const USE_IDENTITY_MASK: u32 = 0x00000002; // Bit 2
-
-macro_rules! apply_masks {
-    ($($x:ident),*) => {
-        paste::paste! {
-            #[derive(Debug, Clone, PartialEq, Eq)]
-            pub struct AnimationCode {
-                pub translation_format: AnimationFormat,
-                pub rotation_format: AnimationFormat,
-                pub scale_format: AnimationFormat,
-                $(pub $x: bool),*
-            }
-
-            impl AnimationCode {
-                fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-                    let flags = reader.read_u32::<BigEndian>()?;
-                    tracing::trace!("Animation type code is {flags:#X?}");
-
-                    Self::try_from(flags)
-                }
-            }
-
-            impl TryFrom<u32> for AnimationCode {
-                type Error = EditorError;
-
-                fn try_from(v: u32) -> EditorResult<Self> {
-                    Ok(Self {
-                        // translation_format: (((v & TRANSLATION_FORMAT_MASK) >> 30) as u8),
-                        translation_format: AnimationFormat::from_flag(v, TRANSLATION_FORMAT_MASK, 30)?,
-                        rotation_format: AnimationFormat::from_flag(v, ROTATION_FORMAT_MASK, 27)?,
-                        scale_format: AnimationFormat::from_flag(v, SCALE_FORMAT_MASK, 25)?,
-                        $(
-                            $x: (v & [<$x:upper _MASK>]) == [<$x:upper _MASK>]
-                        ),*
-                    })
-                }
-            }
-        }
+impl Deserialize for AnimationCode {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let word = reader.read_u32::<BigEndian>()?;
+        Ok(Self::from_bits(word))
     }
-}
-
-apply_masks! {
-    has_translation,
-    has_rotation,
-    has_scale,
-    z_fixed,
-    y_fixed,
-    x_fixed,
-    rotation_z_fixed,
-    rotation_y_fixed,
-    rotation_x_fixed,
-    scale_z_fixed,
-    scale_y_fixed,
-    scale_x_fixed,
-    disable_classic_scale,
-    apply_child_scale_compensate,
-    apply_scale_compensate,
-    use_model_translation,
-    use_model_rotation,
-    use_model_scale,
-    translation_isotropic,
-    rotation_isotropic,
-    scale_uniform,
-    scale_isotropic,
-    rotation_translation_isotropic,
-    use_identity
 }
 
 /// The type of animation that is applied to the bone.
@@ -523,24 +448,24 @@ impl AnimationData {
     ) -> EditorResult<ComponentData> {
         tracing::trace!(
             "Reading scale animations (iso: {}, x fixed: {}, y fixed: {}, z fixed: {})",
-            anim_ty_code.scale_isotropic,
-            anim_ty_code.scale_x_fixed,
-            anim_ty_code.scale_y_fixed,
-            anim_ty_code.scale_z_fixed
+            anim_ty_code.scale_isotropic(),
+            anim_ty_code.scale_x_fixed(),
+            anim_ty_code.scale_y_fixed(),
+            anim_ty_code.scale_z_fixed()
         );
 
-        if anim_ty_code.scale_isotropic {
+        if anim_ty_code.scale_isotropic() {
             let iso_scale;
 
             // Only one piece of data is stored, rather than for each component
-            if anim_ty_code.scale_x_fixed {
+            if anim_ty_code.scale_x_fixed() {
                 iso_scale = ComponentType::Fixed(reader.read_f32::<BigEndian>()?);
             } else {
                 let frame = Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_ty_code.scale_format,
+                    anim_ty_code.scale_format(),
                 )?;
                 iso_scale = ComponentType::Animated(frame);
             }
@@ -552,40 +477,40 @@ impl AnimationData {
             })
         } else {
             let x_scale;
-            if anim_ty_code.scale_x_fixed {
+            if anim_ty_code.scale_x_fixed() {
                 x_scale = ComponentType::Fixed(reader.read_f32::<BigEndian>()?);
             } else {
                 let frame = Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_ty_code.scale_format,
+                    anim_ty_code.scale_format(),
                 )?;
                 x_scale = ComponentType::Animated(frame);
             }
 
             let y_scale;
-            if anim_ty_code.scale_y_fixed {
+            if anim_ty_code.scale_y_fixed() {
                 y_scale = ComponentType::Fixed(reader.read_f32::<BigEndian>()?);
             } else {
                 let frame = Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_ty_code.scale_format,
+                    anim_ty_code.scale_format(),
                 )?;
                 y_scale = ComponentType::Animated(frame);
             }
 
             let z_scale;
-            if anim_ty_code.scale_z_fixed {
+            if anim_ty_code.scale_z_fixed() {
                 z_scale = ComponentType::Fixed(reader.read_f32::<BigEndian>()?);
             } else {
                 let frame = Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_ty_code.scale_format,
+                    anim_ty_code.scale_format(),
                 )?;
                 z_scale = ComponentType::Animated(frame);
             }
@@ -606,21 +531,21 @@ impl AnimationData {
     ) -> EditorResult<ComponentData> {
         tracing::trace!(
             "Reading rotation animations (iso: {}, x fixed: {}, y fixed: {}, z fixed: {})",
-            anim_code.rotation_isotropic,
-            anim_code.rotation_x_fixed,
-            anim_code.rotation_y_fixed,
-            anim_code.rotation_z_fixed
+            anim_code.rotation_isotropic(),
+            anim_code.rotation_x_fixed(),
+            anim_code.rotation_y_fixed(),
+            anim_code.rotation_z_fixed()
         );
 
-        if anim_code.rotation_isotropic {
-            let iso_rot = if anim_code.rotation_x_fixed {
+        if anim_code.rotation_isotropic() {
+            let iso_rot = if anim_code.rotation_x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 let frame = Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.rotation_format,
+                    anim_code.rotation_format(),
                 )?;
                 ComponentType::Animated(frame)
             };
@@ -631,38 +556,38 @@ impl AnimationData {
                 z: iso_rot,
             })
         } else {
-            let x_rot = if anim_code.rotation_x_fixed {
+            let x_rot = if anim_code.rotation_x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 let frame = Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.rotation_format,
+                    anim_code.rotation_format(),
                 )?;
                 ComponentType::Animated(frame)
             };
 
-            let y_rot = if anim_code.rotation_y_fixed {
+            let y_rot = if anim_code.rotation_y_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 let frame = Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.rotation_format,
+                    anim_code.rotation_format(),
                 )?;
                 ComponentType::Animated(frame)
             };
 
-            let z_rot = if anim_code.rotation_z_fixed {
+            let z_rot = if anim_code.rotation_z_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 let frame = Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.rotation_format,
+                    anim_code.rotation_format(),
                 )?;
                 ComponentType::Animated(frame)
             };
@@ -683,21 +608,21 @@ impl AnimationData {
     ) -> EditorResult<ComponentData> {
         tracing::trace!(
             "Reading translation animations (iso: {}, x fixed: {}, y fixed: {}, z fixed: {})",
-            anim_code.translation_isotropic,
-            anim_code.x_fixed,
-            anim_code.y_fixed,
-            anim_code.z_fixed
+            anim_code.translation_isotropic(),
+            anim_code.x_fixed(),
+            anim_code.y_fixed(),
+            anim_code.z_fixed()
         );
 
-        if anim_code.translation_isotropic {
-            let iso_trans = if anim_code.x_fixed {
+        if anim_code.translation_isotropic() {
+            let iso_trans = if anim_code.x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 ComponentType::Animated(Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.translation_format,
+                    anim_code.translation_format(),
                 )?)
             };
 
@@ -707,36 +632,36 @@ impl AnimationData {
                 z: iso_trans,
             })
         } else {
-            let trans_x = if anim_code.x_fixed {
+            let trans_x = if anim_code.x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 ComponentType::Animated(Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.translation_format,
+                    anim_code.translation_format(),
                 )?)
             };
 
-            let trans_y = if anim_code.y_fixed {
+            let trans_y = if anim_code.y_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 ComponentType::Animated(Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.translation_format,
+                    anim_code.translation_format(),
                 )?)
             };
 
-            let trans_z = if anim_code.z_fixed {
+            let trans_z = if anim_code.z_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 ComponentType::Animated(Self::deserialize_anim_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.translation_format,
+                    anim_code.translation_format(),
                 )?)
             };
 
@@ -754,7 +679,7 @@ impl AnimationData {
         header_frame_count: u16,
         anim_code: &AnimationCode,
     ) -> EditorResult<Self> {
-        let scale = if anim_code.has_scale {
+        let scale = if anim_code.has_scale() {
             Some(Self::deserialize_scale(
                 reader,
                 bone_data_start,
@@ -765,7 +690,7 @@ impl AnimationData {
             None
         };
 
-        let rotation = if anim_code.has_rotation {
+        let rotation = if anim_code.has_rotation() {
             Some(Self::deserialize_rotation(
                 reader,
                 bone_data_start,
@@ -776,7 +701,7 @@ impl AnimationData {
             None
         };
 
-        let translation = if anim_code.has_translation {
+        let translation = if anim_code.has_translation() {
             Some(Self::deserialize_translation(
                 reader,
                 bone_data_start,

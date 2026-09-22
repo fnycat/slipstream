@@ -180,7 +180,7 @@ impl Pane for OutlinerPane {
 
         ui.spacing_mut().item_spacing.y = 7.5;
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
+        egui::ScrollArea::both().show(ui, |ui| {
             self.draw_file_tree(self.root, ui).unwrap();
         });
 
