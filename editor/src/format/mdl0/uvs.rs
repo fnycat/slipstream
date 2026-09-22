@@ -88,6 +88,7 @@ impl UvBuf {
     }
 }
 
+#[tracing::instrument(skip_all, fields(parent_id))]
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     header_start: u32,

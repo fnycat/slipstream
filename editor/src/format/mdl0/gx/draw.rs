@@ -1,17 +1,12 @@
-use std::num::NonZeroU8;
-
 use byteorder::{BigEndian, ReadBytesExt};
 use glam::Vec4Swizzles;
 
 use crate::{
     error::EditorResult,
-    format::{
-        encoding::Deserialize,
-        mdl0::{
-            colors::deserialize_color,
-            gx::load_cp::{LoadCpOpCode, MergedCpLoad, VectorStorage},
-            util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector},
-        },
+    format::mdl0::{
+        colors::deserialize_color,
+        gx::load_cp::{LoadCpOpCode, MergedCpLoad, VectorStorage},
+        util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector},
     },
     shared::util::RefCursor,
 };
@@ -24,7 +19,7 @@ pub enum DirectPosition {
 
 impl DirectPosition {
     pub fn deserialize(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        Ok(if cp.cp3.pos_e() {
+        Ok(if cp.cp3.pos_extended() {
             Self::Xyz(deserialize_vector::<3>(
                 reader,
                 cp.cp3.pos_format(),
@@ -70,14 +65,14 @@ pub enum DirectNormal {
 
 impl DirectNormal {
     pub fn deserialize(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        Ok(if cp.cp3.norm_e() {
-            Self::Single(deserialize_vector::<3>(
+        Ok(if cp.cp3.norm_extended() {
+            Self::Triple(deserialize_vector::<9>(
                 reader,
                 VertexFormat::from(cp.cp3.norm_format()),
                 VectorDivisor::Normalize,
             )?)
         } else {
-            Self::Triple(deserialize_vector::<9>(
+            Self::Single(deserialize_vector::<3>(
                 reader,
                 VertexFormat::from(cp.cp3.norm_format()),
                 VectorDivisor::Normalize,
@@ -114,7 +109,7 @@ pub enum DirectColor {
 
 impl DirectColor {
     pub fn deserialize_col0(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        Ok(if cp.cp3.col0_e() {
+        Ok(if cp.cp3.col0_extended() {
             Self::AlphaEnabled(deserialize_color(reader, cp.cp3.col0_format())?)
         } else {
             Self::AlphaDisabled(deserialize_color(reader, cp.cp3.col0_format())?.xyz())
@@ -122,7 +117,7 @@ impl DirectColor {
     }
 
     pub fn deserialize_col1(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        Ok(if cp.cp3.col1_e() {
+        Ok(if cp.cp3.col1_extended() {
             Self::AlphaEnabled(deserialize_color(reader, cp.cp3.col1_format())?)
         } else {
             Self::AlphaDisabled(deserialize_color(reader, cp.cp3.col1_format())?.xyz())
@@ -161,6 +156,64 @@ impl ColorData {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum DirectUv {
+    S(f32),
+    St([f32; 2]),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum UvData {
+    NotPresent,
+    Index8(u8),
+    Index16(u16),
+    Direct(DirectUv),
+}
+
+/// Implements the deserialisation methods for all 7 UV fields.
+// This is incredibly overengineered, but oh well.
+macro_rules! impl_uv_de {
+    // $id is the id of the UV (ranging from 0-7)
+    //
+    // $cp1 is the subcommand that contains the format and extended flag.
+    // $cp2 contains the divisor.
+    // For all, except uv4, these are equal.
+    ($($id:literal => $cp1:literal + $cp2:literal),*) => {
+        paste::paste! {
+            impl DirectUv {
+                $(
+                    pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
+                        let format = cp.[< cp $cp1 >].[< uv $id _format >]();
+                        let divisor = cp.[< cp $cp2 >].[< uv $id _divisor >]();
+
+                        Ok(if cp.[< cp $cp1 >].[< uv $id _extended >]() {
+                            Self::St(deserialize_vector::<2>(reader, format, VectorDivisor::Custom(divisor))?)
+                        } else {
+                            Self::S(deserialize_scalar(reader, format, VectorDivisor::Custom(divisor))?)
+                        })
+                    }
+                )*
+            }
+
+            impl UvData {
+                $(
+                    pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
+                        let uv_storage = cp.cp2.[< uv $id _storage >]();
+                        Ok(match uv_storage {
+                            VectorStorage::NotPresent => Self::NotPresent,
+                            VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
+                            VectorStorage::Index16 => Self::Index16(reader.read_u16::<BigEndian>()?),
+                            VectorStorage::Direct => Self::Direct(DirectUv::[< deserialize_uv $id >](reader, cp)?)
+                        })
+                    }
+                )*
+            }
+        }
+    };
+}
+
+impl_uv_de!(0 => 3 + 3, 1 => 4 + 4, 2 => 4 + 4, 3 => 4 + 4, 4 => 4 + 5, 5 => 5 + 5, 6 => 5 + 5, 7 => 5 + 5);
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct OpVertex {
     pub pm: Option<u8>,
     pub tms: [Option<u8>; 8],
@@ -168,7 +221,7 @@ pub struct OpVertex {
     pub normals: NormalData,
     pub color0: ColorData,
     pub color1: ColorData,
-    // pub uvs: [Option<UvData>; 8],
+    pub uvs: [UvData; 8],
 }
 
 impl OpVertex {
@@ -190,9 +243,16 @@ impl OpVertex {
         let color0 = ColorData::deserialize_col0(reader, cp)?;
         let color1 = ColorData::deserialize_col1(reader, cp)?;
 
-        // let uvs = [
-
-        // ];
+        let uvs = [
+            UvData::deserialize_uv0(reader, cp)?,
+            UvData::deserialize_uv1(reader, cp)?,
+            UvData::deserialize_uv2(reader, cp)?,
+            UvData::deserialize_uv3(reader, cp)?,
+            UvData::deserialize_uv4(reader, cp)?,
+            UvData::deserialize_uv5(reader, cp)?,
+            UvData::deserialize_uv6(reader, cp)?,
+            UvData::deserialize_uv7(reader, cp)?,
+        ];
 
         Ok(OpVertex {
             pm,
@@ -201,6 +261,7 @@ impl OpVertex {
             normals,
             color0,
             color1,
+            uvs,
         })
     }
 }
@@ -220,6 +281,7 @@ impl DrawOpCode {
         cp_opcodes: &MergedCpLoad,
     ) -> EditorResult<Self> {
         let vertex_count = reader.read_u16::<BigEndian>()?;
+        tracing::trace!("deserializing {vertex_count} vertices");
 
         let mut vertices = Vec::with_capacity(vertex_count as usize);
         for _ in 0..vertex_count {

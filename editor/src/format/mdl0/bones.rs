@@ -344,6 +344,7 @@ fn build_skeleton_tree(
     Ok(root)
 }
 
+#[tracing::instrument(skip_all, fields(parent_id))]
 pub fn deserialize_skeleton(
     reader: &mut RefCursor<[u8]>,
     parent_id: VirtualNodeId,

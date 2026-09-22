@@ -268,6 +268,7 @@ impl Deserialize for BoneLinkTable {
     }
 }
 
+#[tracing::instrument(skip_all, fields(name, parent_id))]
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     parent_id: VirtualNodeId,

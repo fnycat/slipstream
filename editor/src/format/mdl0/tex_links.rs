@@ -44,6 +44,7 @@ impl Deserialize for TextureLinks {
     }
 }
 
+#[tracing::instrument(skip_all, fields(parent_id))]
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     parent_id: VirtualNodeId,

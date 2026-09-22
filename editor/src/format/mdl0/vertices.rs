@@ -57,45 +57,6 @@ pub struct VertexBuf {
     pub vertices: VertexBufData,
 }
 
-pub fn deserialize_virtual(
-    reader: &mut RefCursor<[u8]>,
-    header_start: u32,
-    parent_id: VirtualNodeId,
-    node_map: &VirtualNodeMap,
-) -> EditorResult<VirtualNodeBody> {
-    let section_index = IndexGroup::deserialize(reader)?;
-
-    let mut models = Vec::with_capacity(section_index.entries.len() - 1);
-    for entry in &section_index.entries[1..] {
-        let name = section_index.get_entry_name(reader, entry)?;
-
-        let data_start = section_index.get_entry_data_start(entry);
-        reader.set_position(data_start as u64);
-
-        let model = VertexBuf::deserialize(reader, header_start)?;
-
-        let id = node_map.next_id();
-        let node = VirtualNode {
-            label: name,
-            id,
-            kind: VirtualNodeKind::Vertices,
-            parent: Some(parent_id),
-            body: Deferred::evaluated(VirtualNodeBody {
-                children: Vec::new(),
-                inspectable: Some(Box::new(model)),
-            }),
-        };
-
-        node_map.insert(id, node);
-        models.push(id);
-    }
-
-    Ok(VirtualNodeBody {
-        children: models,
-        inspectable: None,
-    })
-}
-
 impl VertexBuf {
     pub fn deserialize(reader: &mut RefCursor<[u8]>, header_start: u32) -> EditorResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
@@ -153,4 +114,44 @@ impl VertexBuf {
             bounding_volume_max,
         })
     }
+}
+
+#[tracing::instrument(skip_all, fields(parent_id))]
+pub fn deserialize_virtual(
+    reader: &mut RefCursor<[u8]>,
+    header_start: u32,
+    parent_id: VirtualNodeId,
+    node_map: &VirtualNodeMap,
+) -> EditorResult<VirtualNodeBody> {
+    let section_index = IndexGroup::deserialize(reader)?;
+
+    let mut models = Vec::with_capacity(section_index.entries.len() - 1);
+    for entry in &section_index.entries[1..] {
+        let name = section_index.get_entry_name(reader, entry)?;
+
+        let data_start = section_index.get_entry_data_start(entry);
+        reader.set_position(data_start as u64);
+
+        let model = VertexBuf::deserialize(reader, header_start)?;
+
+        let id = node_map.next_id();
+        let node = VirtualNode {
+            label: name,
+            id,
+            kind: VirtualNodeKind::Vertices,
+            parent: Some(parent_id),
+            body: Deferred::evaluated(VirtualNodeBody {
+                children: Vec::new(),
+                inspectable: Some(Box::new(model)),
+            }),
+        };
+
+        node_map.insert(id, node);
+        models.push(id);
+    }
+
+    Ok(VirtualNodeBody {
+        children: models,
+        inspectable: None,
+    })
 }

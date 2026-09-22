@@ -51,21 +51,21 @@ pub struct CpSubCommand1 {
 #[derive(PartialEq, Eq)]
 pub struct CpSubCommand2 {
     #[bits(2)]
-    pub tex0_storage: VectorStorage,
+    pub uv0_storage: VectorStorage,
     #[bits(2)]
-    pub tex1_storage: VectorStorage,
+    pub uv1_storage: VectorStorage,
     #[bits(2)]
-    pub tex2_storage: VectorStorage,
+    pub uv2_storage: VectorStorage,
     #[bits(2)]
-    pub tex3_storage: VectorStorage,
+    pub uv3_storage: VectorStorage,
     #[bits(2)]
-    pub tex4_storage: VectorStorage,
+    pub uv4_storage: VectorStorage,
     #[bits(2)]
-    pub tex5_storage: VectorStorage,
+    pub uv5_storage: VectorStorage,
     #[bits(2)]
-    pub tex6_storage: VectorStorage,
+    pub uv6_storage: VectorStorage,
     #[bits(2)]
-    pub tex7_storage: VectorStorage,
+    pub uv7_storage: VectorStorage,
     #[bits(16)]
     _padding: u16,
 }
@@ -73,25 +73,25 @@ pub struct CpSubCommand2 {
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct CpSubCommand3 {
-    pub pos_e: bool,
+    pub pos_extended: bool,
     #[bits(3)]
     pub pos_format: VertexFormat,
     #[bits(5)]
     pub pos_divisor: u8,
-    pub norm_e: bool,
+    pub norm_extended: bool,
     #[bits(3)]
     pub norm_format: NormalFormat,
-    pub col0_e: bool,
+    pub col0_extended: bool,
     #[bits(3)]
     pub col0_format: ColorFormat,
-    pub col1_e: bool,
+    pub col1_extended: bool,
     #[bits(3)]
     pub col1_format: ColorFormat,
-    pub tex0_e: bool,
+    pub uv0_extended: bool,
     #[bits(3)]
-    pub tex0_format: VertexFormat,
+    pub uv0_format: VertexFormat,
     #[bits(5)]
-    pub tex0_divisor: u8,
+    pub uv0_divisor: u8,
     pub dequant: bool,
     pub norm_l3: bool,
 }
@@ -99,24 +99,24 @@ pub struct CpSubCommand3 {
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct CpSubCommand4 {
-    pub tex1_e: bool,
+    pub uv1_extended: bool,
     #[bits(3)]
-    pub tex1_format: VertexFormat,
+    pub uv1_format: VertexFormat,
     #[bits(5)]
-    pub tex1_divisor: u8,
-    pub tex2_e: bool,
+    pub uv1_divisor: u8,
+    pub uv2_extended: bool,
     #[bits(3)]
-    pub tex2_format: VertexFormat,
+    pub uv2_format: VertexFormat,
     #[bits(5)]
-    pub tex2_divisor: u8,
-    pub tex3_e: bool,
+    pub uv2_divisor: u8,
+    pub uv3_extended: bool,
     #[bits(3)]
-    pub tex3_format: VertexFormat,
+    pub uv3_format: VertexFormat,
     #[bits(5)]
-    pub tex3_divisor: u8,
-    pub tex4_e: bool,
+    pub uv3_divisor: u8,
+    pub uv4_extended: bool,
     #[bits(3)]
-    pub tex4_format: VertexFormat,
+    pub uv4_format: VertexFormat,
     #[bits(1)]
     _padding: bool,
 }
@@ -125,22 +125,22 @@ pub struct CpSubCommand4 {
 #[derive(PartialEq, Eq)]
 pub struct CpSubCommand5 {
     #[bits(5)]
-    pub tex4_divisor: u8,
-    pub tex5_e: bool,
+    pub uv4_divisor: u8,
+    pub uv5_extended: bool,
     #[bits(3)]
-    pub tex5_format: VertexFormat,
+    pub uv5_format: VertexFormat,
     #[bits(5)]
-    pub tex5_divisor: u8,
-    pub tex6_e: bool,
+    pub uv5_divisor: u8,
+    pub uv6_extended: bool,
     #[bits(3)]
-    pub tex6_format: VertexFormat,
+    pub uv6_format: VertexFormat,
     #[bits(5)]
-    pub tex6_divisor: u8,
-    pub tex7_e: bool,
+    pub uv6_divisor: u8,
+    pub uv7_extended: bool,
     #[bits(3)]
-    pub tex7_format: VertexFormat,
+    pub uv7_format: VertexFormat,
     #[bits(5)]
-    pub tex7_divisor: u8,
+    pub uv7_divisor: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

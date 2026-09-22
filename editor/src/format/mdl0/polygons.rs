@@ -111,7 +111,7 @@ pub struct Polygon {
     pub bone_bind: BoneBind,
 
     pub vertex_decl_gx: GxBytecode,
-    // pub vertex_data_gx: GxBytecode,
+    pub vertex_data_gx: GxBytecode,
 }
 
 impl Deserialize for Polygon {
@@ -155,25 +155,32 @@ impl Deserialize for Polygon {
         };
 
         // The definitions and vertices offsets are relative to their fields, not the the file start.
-        const DEFINITIONS_INTERNAL_OFFSET: u64 = 0x20;
-        const VERTICES_INTERNAL_OFFSET: u64 = 0x24;
+        const VERTEX_DECL_INTERNAL_OFFSET: u64 = 0x20;
+        const VERTEX_DATA_INTERNAL_OFFSET: u64 = 0x24;
 
         let definitions_start =
-            object_start as i64 + DEFINITIONS_INTERNAL_OFFSET as i64 + definitions_offset as i64;
+            object_start as i64 + VERTEX_DECL_INTERNAL_OFFSET as i64 + definitions_offset as i64;
 
         let definitions_end = definitions_start + definitions_size as i64;
 
         reader.set_position(definitions_start as u64);
+
+        tracing::trace!("Reading vertex declaration GX bytecode");
         let vertex_decl_gx =
             GxBytecode::deserialize_vertex_declaration(reader, definitions_end as u64)?;
 
         let vertices_start =
-            object_start as i64 + VERTICES_INTERNAL_OFFSET as i64 + vertex_data_offset as i64;
+            object_start as i64 + VERTEX_DATA_INTERNAL_OFFSET as i64 + vertex_data_offset as i64;
+
+        tracing::debug!("{definitions_end} and {vertices_start}");
+
         let vertices_end = vertices_start + vertex_data_size as i64;
 
         reader.set_position(vertices_start as u64);
+
+        tracing::trace!("Reading vertex data GX bytecode");
         let vertex_data_gx =
-            GxBytecode::deserialize_vertex_data(reader, &vertex_decl_gx, vertices_end as u64);
+            GxBytecode::deserialize_vertex_data(reader, &vertex_decl_gx, vertices_end as u64)?;
 
         Ok(Self {
             vertex_count,
@@ -196,11 +203,12 @@ impl Deserialize for Polygon {
 
             bone_bind,
             vertex_decl_gx,
-            // vertex_data_gx,
+            vertex_data_gx,
         })
     }
 }
 
+#[tracing::instrument(skip_all, fields(parent_id))]
 pub fn deserialize_virtual(
     reader: &mut RefCursor<[u8]>,
     header_start: u32,
