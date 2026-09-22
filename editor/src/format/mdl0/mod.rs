@@ -1,7 +1,7 @@
 pub mod bones;
 pub mod bytecode;
 pub mod colors;
-pub mod gx_bytecode;
+pub mod gx;
 pub mod normals;
 pub mod pal_links;
 pub mod polygons;

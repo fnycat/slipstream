@@ -5,7 +5,7 @@ use crate::{
     format::{
         brres::IndexGroup,
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
-        mdl0::gx_bytecode::GxBytecode,
+        mdl0::gx::GxBytecode,
     },
     node::{
         defer::Deferred,
@@ -17,14 +17,14 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct BoneTableEntry {
-    pub bone_id1: u16,
-    pub bone_id2: u16,
+    pub bone_id1: i16,
+    pub bone_id2: i16,
 }
 
 impl Deserialize for BoneTableEntry {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-        let bone_id1 = reader.read_u16::<BigEndian>()?;
-        let bone_id2 = reader.read_u16::<BigEndian>()?;
+        let bone_id1 = reader.read_i16::<BigEndian>()?;
+        let bone_id2 = reader.read_i16::<BigEndian>()?;
 
         Ok(Self { bone_id1, bone_id2 })
     }
