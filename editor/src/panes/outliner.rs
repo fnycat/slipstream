@@ -42,8 +42,6 @@ impl OutlinerPane {
     ///
     /// If a specific node has been opened, this function returns the ID of its cache entry.
     fn draw_file_tree(&mut self, root_node: VirtualNodeId, ui: &mut egui::Ui) -> EditorResult<()> {
-        ui.spacing_mut().item_spacing.y = 7.5;
-
         let curr_node = self
             .node_map
             .get(root_node)
@@ -180,7 +178,11 @@ impl Pane for OutlinerPane {
     fn draw(&mut self, ui: &mut egui::Ui, _tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
         let drag_started = ui.heading("Outliner").drag_started();
 
-        self.draw_file_tree(self.root, ui).unwrap();
+        ui.spacing_mut().item_spacing.y = 7.5;
+
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            self.draw_file_tree(self.root, ui).unwrap();
+        });
 
         if drag_started {
             egui_tiles::UiResponse::DragStarted

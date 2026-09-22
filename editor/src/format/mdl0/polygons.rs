@@ -164,8 +164,6 @@ impl Deserialize for Polygon {
         reader.set_position(definitions_start as u64);
         let gx_bytecode = GxBytecode::deserialize(reader, definitions_end as u64)?;
 
-        dbg!(&gx_bytecode);
-
         Ok(Self {
             vertex_count,
             face_count,
