@@ -2,6 +2,7 @@ pub mod bones;
 pub mod bytecode;
 pub mod colors;
 pub mod gx;
+pub mod materials;
 pub mod normals;
 pub mod pal_links;
 pub mod polygons;
@@ -12,7 +13,7 @@ pub mod vertices;
 
 use std::collections::HashMap;
 
-use crate::error::{CorruptionError, EditorError, EditorResult};
+use crate::error::{CorruptionError, EditorError, EditorResult, UnsupportedError};
 use crate::node::defer::Deferred;
 use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
@@ -123,7 +124,7 @@ pub enum SectionType {
     FurLayers,
     Materials,
     Tevs,
-    Objects,
+    Polygons,
     TextureLinks,
     PaletteLinks,
     UserData,
@@ -144,7 +145,7 @@ impl TryFrom<u32> for SectionType {
             7 => Self::FurLayers,
             8 => Self::Materials,
             9 => Self::Tevs,
-            10 => Self::Objects,
+            10 => Self::Polygons,
             11 => Self::TextureLinks,
             12 => Self::PaletteLinks,
             13 => Self::UserData,
@@ -276,6 +277,16 @@ pub fn deserialize_virtual(
     name: String,
 ) -> EditorResult<VirtualNodeId> {
     let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
+    if subfile_header.subfile_version != 11 {
+        return Err(UnsupportedError {
+            reason: format!(
+                "MDL0 version {} is not supported, only version 11 is",
+                subfile_header.subfile_version
+            ),
+            location: Some(reader.position()),
+        }
+        .into());
+    }
 
     let expected_sections =
         brres::get_section_count(SubfileType::Mdl0, subfile_header.subfile_version)?;
@@ -339,7 +350,13 @@ pub fn deserialize_virtual(
                     parent_id,
                     &node_map2,
                 ),
-                SectionType::Objects => polygons::deserialize_virtual(
+                SectionType::Materials => materials::deserialize_virtual(
+                    &mut reader,
+                    subfile_header.header_start,
+                    parent_id,
+                    &node_map2,
+                ),
+                SectionType::Polygons => polygons::deserialize_virtual(
                     &mut reader,
                     subfile_header.header_start,
                     parent_id,

@@ -84,6 +84,7 @@ pub enum VirtualNodeKind {
     Normals,
     Colors,
     Uvs,
+    Materials,
     Polygon,
     TextureLinks,
     PaletteLinks,
@@ -103,6 +104,7 @@ impl VirtualNodeKind {
             | Self::Normals
             | Self::Colors
             | Self::Uvs
+            | Self::Materials
             | Self::Polygon
             | Self::TextureLinks
             | Self::PaletteLinks
@@ -124,6 +126,7 @@ impl VirtualNodeKind {
             Self::Normals => reg_icon!(ARROW_ELBOW_RIGHT),
             Self::Colors => reg_icon!(PAINT_BRUSH_HOUSEHOLD),
             Self::Uvs => reg_icon!(BOUNDING_BOX),
+            Self::Materials => reg_icon!(PALETTE),
             Self::Polygon => reg_icon!(CUBE),
             Self::TextureLinks => reg_icon!(LINK),
             Self::PaletteLinks => reg_icon!(LINK),
