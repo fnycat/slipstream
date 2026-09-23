@@ -172,8 +172,6 @@ impl Deserialize for Polygon {
         let vertices_start =
             object_start as i64 + VERTEX_DATA_INTERNAL_OFFSET as i64 + vertex_data_offset as i64;
 
-        tracing::debug!("{definitions_end} and {vertices_start}");
-
         let vertices_end = vertices_start + vertex_data_size as i64;
 
         reader.set_position(vertices_start as u64);

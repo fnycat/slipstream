@@ -2,13 +2,12 @@
 
 pub mod app;
 
-#[macro_use]
-pub mod icons;
 pub mod cmd;
 pub mod config;
 pub mod decorations;
 pub mod editor;
 pub mod format;
+pub mod icons;
 pub mod inspector;
 pub mod node;
 pub mod pages;

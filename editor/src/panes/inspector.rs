@@ -1,12 +1,9 @@
-use std::{
-    hash::{DefaultHasher, Hash, Hasher},
-    sync::mpsc,
-};
+use std::sync::mpsc;
 
 use crate::{
-    error::{EditorError, InvalidInputError},
     node::refs::{VirtualNodeId, VirtualNodeMap},
     panes::{ContentSignature, Pane, PaneAction},
+    reg_icon,
 };
 
 pub struct InspectorPane {

@@ -2,10 +2,9 @@ use std::sync::mpsc;
 
 use crate::error::EditorResult;
 use crate::node::defer::Deferred;
-use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
-use crate::panes::inspector::InspectorPane;
+use crate::node::refs::VirtualNodeId;
 use crate::panes::{PaneAction, RequestPane};
-use crate::shared::util::AssertSend;
+use crate::{fill_icon, reg_icon};
 
 pub trait Inspectable: Send + std::fmt::Debug {
     fn draw_properties(&mut self, ui: &mut egui::Ui);

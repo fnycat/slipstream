@@ -9,6 +9,7 @@ egui_phosphor::subset! {
     }
 }
 
+#[macro_export]
 macro_rules! reg_icon {
     ($icon:ident) => {
         // $crate::icons::icons::regular::rich($crate::icons::icons::regular::$icon)
@@ -16,6 +17,7 @@ macro_rules! reg_icon {
     };
 }
 
+#[macro_export]
 macro_rules! fill_icon {
     ($icon:ident) => {
         $crate::icons::icons::fill::rich($crate::icons::icons::fill::$icon)

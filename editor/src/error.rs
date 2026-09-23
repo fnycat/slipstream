@@ -111,8 +111,30 @@ impl Display for InvalidInputError {
     }
 }
 
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub struct AssertFailed {
+    pub reason: String,
+    pub location: Option<u64>,
+}
+
+impl Display for AssertFailed {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(location) = self.location {
+            write!(f, "{}, at location {location}", self.reason)
+        } else {
+            f.write_str(&self.reason)
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum EditorError {
+    #[error("assertion failed: {source}")]
+    AssertFailed {
+        #[from]
+        source: AssertFailed,
+        backtrace: Backtrace,
+    },
     #[error("unsupported: {source}")]
     Unsupported {
         #[from]

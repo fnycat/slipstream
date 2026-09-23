@@ -66,10 +66,21 @@ pub struct TextureReadSettings {
     _padding2: u16,
 }
 
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
+pub struct DepthTest {
+    pub enable_depth_test: bool,
+    #[bits(3)]
+    pub depth_function: AlphaCompare,
+    pub enable_depth_write: bool,
+    #[bits(27)]
+    _padding: u32,
+}
+
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
-pub enum AlphaBlendDest {
+pub enum BlendFactor {
     Zero = 0b000,
     One = 0b001,
     SourceColor = 0b010,
@@ -82,20 +93,62 @@ pub enum AlphaBlendDest {
     Invalid,
 }
 
+#[bitenum]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
+pub enum LogicOp {
+    Clear,
+    And,
+    ReverseAnd,
+    Copy,
+    InverseAnd,
+    NoOp,
+    Xor,
+    Or,
+    Nor,
+    Equivalent,
+    Inverse,
+    ReverseOr,
+    InverseCopy,
+    InverseOr,
+    Nand,
+    Set,
+    #[fallback]
+    Invalid,
+}
+
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
-pub struct AlphaBlendSettings {
-    pub enable_alpha: bool,
+pub struct BlendMode {
+    pub enable_blend: bool,
+    pub enable_logic: bool,
+    pub enable_dither: bool,
+    pub update_color: bool,
+    pub update_alpha: bool,
+    #[bits(3)]
+    pub dst_factor: BlendFactor,
+    #[bits(3)]
+    pub src_factor: BlendFactor,
+    pub subtract: bool,
     #[bits(4)]
-    _unknown1: u8,
-    #[bits(3)]
-    pub blend_dest: AlphaBlendDest,
-    #[bits(3)]
-    pub blend_src: AlphaBlendDest,
-    #[bits(5)]
-    _unknown2: u8,
+    pub logic_op: LogicOp,
     #[bits(16)]
     _padding: u16,
+}
+
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
+pub struct ConstantAlpha {
+    #[bits(8)]
+    _padding1: u8,
+    #[bits(1)]
+    pub enable: bool,
+    #[bits(7)]
+    _padding2: u8,
+    #[bits(8)]
+    pub value: u8,
+    #[bits(8)]
+    _padding3: u8,
 }
 
 #[bitenum]
@@ -274,6 +327,51 @@ pub struct SwapModeTableSettings {
     _padding: u8,
 }
 
+#[bitenum]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
+pub enum AlphaCompare {
+    Never = 0x00,
+    Less = 0x01,
+    Equal = 0x02,
+    LessOrEqual = 0x03,
+    Greater = 0x04,
+    NotEqual = 0x05,
+    GreaterOrEqual = 0x06,
+    Always = 0x07,
+    #[fallback]
+    Invalid,
+}
+
+#[bitenum]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
+pub enum AlphaOp {
+    And,
+    Or,
+    Xor,
+    Xnor,
+    #[fallback]
+    Invalid,
+}
+
+#[bitfield(u32)]
+#[derive(PartialEq, Eq)]
+pub struct AlphaFunction {
+    #[bits(8)]
+    pub ref0: u8,
+    #[bits(8)]
+    pub ref1: u8,
+    #[bits(3)]
+    pub comp0: AlphaCompare,
+    #[bits(3)]
+    pub comp1: AlphaCompare,
+    #[bits(2)]
+    pub logic: AlphaOp,
+    #[bits(8)]
+    _padding: u8,
+}
+
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct MaterialAddressRange {
@@ -294,7 +392,9 @@ pub enum LoadBpOpCode {
         tex_id: u8,
         payload: TextureReadSettings,
     },
-    AlphaBlend(AlphaBlendSettings),
+    DepthTest(DepthTest),
+    BlendMode(BlendMode),
+    ConstantAlpha(ConstantAlpha),
     ColorLayerBlend {
         layer: u8,
         payload: ColorLayerBlendSettings,
@@ -311,6 +411,7 @@ pub enum LoadBpOpCode {
         components: ComponentsSet,
         payload: MaterialAddressRange,
     },
+    AlphaFunction(AlphaFunction),
     WriteMask(u32),
 }
 
@@ -320,12 +421,14 @@ pub enum ComponentsSet {
     BlueGreen,
 }
 
+impl LoadBpOpCode {}
+
 impl Deserialize for LoadBpOpCode {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-        let address = reader.read_u16::<BigEndian>()?;
+        let address = reader.read_u8()?;
         let value = reader.read_u24::<BigEndian>()?;
 
-        let payload = match address {
+        Ok(match address {
             0x27 => Self::IndirectTexture(SetIndirectTexture::from_bits(value)),
             0x28..=0x2f => {
                 let tex_id = todo!("compute tex id");
@@ -334,7 +437,9 @@ impl Deserialize for LoadBpOpCode {
                     payload: TextureReadSettings::from_bits(value),
                 }
             }
-            0x41 => Self::AlphaBlend(AlphaBlendSettings::from_bits(value)),
+            0x40 => Self::DepthTest(DepthTest::from_bits(value)),
+            0x41 => Self::BlendMode(BlendMode::from_bits(value)),
+            0x42 => Self::ConstantAlpha(ConstantAlpha::from_bits(value)),
             0xc0 | 0xc2 | 0xc4 | 0xc6 | 0xc8 | 0xca | 0xcc | 0xce => Self::ColorLayerBlend {
                 layer: address as u8,
                 payload: ColorLayerBlendSettings::from_bits(value),
@@ -362,6 +467,7 @@ impl Deserialize for LoadBpOpCode {
                     payload: MaterialAddressRange::from_bits(value),
                 }
             }
+            0xf3 => Self::AlphaFunction(AlphaFunction::from_bits(value)),
             0xfe => Self::WriteMask(value),
             _ => {
                 return Err(CorruptionError {
@@ -370,8 +476,6 @@ impl Deserialize for LoadBpOpCode {
                 }
                 .into());
             }
-        };
-
-        Ok(payload)
+        })
     }
 }
