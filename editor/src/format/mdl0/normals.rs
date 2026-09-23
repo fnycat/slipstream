@@ -61,10 +61,17 @@ impl Deserialize for NormalFormat {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum NormalBufType {
+    NormalOnly,
+    All,
+    Any,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum NormalBufData {
     /// Only the normal.
-    Normal(Vec<[f32; 3]>),
+    NormalOnly(Vec<[f32; 3]>),
     /// Includes all of the normal, bi-normal and tangent
     All(Vec<[f32; 9]>),
     /// Either the normal, bi-normal or tangent.
@@ -72,9 +79,17 @@ pub enum NormalBufData {
 }
 
 impl NormalBufData {
+    pub fn ty(&self) -> NormalBufType {
+        match self {
+            Self::NormalOnly(_) => NormalBufType::NormalOnly,
+            Self::All(_) => NormalBufType::All,
+            Self::Any(_) => NormalBufType::Any,
+        }
+    }
+
     pub fn len(&self) -> usize {
         match self {
-            Self::Normal(x) => x.len(),
+            Self::NormalOnly(x) => x.len(),
             Self::All(x) => x.len(),
             Self::Any(x) => x.len(),
         }
@@ -107,7 +122,7 @@ impl NormalBuf {
         reader.set_position(normals_start as u64);
 
         let normals = match component_count {
-            COMPONENTS_NORMAL => NormalBufData::Normal(deserialize_vector_data::<3>(
+            COMPONENTS_NORMAL => NormalBufData::NormalOnly(deserialize_vector_data::<3>(
                 reader,
                 normal_count as usize,
                 VertexFormat::from(format),

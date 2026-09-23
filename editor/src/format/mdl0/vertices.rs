@@ -18,12 +18,25 @@ const COMPONENTS_XY: u32 = 0x0;
 const COMPONENTS_XYZ: u32 = 0x1;
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum VertexPositionType {
+    Xy,
+    Xyz,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum VertexBufData {
     Xy(Vec<[f32; 2]>),
     Xyz(Vec<[f32; 3]>),
 }
 
 impl VertexBufData {
+    pub const fn ty(&self) -> VertexPositionType {
+        match self {
+            Self::Xy(_) => VertexPositionType::Xy,
+            Self::Xyz(_) => VertexPositionType::Xyz,
+        }
+    }
+
     pub const fn components(&self) -> usize {
         match self {
             Self::Xy(_) => 2,

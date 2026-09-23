@@ -103,7 +103,7 @@ impl NormalData {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DirectColor {
-    AlphaDisabled(glam::U8Vec3),
+    AlphaDisabled(glam::U8Vec4),
     AlphaEnabled(glam::U8Vec4),
 }
 
@@ -112,7 +112,7 @@ impl DirectColor {
         Ok(if cp.cp3.col0_extended() {
             Self::AlphaEnabled(deserialize_color(reader, cp.cp3.col0_format())?)
         } else {
-            Self::AlphaDisabled(deserialize_color(reader, cp.cp3.col0_format())?.xyz())
+            Self::AlphaDisabled(deserialize_color(reader, cp.cp3.col0_format())?)
         })
     }
 
@@ -120,7 +120,7 @@ impl DirectColor {
         Ok(if cp.cp3.col1_extended() {
             Self::AlphaEnabled(deserialize_color(reader, cp.cp3.col1_format())?)
         } else {
-            Self::AlphaDisabled(deserialize_color(reader, cp.cp3.col1_format())?.xyz())
+            Self::AlphaDisabled(deserialize_color(reader, cp.cp3.col1_format())?)
         })
     }
 }

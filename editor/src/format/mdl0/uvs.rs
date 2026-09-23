@@ -20,10 +20,25 @@ use crate::{
 const COMPONENTS_S: u32 = 0x00;
 const COMPONENTS_ST: u32 = 0x01;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum UvDataType {
+    S,
+    St,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum UvBufData {
     S(Vec<f32>),
     St(Vec<[f32; 2]>),
+}
+
+impl UvBufData {
+    pub fn ty(&self) -> UvDataType {
+        match self {
+            Self::S(_) => UvDataType::S,
+            Self::St(_) => UvDataType::St,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
