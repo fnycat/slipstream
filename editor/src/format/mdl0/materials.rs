@@ -8,7 +8,7 @@ use crate::{
     error::{CorruptionError, EditorError, EditorResult},
     format::{
         brres::IndexGroup,
-        encoding::{Deserialize, ReadArrayExt},
+        encoding::{Deserialize, ReadArrayExt, ReadStringExt},
         mdl0::{
             TextureMatrixMode,
             gx::{
@@ -383,12 +383,204 @@ impl Deserialize for MaterialMode {
             .into());
         };
 
+        // Then 7 bytes of padding
+        reader.set_position(reader.position() + 7);
+
         Ok(Self {
             alpha_fn,
             depth_test,
             write_mask,
             blend_mode,
             constant_alpha,
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum MinificationFilter {
+    Nearest = 0x00,
+    Linear = 0x01,
+    NearestMipmapNearest = 0x02,
+    LinearMipmapNearest = 0x03,
+    NearestMipmapLinear = 0x04,
+    LinearMipmapLinear = 0x05,
+}
+
+impl TryFrom<u32> for MinificationFilter {
+    type Error = EditorError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        Ok(match value {
+            0x00 => Self::Nearest,
+            0x01 => Self::Linear,
+            0x02 => Self::NearestMipmapNearest,
+            0x03 => Self::LinearMipmapNearest,
+            0x04 => Self::NearestMipmapLinear,
+            0x05 => Self::LinearMipmapLinear,
+            _ => {
+                return Err(CorruptionError {
+                    reason: format!("invalid minification filter: {value:#04x} (expected 0-5)"),
+                    location: None,
+                }
+                .into());
+            }
+        })
+    }
+}
+
+impl Deserialize for MinificationFilter {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let word = reader.read_u32::<BigEndian>()?;
+        Self::try_from(word)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum MagnificationFilter {
+    Nearest = 0x00,
+    Linear = 0x01,
+}
+
+impl TryFrom<u32> for MagnificationFilter {
+    type Error = EditorError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        Ok(match value {
+            0x00 => Self::Nearest,
+            0x01 => Self::Linear,
+            _ => {
+                return Err(CorruptionError {
+                    reason: format!("invalid magnification filter: {value:#04x} (expected 0, 1)"),
+                    location: None,
+                }
+                .into());
+            }
+        })
+    }
+}
+
+impl Deserialize for MagnificationFilter {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let word = reader.read_u32::<BigEndian>()?;
+        Self::try_from(word)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AnisotropyFiltering {
+    One = 0x00,
+    Two = 0x01,
+    Four = 0x02,
+}
+
+impl TryFrom<u32> for AnisotropyFiltering {
+    type Error = EditorError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        Ok(match value {
+            0x00 => Self::One,
+            0x01 => Self::Two,
+            0x02 => Self::Four,
+            _ => {
+                return Err(CorruptionError {
+                    reason: format!("invalid anisotropy filtering: {value:#04x} (expected 0-2)"),
+                    location: None,
+                }
+                .into());
+            }
+        })
+    }
+}
+
+impl Deserialize for AnisotropyFiltering {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let word = reader.read_u32::<BigEndian>()?;
+        Self::try_from(word)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum WrapMode {
+    Clamp = 0x00,
+    Repeat = 0x01,
+    Mirror = 0x02,
+}
+
+impl TryFrom<u32> for WrapMode {
+    type Error = EditorError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        Ok(match value {
+            0x00 => Self::Clamp,
+            0x01 => Self::Repeat,
+            0x02 => Self::Mirror,
+            _ => {
+                return Err(CorruptionError {
+                    reason: format!("invalid wrap mode: {value:#04x} (expected 0-2)"),
+                    location: None,
+                }
+                .into());
+            }
+        })
+    }
+}
+
+impl Deserialize for WrapMode {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let word = reader.read_u32::<BigEndian>()?;
+        Self::try_from(word)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TextureReference {
+    pub texture_id: i32,
+    pub palette_id: i32,
+    pub texture_data_id: u32,
+    pub palette_data_id: u32,
+    pub uwrap: WrapMode,
+    pub vwrap: WrapMode,
+    pub min_filter: MinificationFilter,
+    pub mag_filter: MagnificationFilter,
+    pub lod_bias: f32,
+    pub max_anisotropy_filtering: AnisotropyFiltering,
+    pub clamp_bias: u8,
+    pub texel_interpolate: u8,
+}
+
+impl Deserialize for TextureReference {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+        let texture_id = reader.read_i32::<BigEndian>()?;
+        let palette_id = reader.read_i32::<BigEndian>()?;
+        let _texture_pointer = reader.read_i32::<BigEndian>()?;
+        let _palette_pointer = reader.read_i32::<BigEndian>()?;
+        let texture_data_id = reader.read_u32::<BigEndian>()?;
+        let palette_data_id = reader.read_u32::<BigEndian>()?;
+        let uwrap = WrapMode::deserialize(reader)?;
+        let vwrap = WrapMode::deserialize(reader)?;
+        let min_filter = MinificationFilter::deserialize(reader)?;
+        let mag_filter = MagnificationFilter::deserialize(reader)?;
+        let lod_bias = reader.read_f32::<BigEndian>()?;
+        let max_anisotropy_filtering = AnisotropyFiltering::deserialize(reader)?;
+        let clamp_bias = reader.read_u8()?;
+        let texel_interpolate = reader.read_u8()?;
+
+        // Skip over padding
+        reader.set_position(reader.position() + 2);
+
+        Ok(Self {
+            texture_id,
+            palette_id,
+            texture_data_id,
+            palette_data_id,
+            uwrap,
+            vwrap,
+            min_filter,
+            mag_filter,
+            lod_bias,
+            max_anisotropy_filtering,
+            clamp_bias,
+            texel_interpolate,
         })
     }
 }
@@ -410,9 +602,19 @@ pub struct MaterialBuf {
     pub shader_offset: i32,
     pub texture_count: u32,
     pub material_ref_offset: i32,
-    pub data_offset1: i32,
-    pub data_offset2: i32,
-    pub material_mode: MaterialMode,
+    pub fur_data_offset: i32,
+    pub user_data_offset: i32,
+    pub material_bytecode: MaterialMode,
+    pub used_texture_maps: UsedTextureMaps,
+    // pub precompiled_texture_code: [u8; 160],
+    pub used_palettes: UsedPalettes,
+    // pub precompiled_palette_code: [u8; 160],
+    pub layer_settings: LayerSettings,
+    pub texture_matrix_mode: TextureMatrixMode,
+    pub layer_coordinates: [LayerCoordinates; 8],
+    pub texture_matrix_settings: [TextureMatrixSettings; 8],
+    pub light_channel_settings: [LightChannelSettings; 2],
+    pub texture_references: Vec<TextureReference>,
 }
 
 impl Deserialize for MaterialBuf {
@@ -442,14 +644,60 @@ impl Deserialize for MaterialBuf {
         let shader_offset = reader.read_i32::<BigEndian>()?;
         let texture_count = reader.read_u32::<BigEndian>()?;
         let material_ref_offset = reader.read_i32::<BigEndian>()?;
-        let data_offset1 = reader.read_i32::<BigEndian>()?;
-        let data_offset2 = reader.read_i32::<BigEndian>()?;
-        let data_offset3 = reader.read_i32::<BigEndian>()?;
+        let fur_data_offset = reader.read_i32::<BigEndian>()?;
+        let user_data_offset = reader.read_i32::<BigEndian>()?;
+        let mode_offset = reader.read_i32::<BigEndian>()?; // does not exist in v9 MDL0 or lower.
 
-        let mode_start = material_start as i64 + data_offset3 as i64;
-        reader.set_position(mode_start as u64);
+        let used_texture_maps = UsedTextureMaps::deserialize(reader)?;
+        let precompiled_texture_code = reader.read_u8_array::<160>()?;
+        let used_palettes = UsedPalettes::deserialize(reader)?;
+        let precompiled_palette_code = reader.read_u8_array::<160>()?;
+        let layer_settings = LayerSettings::deserialize(reader)?;
+        let texture_matrix_mode = TextureMatrixMode::deserialize(reader)?;
+        let light_channel_settings = [
+            LightChannelSettings::deserialize(reader)?,
+            LightChannelSettings::deserialize(reader)?,
+        ];
+        let layer_coordinates = [
+            LayerCoordinates::deserialize(reader)?,
+            LayerCoordinates::deserialize(reader)?,
+            LayerCoordinates::deserialize(reader)?,
+            LayerCoordinates::deserialize(reader)?,
+            LayerCoordinates::deserialize(reader)?,
+            LayerCoordinates::deserialize(reader)?,
+            LayerCoordinates::deserialize(reader)?,
+            LayerCoordinates::deserialize(reader)?,
+        ];
 
-        let material_mode = MaterialMode::deserialize(reader)?;
+        let texture_matrix_settings = [
+            TextureMatrixSettings::deserialize(reader)?,
+            TextureMatrixSettings::deserialize(reader)?,
+            TextureMatrixSettings::deserialize(reader)?,
+            TextureMatrixSettings::deserialize(reader)?,
+            TextureMatrixSettings::deserialize(reader)?,
+            TextureMatrixSettings::deserialize(reader)?,
+            TextureMatrixSettings::deserialize(reader)?,
+            TextureMatrixSettings::deserialize(reader)?,
+        ];
+
+        let material_bytecode = {
+            let mode_start = material_start as i64 + mode_offset as i64;
+            reader.set_position(mode_start as u64);
+
+            MaterialMode::deserialize(reader)?
+        };
+
+        let texture_references = {
+            let ref_start = material_start as i64 + material_ref_offset as i64;
+            reader.set_position(ref_start as u64);
+
+            let mut refs = Vec::with_capacity(texture_count as usize);
+            for _ in 0..texture_count {
+                refs.push(TextureReference::deserialize(reader)?);
+            }
+
+            refs
+        };
 
         Ok(Self {
             index,
@@ -467,9 +715,18 @@ impl Deserialize for MaterialBuf {
             shader_offset,
             texture_count,
             material_ref_offset,
-            data_offset1,
-            data_offset2,
-            material_mode,
+            fur_data_offset,
+            user_data_offset,
+            material_bytecode,
+            used_texture_maps,
+            used_palettes,
+            layer_settings,
+            texture_matrix_mode,
+            layer_coordinates,
+            texture_matrix_settings,
+            light_channel_settings,
+
+            texture_references,
         })
     }
 }

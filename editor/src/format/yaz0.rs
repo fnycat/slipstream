@@ -176,6 +176,8 @@ impl Deserialize for Yaz0File {
 
         tracing::trace!("Successfully decompressed {total_chunks} chunks in Yaz0 archive");
 
+        std::fs::write("dump.bin", &uncompressed).unwrap();
+
         Ok(Self {
             header,
             uncompressed,
