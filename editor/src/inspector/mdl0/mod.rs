@@ -8,3 +8,5 @@ pub mod polygons;
 pub mod tex_links;
 pub mod uvs;
 pub mod vertices;
+pub mod tevs;
+pub mod textures;

@@ -134,15 +134,15 @@ impl GxBytecode {
     ) -> EditorResult<Self> {
         let mut commands = Vec::new();
         while reader.position() < section_end {
-            let opcode = reader.read_u8()?;
+            let opcode = GxOpCodeId::try_from(reader.read_u8()?)?;
             commands.push(match opcode {
-                0x00 => continue,
-                0x08 => GxOpCode::LoadCp(LoadCpOpCode::deserialize(reader)?),
-                0x10 => GxOpCode::LoadXf(LoadXfOpCode::deserialize(reader)?),
-                0x61 => GxOpCode::LoadBp(LoadBpOpCode::deserialize(reader)?),
+                GxOpCodeId::Nop => continue,
+                GxOpCodeId::LoadCp => GxOpCode::LoadCp(LoadCpOpCode::deserialize(reader)?),
+                GxOpCodeId::LoadXf => GxOpCode::LoadXf(LoadXfOpCode::deserialize(reader)?),
+                GxOpCodeId::LoadBp => GxOpCode::LoadBp(LoadBpOpCode::deserialize(reader)?),
                 _ => {
                     return Err(CorruptionError {
-                        reason: format!("invalid vertex declaration GX opcode: {opcode:#04x}"),
+                        reason: format!("invalid vertex declaration GX opcode: {opcode:?}"),
                         location: Some(reader.position()),
                     }
                     .into());
@@ -169,35 +169,35 @@ impl GxBytecode {
 
         let mut commands = Vec::new();
         while reader.position() < section_end {
-            let opcode = reader.read_u8()?;
+            let opcode = GxOpCodeId::try_from(reader.read_u8()?)?;
             commands.push(match opcode {
-                0x00 => continue,
-                0x20 => GxOpCode::LoadIndexedPosition(IndexedLoad::deserialize(reader)?),
-                0x28 => GxOpCode::LoadIndexedNormal(IndexedLoad::deserialize(reader)?),
-                0x30 => GxOpCode::LoadIndexedTextureMatrix(IndexedLoad::deserialize(reader)?),
-                0x38 => GxOpCode::LoadIndexedLightObject(IndexedLoad::deserialize(reader)?),
-                0x40 => GxOpCode::Call(CallDisplayList::deserialize(reader)?),
-                0x44 => GxOpCode::Unknown,
-                0x48 => GxOpCode::InvalidateVertexCache,
-                0x80 => GxOpCode::DrawQuads(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?),
-                0x90 => {
+                GxOpCodeId::Nop => continue,
+                GxOpCodeId::LoadIndexedPositionMatrix => GxOpCode::LoadIndexedPosition(IndexedLoad::deserialize(reader)?),
+                GxOpCodeId::LoadIndexedNormalMatrix => GxOpCode::LoadIndexedNormal(IndexedLoad::deserialize(reader)?),
+                GxOpCodeId::LoadIndexedTextureMatrix => GxOpCode::LoadIndexedTextureMatrix(IndexedLoad::deserialize(reader)?),
+                GxOpCodeId::LoadIndexedLightObject => GxOpCode::LoadIndexedLightObject(IndexedLoad::deserialize(reader)?),
+                GxOpCodeId::Call => GxOpCode::Call(CallDisplayList::deserialize(reader)?),
+                GxOpCodeId::Unknown => GxOpCode::Unknown,
+                GxOpCodeId::InvalidateVertexCache => GxOpCode::InvalidateVertexCache,
+                GxOpCodeId::DrawQuads => GxOpCode::DrawQuads(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?),
+                GxOpCodeId::DrawTriangles => {
                     GxOpCode::DrawTriangles(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?)
                 }
-                0x98 => GxOpCode::DrawTriangleStrip(DrawOpCode::deserialize(
+                GxOpCodeId::DrawTriangleStrip => GxOpCode::DrawTriangleStrip(DrawOpCode::deserialize(
                     reader,
                     &merged_cp_opcodes,
                 )?),
-                0xa0 => {
+                GxOpCodeId::DrawTriangleFan => {
                     GxOpCode::DrawTriangleFan(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?)
                 }
-                0xa8 => GxOpCode::DrawLines(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?),
-                0xb0 => {
+                GxOpCodeId::DrawLines => GxOpCode::DrawLines(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?),
+                GxOpCodeId::DrawLineStrip => {
                     GxOpCode::DrawLineStrip(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?)
                 }
-                0xb8 => GxOpCode::DrawPoints(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?),
+                GxOpCodeId::DrawPoints => GxOpCode::DrawPoints(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?),
                 _ => {
                     return Err(CorruptionError {
-                        reason: format!("invalid vertex data GX opcode: {opcode:#04x}"),
+                        reason: format!("invalid vertex data GX opcode: {opcode:?}"),
                         location: Some(reader.position()),
                     }
                     .into());
@@ -211,6 +211,39 @@ impl GxBytecode {
                 location: Some(reader.position())
             }.into());
         }
+
+        Ok(Self { commands })
+    }
+
+    pub fn deserialize_tev_data(
+        reader: &mut RefCursor<[u8]>
+    ) -> EditorResult<Self> {
+        const TEV_BYTECODE_SIZE: usize = 0x20; // Size is always 0x20
+
+        let section_end = reader.position() + TEV_BYTECODE_SIZE as u64;
+        let mut commands = Vec::new();
+
+        while reader.position() < section_end {
+            let opcode = GxOpCodeId::try_from(reader.read_u8()?)?;
+            commands.push(match opcode {
+                GxOpCodeId::LoadBp => GxOpCode::LoadBp(LoadBpOpCode::deserialize(reader)?),
+                _ => return Err(CorruptionError {
+                    reason: format!("invalid TEV bytecode opcode ID: {opcode:?}"),
+                    location: Some(reader.position())
+                }.into())
+            });
+
+            tracing::trace!("TEV opcode: {opcode:?}");
+
+            break;
+        }
+
+        // if reader.position() != section_end {
+        //     return Err(CorruptionError {
+        //         reason: format!("did not read correct amount of opcodes in vertex declaration GX bytecode ({} vs. {})", reader.position(), section_end),
+        //         location: Some(reader.position())
+        //     }.into());
+        // }
 
         Ok(Self { commands })
     }

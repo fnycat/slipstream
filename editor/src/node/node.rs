@@ -84,6 +84,7 @@ pub enum VirtualNodeKind {
     Colors,
     Uvs,
     Materials,
+    Tevs,
     Polygon,
     TextureLinks,
     PaletteLinks,
@@ -104,6 +105,7 @@ impl VirtualNodeKind {
             | Self::Colors
             | Self::Uvs
             | Self::Materials
+            | Self::Tevs
             | Self::Polygon
             | Self::TextureLinks
             | Self::PaletteLinks
@@ -126,6 +128,7 @@ impl VirtualNodeKind {
             Self::Colors => reg_icon!(PAINT_BRUSH_HOUSEHOLD),
             Self::Uvs => reg_icon!(BOUNDING_BOX),
             Self::Materials => reg_icon!(PALETTE),
+            Self::Tevs => reg_icon!(GRAPHICS_CARD),
             Self::Polygon => reg_icon!(CUBE),
             Self::TextureLinks => reg_icon!(LINK),
             Self::PaletteLinks => reg_icon!(LINK),

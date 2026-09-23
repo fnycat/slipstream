@@ -698,6 +698,8 @@ impl Deserialize for MaterialBuf {
 
             refs
         };
+        
+        todo!("shader data");
 
         Ok(Self {
             index,

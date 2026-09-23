@@ -10,6 +10,8 @@ pub mod tex_links;
 pub mod util;
 pub mod uvs;
 pub mod vertices;
+pub mod tevs;
+pub mod textures;
 
 use std::collections::HashMap;
 
@@ -355,6 +357,11 @@ pub fn deserialize_virtual(
                     subfile_header.header_start,
                     parent_id,
                     &node_map2,
+                ),
+                SectionType::Tevs => tevs::deserialize_virtual(
+                    &mut reader,
+                    parent_id,
+                    &node_map2
                 ),
                 SectionType::Polygons => polygons::deserialize_virtual(
                     &mut reader,
