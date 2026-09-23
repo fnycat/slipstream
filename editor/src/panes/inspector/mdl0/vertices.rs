@@ -1,7 +1,6 @@
-use crate::editor::Editor;
 use crate::format::mdl0::vertices::VertexBuf;
-use crate::inspector::widgets::{draw_inspector_section_header, draw_vec_drag_values};
 use crate::node::node::Inspectable;
+use crate::panes::inspector::widgets::{draw_inspector_section_header, draw_vec_drag_values};
 
 impl Inspectable for VertexBuf {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {

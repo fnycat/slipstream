@@ -11,7 +11,6 @@ pub mod util;
 pub mod uvs;
 pub mod vertices;
 pub mod tevs;
-pub mod textures;
 
 use std::collections::HashMap;
 

@@ -8,7 +8,6 @@ pub mod decorations;
 pub mod editor;
 pub mod format;
 pub mod icons;
-pub mod inspector;
 pub mod node;
 pub mod pages;
 pub mod panes;

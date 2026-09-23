@@ -1,3 +1,5 @@
+pub mod translator;
+
 use std::{
     hash::{DefaultHasher, Hash, Hasher},
     sync::{Arc, mpsc},
@@ -334,7 +336,7 @@ impl PipelineState {
     pub fn new(state: &GraphicsState, camera_state: &CameraState) -> Self {
         let shader = state
             .device
-            .create_shader_module(wgpu::include_wgsl!("../../shaders/viewer.wgsl").into());
+            .create_shader_module(wgpu::include_wgsl!("../../../shaders/viewer.wgsl").into());
 
         let pipeline_layout =
             state

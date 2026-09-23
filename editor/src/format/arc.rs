@@ -1,10 +1,10 @@
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::error::{CorruptionError, EditorError, EditorResult, IncorrectFormat};
-use crate::inspector::raw::Raw;
 use crate::node::defer::Deferred;
 use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
+use crate::panes::inspector::raw::Raw;
 use crate::{
     format::{
         brres::{self, BRRES_MAGIC},
