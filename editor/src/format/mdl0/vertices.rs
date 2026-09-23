@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::error::{CorruptionError, EditorResult};
@@ -6,6 +8,7 @@ use crate::format::mdl0::util::VectorDivisor;
 use crate::node::defer::Deferred;
 use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
+use crate::panes::viewer::translator::WiiModel;
 use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
@@ -90,8 +93,6 @@ impl VertexBuf {
         let vertices_start = header_start as i64 + data_offset as i64;
         reader.set_position(vertices_start as u64);
 
-        // FIXME: This vertex data is not included in the lazy buffer.
-
         let vertices = match component_count {
             COMPONENTS_XY => VertexBufData::Xy(deserialize_vector_data::<2>(
                 reader,
@@ -146,6 +147,12 @@ pub fn deserialize_virtual(
         reader.set_position(data_start as u64);
 
         let model = VertexBuf::deserialize(reader, header_start)?;
+
+        let wii_model = WiiModel {
+            vertex_buf: Cow::Borrowed(&model),
+        };
+
+        wii_model.translate();
 
         let id = node_map.next_id();
         let node = VirtualNode {

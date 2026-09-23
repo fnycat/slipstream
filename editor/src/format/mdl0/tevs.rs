@@ -1,4 +1,3 @@
-use byteorder::{BigEndian, ReadBytesExt};
 use crate::error::EditorResult;
 use crate::format::brres::IndexGroup;
 use crate::format::encoding::{Deserialize, ReadArrayExt};
@@ -7,11 +6,12 @@ use crate::node::defer::Deferred;
 use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::shared::util::RefCursor;
+use byteorder::{BigEndian, ReadBytesExt};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tev {
     pub tex_scales: [u8; 8],
-    pub bytecode: GxBytecode
+    pub bytecode: GxBytecode,
 }
 
 impl Deserialize for Tev {
@@ -28,17 +28,22 @@ impl Deserialize for Tev {
         reader.set_position(reader.position() + 8); // padding
 
         let bytecode = GxBytecode::deserialize_tev_data(reader)?;
-    
+
         todo!("TEV");
 
         Ok(Self {
-            tex_scales, bytecode
+            tex_scales,
+            bytecode,
         })
     }
 }
 
 #[tracing::instrument(skip_all, fields(parent_id))]
-pub fn deserialize_virtual(reader: &mut RefCursor<[u8]>, parent_id: VirtualNodeId, node_map: &VirtualNodeMap) -> EditorResult<VirtualNodeBody> {
+pub fn deserialize_virtual(
+    reader: &mut RefCursor<[u8]>,
+    parent_id: VirtualNodeId,
+    node_map: &VirtualNodeMap,
+) -> EditorResult<VirtualNodeBody> {
     let section_index = IndexGroup::deserialize(reader)?;
 
     let mut tevs = Vec::with_capacity(section_index.entries.len() - 1);
@@ -57,8 +62,8 @@ pub fn deserialize_virtual(reader: &mut RefCursor<[u8]>, parent_id: VirtualNodeI
             kind: VirtualNodeKind::Tevs,
             body: Deferred::evaluated(VirtualNodeBody {
                 children: Vec::new(),
-                inspectable: Some(Box::new(tev))
-            })
+                inspectable: Some(Box::new(tev)),
+            }),
         };
 
         node_map.insert(id, node);
@@ -67,6 +72,6 @@ pub fn deserialize_virtual(reader: &mut RefCursor<[u8]>, parent_id: VirtualNodeI
 
     Ok(VirtualNodeBody {
         children: tevs,
-        inspectable: None
+        inspectable: None,
     })
 }

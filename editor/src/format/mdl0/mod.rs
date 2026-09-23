@@ -6,11 +6,11 @@ pub mod materials;
 pub mod normals;
 pub mod pal_links;
 pub mod polygons;
+pub mod tevs;
 pub mod tex_links;
 pub mod util;
 pub mod uvs;
 pub mod vertices;
-pub mod tevs;
 
 use std::collections::HashMap;
 
@@ -277,6 +277,8 @@ pub fn deserialize_virtual(
     node_map: &VirtualNodeMap,
     name: String,
 ) -> EditorResult<VirtualNodeId> {
+    tracing::trace!("Opening {name}");
+
     let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
     if subfile_header.subfile_version != 11 {
         return Err(UnsupportedError {
@@ -317,73 +319,63 @@ pub fn deserialize_virtual(
         let node_map2 = node_map.clone();
 
         let section_id = node_map.next_id();
-        let section_parser = move |_data| {
-            let section_start = subfile_header.header_start as i64 + section_offset as i64;
-            reader.set_position(section_start as u64);
+        let section_start = subfile_header.header_start as i64 + section_offset as i64;
+        reader.set_position(section_start as u64);
 
-            tracing::debug!("Parsing {section_ty:?}");
+        tracing::debug!("Parsing {section_ty:?}");
 
-            match section_ty {
-                SectionType::DrawLists => {
-                    bytecode::deserialize_virtual(&mut reader, parent_id, &node_map2)
-                }
-                SectionType::Bones => {
-                    bones::deserialize_skeleton(&mut reader, parent_id, &node_map2)
-                }
-                SectionType::Vertices => vertices::deserialize_virtual(
-                    &mut reader,
-                    subfile_header.header_start,
-                    parent_id,
-                    &node_map2,
-                ),
-                SectionType::Normals => normals::deserialize_virtual(
-                    &mut reader,
-                    subfile_header.header_start,
-                    parent_id,
-                    &node_map2,
-                ),
-                SectionType::Colors => {
-                    colors::deserialize_virtual(&mut reader, parent_id, &node_map2)
-                }
-                SectionType::UvCoordinates => uvs::deserialize_virtual(
-                    &mut reader,
-                    subfile_header.header_start,
-                    parent_id,
-                    &node_map2,
-                ),
-                SectionType::Materials => materials::deserialize_virtual(
-                    &mut reader,
-                    subfile_header.header_start,
-                    parent_id,
-                    &node_map2,
-                ),
-                SectionType::Tevs => tevs::deserialize_virtual(
-                    &mut reader,
-                    parent_id,
-                    &node_map2
-                ),
-                SectionType::Polygons => polygons::deserialize_virtual(
-                    &mut reader,
-                    subfile_header.header_start,
-                    parent_id,
-                    &node_map2,
-                ),
-                SectionType::TextureLinks => {
-                    tex_links::deserialize_virtual(&mut reader, parent_id, &node_map2)
-                }
-                _ => Ok(VirtualNodeBody {
-                    children: Vec::new(),
-                    inspectable: None,
-                }),
+        let node_body = match section_ty {
+            SectionType::DrawLists => {
+                bytecode::deserialize_virtual(&mut reader, parent_id, &node_map2)
             }
-        };
+            SectionType::Bones => bones::deserialize_skeleton(&mut reader, parent_id, &node_map2),
+            SectionType::Vertices => vertices::deserialize_virtual(
+                &mut reader,
+                subfile_header.header_start,
+                parent_id,
+                &node_map2,
+            ),
+            SectionType::Normals => normals::deserialize_virtual(
+                &mut reader,
+                subfile_header.header_start,
+                parent_id,
+                &node_map2,
+            ),
+            SectionType::Colors => colors::deserialize_virtual(&mut reader, parent_id, &node_map2),
+            SectionType::UvCoordinates => uvs::deserialize_virtual(
+                &mut reader,
+                subfile_header.header_start,
+                parent_id,
+                &node_map2,
+            ),
+            SectionType::Materials => materials::deserialize_virtual(
+                &mut reader,
+                subfile_header.header_start,
+                parent_id,
+                &node_map2,
+            ),
+            SectionType::Tevs => tevs::deserialize_virtual(&mut reader, parent_id, &node_map2),
+            SectionType::Polygons => polygons::deserialize_virtual(
+                &mut reader,
+                subfile_header.header_start,
+                parent_id,
+                &node_map2,
+            ),
+            SectionType::TextureLinks => {
+                tex_links::deserialize_virtual(&mut reader, parent_id, &node_map2)
+            }
+            _ => Ok(VirtualNodeBody {
+                children: Vec::new(),
+                inspectable: None,
+            }),
+        }?;
 
         let node = VirtualNode::from(VirtualNode {
             label: MDL0_SECTION_NAMES[i].to_owned(),
             id: section_id,
             parent: Some(mdl_node_id),
             kind: VirtualNodeKind::BrresDirectory,
-            body: Deferred::defer((), section_parser)?,
+            body: Deferred::evaluated(node_body),
         });
 
         node_map.insert(section_id, node);
