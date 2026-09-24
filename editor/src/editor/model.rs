@@ -1,7 +1,7 @@
 use crate::{
     format::mdl0::{
         bytecode::{Bytecode, BytecodeCommand},
-        polygons::Polygon,
+        shapes::Shape,
         vertices::VertexBuf,
     },
     node::refs::{VirtualNodeId, VirtualNodeMap},

@@ -70,14 +70,34 @@ impl VertexBufData {
     }
 }
 
+/// A vertex buffer.
+///
+/// These buffers are not useful on their own. The model's [`Shape`]s contain setup and
+/// draw calls that use indices into these buffers.
+///
+/// [`Shape`]: crate::format::mdl0::shapes::Shape
 #[derive(Debug, Clone, PartialEq)]
 pub struct VertexBuf {
+    /// The index into the `Vertices` section of this buffer.
     pub index: u32,
+    /// The format of the vertices in this buffer.
     pub format: VertexFormat,
+    /// The divisor is used to scale vectors at lower quality formats.
+    ///
+    /// For example if the vertex format is [`Uint8`], then naively converting the
+    /// vertices to floats would only give a range of 0-255 with whole integer intervals.
+    ///
+    /// The divisor is the power of 2 that is divided by the vertices to produce floats.
+    /// I.e `float = uint8 / 2^divisor`.
+    ///
+    /// [`Uint8`]: VertexFormat::Uint8
     pub divisor: u8,
+    /// The size in bytes of each position.
     pub stride: u8,
     pub bounding_volume_min: [f32; 3],
+    /// Outer AABB of this vertex buffer.
     pub bounding_volume_max: [f32; 3],
+    /// The vertex data.
     pub vertices: VertexBufData,
 }
 

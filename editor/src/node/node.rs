@@ -1,7 +1,10 @@
 use std::any::Any;
+use std::fmt::Debug;
+use std::marker::PhantomData;
+use std::ops::Deref;
 use std::sync::{Arc, mpsc};
 
-use parking_lot::Mutex;
+use parking_lot::{ArcRwLockReadGuard, Mutex, RawRwLock, RwLock};
 
 use crate::error::EditorResult;
 use crate::node::defer::Deferred;
@@ -10,10 +13,50 @@ use crate::panes::{PaneAction, RequestNewPane, RequestPaneEdit};
 use crate::shared::util::AssertSendSync;
 use crate::{fill_icon, reg_icon};
 
-pub trait Inspectable: Send + Sync + std::fmt::Debug {
+pub trait Inspectable: Send + Sync + Debug + 'static {
     fn draw_properties(&mut self, ui: &mut egui::Ui);
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+/// Custom guard that improves ergonomics of accessing inspectables in nodes.
+pub struct InspectableReadGuard<T> {
+    inner: ArcRwLockReadGuard<RawRwLock, VirtualNode>,
+    _marker: PhantomData<T>,
+}
+
+impl<T> InspectableReadGuard<T> {
+    pub fn into_inner(self) -> ArcRwLockReadGuard<RawRwLock, VirtualNode> {
+        self.inner
+    }
+}
+
+impl<T> From<Arc<RwLock<VirtualNode>>> for InspectableReadGuard<T> {
+    fn from(value: Arc<RwLock<VirtualNode>>) -> Self {
+        Self {
+            inner: value.read_arc(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<T: Inspectable> Deref for InspectableReadGuard<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.inner
+            .body
+            .get()
+            .and_then(|body| body.inspectable.as_ref())
+            .and_then(|obj| obj.as_any().downcast_ref::<T>())
+            .expect("node was deferred or had incorrect inspectable content")
+    }
+}
+
+impl<T: Inspectable> AsRef<T> for InspectableReadGuard<T> {
+    fn as_ref(&self) -> &T {
+        self.deref()
+    }
 }
 
 #[derive(Debug)]
@@ -36,9 +79,25 @@ pub struct VirtualNode {
     pub body: Deferred<VirtualNodeBody>,
 }
 
-impl AssertSendSync for VirtualNode {}
-
 impl VirtualNode {
+    pub fn inspectable<T: Inspectable>(&self) -> Option<&T> {
+        self.body
+            .get()?
+            .inspectable
+            .as_ref()?
+            .as_any()
+            .downcast_ref::<T>()
+    }
+
+    pub fn inspectable_mut<T: Inspectable>(&mut self) -> Option<&mut T> {
+        self.body
+            .get_mut()?
+            .inspectable
+            .as_mut()?
+            .as_any_mut()
+            .downcast_mut::<T>()
+    }
+
     /// Renders the context menu of this node.
     pub fn draw_context_menu(&self, cmd: &mut mpsc::Sender<PaneAction>, ui: &mut egui::Ui) {
         if ui.button("Export").clicked() {
@@ -100,7 +159,7 @@ pub enum VirtualNodeKind {
     Uvs,
     Materials,
     Tevs,
-    Polygon,
+    Shape,
     TextureLinks,
     PaletteLinks,
     Unknown,
@@ -121,7 +180,7 @@ impl VirtualNodeKind {
             | Self::Uvs
             | Self::Materials
             | Self::Tevs
-            | Self::Polygon
+            | Self::Shape
             | Self::TextureLinks
             | Self::PaletteLinks
             | Self::Unknown => false,
@@ -144,7 +203,7 @@ impl VirtualNodeKind {
             Self::Uvs => reg_icon!(BOUNDING_BOX),
             Self::Materials => reg_icon!(PALETTE),
             Self::Tevs => reg_icon!(GRAPHICS_CARD),
-            Self::Polygon => reg_icon!(CUBE),
+            Self::Shape => reg_icon!(CUBE),
             Self::TextureLinks => reg_icon!(LINK),
             Self::PaletteLinks => reg_icon!(LINK),
             Self::Unknown => reg_icon!(FILE),

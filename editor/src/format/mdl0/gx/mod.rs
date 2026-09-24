@@ -10,7 +10,7 @@ use crate::{
                 load_bp::LoadBpOpCode, load_cp::LoadCpOpCode, load_indexed::IndexedLoad,
                 load_xf::LoadXfOpCode,
             },
-            polygons::VertexDeclaration,
+            shapes::VertexDeclaration,
         },
     },
     shared::util::RefCursor,

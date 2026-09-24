@@ -19,6 +19,10 @@ const COMPONENTS_NORMAL: u32 = 0x0;
 const COMPONENTS_ALL: u32 = 0x1;
 const COMPONENTS_ANY: u32 = 0x2;
 
+/// This enum has the same variant to value mapping as [`VertexFormat`] but leaves out
+/// the formats that are invalid for normal data (i.e only signed formats).
+///
+/// [`VertexFormat`]: crate::format::mdl0::util::VertexFormat
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
@@ -61,10 +65,14 @@ impl Deserialize for NormalFormat {
     }
 }
 
+/// The type of normals that are stored in the normal buffer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum NormalBufType {
+    /// Only the normal itself is included in the buffer.
     NormalOnly,
+    /// All three (normal/binormal/tangent) vectors are included in the buffer.
     All,
+    /// Any one of the three vectors is in the buffer.
     Any,
 }
 
@@ -87,6 +95,11 @@ impl NormalBufData {
         }
     }
 
+    /// Returns the amount of entries in the buffer.
+    ///
+    /// This counts the [`All`] variant as one entry.
+    ///
+    /// [`All`]: NormalBufType::All
     pub fn len(&self) -> usize {
         match self {
             Self::NormalOnly(x) => x.len(),
@@ -98,10 +111,23 @@ impl NormalBufData {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NormalBuf {
+    /// Index of this buffer into the `Normals` section of the model.
     pub index: u32,
+    /// Scalar data type to use for the normal vectors.
     pub format: NormalFormat,
+    /// The divisor is used to scale vectors at lower quality formats.
+    ///
+    /// For example if the vertex format is [`Int16`], then naively converting the
+    /// vertices to floats would only give a range of -32,768 to 32,767 with whole integer intervals.
+    ///
+    /// The divisor is the power of 2 that is divided by the vertices to produce floats.
+    /// I.e `float = int16 / 2^divisor`.
+    ///
+    /// [`Int16`]: NormalFormat::Int16
     pub divisor: u8,
+    /// The size in bytes of each entry.
     pub stride: u8,
+    /// The normal data.
     pub normals: NormalBufData,
 }
 

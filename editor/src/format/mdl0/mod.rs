@@ -5,7 +5,7 @@ pub mod gx;
 pub mod materials;
 pub mod normals;
 pub mod pal_links;
-pub mod polygons;
+pub mod shapes;
 pub mod tevs;
 pub mod tex_links;
 pub mod util;
@@ -106,7 +106,7 @@ pub const MDL0_SECTION_NAMES: &[&str] = &[
     "Fur layers",
     "Materials",
     "TEVs",
-    "Polygons",
+    "Shapes",
     "Texture links",
     "Palette links",
     "User data",
@@ -125,7 +125,7 @@ pub enum SectionType {
     FurLayers,
     Materials,
     Tevs,
-    Polygons,
+    Shapes,
     TextureLinks,
     PaletteLinks,
     UserData,
@@ -146,7 +146,7 @@ impl TryFrom<u32> for SectionType {
             7 => Self::FurLayers,
             8 => Self::Materials,
             9 => Self::Tevs,
-            10 => Self::Polygons,
+            10 => Self::Shapes,
             11 => Self::TextureLinks,
             12 => Self::PaletteLinks,
             13 => Self::UserData,
@@ -355,7 +355,7 @@ pub fn deserialize_virtual(
                 &node_map2,
             ),
             SectionType::Tevs => tevs::deserialize_virtual(&mut reader, parent_id, &node_map2),
-            SectionType::Polygons => polygons::deserialize_virtual(
+            SectionType::Shapes => shapes::deserialize_virtual(
                 &mut reader,
                 subfile_header.header_start,
                 parent_id,

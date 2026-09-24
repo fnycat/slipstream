@@ -53,13 +53,13 @@ impl Deserialize for BoneTable {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum PolygonModifier {
+pub enum ShapeModifier {
     None,
     ChangeCurrentMatrix,
     Invisible,
 }
 
-impl TryFrom<u32> for PolygonModifier {
+impl TryFrom<u32> for ShapeModifier {
     type Error = EditorError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
@@ -78,7 +78,7 @@ impl TryFrom<u32> for PolygonModifier {
     }
 }
 
-impl Deserialize for PolygonModifier {
+impl Deserialize for ShapeModifier {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Self::try_from(word)
@@ -91,12 +91,20 @@ pub enum BoneBind {
     Table(BoneTable),
 }
 
+/// Setup bytecode for a shape.
+///
+/// This describes the formats of all the buffers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VertexDeclaration {
+    /// The low vertex control descriptor.
     pub vcd_lo: CpVcdLo,
+    /// The high vertex control descriptor.
     pub vcd_hi: CpVcdHi,
+    /// The first vertex attribute table.
     pub vat_a: CpVatA,
+    /// The second vertex attribute table.
     pub vat_b: CpVatB,
+    /// The third vertex attribute table.
     pub vat_c: CpVatC,
     pub xf: Vec<LoadXfPayload>,
 }
@@ -165,30 +173,44 @@ impl TryFrom<GxBytecode> for VertexDeclaration {
     }
 }
 
+/// A shape/object/polygon describes how the model should be rendered.
+///
+/// It contains the actual draw commands for the Broadway GPU to execute.
 #[derive(Debug, Clone)]
-pub struct Polygon {
+pub struct Shape {
     pub array_flags: u32,
-    pub modifier: PolygonModifier,
-
+    pub modifier: ShapeModifier,
+    /// This shape's index in the `Shapes` section.
     pub index: u32,
     pub vertex_count: u32,
     pub face_count: u32,
-
-    /// The vertex array to use.
+    /// The vertex buffer to use for indexed draws.
     ///
     /// This is an index into the `Vertices` section of the model.
     pub vertex_array_id: u16,
+    /// The normal buffer to use for indexed draws.
+    ///
+    /// This is an index into the `Normals` section of the model.
     pub normal_array_id: u16,
+    /// The color buffer to use for indexed draws.
+    ///
+    /// This is an index into the `Colors` section of the model.
     pub color_array_ids: [u16; 2],
+    /// The UV buffer to use for indexed draws.
+    ///
+    /// This is an index into the `UVs` section of the model.
     pub uv_array_ids: [u16; 8],
 
     pub bone_bind: BoneBind,
-
+    /// Setup bytecode for the buffer formats.
+    ///
+    /// See [`VertexDeclaration`] for more info.
     pub vertex_decl: VertexDeclaration,
+    /// Bytecode containing this shape's draw calls.
     pub vertex_data_gx: GxBytecode,
 }
 
-impl Deserialize for Polygon {
+impl Deserialize for Shape {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let object_start = reader.position();
         let length = reader.read_u32::<BigEndian>()?;
@@ -209,7 +231,7 @@ impl Deserialize for Polygon {
         let vertex_data_size = reader.read_u32::<BigEndian>()?;
         let vertex_data_offset = reader.read_i32::<BigEndian>()?;
         let array_flags = reader.read_u32::<BigEndian>()?;
-        let modifier = PolygonModifier::deserialize(reader)?;
+        let modifier = ShapeModifier::deserialize(reader)?;
         let _name_offset = reader.read_u32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
         let vertex_count = reader.read_u32::<BigEndian>()?;
@@ -291,13 +313,13 @@ pub fn deserialize_virtual(
 
         reader.set_position(data_start as u64);
 
-        let object = Polygon::deserialize(reader)?;
+        let object = Shape::deserialize(reader)?;
 
         let id = node_map.next_id();
         let node = VirtualNode {
             label: name,
             id,
-            kind: VirtualNodeKind::Polygon,
+            kind: VirtualNodeKind::Shape,
             parent: Some(parent_id),
             body: Deferred::evaluated(VirtualNodeBody {
                 children: Vec::new(),

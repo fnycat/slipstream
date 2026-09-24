@@ -6,7 +6,7 @@ use crate::{
     format::mdl0::{
         colors::deserialize_color,
         gx::load_cp::{LoadCpOpCode, VectorStorage},
-        polygons::VertexDeclaration,
+        shapes::VertexDeclaration,
         util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector},
     },
     shared::util::RefCursor,

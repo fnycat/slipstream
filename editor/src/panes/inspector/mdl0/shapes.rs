@@ -1,6 +1,6 @@
-use crate::{format::mdl0::polygons::Polygon, node::node::Inspectable};
+use crate::{format::mdl0::shapes::Shape, node::node::Inspectable};
 
-impl Inspectable for Polygon {
+impl Inspectable for Shape {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {
         ui.label("hello");
         // ui.label(format!("{self:#?}"));

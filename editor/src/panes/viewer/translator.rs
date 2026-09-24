@@ -1,8 +1,10 @@
 //! Translates between Wii models and wgpu ones.
 
-use std::borrow::Cow;
+use std::{any::Any, borrow::Cow};
 
-use parking_lot::{MappedMutexGuard, MappedRwLockReadGuard, MutexGuard, RwLockReadGuard};
+use parking_lot::{
+    ArcRwLockReadGuard, MappedMutexGuard, MappedRwLockReadGuard, MutexGuard, RwLockReadGuard,
+};
 use wgpu::util::DeviceExt;
 
 use crate::{
@@ -14,10 +16,41 @@ use crate::{
         vertices::{VertexBuf, VertexPositionType},
     },
     node::{
-        node::{VirtualNodeBody, VirtualNodeKind},
+        node::{Inspectable, InspectableReadGuard, VirtualNodeBody, VirtualNodeKind},
         refs::{VirtualNodeId, VirtualNodeMap},
     },
 };
+
+#[derive(Clone)]
+pub struct ModelBuffers {
+    pub map: VirtualNodeMap,
+    pub vertices: Vec<VirtualNodeId>,
+    pub normals: Vec<VirtualNodeId>,
+    pub colors: Vec<VirtualNodeId>,
+    pub uvs: Vec<VirtualNodeId>,
+    pub polygons: Vec<VirtualNodeId>,
+}
+
+impl ModelBuffers {
+    pub fn new(map: VirtualNodeMap) -> Self {
+        Self {
+            map,
+            vertices: Vec::new(),
+            normals: Vec::new(),
+            colors: Vec::new(),
+            uvs: Vec::new(),
+            polygons: Vec::new(),
+        }
+    }
+
+    pub fn from_root(node: VirtualNodeId, map: VirtualNodeMap) -> EditorResult<Self> {
+        let mut bufs = Self::new(map.clone());
+
+        let node = map.get
+
+        todo!()
+    }
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
@@ -27,26 +60,27 @@ pub struct TranslatedVertex {
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct TranslatedModel {
-    // pub draw_calls: Cow<'a, [GxOpCode]>,
     pub vertices: Vec<TranslatedVertex>,
 }
 
 impl TranslatedModel {
+    /// Resolves all indices in the shape's draw commands and constructs a new vertex buffer with
+    /// interleaved positions/normals/etc that is compatible with wgpu.
     #[tracing::instrument(skip_all, fields(node_id))]
-    fn assemble_buffer(
+    fn resolve_shape(
         &mut self,
         device: &wgpu::Device,
-        node_id: VirtualNodeId,
+        shape_node_id: VirtualNodeId,
         node_map: &VirtualNodeMap,
     ) -> EditorResult<()> {
-        let node = node_map.get(node_id).ok_or_else(|| {
+        let node = node_map.get(shape_node_id).ok_or_else(|| {
             EditorError::from(InvalidInputError {
                 reason: String::from("did not find node {node_id}"),
                 ..Default::default()
             })
         })?;
 
-        tracing::trace!("Read locking node {node_id}");
+        tracing::trace!("Read locking node {shape_node_id}");
         let node_lock = node.read();
 
         tracing::trace!(
@@ -55,27 +89,25 @@ impl TranslatedModel {
             node_lock.kind
         );
 
-        todo!();
-
         match node_lock.kind {
-            // VirtualNodeKind::Vertices => {
-            //     self.vertex_buffers.push(Self::translate_buf(
-            //         device,
-            //         node_id,
-            //         VirtualNodeKind::Vertices,
-            //         node_map,
-            //         Self::translate_vertex_buf,
-            //     )?);
-            // }
-            // VirtualNodeKind::Polygon => {
-            //     self.polygons.push(Self::translate_buf(
-            //         device,
-            //         node_id,
-            //         VirtualNodeKind::Polygon,
-            //         node_map,
-            //         Self::translate_polygon_buf,
-            //     )?);
-            // }
+            VirtualNodeKind::Vertices => {
+                self.vertex_buffers.push(Self::translate_buf(
+                    device,
+                    node_id,
+                    VirtualNodeKind::Vertices,
+                    node_map,
+                    Self::translate_vertex_buf,
+                )?);
+            }
+            VirtualNodeKind::Polygon => {
+                self.polygons.push(Self::translate_buf(
+                    device,
+                    node_id,
+                    VirtualNodeKind::Polygon,
+                    node_map,
+                    Self::translate_polygon_buf,
+                )?);
+            }
             k => tracing::warn!("unable to assemble {k:?}"),
         };
 
@@ -122,7 +154,6 @@ impl TranslatedModel {
             };
 
             let subdir_lock = subdir_node.read();
-            tracing::trace!("Translating subdirectory `{:?}`", subdir_lock.kind);
 
             let subdir_body = subdir_lock
                 .body
@@ -130,7 +161,7 @@ impl TranslatedModel {
                 .expect("MDL0 subdirectory node was deferred");
 
             for &child in &subdir_body.children {
-                model.assemble_buffer(device, child, node_map)?;
+                model.resolve_shape(device, child, node_map)?;
             }
         }
 
