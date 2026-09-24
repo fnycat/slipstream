@@ -1,11 +1,18 @@
 use byteorder::{BigEndian, ReadBytesExt};
 
 use crate::{
-    error::{CorruptionError, EditorError, EditorResult},
+    error::{CorruptionError, EditorError, EditorResult, InvalidInputError},
     format::{
         brres::IndexGroup,
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
-        mdl0::gx::GxBytecode,
+        mdl0::gx::{
+            GxBytecode, GxOpCode,
+            load_cp::{
+                CpSubCommand1, CpSubCommand2, CpSubCommand3, CpSubCommand4, CpSubCommand5,
+                LoadCpOpCode,
+            },
+            load_xf::{LoadXfOpCode, LoadXfPayload},
+        },
     },
     node::{
         defer::Deferred,
@@ -15,7 +22,7 @@ use crate::{
     shared::util::RefCursor,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoneTableEntry {
     pub bone_id1: i16,
     pub bone_id2: i16,
@@ -30,7 +37,7 @@ impl Deserialize for BoneTableEntry {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoneTable {
     pub entries: Vec<BoneTableEntry>,
 }
@@ -81,28 +88,74 @@ impl Deserialize for PolygonModifier {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BoneBind {
     Single(u32),
     Table(BoneTable),
 }
 
+macro_rules! impl_vertex_decl {
+    ($($id:literal),*) => {
+        paste::paste! {
+            #[derive(Debug, Clone, PartialEq)]
+            pub struct VertexDeclaration {
+                $(
+                    pub [< cp $id >]: [< CpSubCommand $id >],
+                )*
+                pub xf: Vec<LoadXfPayload>,
+            }
+
+            impl TryFrom<GxBytecode> for VertexDeclaration {
+                type Error = EditorError;
+
+                fn try_from(value: GxBytecode) -> Result<Self, Self::Error> {
+                    $(
+                        let mut [< cp $id >] = None;
+                    )*
+                    let mut xf = None;
+
+                    for opcode in value.commands {
+                        match opcode {
+                            GxOpCode::LoadXf(LoadXfOpCode { loads }) => xf = Some(loads),
+                            $(
+                                GxOpCode::LoadCp(LoadCpOpCode::[< C $id >](x)) => [< cp $id >] = Some(x),
+                            )*
+                            _ => {}
+                        }
+                    }
+
+                    Ok(Self {
+                        xf: xf.ok_or_else(|| EditorError::from(InvalidInputError {
+                            reason: String::from("vertex declaration did not contain LoadXF opcode"),
+                            ..Default::default()
+                        }))?,
+                        $(
+                            [< cp $id >]: [< cp $id >].ok_or_else(|| EditorError::from(InvalidInputError {
+                                reason: String::from(concat!("vertex declaration did not contain cp", $id, " opcode")),
+                                ..Default::default()
+                            }))?,
+                        )*
+                    })
+                }
+            }
+        }
+    }
+}
+
+impl_vertex_decl!(1, 2, 3, 4, 5);
+
 #[derive(Debug, Clone)]
 pub struct Polygon {
-    pub definitions_buffer_size: u32,
-    pub definitions_size: u32,
-    pub definitions_offset: i32,
-
-    pub vertex_buffer_size: u32,
-    pub vertex_data_size: u32,
-    pub vertex_data_offset: i32,
-
     pub array_flags: u32,
     pub modifier: PolygonModifier,
 
     pub index: u32,
     pub vertex_count: u32,
     pub face_count: u32,
+
+    /// The vertex array to use.
+    ///
+    /// This is an index into the `Vertices` section of the model.
     pub vertex_array_id: u16,
     pub normal_array_id: u16,
     pub color_array_ids: [u16; 2],
@@ -110,7 +163,7 @@ pub struct Polygon {
 
     pub bone_bind: BoneBind,
 
-    pub vertex_decl_gx: GxBytecode,
+    pub vertex_decl: VertexDeclaration,
     pub vertex_data_gx: GxBytecode,
 }
 
@@ -166,8 +219,10 @@ impl Deserialize for Polygon {
         reader.set_position(definitions_start as u64);
 
         tracing::trace!("Reading vertex declaration GX bytecode");
-        let vertex_decl_gx =
-            GxBytecode::deserialize_vertex_declaration(reader, definitions_end as u64)?;
+        let vertex_decl = VertexDeclaration::try_from(GxBytecode::deserialize_vertex_declaration(
+            reader,
+            definitions_end as u64,
+        )?)?;
 
         let vertices_start =
             object_start as i64 + VERTEX_DATA_INTERNAL_OFFSET as i64 + vertex_data_offset as i64;
@@ -178,7 +233,7 @@ impl Deserialize for Polygon {
 
         tracing::trace!("Reading vertex data GX bytecode");
         let vertex_data_gx =
-            GxBytecode::deserialize_vertex_data(reader, &vertex_decl_gx, vertices_end as u64)?;
+            GxBytecode::deserialize_vertex_data(reader, &vertex_decl, vertices_end as u64)?;
 
         Ok(Self {
             vertex_count,
@@ -188,19 +243,12 @@ impl Deserialize for Polygon {
             color_array_ids,
             uv_array_ids,
 
-            definitions_buffer_size,
-            definitions_size,
-            definitions_offset,
-
-            vertex_buffer_size,
-            vertex_data_size,
-            vertex_data_offset,
             array_flags,
             modifier,
             index,
 
             bone_bind,
-            vertex_decl_gx,
+            vertex_decl,
             vertex_data_gx,
         })
     }

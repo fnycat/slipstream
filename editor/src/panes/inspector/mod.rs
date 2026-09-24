@@ -47,8 +47,8 @@ impl Pane for InspectorPane {
         let drag_started = ui.heading("Inspector").drag_started();
 
         let open_node = self.node_map.get(self.node).unwrap();
-        let mut node_ref = open_node.write();
 
+        let mut node_ref = open_node.write();
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.heading(&node_ref.label);

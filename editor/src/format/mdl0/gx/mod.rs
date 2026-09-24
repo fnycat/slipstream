@@ -4,14 +4,13 @@ use crate::{
     error::{CorruptionError, EditorError, EditorResult},
     format::{
         encoding::Deserialize,
-        mdl0::gx::{
-            GxOpCodeId::DrawQuads,
-            call::CallDisplayList,
-            draw::DrawOpCode,
-            load_bp::LoadBpOpCode,
-            load_cp::{LoadCpOpCode, MergedCpLoad},
-            load_indexed::IndexedLoad,
-            load_xf::LoadXfOpCode,
+        mdl0::{
+            gx::{
+                GxOpCodeId::DrawQuads, call::CallDisplayList, draw::DrawOpCode,
+                load_bp::LoadBpOpCode, load_cp::LoadCpOpCode, load_indexed::IndexedLoad,
+                load_xf::LoadXfOpCode,
+            },
+            polygons::VertexDeclaration,
         },
     },
     shared::util::RefCursor,
@@ -124,7 +123,7 @@ pub enum GxOpCode {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GxBytecode {
-    commands: Vec<GxOpCode>,
+    pub commands: Vec<GxOpCode>,
 }
 
 impl GxBytecode {
@@ -162,39 +161,50 @@ impl GxBytecode {
 
     pub fn deserialize_vertex_data(
         reader: &mut RefCursor<[u8]>,
-        vertex_decl: &Self,
+        vertex_decl: &VertexDeclaration,
         section_end: u64,
     ) -> EditorResult<Self> {
-        let merged_cp_opcodes = MergedCpLoad::try_from(vertex_decl.commands.as_slice())?;
-
         let mut commands = Vec::new();
         while reader.position() < section_end {
             let opcode = GxOpCodeId::try_from(reader.read_u8()?)?;
             commands.push(match opcode {
                 GxOpCodeId::Nop => continue,
-                GxOpCodeId::LoadIndexedPositionMatrix => GxOpCode::LoadIndexedPosition(IndexedLoad::deserialize(reader)?),
-                GxOpCodeId::LoadIndexedNormalMatrix => GxOpCode::LoadIndexedNormal(IndexedLoad::deserialize(reader)?),
-                GxOpCodeId::LoadIndexedTextureMatrix => GxOpCode::LoadIndexedTextureMatrix(IndexedLoad::deserialize(reader)?),
-                GxOpCodeId::LoadIndexedLightObject => GxOpCode::LoadIndexedLightObject(IndexedLoad::deserialize(reader)?),
+                GxOpCodeId::LoadIndexedPositionMatrix => {
+                    GxOpCode::LoadIndexedPosition(IndexedLoad::deserialize(reader)?)
+                }
+                GxOpCodeId::LoadIndexedNormalMatrix => {
+                    GxOpCode::LoadIndexedNormal(IndexedLoad::deserialize(reader)?)
+                }
+                GxOpCodeId::LoadIndexedTextureMatrix => {
+                    GxOpCode::LoadIndexedTextureMatrix(IndexedLoad::deserialize(reader)?)
+                }
+                GxOpCodeId::LoadIndexedLightObject => {
+                    GxOpCode::LoadIndexedLightObject(IndexedLoad::deserialize(reader)?)
+                }
                 GxOpCodeId::Call => GxOpCode::Call(CallDisplayList::deserialize(reader)?),
                 GxOpCodeId::Unknown => GxOpCode::Unknown,
                 GxOpCodeId::InvalidateVertexCache => GxOpCode::InvalidateVertexCache,
-                GxOpCodeId::DrawQuads => GxOpCode::DrawQuads(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?),
+                GxOpCodeId::DrawQuads => {
+                    GxOpCode::DrawQuads(DrawOpCode::deserialize(reader, vertex_decl)?)
+                }
                 GxOpCodeId::DrawTriangles => {
-                    GxOpCode::DrawTriangles(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?)
+                    GxOpCode::DrawTriangles(DrawOpCode::deserialize(reader, vertex_decl)?)
                 }
-                GxOpCodeId::DrawTriangleStrip => GxOpCode::DrawTriangleStrip(DrawOpCode::deserialize(
-                    reader,
-                    &merged_cp_opcodes,
-                )?),
+                GxOpCodeId::DrawTriangleStrip => {
+                    GxOpCode::DrawTriangleStrip(DrawOpCode::deserialize(reader, vertex_decl)?)
+                }
                 GxOpCodeId::DrawTriangleFan => {
-                    GxOpCode::DrawTriangleFan(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?)
+                    GxOpCode::DrawTriangleFan(DrawOpCode::deserialize(reader, vertex_decl)?)
                 }
-                GxOpCodeId::DrawLines => GxOpCode::DrawLines(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?),
+                GxOpCodeId::DrawLines => {
+                    GxOpCode::DrawLines(DrawOpCode::deserialize(reader, vertex_decl)?)
+                }
                 GxOpCodeId::DrawLineStrip => {
-                    GxOpCode::DrawLineStrip(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?)
+                    GxOpCode::DrawLineStrip(DrawOpCode::deserialize(reader, vertex_decl)?)
                 }
-                GxOpCodeId::DrawPoints => GxOpCode::DrawPoints(DrawOpCode::deserialize(reader, &merged_cp_opcodes)?),
+                GxOpCodeId::DrawPoints => {
+                    GxOpCode::DrawPoints(DrawOpCode::deserialize(reader, vertex_decl)?)
+                }
                 _ => {
                     return Err(CorruptionError {
                         reason: format!("invalid vertex data GX opcode: {opcode:?}"),
@@ -215,9 +225,7 @@ impl GxBytecode {
         Ok(Self { commands })
     }
 
-    pub fn deserialize_tev_data(
-        reader: &mut RefCursor<[u8]>
-    ) -> EditorResult<Self> {
+    pub fn deserialize_tev_data(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         const TEV_BYTECODE_SIZE: usize = 0x20; // Size is always 0x20
 
         let section_end = reader.position() + TEV_BYTECODE_SIZE as u64;
@@ -227,10 +235,13 @@ impl GxBytecode {
             let opcode = GxOpCodeId::try_from(reader.read_u8()?)?;
             commands.push(match opcode {
                 GxOpCodeId::LoadBp => GxOpCode::LoadBp(LoadBpOpCode::deserialize(reader)?),
-                _ => return Err(CorruptionError {
-                    reason: format!("invalid TEV bytecode opcode ID: {opcode:?}"),
-                    location: Some(reader.position())
-                }.into())
+                _ => {
+                    return Err(CorruptionError {
+                        reason: format!("invalid TEV bytecode opcode ID: {opcode:?}"),
+                        location: Some(reader.position()),
+                    }
+                    .into());
+                }
             });
 
             tracing::trace!("TEV opcode: {opcode:?}");

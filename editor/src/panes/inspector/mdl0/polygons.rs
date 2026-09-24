@@ -2,7 +2,8 @@ use crate::{format::mdl0::polygons::Polygon, node::node::Inspectable};
 
 impl Inspectable for Polygon {
     fn draw_properties(&mut self, ui: &mut egui::Ui) {
-        ui.label(format!("{self:#?}"));
+        ui.label("hello");
+        // ui.label(format!("{self:#?}"));
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

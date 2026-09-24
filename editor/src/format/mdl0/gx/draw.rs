@@ -5,7 +5,8 @@ use crate::{
     error::EditorResult,
     format::mdl0::{
         colors::deserialize_color,
-        gx::load_cp::{LoadCpOpCode, MergedCpLoad, VectorStorage},
+        gx::load_cp::{LoadCpOpCode, VectorStorage},
+        polygons::VertexDeclaration,
         util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector},
     },
     shared::util::RefCursor,
@@ -18,18 +19,21 @@ pub enum DirectPosition {
 }
 
 impl DirectPosition {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        Ok(if cp.cp3.pos_extended() {
+    pub fn deserialize(
+        reader: &mut RefCursor<[u8]>,
+        decl: &VertexDeclaration,
+    ) -> EditorResult<Self> {
+        Ok(if decl.cp3.pos_extended() {
             Self::Xyz(deserialize_vector::<3>(
                 reader,
-                cp.cp3.pos_format(),
-                VectorDivisor::Custom(cp.cp3.pos_divisor()),
+                decl.cp3.pos_format(),
+                VectorDivisor::Custom(decl.cp3.pos_divisor()),
             )?)
         } else {
             Self::Xy(deserialize_vector::<2>(
                 reader,
-                cp.cp3.pos_format(),
-                VectorDivisor::Custom(cp.cp3.pos_divisor()),
+                decl.cp3.pos_format(),
+                VectorDivisor::Custom(decl.cp3.pos_divisor()),
             )?)
         })
     }
@@ -44,13 +48,18 @@ pub enum PositionData {
 }
 
 impl PositionData {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        let pos_storage = cp.cp1.pos_storage();
+    pub fn deserialize(
+        reader: &mut RefCursor<[u8]>,
+        decl: &VertexDeclaration,
+    ) -> EditorResult<Self> {
+        let pos_storage = decl.cp1.pos_storage();
         Ok(match pos_storage {
             VectorStorage::NotPresent => PositionData::NotPresent,
             VectorStorage::Index8 => PositionData::Index8(reader.read_u8()?),
             VectorStorage::Index16 => PositionData::Index16(reader.read_u16::<BigEndian>()?),
-            VectorStorage::Direct => PositionData::Direct(DirectPosition::deserialize(reader, cp)?),
+            VectorStorage::Direct => {
+                PositionData::Direct(DirectPosition::deserialize(reader, decl)?)
+            }
         })
     }
 }
@@ -64,17 +73,20 @@ pub enum DirectNormal {
 }
 
 impl DirectNormal {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        Ok(if cp.cp3.norm_extended() {
+    pub fn deserialize(
+        reader: &mut RefCursor<[u8]>,
+        decl: &VertexDeclaration,
+    ) -> EditorResult<Self> {
+        Ok(if decl.cp3.norm_extended() {
             Self::Triple(deserialize_vector::<9>(
                 reader,
-                VertexFormat::from(cp.cp3.norm_format()),
+                VertexFormat::from(decl.cp3.norm_format()),
                 VectorDivisor::Normalize,
             )?)
         } else {
             Self::Single(deserialize_vector::<3>(
                 reader,
-                VertexFormat::from(cp.cp3.norm_format()),
+                VertexFormat::from(decl.cp3.norm_format()),
                 VectorDivisor::Normalize,
             )?)
         })
@@ -90,13 +102,16 @@ pub enum NormalData {
 }
 
 impl NormalData {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        let norm_storage = cp.cp1.norm_storage();
+    pub fn deserialize(
+        reader: &mut RefCursor<[u8]>,
+        decl: &VertexDeclaration,
+    ) -> EditorResult<Self> {
+        let norm_storage = decl.cp1.norm_storage();
         Ok(match norm_storage {
             VectorStorage::NotPresent => NormalData::NotPresent,
             VectorStorage::Index8 => NormalData::Index8(reader.read_u8()?),
             VectorStorage::Index16 => NormalData::Index16(reader.read_u16::<BigEndian>()?),
-            VectorStorage::Direct => NormalData::Direct(DirectNormal::deserialize(reader, cp)?),
+            VectorStorage::Direct => NormalData::Direct(DirectNormal::deserialize(reader, decl)?),
         })
     }
 }
@@ -108,19 +123,25 @@ pub enum DirectColor {
 }
 
 impl DirectColor {
-    pub fn deserialize_col0(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        Ok(if cp.cp3.col0_extended() {
-            Self::AlphaEnabled(deserialize_color(reader, cp.cp3.col0_format())?)
+    pub fn deserialize_col0(
+        reader: &mut RefCursor<[u8]>,
+        decl: &VertexDeclaration,
+    ) -> EditorResult<Self> {
+        Ok(if decl.cp3.col0_extended() {
+            Self::AlphaEnabled(deserialize_color(reader, decl.cp3.col0_format())?)
         } else {
-            Self::AlphaDisabled(deserialize_color(reader, cp.cp3.col0_format())?)
+            Self::AlphaDisabled(deserialize_color(reader, decl.cp3.col0_format())?)
         })
     }
 
-    pub fn deserialize_col1(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        Ok(if cp.cp3.col1_extended() {
-            Self::AlphaEnabled(deserialize_color(reader, cp.cp3.col1_format())?)
+    pub fn deserialize_col1(
+        reader: &mut RefCursor<[u8]>,
+        decl: &VertexDeclaration,
+    ) -> EditorResult<Self> {
+        Ok(if decl.cp3.col1_extended() {
+            Self::AlphaEnabled(deserialize_color(reader, decl.cp3.col1_format())?)
         } else {
-            Self::AlphaDisabled(deserialize_color(reader, cp.cp3.col1_format())?)
+            Self::AlphaDisabled(deserialize_color(reader, decl.cp3.col1_format())?)
         })
     }
 }
@@ -134,23 +155,29 @@ pub enum ColorData {
 }
 
 impl ColorData {
-    pub fn deserialize_col0(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        let color_storage = cp.cp1.col0_storage();
+    pub fn deserialize_col0(
+        reader: &mut RefCursor<[u8]>,
+        decl: &VertexDeclaration,
+    ) -> EditorResult<Self> {
+        let color_storage = decl.cp1.col0_storage();
         Ok(match color_storage {
             VectorStorage::NotPresent => Self::NotPresent,
             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
             VectorStorage::Index16 => Self::Index16(reader.read_u16::<BigEndian>()?),
-            VectorStorage::Direct => Self::Direct(DirectColor::deserialize_col0(reader, cp)?),
+            VectorStorage::Direct => Self::Direct(DirectColor::deserialize_col0(reader, decl)?),
         })
     }
 
-    pub fn deserialize_col1(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        let color_storage = cp.cp1.col1_storage();
+    pub fn deserialize_col1(
+        reader: &mut RefCursor<[u8]>,
+        decl: &VertexDeclaration,
+    ) -> EditorResult<Self> {
+        let color_storage = decl.cp1.col1_storage();
         Ok(match color_storage {
             VectorStorage::NotPresent => Self::NotPresent,
             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
             VectorStorage::Index16 => Self::Index16(reader.read_u16::<BigEndian>()?),
-            VectorStorage::Direct => Self::Direct(DirectColor::deserialize_col1(reader, cp)?),
+            VectorStorage::Direct => Self::Direct(DirectColor::deserialize_col1(reader, decl)?),
         })
     }
 }
@@ -181,11 +208,11 @@ macro_rules! impl_uv_de {
         paste::paste! {
             impl DirectUv {
                 $(
-                    pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-                        let format = cp.[< cp $cp1 >].[< uv $id _format >]();
-                        let divisor = cp.[< cp $cp2 >].[< uv $id _divisor >]();
+                    pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, decl: &VertexDeclaration) -> EditorResult<Self> {
+                        let format = decl.[< cp $cp1 >].[< uv $id _format >]();
+                        let divisor = decl.[< cp $cp2 >].[< uv $id _divisor >]();
 
-                        Ok(if cp.[< cp $cp1 >].[< uv $id _extended >]() {
+                        Ok(if decl.[< cp $cp1 >].[< uv $id _extended >]() {
                             Self::St(deserialize_vector::<2>(reader, format, VectorDivisor::Custom(divisor))?)
                         } else {
                             Self::S(deserialize_scalar(reader, format, VectorDivisor::Custom(divisor))?)
@@ -196,13 +223,13 @@ macro_rules! impl_uv_de {
 
             impl UvData {
                 $(
-                    pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-                        let uv_storage = cp.cp2.[< uv $id _storage >]();
+                    pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, decl: &VertexDeclaration) -> EditorResult<Self> {
+                        let uv_storage = decl.cp2.[< uv $id _storage >]();
                         Ok(match uv_storage {
                             VectorStorage::NotPresent => Self::NotPresent,
                             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
                             VectorStorage::Index16 => Self::Index16(reader.read_u16::<BigEndian>()?),
-                            VectorStorage::Direct => Self::Direct(DirectUv::[< deserialize_uv $id >](reader, cp)?)
+                            VectorStorage::Direct => Self::Direct(DirectUv::[< deserialize_uv $id >](reader, decl)?)
                         })
                     }
                 )*
@@ -225,33 +252,36 @@ pub struct OpVertex {
 }
 
 impl OpVertex {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>, cp: &MergedCpLoad) -> EditorResult<Self> {
-        let pm = cp.cp1.pm().then(|| reader.read_u8()).transpose()?;
+    pub fn deserialize(
+        reader: &mut RefCursor<[u8]>,
+        decl: &VertexDeclaration,
+    ) -> EditorResult<Self> {
+        let pm = decl.cp1.pm().then(|| reader.read_u8()).transpose()?;
         let tms = [
-            cp.cp1.tm0().then(|| reader.read_u8()).transpose()?,
-            cp.cp1.tm1().then(|| reader.read_u8()).transpose()?,
-            cp.cp1.tm2().then(|| reader.read_u8()).transpose()?,
-            cp.cp1.tm3().then(|| reader.read_u8()).transpose()?,
-            cp.cp1.tm4().then(|| reader.read_u8()).transpose()?,
-            cp.cp1.tm5().then(|| reader.read_u8()).transpose()?,
-            cp.cp1.tm6().then(|| reader.read_u8()).transpose()?,
-            cp.cp1.tm7().then(|| reader.read_u8()).transpose()?,
+            decl.cp1.tm0().then(|| reader.read_u8()).transpose()?,
+            decl.cp1.tm1().then(|| reader.read_u8()).transpose()?,
+            decl.cp1.tm2().then(|| reader.read_u8()).transpose()?,
+            decl.cp1.tm3().then(|| reader.read_u8()).transpose()?,
+            decl.cp1.tm4().then(|| reader.read_u8()).transpose()?,
+            decl.cp1.tm5().then(|| reader.read_u8()).transpose()?,
+            decl.cp1.tm6().then(|| reader.read_u8()).transpose()?,
+            decl.cp1.tm7().then(|| reader.read_u8()).transpose()?,
         ];
 
-        let position = PositionData::deserialize(reader, cp)?;
-        let normals = NormalData::deserialize(reader, cp)?;
-        let color0 = ColorData::deserialize_col0(reader, cp)?;
-        let color1 = ColorData::deserialize_col1(reader, cp)?;
+        let position = PositionData::deserialize(reader, decl)?;
+        let normals = NormalData::deserialize(reader, decl)?;
+        let color0 = ColorData::deserialize_col0(reader, decl)?;
+        let color1 = ColorData::deserialize_col1(reader, decl)?;
 
         let uvs = [
-            UvData::deserialize_uv0(reader, cp)?,
-            UvData::deserialize_uv1(reader, cp)?,
-            UvData::deserialize_uv2(reader, cp)?,
-            UvData::deserialize_uv3(reader, cp)?,
-            UvData::deserialize_uv4(reader, cp)?,
-            UvData::deserialize_uv5(reader, cp)?,
-            UvData::deserialize_uv6(reader, cp)?,
-            UvData::deserialize_uv7(reader, cp)?,
+            UvData::deserialize_uv0(reader, decl)?,
+            UvData::deserialize_uv1(reader, decl)?,
+            UvData::deserialize_uv2(reader, decl)?,
+            UvData::deserialize_uv3(reader, decl)?,
+            UvData::deserialize_uv4(reader, decl)?,
+            UvData::deserialize_uv5(reader, decl)?,
+            UvData::deserialize_uv6(reader, decl)?,
+            UvData::deserialize_uv7(reader, decl)?,
         ];
 
         Ok(OpVertex {
@@ -278,7 +308,7 @@ impl DrawOpCode {
     /// Decodes the draw command based on the vertex info given in the `LoadCP` opcode.
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        cp_opcodes: &MergedCpLoad,
+        cp_opcodes: &VertexDeclaration,
     ) -> EditorResult<Self> {
         let vertex_count = reader.read_u16::<BigEndian>()?;
         tracing::trace!("deserializing {vertex_count} vertices");
