@@ -7,10 +7,7 @@ use crate::{
         encoding::{Deserialize, ReadArrayExt, ReadStringExt},
         mdl0::gx::{
             GxBytecode, GxOpCode,
-            load_cp::{
-                CpSubCommand1, CpSubCommand2, CpSubCommand3, CpSubCommand4, CpSubCommand5,
-                LoadCpOpCode,
-            },
+            load_cp::{CpVatA, CpVatB, CpVatC, CpVcdHi, CpVcdLo, LoadCpOpCode},
             load_xf::{LoadXfOpCode, LoadXfPayload},
         },
     },
@@ -94,55 +91,79 @@ pub enum BoneBind {
     Table(BoneTable),
 }
 
-macro_rules! impl_vertex_decl {
-    ($($id:literal),*) => {
-        paste::paste! {
-            #[derive(Debug, Clone, PartialEq)]
-            pub struct VertexDeclaration {
-                $(
-                    pub [< cp $id >]: [< CpSubCommand $id >],
-                )*
-                pub xf: Vec<LoadXfPayload>,
-            }
-
-            impl TryFrom<GxBytecode> for VertexDeclaration {
-                type Error = EditorError;
-
-                fn try_from(value: GxBytecode) -> Result<Self, Self::Error> {
-                    $(
-                        let mut [< cp $id >] = None;
-                    )*
-                    let mut xf = None;
-
-                    for opcode in value.commands {
-                        match opcode {
-                            GxOpCode::LoadXf(LoadXfOpCode { loads }) => xf = Some(loads),
-                            $(
-                                GxOpCode::LoadCp(LoadCpOpCode::[< C $id >](x)) => [< cp $id >] = Some(x),
-                            )*
-                            _ => {}
-                        }
-                    }
-
-                    Ok(Self {
-                        xf: xf.ok_or_else(|| EditorError::from(InvalidInputError {
-                            reason: String::from("vertex declaration did not contain LoadXF opcode"),
-                            ..Default::default()
-                        }))?,
-                        $(
-                            [< cp $id >]: [< cp $id >].ok_or_else(|| EditorError::from(InvalidInputError {
-                                reason: String::from(concat!("vertex declaration did not contain cp", $id, " opcode")),
-                                ..Default::default()
-                            }))?,
-                        )*
-                    })
-                }
-            }
-        }
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VertexDeclaration {
+    pub vcd_lo: CpVcdLo,
+    pub vcd_hi: CpVcdHi,
+    pub vat_a: CpVatA,
+    pub vat_b: CpVatB,
+    pub vat_c: CpVatC,
+    pub xf: Vec<LoadXfPayload>,
 }
 
-impl_vertex_decl!(1, 2, 3, 4, 5);
+impl TryFrom<GxBytecode> for VertexDeclaration {
+    type Error = EditorError;
+
+    fn try_from(value: GxBytecode) -> Result<Self, Self::Error> {
+        let mut vcd_lo = None;
+        let mut vcd_hi = None;
+        let mut vat_a = None;
+        let mut vat_b = None;
+        let mut vat_c = None;
+        let mut xf = None;
+
+        for opcode in value.commands {
+            match opcode {
+                GxOpCode::LoadXf(LoadXfOpCode { loads }) => xf = Some(loads),
+                GxOpCode::LoadCp(LoadCpOpCode::VcdLo(x)) => vcd_lo = Some(x),
+                GxOpCode::LoadCp(LoadCpOpCode::VcdHi(x)) => vcd_hi = Some(x),
+                GxOpCode::LoadCp(LoadCpOpCode::VatA(x)) => vat_a = Some(x),
+                GxOpCode::LoadCp(LoadCpOpCode::VatB(x)) => vat_b = Some(x),
+                GxOpCode::LoadCp(LoadCpOpCode::VatC(x)) => vat_c = Some(x),
+                _ => {}
+            }
+        }
+
+        Ok(Self {
+            xf: xf.ok_or_else(|| {
+                EditorError::from(InvalidInputError {
+                    reason: String::from("vertex declaration did not contain LoadXF opcode"),
+                    ..Default::default()
+                })
+            })?,
+            vcd_lo: vcd_lo.ok_or_else(|| {
+                EditorError::from(InvalidInputError {
+                    reason: String::from("vertex declaration did not contain cp1 opcode"),
+                    ..Default::default()
+                })
+            })?,
+            vcd_hi: vcd_hi.ok_or_else(|| {
+                EditorError::from(InvalidInputError {
+                    reason: String::from("vertex declaration did not contain cp2 opcode"),
+                    ..Default::default()
+                })
+            })?,
+            vat_a: vat_a.ok_or_else(|| {
+                EditorError::from(InvalidInputError {
+                    reason: String::from("vertex declaration did not contain cp3 opcode"),
+                    ..Default::default()
+                })
+            })?,
+            vat_b: vat_b.ok_or_else(|| {
+                EditorError::from(InvalidInputError {
+                    reason: String::from("vertex declaration did not contain cp4 opcode"),
+                    ..Default::default()
+                })
+            })?,
+            vat_c: vat_c.ok_or_else(|| {
+                EditorError::from(InvalidInputError {
+                    reason: String::from("vertex declaration did not contain cp5 opcode"),
+                    ..Default::default()
+                })
+            })?,
+        })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Polygon {

@@ -23,17 +23,17 @@ impl DirectPosition {
         reader: &mut RefCursor<[u8]>,
         decl: &VertexDeclaration,
     ) -> EditorResult<Self> {
-        Ok(if decl.cp3.pos_extended() {
+        Ok(if decl.vat_a.pos_extended() {
             Self::Xyz(deserialize_vector::<3>(
                 reader,
-                decl.cp3.pos_format(),
-                VectorDivisor::Custom(decl.cp3.pos_divisor()),
+                decl.vat_a.pos_format(),
+                VectorDivisor::Custom(decl.vat_a.pos_divisor()),
             )?)
         } else {
             Self::Xy(deserialize_vector::<2>(
                 reader,
-                decl.cp3.pos_format(),
-                VectorDivisor::Custom(decl.cp3.pos_divisor()),
+                decl.vat_a.pos_format(),
+                VectorDivisor::Custom(decl.vat_a.pos_divisor()),
             )?)
         })
     }
@@ -52,7 +52,7 @@ impl PositionData {
         reader: &mut RefCursor<[u8]>,
         decl: &VertexDeclaration,
     ) -> EditorResult<Self> {
-        let pos_storage = decl.cp1.pos_storage();
+        let pos_storage = decl.vcd_lo.pos_storage();
         Ok(match pos_storage {
             VectorStorage::NotPresent => PositionData::NotPresent,
             VectorStorage::Index8 => PositionData::Index8(reader.read_u8()?),
@@ -77,16 +77,16 @@ impl DirectNormal {
         reader: &mut RefCursor<[u8]>,
         decl: &VertexDeclaration,
     ) -> EditorResult<Self> {
-        Ok(if decl.cp3.norm_extended() {
+        Ok(if decl.vat_a.norm_extended() {
             Self::Triple(deserialize_vector::<9>(
                 reader,
-                VertexFormat::from(decl.cp3.norm_format()),
+                VertexFormat::from(decl.vat_a.norm_format()),
                 VectorDivisor::Normalize,
             )?)
         } else {
             Self::Single(deserialize_vector::<3>(
                 reader,
-                VertexFormat::from(decl.cp3.norm_format()),
+                VertexFormat::from(decl.vat_a.norm_format()),
                 VectorDivisor::Normalize,
             )?)
         })
@@ -106,7 +106,7 @@ impl NormalData {
         reader: &mut RefCursor<[u8]>,
         decl: &VertexDeclaration,
     ) -> EditorResult<Self> {
-        let norm_storage = decl.cp1.norm_storage();
+        let norm_storage = decl.vcd_lo.norm_storage();
         Ok(match norm_storage {
             VectorStorage::NotPresent => NormalData::NotPresent,
             VectorStorage::Index8 => NormalData::Index8(reader.read_u8()?),
@@ -127,10 +127,10 @@ impl DirectColor {
         reader: &mut RefCursor<[u8]>,
         decl: &VertexDeclaration,
     ) -> EditorResult<Self> {
-        Ok(if decl.cp3.col0_extended() {
-            Self::AlphaEnabled(deserialize_color(reader, decl.cp3.col0_format())?)
+        Ok(if decl.vat_a.col0_extended() {
+            Self::AlphaEnabled(deserialize_color(reader, decl.vat_a.col0_format())?)
         } else {
-            Self::AlphaDisabled(deserialize_color(reader, decl.cp3.col0_format())?)
+            Self::AlphaDisabled(deserialize_color(reader, decl.vat_a.col0_format())?)
         })
     }
 
@@ -138,10 +138,10 @@ impl DirectColor {
         reader: &mut RefCursor<[u8]>,
         decl: &VertexDeclaration,
     ) -> EditorResult<Self> {
-        Ok(if decl.cp3.col1_extended() {
-            Self::AlphaEnabled(deserialize_color(reader, decl.cp3.col1_format())?)
+        Ok(if decl.vat_a.col1_extended() {
+            Self::AlphaEnabled(deserialize_color(reader, decl.vat_a.col1_format())?)
         } else {
-            Self::AlphaDisabled(deserialize_color(reader, decl.cp3.col1_format())?)
+            Self::AlphaDisabled(deserialize_color(reader, decl.vat_a.col1_format())?)
         })
     }
 }
@@ -159,7 +159,7 @@ impl ColorData {
         reader: &mut RefCursor<[u8]>,
         decl: &VertexDeclaration,
     ) -> EditorResult<Self> {
-        let color_storage = decl.cp1.col0_storage();
+        let color_storage = decl.vcd_lo.col0_storage();
         Ok(match color_storage {
             VectorStorage::NotPresent => Self::NotPresent,
             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
@@ -172,7 +172,7 @@ impl ColorData {
         reader: &mut RefCursor<[u8]>,
         decl: &VertexDeclaration,
     ) -> EditorResult<Self> {
-        let color_storage = decl.cp1.col1_storage();
+        let color_storage = decl.vcd_lo.col1_storage();
         Ok(match color_storage {
             VectorStorage::NotPresent => Self::NotPresent,
             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
@@ -204,15 +204,15 @@ macro_rules! impl_uv_de {
     // $cp1 is the subcommand that contains the format and extended flag.
     // $cp2 contains the divisor.
     // For all, except uv4, these are equal.
-    ($($id:literal => $cp1:literal + $cp2:literal),*) => {
+    ($($id:literal => $cp1:ident + $cp2:ident),*) => {
         paste::paste! {
             impl DirectUv {
                 $(
                     pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, decl: &VertexDeclaration) -> EditorResult<Self> {
-                        let format = decl.[< cp $cp1 >].[< uv $id _format >]();
-                        let divisor = decl.[< cp $cp2 >].[< uv $id _divisor >]();
+                        let format = decl.[< $cp1 >].[< uv $id _format >]();
+                        let divisor = decl.[< $cp2 >].[< uv $id _divisor >]();
 
-                        Ok(if decl.[< cp $cp1 >].[< uv $id _extended >]() {
+                        Ok(if decl.[< $cp1 >].[< uv $id _extended >]() {
                             Self::St(deserialize_vector::<2>(reader, format, VectorDivisor::Custom(divisor))?)
                         } else {
                             Self::S(deserialize_scalar(reader, format, VectorDivisor::Custom(divisor))?)
@@ -224,7 +224,7 @@ macro_rules! impl_uv_de {
             impl UvData {
                 $(
                     pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, decl: &VertexDeclaration) -> EditorResult<Self> {
-                        let uv_storage = decl.cp2.[< uv $id _storage >]();
+                        let uv_storage = decl.vcd_hi.[< uv $id _storage >]();
                         Ok(match uv_storage {
                             VectorStorage::NotPresent => Self::NotPresent,
                             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
@@ -238,7 +238,16 @@ macro_rules! impl_uv_de {
     };
 }
 
-impl_uv_de!(0 => 3 + 3, 1 => 4 + 4, 2 => 4 + 4, 3 => 4 + 4, 4 => 4 + 5, 5 => 5 + 5, 6 => 5 + 5, 7 => 5 + 5);
+impl_uv_de!(
+    0 => vat_a + vat_a,
+    1 => vat_b + vat_b,
+    2 => vat_b + vat_b,
+    3 => vat_b + vat_b,
+    4 => vat_b + vat_c,
+    5 => vat_c + vat_c,
+    6 => vat_c + vat_c,
+    7 => vat_c + vat_c
+);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OpVertex {
@@ -256,16 +265,16 @@ impl OpVertex {
         reader: &mut RefCursor<[u8]>,
         decl: &VertexDeclaration,
     ) -> EditorResult<Self> {
-        let pm = decl.cp1.pm().then(|| reader.read_u8()).transpose()?;
+        let pm = decl.vcd_lo.pm().then(|| reader.read_u8()).transpose()?;
         let tms = [
-            decl.cp1.tm0().then(|| reader.read_u8()).transpose()?,
-            decl.cp1.tm1().then(|| reader.read_u8()).transpose()?,
-            decl.cp1.tm2().then(|| reader.read_u8()).transpose()?,
-            decl.cp1.tm3().then(|| reader.read_u8()).transpose()?,
-            decl.cp1.tm4().then(|| reader.read_u8()).transpose()?,
-            decl.cp1.tm5().then(|| reader.read_u8()).transpose()?,
-            decl.cp1.tm6().then(|| reader.read_u8()).transpose()?,
-            decl.cp1.tm7().then(|| reader.read_u8()).transpose()?,
+            decl.vcd_lo.tm0().then(|| reader.read_u8()).transpose()?,
+            decl.vcd_lo.tm1().then(|| reader.read_u8()).transpose()?,
+            decl.vcd_lo.tm2().then(|| reader.read_u8()).transpose()?,
+            decl.vcd_lo.tm3().then(|| reader.read_u8()).transpose()?,
+            decl.vcd_lo.tm4().then(|| reader.read_u8()).transpose()?,
+            decl.vcd_lo.tm5().then(|| reader.read_u8()).transpose()?,
+            decl.vcd_lo.tm6().then(|| reader.read_u8()).transpose()?,
+            decl.vcd_lo.tm7().then(|| reader.read_u8()).transpose()?,
         ];
 
         let position = PositionData::deserialize(reader, decl)?;

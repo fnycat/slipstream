@@ -23,9 +23,10 @@ pub enum VectorStorage {
     Index16 = 0b11,
 }
 
+/// Vertex control descriptor part 1/2.
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
-pub struct CpSubCommand1 {
+pub struct CpVcdLo {
     pub pm: bool,
     pub tm0: bool,
     pub tm1: bool,
@@ -47,9 +48,10 @@ pub struct CpSubCommand1 {
     _padding: u16,
 }
 
+/// Vertex control descriptor part 2/2.
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
-pub struct CpSubCommand2 {
+pub struct CpVcdHi {
     #[bits(2)]
     pub uv0_storage: VectorStorage,
     #[bits(2)]
@@ -70,9 +72,10 @@ pub struct CpSubCommand2 {
     _padding: u16,
 }
 
+/// Vertex attribute table, part 1/3.
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
-pub struct CpSubCommand3 {
+pub struct CpVatA {
     pub pos_extended: bool,
     #[bits(3)]
     pub pos_format: VertexFormat,
@@ -96,9 +99,10 @@ pub struct CpSubCommand3 {
     pub norm_l3: bool,
 }
 
+/// Vertex attribute table, part 2/3.
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
-pub struct CpSubCommand4 {
+pub struct CpVatB {
     pub uv1_extended: bool,
     #[bits(3)]
     pub uv1_format: VertexFormat,
@@ -121,9 +125,10 @@ pub struct CpSubCommand4 {
     _padding: bool,
 }
 
+/// Vertex attribute table, part 3/3.
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
-pub struct CpSubCommand5 {
+pub struct CpVatC {
     #[bits(5)]
     pub uv4_divisor: u8,
     pub uv5_extended: bool,
@@ -145,11 +150,11 @@ pub struct CpSubCommand5 {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoadCpOpCode {
-    C1(CpSubCommand1),
-    C2(CpSubCommand2),
-    C3(CpSubCommand3),
-    C4(CpSubCommand4),
-    C5(CpSubCommand5),
+    VcdLo(CpVcdLo),
+    VcdHi(CpVcdHi),
+    VatA(CpVatA),
+    VatB(CpVatB),
+    VatC(CpVatC),
 }
 
 impl Deserialize for LoadCpOpCode {
@@ -158,11 +163,11 @@ impl Deserialize for LoadCpOpCode {
         let word = reader.read_u32::<BigEndian>()?;
 
         Ok(match byte {
-            0x50 => Self::C1(CpSubCommand1::from_bits(word)),
-            0x60 => Self::C2(CpSubCommand2::from_bits(word)),
-            0x70 => Self::C3(CpSubCommand3::from_bits(word)),
-            0x80 => Self::C4(CpSubCommand4::from_bits(word)),
-            0x90 => Self::C5(CpSubCommand5::from_bits(word)),
+            0x50 => Self::VcdLo(CpVcdLo::from_bits(word)),
+            0x60 => Self::VcdHi(CpVcdHi::from_bits(word)),
+            0x70 => Self::VatA(CpVatA::from_bits(word)),
+            0x80 => Self::VatB(CpVatB::from_bits(word)),
+            0x90 => Self::VatC(CpVatC::from_bits(word)),
             _ => {
                 return Err(CorruptionError {
                     reason: format!("invalid LoadCP subcommand: {byte:#04x}"),
