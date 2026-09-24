@@ -12,7 +12,7 @@ use crate::panes::inspector::InspectorPane;
 use crate::panes::log::LogPane;
 use crate::panes::outliner::OutlinerPane;
 use crate::panes::viewer::ViewerPane;
-use crate::panes::{ContentSignature, Pane, PaneAction, PaneBehavior, RequestPane};
+use crate::panes::{ContentSignature, Pane, PaneAction, PaneBehavior, RequestNewPane};
 use crate::shared::GraphicsState;
 use crate::shared::util::RefCursor;
 
@@ -90,11 +90,11 @@ impl Editor {
         let container = egui_tiles::Linear::new(egui_tiles::LinearDir::Horizontal, Vec::new());
         let container_id = tiles.insert_container(container);
 
-        let outliner_sig = RequestPane::Outliner { root: root_node }.content_signature();
+        let outliner_sig = RequestNewPane::Outliner { root: root_node }.content_signature();
         let outliner =
             OutlinerPane::new(tx.clone(), outliner_sig, root_node, Arc::clone(&node_map));
 
-        let viewer_sig = RequestPane::Viewer { viewed: None }.content_signature();
+        let viewer_sig = RequestNewPane::Viewer { viewed: None }.content_signature();
         let viewer = ViewerPane::new(
             tx.clone(),
             viewer_sig,
@@ -103,7 +103,7 @@ impl Editor {
             render_state.clone(),
         );
 
-        let panes = [outliner, viewer]
+        let panes = [outliner, viewer?]
             .into_iter()
             .map(|pane| tiles.insert_pane(pane))
             .collect::<Vec<_>>();
@@ -147,8 +147,11 @@ impl Editor {
         self.pane_tree.active_tiles().first().copied()
     }
 
-    /// Handles a pane request.
-    pub fn on_pane_request(&mut self, request: RequestPane) -> egui_tiles::TileId {
+    /// Handles a new pane request.
+    pub fn on_new_pane_request(
+        &mut self,
+        request: RequestNewPane,
+    ) -> EditorResult<egui_tiles::TileId> {
         // Check if this pane already exists.
         // This is done using its content ID
         let content_sig = request.content_signature();
@@ -167,31 +170,31 @@ impl Editor {
         {
             // An existing tile has been found, make it active.
             todo!("Found existing pane: {existing_tile:?}");
-            return existing_tile;
+            return Ok(existing_tile);
         }
 
         // Pane was not found, create a new one
         let new_pane = match request {
-            RequestPane::Outliner { root } => OutlinerPane::new(
+            RequestNewPane::Outliner { root } => OutlinerPane::new(
                 self.pane_behavior.sender.clone(),
                 content_sig,
                 root,
                 self.node_map.clone(),
             ),
-            RequestPane::Inspector { inspected } => InspectorPane::new(
+            RequestNewPane::Inspector { inspected } => InspectorPane::new(
                 self.pane_behavior.sender.clone(),
                 content_sig,
                 inspected,
                 self.node_map.clone(),
             ),
-            RequestPane::Viewer { viewed } => ViewerPane::new(
+            RequestNewPane::Viewer { viewed } => ViewerPane::new(
                 self.pane_behavior.sender.clone(),
                 content_sig,
                 viewed,
                 self.node_map.clone(),
                 self.render_state.clone(),
-            ),
-            RequestPane::Log => LogPane::new(),
+            )?,
+            RequestNewPane::Log => LogPane::new(),
         };
 
         let new_pane_id = self.pane_tree.tiles.insert_pane(new_pane);
@@ -234,7 +237,7 @@ impl Editor {
             },
         }
 
-        new_pane_id
+        Ok(new_pane_id)
     }
 
     fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui) {
@@ -297,7 +300,7 @@ impl Editor {
                         });
 
                         if ui.button("Logs").clicked() {
-                            self.on_pane_request(RequestPane::Log);
+                            self.on_new_pane_request(RequestNewPane::Log);
                         }
 
                         ui.menu_button("Settings", |_ui| {});
@@ -317,8 +320,9 @@ impl RoutablePage for Editor {
     fn update(&mut self) -> EditorResult<()> {
         while let Ok(cmd) = self.pane_behavior.receiver.try_recv() {
             match cmd {
-                PaneAction::RequestPane(request) => {
-                    self.on_pane_request(request);
+                PaneAction::RequestPaneEdit(_) => todo!(),
+                PaneAction::RequestNewPane(request) => {
+                    self.on_new_pane_request(request);
                 }
                 PaneAction::RemoveTile(tile) => {
                     self.pane_tree.tiles.remove(tile);

@@ -259,7 +259,7 @@ fn build_skeleton_tree(
                 .get(curr_id)
                 .expect("virtual node that was just added does not exist");
 
-            let mut lock = node.lock();
+            let mut lock = node.write();
             lock.body.inspect_mut(|body| {
                 body.inspectable = Some(Box::new(VirtualBone::from_bone(&bone.bone, None, None)));
             });
@@ -269,8 +269,6 @@ fn build_skeleton_tree(
 
             continue; // No parent
         }
-
-        dbg!(bone.bone.billboard_transform);
 
         let parent_start = bone.bone.bone_start as i64 + bone.bone.parent_offset as i64;
         reader.set_position(parent_start as u64 + BONE_INDEX_OFFSET);
@@ -297,7 +295,7 @@ fn build_skeleton_tree(
         })?;
 
         {
-            let mut lock = parent_node.lock();
+            let mut lock = parent_node.write();
 
             // Change the file tree kind to reflect that it now has children.
             lock.kind = VirtualNodeKind::Bone { end: false };
@@ -317,7 +315,7 @@ fn build_skeleton_tree(
 
         {
             // Set the bone's parent and its data.
-            let mut lock = curr_node.lock();
+            let mut lock = curr_node.write();
             lock.parent = Some(parent_id);
             lock.body.inspect_mut(|body| {
                 body.inspectable = Some(Box::new(VirtualBone::from_bone(

@@ -396,7 +396,7 @@ impl PipelineState {
     }
 }
 
-struct ModelState {
+pub struct ModelState {
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
 }

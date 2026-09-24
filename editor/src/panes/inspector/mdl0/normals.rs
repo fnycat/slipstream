@@ -9,4 +9,12 @@ impl Inspectable for NormalBuf {
         ui.label(format!("Stride: {}", self.stride));
         ui.label(format!("Normal count: {}", self.normals.len()));
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }

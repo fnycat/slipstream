@@ -1,9 +1,9 @@
 use dashmap::DashMap;
 use dashmap::mapref::one::Ref;
-use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
+use parking_lot::{MappedMutexGuard, Mutex, MutexGuard, RwLock};
 
 use crate::node::node::VirtualNode;
-use crate::shared::util::AssertSend;
+use crate::shared::util::AssertSendSync;
 use std::fmt;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
@@ -19,7 +19,7 @@ impl fmt::Display for VirtualNodeId {
 }
 
 pub type VirtualNodeMap = Arc<VirtualRefCacheMap>;
-pub type VirtualNodeRef = Arc<Mutex<VirtualNode>>;
+pub type VirtualNodeRef = Arc<RwLock<VirtualNode>>;
 
 /// Maps between node IDs and the nodes that the IDs refer to.
 ///
@@ -31,8 +31,6 @@ pub struct VirtualRefCacheMap {
     /// This ensures that nodes can be inserted into the cache while other nodes are being used.
     refs: DashMap<VirtualNodeId, VirtualNodeRef>,
 }
-
-impl AssertSend for VirtualRefCacheMap {}
 
 impl VirtualRefCacheMap {
     pub fn new() -> VirtualRefCacheMap {
@@ -55,6 +53,6 @@ impl VirtualRefCacheMap {
     }
 
     pub fn insert(&self, id: VirtualNodeId, node: VirtualNode) {
-        self.refs.insert(id, Arc::new(Mutex::new(node)));
+        self.refs.insert(id, Arc::new(RwLock::new(node)));
     }
 }

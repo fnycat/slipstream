@@ -10,7 +10,7 @@ use crate::{
         node::VirtualNodeKind,
         refs::{VirtualNodeId, VirtualNodeMap},
     },
-    panes::{ContentSignature, Pane, PaneAction, RequestPane, inspector::InspectorPane},
+    panes::{ContentSignature, Pane, PaneAction, RequestNewPane, inspector::InspectorPane},
 };
 
 pub struct OutlinerPane {
@@ -42,7 +42,7 @@ impl OutlinerPane {
     ///
     /// If a specific node has been opened, this function returns the ID of its cache entry.
     fn draw_file_tree(&mut self, root_node: VirtualNodeId, ui: &mut egui::Ui) -> EditorResult<()> {
-        let curr_node = self
+        let curr_node_lock = self
             .node_map
             .get(root_node)
             .ok_or_else(|| {
@@ -53,7 +53,7 @@ impl OutlinerPane {
             })?
             .clone();
 
-        let mut curr_node = curr_node.lock();
+        let curr_node = curr_node_lock.read();
         let node_kind = curr_node.kind;
 
         // Persistent ID to make sure the `openness` state of the folders
@@ -108,6 +108,14 @@ impl OutlinerPane {
                     {
                         collapsing_state.toggle(ui);
                     }
+
+                    row_response.context_menu(|ui| {
+                        curr_node.draw_context_menu(&mut self.cmd_sender, ui);
+                    });
+
+                    label_response.context_menu(|ui| {
+                        curr_node.draw_context_menu(&mut self.cmd_sender, ui);
+                    });
                 });
             });
 
@@ -122,8 +130,13 @@ impl OutlinerPane {
                         self.draw_file_tree(child, ui)?;
                     }
                 } else {
-                    curr_node.evaluate()?;
+                    {
+                        drop(curr_node);
+                        let mut curr_node = curr_node_lock.write();
+                        curr_node.evaluate()?;
+                    }
 
+                    let curr_node = curr_node_lock.read();
                     let Deferred::Evaluated(body) = &curr_node.body else {
                         unreachable!()
                     };
@@ -139,10 +152,6 @@ impl OutlinerPane {
             if let Some(response) = body_response {
                 response.inner?;
             }
-
-            row_response.context_menu(|ui| {
-                curr_node.draw_context_menu(&mut self.cmd_sender, ui);
-            });
         } else {
             ui.horizontal(|ui| {
                 ui.label(curr_node.kind.icon_closed());
@@ -151,9 +160,10 @@ impl OutlinerPane {
 
                 if response.clicked() {
                     self.cmd_sender
-                        .send(PaneAction::RequestPane(RequestPane::Inspector {
+                        .send(PaneAction::RequestNewPane(RequestNewPane::Inspector {
                             inspected: curr_node.id,
-                        }));
+                        }))
+                        .expect("failed to send inspector pane open request");
                 }
 
                 response.context_menu(|ui| {

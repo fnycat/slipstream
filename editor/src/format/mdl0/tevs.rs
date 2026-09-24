@@ -29,8 +29,6 @@ impl Deserialize for Tev {
 
         let bytecode = GxBytecode::deserialize_tev_data(reader)?;
 
-        todo!("TEV");
-
         Ok(Self {
             tex_scales,
             bytecode,
@@ -69,6 +67,8 @@ pub fn deserialize_virtual(
         node_map.insert(id, node);
         tevs.push(id);
     }
+
+    tracing::error!("TODO TEVS");
 
     Ok(VirtualNodeBody {
         children: tevs,

@@ -11,10 +11,14 @@ use egui::mutex::RwLock;
 use wgpu::util::DeviceExt;
 
 use crate::{
+    error::EditorResult,
     node::refs::{VirtualNodeId, VirtualNodeMap},
     panes::{
         ContentSignature, Pane, PaneAction,
-        viewer::pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipeline},
+        viewer::{
+            pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipeline},
+            translator::TranslatedModel,
+        },
     },
     shared::{
         GraphicsState,
@@ -34,13 +38,20 @@ pub struct ViewerPane {
 }
 
 impl ViewerPane {
+    /// `mdl0_node` should be the ID of an MDL0 file.
     pub fn new(
         cmd_sender: mpsc::Sender<PaneAction>,
         content_sig: ContentSignature,
-        node: Option<VirtualNodeId>,
+        mdl0_node: Option<VirtualNodeId>,
         node_map: VirtualNodeMap,
         render_state: GraphicsState,
-    ) -> Box<dyn Pane> {
+    ) -> EditorResult<Box<dyn Pane>> {
+        let model = mdl0_node
+            .map(|node| TranslatedModel::from_node(&render_state.device, node, &node_map))
+            .transpose()?;
+
+        dbg!(&model);
+
         let pipeline = ViewerPipeline::new(render_state.clone());
         render_state
             .renderer
@@ -50,13 +61,13 @@ impl ViewerPane {
 
         tracing::trace!("Viewer pipeline initialized");
 
-        Box::new(Self {
+        Ok(Box::new(Self {
             cmd_sender,
             content_sig,
-            node,
+            node: mdl0_node,
             node_map,
             render_state,
-        })
+        }))
     }
 }
 

@@ -699,7 +699,7 @@ impl Deserialize for MaterialBuf {
             refs
         };
 
-        todo!("shader data");
+        tracing::error!("TODO SHADER DATA");
 
         Ok(Self {
             index,

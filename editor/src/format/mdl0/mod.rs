@@ -386,7 +386,7 @@ pub fn deserialize_virtual(
         label: name,
         id: mdl_node_id,
         parent: Some(parent_id),
-        kind: VirtualNodeKind::BrresDirectory,
+        kind: VirtualNodeKind::Mdl0Root,
         body: Deferred::evaluated(VirtualNodeBody {
             children: files,
             inspectable: None,

@@ -4,7 +4,7 @@ use std::{
 };
 
 /// Asserts that the type implementing this trait is `Send`.
-pub trait AssertSend: Send {}
+pub trait AssertSendSync: Send + Sync {}
 
 /// Reads a `u8` from the given cursor and asserts that it matches the given pattern.
 /// If not, it returns an [`EditorError::AssertFailed`] error with the given message.

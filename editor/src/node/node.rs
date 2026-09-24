@@ -1,13 +1,19 @@
-use std::sync::mpsc;
+use std::any::Any;
+use std::sync::{Arc, mpsc};
+
+use parking_lot::Mutex;
 
 use crate::error::EditorResult;
 use crate::node::defer::Deferred;
 use crate::node::refs::VirtualNodeId;
-use crate::panes::{PaneAction, RequestPane};
+use crate::panes::{PaneAction, RequestNewPane, RequestPaneEdit};
+use crate::shared::util::AssertSendSync;
 use crate::{fill_icon, reg_icon};
 
-pub trait Inspectable: Send + std::fmt::Debug {
+pub trait Inspectable: Send + Sync + std::fmt::Debug {
     fn draw_properties(&mut self, ui: &mut egui::Ui);
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 #[derive(Debug)]
@@ -30,11 +36,11 @@ pub struct VirtualNode {
     pub body: Deferred<VirtualNodeBody>,
 }
 
+impl AssertSendSync for VirtualNode {}
+
 impl VirtualNode {
     /// Renders the context menu of this node.
     pub fn draw_context_menu(&self, cmd: &mut mpsc::Sender<PaneAction>, ui: &mut egui::Ui) {
-        // REQUIRED: node map, command sender
-
         if ui.button("Export").clicked() {
             todo!("export");
         }
@@ -44,13 +50,21 @@ impl VirtualNode {
         }
 
         if ui.button("Inspect").clicked() {
-            cmd.send(PaneAction::RequestPane(RequestPane::Inspector {
+            cmd.send(PaneAction::RequestNewPane(RequestNewPane::Inspector {
                 inspected: self.id,
             }));
         }
 
+        if self.kind == VirtualNodeKind::Mdl0Root {
+            if ui.button("Open in 3D viewer").clicked() {
+                cmd.send(PaneAction::RequestNewPane(RequestNewPane::Viewer {
+                    viewed: Some(self.id),
+                }));
+            }
+        }
+
         if ui.button("Open in new Outliner").clicked() {
-            cmd.send(PaneAction::RequestPane(RequestPane::Outliner {
+            cmd.send(PaneAction::RequestNewPane(RequestNewPane::Outliner {
                 root: self.id,
             }));
         }
@@ -75,6 +89,7 @@ pub enum VirtualNodeKind {
         empty: bool,
     },
     BrresDirectory,
+    Mdl0Root,
     Bytecode,
     Bone {
         end: bool,
@@ -117,9 +132,9 @@ impl VirtualNodeKind {
     /// The icon to use when the folder/file is open.
     pub fn icon_open(&self) -> egui::RichText {
         match self {
-            Self::ArcDirectory { empty: false } => reg_icon!(FOLDER_OPEN),
+            Self::ArcDirectory { empty: false } | Self::BrresDirectory => reg_icon!(FOLDER_OPEN),
             Self::ArcDirectory { empty: true } => reg_icon!(FOLDER_DASHED),
-            Self::BrresDirectory => reg_icon!(FOLDER_OPEN),
+            Self::Mdl0Root => reg_icon!(PERSON),
             Self::Bytecode => reg_icon!(FILE_CODE),
             Self::Bone { end: false } => reg_icon!(BONE),
             Self::Bone { end: true } => fill_icon!(BONE),

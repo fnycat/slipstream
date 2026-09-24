@@ -71,6 +71,14 @@ impl Inspectable for BoneFlags {
         // ui.checkbox(&mut self.use_identity(), "Use identity").on_hover_text("Fast-path for rendering, forces the engine to use the identity matrix for this bone (i.e. no translation, rotation or scale)");
         // ui.end_row();
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 impl Inspectable for VirtualBone {
@@ -187,5 +195,13 @@ impl Inspectable for VirtualBone {
 
         ui.label("User data:");
         ui.add(egui::DragValue::new(&mut self.user_data_offset));
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }

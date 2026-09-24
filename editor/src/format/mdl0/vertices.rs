@@ -8,7 +8,7 @@ use crate::format::mdl0::util::VectorDivisor;
 use crate::node::defer::Deferred;
 use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
-use crate::panes::viewer::translator::WiiModel;
+use crate::panes::viewer::translator::TranslatedModel;
 use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
@@ -47,17 +47,25 @@ impl VertexBufData {
         }
     }
 
-    pub fn len(&self) -> usize {
-        match self {
-            Self::Xy(verts) => verts.len(),
-            Self::Xyz(verts) => verts.len(),
-        }
-    }
-
     pub fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Xy(verts) => bytemuck::cast_slice(verts),
             Self::Xyz(verts) => bytemuck::cast_slice(verts),
+        }
+    }
+
+    /// Returns the buffer size in bytes.
+    pub fn size(&self) -> usize {
+        match self {
+            Self::Xy(verts) => 2 * size_of::<f32>() * verts.len(),
+            Self::Xyz(verts) => 3 * size_of::<f32>() * verts.len(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Xy(verts) => verts.len(),
+            Self::Xyz(verts) => verts.len(),
         }
     }
 }
@@ -147,12 +155,6 @@ pub fn deserialize_virtual(
         reader.set_position(data_start as u64);
 
         let model = VertexBuf::deserialize(reader, header_start)?;
-
-        let wii_model = WiiModel {
-            vertex_buf: Cow::Borrowed(&model),
-        };
-
-        wii_model.translate();
 
         let id = node_map.next_id();
         let node = VirtualNode {
