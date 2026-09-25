@@ -8,7 +8,7 @@ use crate::{error::EditorResult, format::encoding::Deserialize};
 pub struct IndexedLoad {
     /// The XF slot to pull the data from.
     #[bits(16)]
-    pub index: i16,
+    pub index: u16,
     /// Address into the indexed array.
     #[bits(12)]
     pub address: u16,

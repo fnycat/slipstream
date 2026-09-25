@@ -27,7 +27,13 @@ pub enum VectorStorage {
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct CpVcdLo {
-    pub pm: bool,
+    /// Whether the position/normal matrix index is stored in this vertex.
+    ///
+    /// This matrix index points to the matrix in the parent shape's bone table,
+    /// that should be used to transform this vertex.
+    ///
+    /// Also called: `GX_VA_PNMTXIDX`
+    pub pn_index_enabled: bool,
     pub tm0: bool,
     pub tm1: bool,
     pub tm2: bool,

@@ -8,10 +8,14 @@ use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap, VirtualNodeRef};
 use crate::{format::mdl0::SectionDeserialize, shared::util::RefCursor};
 
+/// Maps a bone index to a matrix index.
+///
+/// This is contained in the bytecode section of the file. It assigns a transformation
+/// matrix to each of the bones.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MapNode {
     pub bone_index: u16,
-    pub parent_matrix_index: u16,
+    pub matrix_index: u16,
 }
 
 impl MapNode {
@@ -21,11 +25,11 @@ impl MapNode {
 impl Deserialize for MapNode {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let bone_index = reader.read_u16::<BigEndian>()?;
-        let parent_matrix_index = reader.read_u16::<BigEndian>()?;
+        let matrix_index = reader.read_u16::<BigEndian>()?;
 
         Ok(Self {
             bone_index,
-            parent_matrix_index,
+            matrix_index,
         })
     }
 }

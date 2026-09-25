@@ -299,7 +299,10 @@ impl_uv_de!(
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OpVertex {
-    pub pm: Option<u8>,
+    /// The position/normal matrix that should be used to transform this vertex.
+    ///
+    /// This is an index into the parent shape's bone table.
+    pub pn_matrix_index: Option<u8>,
     pub tms: [Option<u8>; 8],
     pub position: PositionData,
     pub normals: NormalData,
@@ -313,16 +316,22 @@ impl OpVertex {
         reader: &mut RefCursor<[u8]>,
         decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
-        let pm = decl.vcd_lo.pm().then(|| reader.read_u8()).transpose()?;
+        let mut byte_read = || reader.read_u8();
+
+        // The index must be divided by 3 to get the true index. This converts the byte offset
+        // in XF matrix memory to an array index into the table.
+        let pn_matrix_index = decl.vcd_lo.pn_index_enabled().then(&mut byte_read).transpose()?.map(|x| x / 3);
+        dbg!(&pn_matrix_index);
+
         let tms = [
-            decl.vcd_lo.tm0().then(|| reader.read_u8()).transpose()?,
-            decl.vcd_lo.tm1().then(|| reader.read_u8()).transpose()?,
-            decl.vcd_lo.tm2().then(|| reader.read_u8()).transpose()?,
-            decl.vcd_lo.tm3().then(|| reader.read_u8()).transpose()?,
-            decl.vcd_lo.tm4().then(|| reader.read_u8()).transpose()?,
-            decl.vcd_lo.tm5().then(|| reader.read_u8()).transpose()?,
-            decl.vcd_lo.tm6().then(|| reader.read_u8()).transpose()?,
-            decl.vcd_lo.tm7().then(|| reader.read_u8()).transpose()?,
+            decl.vcd_lo.tm0().then(&mut byte_read).transpose()?,
+            decl.vcd_lo.tm1().then(&mut byte_read).transpose()?,
+            decl.vcd_lo.tm2().then(&mut byte_read).transpose()?,
+            decl.vcd_lo.tm3().then(&mut byte_read).transpose()?,
+            decl.vcd_lo.tm4().then(&mut byte_read).transpose()?,
+            decl.vcd_lo.tm5().then(&mut byte_read).transpose()?,
+            decl.vcd_lo.tm6().then(&mut byte_read).transpose()?,
+            decl.vcd_lo.tm7().then(byte_read).transpose()?,
         ];
 
         let position = PositionData::deserialize(reader, decl)?;
@@ -342,7 +351,7 @@ impl OpVertex {
         ];
 
         Ok(OpVertex {
-            pm,
+            pn_matrix_index,
             tms,
             position,
             normals,

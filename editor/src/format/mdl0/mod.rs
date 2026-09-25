@@ -223,16 +223,16 @@ impl Deserialize for Mdl0Header {
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoneLinkTable {
     /// Maps a matrix index to the singular bone index driving it.
-    pub driven_matrices: HashMap<u32, u32>,
+    pub rigid_bones: Vec<u32>,
     /// Indices of matrices that have multiple bones affecting them.
-    pub blended_matrices: Vec<u32>,
+    pub mixed_bones: Vec<u32>,
     /// Indices of bones that do not deform any geometry.
     pub unconnected_bones: Vec<u32>,
 }
 
 impl BoneLinkTable {
     pub fn len(&self) -> usize {
-        self.driven_matrices.len() + self.blended_matrices.len() + self.unconnected_bones.len()
+        self.rigid_bones.len() + self.mixed_bones.len() + self.unconnected_bones.len()
     }
 }
 
@@ -240,34 +240,36 @@ impl Deserialize for BoneLinkTable {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let entry_count = reader.read_u32::<BigEndian>()?;
 
-        let mut driven = HashMap::new();
-        let mut blended = Vec::new();
+        let mut rigid = Vec::new();
+        let mut mixed = Vec::new();
         let mut unconnected = Vec::new();
 
-        let mut blended_appeared = false;
+        let mut is_mixed = false;
         for i in 0..entry_count {
             let word = reader.read_u32::<BigEndian>()?;
             if word == 0xFFFFFFFF {
-                // Matrix `i` has multiple influences.
-                blended.push(i);
-                blended_appeared = true;
+                mixed.push(i);
+                is_mixed = true;
             } else {
-                if blended_appeared {
-                    // Bone `word` is not connected to any geometry
-                    unconnected.push(word);
+                if is_mixed {
+                    unconnected.push(i);
                 } else {
-                    // Matrix `i` is driven by bone `word`
-                    driven.insert(i, word);
+                    rigid.push(i);
                 }
-            };
+            }
         }
 
         Ok(Self {
-            driven_matrices: driven,
-            blended_matrices: blended,
+            rigid_bones: rigid,
+            mixed_bones: mixed,
             unconnected_bones: unconnected,
         })
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Model {
+    pub bone_link_table: BoneLinkTable
 }
 
 #[tracing::instrument(skip_all, fields(name, parent_id))]
@@ -293,15 +295,17 @@ pub fn deserialize_virtual(
 
     let expected_sections =
         brres::get_section_count(BFileType::Mdl0, subfile_header.subfile_version)?;
+
     if subfile_header.offsets.len() != expected_sections {
-        todo!("invalid section count");
+        return Err(CorruptionError {
+            reason: format!("invalid section count, expected {}, got {}", expected_sections, subfile_header.offsets.len()),
+            location: Some(reader.position())
+        }.into())
     }
 
     let _mdl0_header = Mdl0Header::deserialize(reader)?;
 
-    let _bone_links = BoneLinkTable::deserialize(reader)?;
-    let _index_group = IndexGroup::deserialize(reader)?;
-
+    let bone_link_table = BoneLinkTable::deserialize(reader)?;
     let mdl_node_id = node_map.next_id();
 
     let mut files = Vec::with_capacity(subfile_header.offsets.len());
@@ -389,7 +393,9 @@ pub fn deserialize_virtual(
         kind: VirtualNodeKind::Mdl0Root,
         body: Deferred::evaluated(VirtualNodeBody {
             children: files,
-            inspectable: None,
+            inspectable: Some(Box::new(Model {
+                bone_link_table
+            })),
         }),
     });
 

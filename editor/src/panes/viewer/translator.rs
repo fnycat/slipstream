@@ -25,6 +25,7 @@ use crate::{
         refs::{VirtualNodeId, VirtualNodeMap},
     },
 };
+use crate::format::mdl0::gx::draw::NormalIndex;
 
 /// A vertex with all data interleaved.
 ///
@@ -148,7 +149,6 @@ impl ModelBuffers {
     }
 
     /// Creates a new interleaved vertex by resolving all indices in the key.
-    #[tracing::instrument(skip_all, fields(shape_index = shape.index, index_key))]
     fn generate_interleaved_vertex(
         &self,
         shape: &Shape,
@@ -211,8 +211,18 @@ impl ModelBuffers {
 
         match &vertex.normals {
             NormalData::NotPresent => index_key.normals = IndexAttrKey::NotPresent,
-            NormalData::Index8(idx) => index_key.normals = IndexAttrKey::Physical(*idx as usize),
-            NormalData::Index16(idx) => index_key.normals = IndexAttrKey::Physical(*idx as usize),
+            NormalData::Index8(idx) => {
+                match idx {
+                    NormalIndex::Single(idx) => index_key.normals = IndexAttrKey::Physical(*idx as usize),
+                    NormalIndex::Triple(idxs) => todo!("multi normal indices")
+                }
+            },
+            NormalData::Index16(idx) => {
+                match idx {
+                    NormalIndex::Single(idx) => index_key.normals = IndexAttrKey::Physical(*idx as usize),
+                    NormalIndex::Triple(idxs) => todo!("multi normal indices")
+                }
+            },
             NormalData::Direct(x) => {
                 let sid = scratch.direct_data.insert_normal(x.clone());
                 index_key.normals = sid;

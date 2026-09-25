@@ -27,6 +27,7 @@ use crate::{
         wgsl_include,
     },
 };
+use crate::error::EditorError;
 
 pub struct ViewerPane {
     cmd_sender: mpsc::Sender<PaneAction>,
@@ -51,7 +52,8 @@ impl ViewerPane {
             .transpose()?
             .map(|bufs| {
                 let scratch = bufs.resolve_shapes()?;
-                scratch.generate_buffers(&render_state.device)
+                // scratch.generate_buffers(&render_state.device)
+                Ok::<(), EditorError>(())
             })
             .transpose()?;
 

@@ -19,24 +19,16 @@ use crate::{
     shared::util::RefCursor,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoneTableEntry {
-    pub bone_id1: i16,
-    pub bone_id2: i16,
-}
-
-impl Deserialize for BoneTableEntry {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-        let bone_id1 = reader.read_i16::<BigEndian>()?;
-        let bone_id2 = reader.read_i16::<BigEndian>()?;
-
-        Ok(Self { bone_id1, bone_id2 })
-    }
-}
-
+/// Maps shape local matrix IDs to global ones.
+///
+/// Primitives rigged by multiple bones will have their [`pn_index_enabled`] flag set.
+/// Every primitive then stores an index into this table. The table entry then maps this index
+/// to global matrices.
+///
+/// [`pn_index_enabled`]: CpVcdLo::pn_index_enabled
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoneTable {
-    pub entries: Vec<BoneTableEntry>,
+    pub entries: Vec<u16>,
 }
 
 impl Deserialize for BoneTable {
@@ -45,7 +37,7 @@ impl Deserialize for BoneTable {
 
         let mut entries = Vec::with_capacity(entry_count as usize);
         for _ in 0..entry_count {
-            entries.push(BoneTableEntry::deserialize(reader)?);
+            entries.push(reader.read_u16::<BigEndian>()?);
         }
 
         Ok(Self { entries })
@@ -85,10 +77,16 @@ impl Deserialize for ShapeModifier {
     }
 }
 
+/// Determines how this shape is bound to a bone.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BoneBind {
-    Single(u32),
-    Table(BoneTable),
+    /// The entire polygon is bound to a single bone.
+    Rigid(u32),
+    /// Sections of the polygon are bound to different bones.
+    ///
+    /// If the shape uses this bone bind type, the `GX_VA_PNMTXIDX` flag is set to true.
+    /// and each primitive will store an index to its transformation matrix in this table.
+    Mixed(BoneTable),
 }
 
 /// Setup bytecode for a shape.
@@ -182,6 +180,7 @@ pub struct Shape {
     pub modifier: ShapeModifier,
     /// This shape's index in the `Shapes` section.
     pub index: u32,
+    /// The amount of vertices in this polygon.
     pub vertex_count: u32,
     pub face_count: u32,
     /// The vertex buffer to use for indexed draws.
@@ -200,7 +199,7 @@ pub struct Shape {
     ///
     /// This is an index into the `UVs` section of the model.
     pub uv_array_ids: [u16; 8],
-
+    /// Determines how this shape is bound to a bone for rigging.
     pub bone_bind: BoneBind,
     /// Setup bytecode for the buffer formats.
     ///
@@ -246,9 +245,11 @@ impl Deserialize for Shape {
         reader.set_position(object_start + bone_table_offset as u64);
 
         let bone_bind = match bone_index {
-            Some(index) => BoneBind::Single(index),
-            None => BoneBind::Table(BoneTable::deserialize(reader)?),
+            Some(index) => BoneBind::Rigid(index),
+            None => BoneBind::Mixed(BoneTable::deserialize(reader)?),
         };
+
+        dbg!(&bone_bind);
 
         // The definitions and vertices offsets are relative to their fields, not the the file start.
         const VERTEX_DECL_INTERNAL_OFFSET: u64 = 0x20;
