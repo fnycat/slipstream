@@ -31,21 +31,27 @@ pub trait Inspectable: Send + Sync + Debug + 'static {
 /// This guard automatically dereferences and downcasts into the inspectable type
 /// given at creation time.
 pub struct InspectableReadGuard<T> {
-    inner: ArcRwLockReadGuard<RawRwLock, VirtualNode>,
+    guard: ArcRwLockReadGuard<RawRwLock, VirtualNode>,
     _marker: PhantomData<T>,
 }
 
 impl<T> InspectableReadGuard<T> {
+    /// The type of content that this node contains.
+    pub fn kind(&self) -> VirtualNodeKind {
+        self.guard.kind
+    }
+
     /// Returns the inner rwlock guard, consuming this guard.
     pub fn into_inner(self) -> ArcRwLockReadGuard<RawRwLock, VirtualNode> {
-        self.inner
+        self.guard
     }
 }
 
 impl<T> From<Arc<RwLock<VirtualNode>>> for InspectableReadGuard<T> {
     fn from(value: Arc<RwLock<VirtualNode>>) -> Self {
+        let guard = value.read_arc();
         Self {
-            inner: value.read_arc(),
+            guard,
             _marker: PhantomData,
         }
     }
@@ -55,7 +61,7 @@ impl<T: Inspectable> Deref for InspectableReadGuard<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.inner
+        self.guard
             .body
             .get()
             .and_then(|body| body.inspectable.as_ref())

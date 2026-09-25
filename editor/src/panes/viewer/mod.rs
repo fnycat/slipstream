@@ -17,7 +17,7 @@ use crate::{
         ContentSignature, Pane, PaneAction,
         viewer::{
             pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipeline},
-            translator::TranslatedModel,
+            translator::{ModelBuffers, TranslationScratchData},
         },
     },
     shared::{
@@ -46,11 +46,16 @@ impl ViewerPane {
         node_map: VirtualNodeMap,
         render_state: GraphicsState,
     ) -> EditorResult<Box<dyn Pane>> {
-        let model = mdl0_node
-            .map(|node| TranslatedModel::from_node(&render_state.device, node, &node_map))
+        let model_buffers = mdl0_node
+            .map(|node| ModelBuffers::from_root(node, node_map.clone()))
+            .transpose()?
+            .map(|bufs| {
+                let scratch = bufs.resolve_shapes()?;
+                scratch.generate_buffers(&render_state.device)
+            })
             .transpose()?;
 
-        dbg!(&model);
+        dbg!(model_buffers);
 
         let pipeline = ViewerPipeline::new(render_state.clone());
         render_state

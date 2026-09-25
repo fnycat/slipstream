@@ -6,14 +6,14 @@ use crate::{
     format::mdl0::{
         colors::deserialize_color,
         gx::load_cp::{LoadCpOpCode, VectorStorage},
-        shapes::VertexDeclaration,
+        shapes::GxVertexDeclaration,
         util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector},
     },
     shared::util::RefCursor,
 };
 
 /// Position data that is stored directly inside of a draw call.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum DirectPosition {
     Xy([f32; 2]),
     Xyz([f32; 3]),
@@ -22,7 +22,7 @@ pub enum DirectPosition {
 impl DirectPosition {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        decl: &VertexDeclaration,
+        decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         Ok(if decl.vat_a.pos_extended() {
             Self::Xyz(deserialize_vector::<3>(
@@ -37,6 +37,13 @@ impl DirectPosition {
                 VectorDivisor::Custom(decl.vat_a.pos_divisor()),
             )?)
         })
+    }
+
+    pub fn to_xyz(&self) -> [f32; 3] {
+        match self {
+            Self::Xy([x, y]) => [*x, *y, 0.0],
+            Self::Xyz(x) => *x,
+        }
     }
 }
 
@@ -64,7 +71,7 @@ pub enum PositionData {
 impl PositionData {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        decl: &VertexDeclaration,
+        decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         let pos_storage = decl.vcd_lo.pos_storage();
         Ok(match pos_storage {
@@ -89,7 +96,7 @@ pub enum DirectNormal {
 impl DirectNormal {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        decl: &VertexDeclaration,
+        decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         Ok(if decl.vat_a.norm_extended() {
             Self::Triple(deserialize_vector::<9>(
@@ -118,7 +125,7 @@ pub enum NormalData {
 impl NormalData {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        decl: &VertexDeclaration,
+        decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         let norm_storage = decl.vcd_lo.norm_storage();
         Ok(match norm_storage {
@@ -139,7 +146,7 @@ pub enum DirectColor {
 impl DirectColor {
     pub fn deserialize_col0(
         reader: &mut RefCursor<[u8]>,
-        decl: &VertexDeclaration,
+        decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         Ok(if decl.vat_a.col0_extended() {
             Self::AlphaEnabled(deserialize_color(reader, decl.vat_a.col0_format())?)
@@ -150,7 +157,7 @@ impl DirectColor {
 
     pub fn deserialize_col1(
         reader: &mut RefCursor<[u8]>,
-        decl: &VertexDeclaration,
+        decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         Ok(if decl.vat_a.col1_extended() {
             Self::AlphaEnabled(deserialize_color(reader, decl.vat_a.col1_format())?)
@@ -171,7 +178,7 @@ pub enum ColorData {
 impl ColorData {
     pub fn deserialize_col0(
         reader: &mut RefCursor<[u8]>,
-        decl: &VertexDeclaration,
+        decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         let color_storage = decl.vcd_lo.col0_storage();
         Ok(match color_storage {
@@ -184,7 +191,7 @@ impl ColorData {
 
     pub fn deserialize_col1(
         reader: &mut RefCursor<[u8]>,
-        decl: &VertexDeclaration,
+        decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         let color_storage = decl.vcd_lo.col1_storage();
         Ok(match color_storage {
@@ -222,7 +229,7 @@ macro_rules! impl_uv_de {
         paste::paste! {
             impl DirectUv {
                 $(
-                    pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, decl: &VertexDeclaration) -> EditorResult<Self> {
+                    pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, decl: &GxVertexDeclaration) -> EditorResult<Self> {
                         let format = decl.[< $cp1 >].[< uv $id _format >]();
                         let divisor = decl.[< $cp2 >].[< uv $id _divisor >]();
 
@@ -237,7 +244,7 @@ macro_rules! impl_uv_de {
 
             impl UvData {
                 $(
-                    pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, decl: &VertexDeclaration) -> EditorResult<Self> {
+                    pub fn [< deserialize_uv $id >](reader: &mut RefCursor<[u8]>, decl: &GxVertexDeclaration) -> EditorResult<Self> {
                         let uv_storage = decl.vcd_hi.[< uv $id _storage >]();
                         Ok(match uv_storage {
                             VectorStorage::NotPresent => Self::NotPresent,
@@ -277,7 +284,7 @@ pub struct OpVertex {
 impl OpVertex {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        decl: &VertexDeclaration,
+        decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         let pm = decl.vcd_lo.pm().then(|| reader.read_u8()).transpose()?;
         let tms = [
@@ -331,7 +338,7 @@ impl DrawOpCode {
     /// Decodes the draw command based on the vertex info given in the `LoadCP` opcode.
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        cp_opcodes: &VertexDeclaration,
+        cp_opcodes: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         let vertex_count = reader.read_u16::<BigEndian>()?;
         tracing::trace!("deserializing {vertex_count} vertices");

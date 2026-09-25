@@ -95,7 +95,7 @@ pub enum BoneBind {
 ///
 /// This describes the formats of all the buffers.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct VertexDeclaration {
+pub struct GxVertexDeclaration {
     /// The low vertex control descriptor.
     pub vcd_lo: CpVcdLo,
     /// The high vertex control descriptor.
@@ -109,7 +109,7 @@ pub struct VertexDeclaration {
     pub xf: Vec<LoadXfPayload>,
 }
 
-impl TryFrom<GxBytecode> for VertexDeclaration {
+impl TryFrom<GxBytecode> for GxVertexDeclaration {
     type Error = EditorError;
 
     fn try_from(value: GxBytecode) -> Result<Self, Self::Error> {
@@ -204,8 +204,8 @@ pub struct Shape {
     pub bone_bind: BoneBind,
     /// Setup bytecode for the buffer formats.
     ///
-    /// See [`VertexDeclaration`] for more info.
-    pub vertex_decl: VertexDeclaration,
+    /// See [`GxVertexDeclaration`] for more info.
+    pub vertex_decl: GxVertexDeclaration,
     /// Bytecode containing this shape's draw calls.
     pub vertex_data_gx: GxBytecode,
 }
@@ -262,10 +262,9 @@ impl Deserialize for Shape {
         reader.set_position(definitions_start as u64);
 
         tracing::trace!("Reading vertex declaration GX bytecode");
-        let vertex_decl = VertexDeclaration::try_from(GxBytecode::deserialize_vertex_declaration(
-            reader,
-            definitions_end as u64,
-        )?)?;
+        let vertex_decl = GxVertexDeclaration::try_from(
+            GxBytecode::deserialize_vertex_declaration(reader, definitions_end as u64)?,
+        )?;
 
         let vertices_start =
             object_start as i64 + VERTEX_DATA_INTERNAL_OFFSET as i64 + vertex_data_offset as i64;

@@ -8,7 +8,7 @@ use crate::format::mdl0::util::VectorDivisor;
 use crate::node::defer::Deferred;
 use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
-use crate::panes::viewer::translator::TranslatedModel;
+use crate::panes::viewer::translator::TranslationScratchData;
 use crate::{
     format::{
         encoding::{Deserialize, ReadArrayExt},
@@ -102,6 +102,15 @@ pub struct VertexBuf {
 }
 
 impl VertexBuf {
+    /// Convenience method that loads the vertex at the given index and upcasts it to an XYZ vertex.
+    /// For vertices with only two components, the Z component is set 0.
+    pub fn get_xyz(&self, index: usize) -> Option<[f32; 3]> {
+        match &self.vertices {
+            VertexBufData::Xy(xy) => xy.get(index).map(|[x, y]| [*x, *y, 0.0]),
+            VertexBufData::Xyz(xyz) => xyz.get(index).copied(),
+        }
+    }
+
     pub fn deserialize(reader: &mut RefCursor<[u8]>, header_start: u32) -> EditorResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let _mdl0_offset = reader.read_i32::<BigEndian>()?;

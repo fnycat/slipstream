@@ -10,7 +10,7 @@ use crate::{
                 load_bp::LoadBpOpCode, load_cp::LoadCpOpCode, load_indexed::IndexedLoad,
                 load_xf::LoadXfOpCode,
             },
-            shapes::VertexDeclaration,
+            shapes::GxVertexDeclaration,
         },
     },
     shared::util::RefCursor,
@@ -161,7 +161,7 @@ impl GxBytecode {
 
     pub fn deserialize_vertex_data(
         reader: &mut RefCursor<[u8]>,
-        vertex_decl: &VertexDeclaration,
+        vertex_decl: &GxVertexDeclaration,
         section_end: u64,
     ) -> EditorResult<Self> {
         let mut commands = Vec::new();

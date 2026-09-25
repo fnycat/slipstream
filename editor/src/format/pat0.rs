@@ -63,7 +63,7 @@ pub struct Pat0Subfile {
 
 impl Deserialize for Pat0Subfile {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-        let subfile_header = BFileHeader::deserialize(reader, SubfileType::Pat0)?;
+        let subfile_header = BFileHeader::deserialize(reader, BFileType::Pat0)?;
         let pat0_header = Pat0Header::deserialize(reader)?;
 
         let name_start = subfile_header.header_start as i64 + subfile_header.name_offset as i64;

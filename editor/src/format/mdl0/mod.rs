@@ -20,7 +20,7 @@ use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::{
-        brres::{self, BFileHeader, IndexGroup, SubfileType},
+        brres::{self, BFileHeader, BFileType, IndexGroup},
         encoding::{Deserialize, ReadArrayExt},
     },
     shared::util::RefCursor,
@@ -279,7 +279,7 @@ pub fn deserialize_virtual(
 ) -> EditorResult<VirtualNodeId> {
     tracing::trace!("Opening {name}");
 
-    let subfile_header = BFileHeader::deserialize(reader, SubfileType::Mdl0)?;
+    let subfile_header = BFileHeader::deserialize(reader, BFileType::Mdl0)?;
     if subfile_header.subfile_version != 11 {
         return Err(UnsupportedError {
             reason: format!(
@@ -292,7 +292,7 @@ pub fn deserialize_virtual(
     }
 
     let expected_sections =
-        brres::get_section_count(SubfileType::Mdl0, subfile_header.subfile_version)?;
+        brres::get_section_count(BFileType::Mdl0, subfile_header.subfile_version)?;
     if subfile_header.offsets.len() != expected_sections {
         todo!("invalid section count");
     }
