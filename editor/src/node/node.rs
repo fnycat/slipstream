@@ -20,12 +20,16 @@ pub trait Inspectable: Send + Sync + Debug + 'static {
 }
 
 /// Custom guard that improves ergonomics of accessing inspectables in nodes.
+///
+/// This guard automatically dereferences and downcasts into the inspectable type
+/// given at creation time.
 pub struct InspectableReadGuard<T> {
     inner: ArcRwLockReadGuard<RawRwLock, VirtualNode>,
     _marker: PhantomData<T>,
 }
 
 impl<T> InspectableReadGuard<T> {
+    /// Returns the inner rwlock guard, consuming this guard.
     pub fn into_inner(self) -> ArcRwLockReadGuard<RawRwLock, VirtualNode> {
         self.inner
     }

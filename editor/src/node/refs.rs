@@ -22,11 +22,13 @@ impl fmt::Display for VirtualNodeId {
 pub type VirtualNodeMap = Arc<VirtualRefCacheMap>;
 pub type VirtualNodeRef = Arc<RwLock<VirtualNode>>;
 
+/// A lock guard that automatically
 pub struct ChildrenReadGuard {
     inner: ArcRwLockReadGuard<RawRwLock, VirtualNode>,
 }
 
 impl ChildrenReadGuard {
+    /// Returns the inner rwlock guard, consuming the lock.
     pub fn into_inner(self) -> ArcRwLockReadGuard<RawRwLock, VirtualNode> {
         self.inner
     }
@@ -55,6 +57,15 @@ impl Deref for ChildrenReadGuard {
 impl AsRef<[VirtualNodeId]> for ChildrenReadGuard {
     fn as_ref(&self) -> &[VirtualNodeId] {
         self.deref()
+    }
+}
+
+impl<'a> IntoIterator for &'a ChildrenReadGuard {
+    type Item = &'a VirtualNodeId;
+    type IntoIter = std::slice::Iter<'a, VirtualNodeId>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.deref().iter()
     }
 }
 

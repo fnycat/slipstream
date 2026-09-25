@@ -46,7 +46,14 @@ impl ModelBuffers {
     pub fn from_root(node: VirtualNodeId, map: VirtualNodeMap) -> EditorResult<Self> {
         let mut bufs = Self::new(map.clone());
 
-        let node = map.get
+        let node = map.get_children(node).ok_or_else(|| {
+            EditorError::from(InvalidInputError {
+                reason: format!("virtual node {node} did not exist"),
+                ..Default::default()
+            })
+        })?;
+
+        for child in &node {}
 
         todo!()
     }
