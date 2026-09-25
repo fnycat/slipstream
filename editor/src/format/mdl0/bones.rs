@@ -29,6 +29,9 @@ pub struct BoneFlags {
     pub _unused: u32,
 }
 
+/// Configures the way billboarding is used for this object.
+///
+/// This can be used to make something always face the camera.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BillboardSetting {
     /// No influence.
@@ -52,6 +55,7 @@ pub enum BillboardSetting {
 }
 
 impl BillboardSetting {
+    /// Returns the amount of items in this enum.
     pub fn len() -> usize {
         Self::YPerspectiveBillboard as usize + 1
     }
@@ -92,9 +96,11 @@ pub struct Bone {
     pub bone_start: u32,
     pub mdl0_offset: i32,
     pub name_offset: i32,
+    /// The index of this bone in `Bones` section of the MDL0 file.
     pub index: u32,
     pub id: u32,
     pub flags: BoneFlags,
+    /// Configures how billboarding is used for this bone.
     pub billboard_setting: BillboardSetting,
     pub billboard_transform: u32,
     pub scaling_vector: [f32; 3],
@@ -102,6 +108,7 @@ pub struct Bone {
     pub translation_vector: [f32; 3],
     pub bounding_volume_min: [f32; 3],
     pub bounding_volume_max: [f32; 3],
+    /// The offset in bytes to the parent of this bone.
     pub parent_offset: i32,
     pub first_child_offset: i32,
     pub next_sibling_offset: i32,
@@ -111,8 +118,8 @@ pub struct Bone {
     pub inverse_matrix: [f32; 12],
 }
 
-impl Bone {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
+impl Deserialize for Bone {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let start = reader.position();
 
         let length = reader.read_u32::<BigEndian>()?;
@@ -164,6 +171,7 @@ impl Bone {
     }
 }
 
+/// A bone combined with its name.
 #[derive(Debug)]
 pub struct NamedBone {
     pub name: String,
@@ -191,6 +199,8 @@ pub struct VirtualBone {
 }
 
 impl VirtualBone {
+    /// Converts raw bone data into a more usable format by resolving the file offsets
+    /// to proper node references. This ensures the editor knows which other files this one refers to.
     pub fn from_bone(
         bone: &Bone,
         billboard_id: Option<VirtualNodeId>,
@@ -215,6 +225,7 @@ impl VirtualBone {
     }
 }
 
+/// Builds a nested tree of bones as nodes and returns the root node of the skeleton.
 fn build_skeleton_tree(
     reader: &mut RefCursor<[u8]>,
     parent_id: VirtualNodeId,
@@ -342,6 +353,10 @@ fn build_skeleton_tree(
     Ok(root)
 }
 
+/// Deserializes the entire `Bones` section of an MDL0 file.
+///
+/// The parser automatically builds a proper file tree of bones that the outliner
+/// can display. References between bones are resolved to use node IDs instead.
 #[tracing::instrument(skip_all, fields(parent_id))]
 pub fn deserialize_skeleton(
     reader: &mut RefCursor<[u8]>,

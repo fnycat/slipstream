@@ -9,6 +9,9 @@ egui_phosphor::subset! {
     }
 }
 
+/// Loads the given in regular font.
+///
+/// Make sure the icon you want is added to the list of imported icons.
 #[macro_export]
 macro_rules! reg_icon {
     ($icon:ident) => {
@@ -17,6 +20,9 @@ macro_rules! reg_icon {
     };
 }
 
+/// Loads the given in filled font.
+///
+/// Make sure the icon you want is added to the list of imported icons.
 #[macro_export]
 macro_rules! fill_icon {
     ($icon:ident) => {

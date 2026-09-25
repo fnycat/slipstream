@@ -20,7 +20,7 @@ use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap};
 use crate::{
     format::{
-        brres::{self, IndexGroup, SubfileHeader, SubfileType},
+        brres::{self, BFileHeader, IndexGroup, SubfileType},
         encoding::{Deserialize, ReadArrayExt},
     },
     shared::util::RefCursor,
@@ -279,7 +279,7 @@ pub fn deserialize_virtual(
 ) -> EditorResult<VirtualNodeId> {
     tracing::trace!("Opening {name}");
 
-    let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl0)?;
+    let subfile_header = BFileHeader::deserialize(reader, SubfileType::Mdl0)?;
     if subfile_header.subfile_version != 11 {
         return Err(UnsupportedError {
             reason: format!(
@@ -335,7 +335,7 @@ pub fn deserialize_virtual(
                 parent_id,
                 &node_map2,
             ),
-            SectionType::Normals => normals::deserialize_virtual(
+            SectionType::Normals => normals::deserialize_normals_section(
                 &mut reader,
                 subfile_header.header_start,
                 parent_id,

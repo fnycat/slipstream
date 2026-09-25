@@ -13,9 +13,16 @@ use crate::panes::{PaneAction, RequestNewPane, RequestPaneEdit};
 use crate::shared::util::AssertSendSync;
 use crate::{fill_icon, reg_icon};
 
+/// An object that can be opened in the inspector window, with its own customizable contents.
 pub trait Inspectable: Send + Sync + Debug + 'static {
+    /// Draws the contents of the inspector window.
+    ///
+    /// The inspector creates the basic window and title bar, but the rest of the pane
+    /// is controlled by this function.
     fn draw_properties(&mut self, ui: &mut egui::Ui);
+    /// Converts this object to an immutable any trait object for downcasting.
     fn as_any(&self) -> &dyn Any;
+    /// Converts this object to a mutable any trait object for downcasting.
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
@@ -63,27 +70,53 @@ impl<T: Inspectable> AsRef<T> for InspectableReadGuard<T> {
     }
 }
 
+/// The contents of a virtual node.
+///
+/// This can either be a further file tree or file contents.
 #[derive(Debug)]
 pub struct VirtualNodeBody {
+    /// The nodes that are contained in this one.
+    ///
+    /// These will also be loaded by the outliner to show a proper file tree.
     pub children: Vec<VirtualNodeId>,
+    /// Optional contents of this node. This is mostly used for files.
     pub inspectable: Option<Box<dyn Inspectable>>,
 }
 
+/// A node in the filesystem. The editor's file system consists of just a tree with IDs (+ node types). The file contents
+/// are stored in a central cache instead of in the tree.
+///
+/// Every (real and virtual) file and directory is stored as a node with unique ID.
+/// These contents are stored in a central map that can be queried for any other node via its ID.
+///
+/// Initially I had the contents embedded directly into the tree, but that made jumping to arbitrary other files
+/// quite difficult.
 #[derive(Debug)]
 pub struct VirtualNode {
+    /// The label that is displayed in the outliner. This is pretty much only for visuals as the nodes mostly
+    /// refer to each other with IDs instead of names.
     pub label: String,
+    /// The ID of this node. This is what other nodes use to refer to this one.
     pub id: VirtualNodeId,
-    /// Determines how this node is displayed in the file tree.
-    ///
-    /// If the node kind is [`Container`], it will be displayed as a directory.
-    ///
-    /// [`Container`](VirtualNodeKind::Container)
+    /// Determines what type this node is. This affects how the node is displayed in the outliner and how
+    /// other parts of the editor will treat this node. Setting the incorrect type for a node will likely cause
+    /// a panic.
     pub kind: VirtualNodeKind,
+    /// The parent of this node (if known).
     pub parent: Option<VirtualNodeId>,
+    /// The contents of this node. They can be deferred, meaning they will be parsed lazily.
+    ///
+    /// This is pretty much only used for the contents of the subfiles (like BRRES) files. This makes a slight difference
+    /// in editor opening time by only parsing contents when they are needed.
     pub body: Deferred<VirtualNodeBody>,
 }
 
 impl VirtualNode {
+    /// Attempts to load this node's inspectable properties.
+    ///
+    /// If the node has not been evaluated yet or has no contents, this will return `None`.
+    /// The contents are downcasted from a general trait object, so if the type `T` is incorrect for these
+    /// contents, `None` will also be returned.
     pub fn inspectable<T: Inspectable>(&self) -> Option<&T> {
         self.body
             .get()?
@@ -93,6 +126,11 @@ impl VirtualNode {
             .downcast_ref::<T>()
     }
 
+    /// Attempts to load this node's inspectable properties.
+    ///
+    /// If the node has not been evaluated yet or has no contents, this will return `None`.
+    /// The contents are downcasted from a general trait object, so if the type `T` is incorrect for these
+    /// contents, `None` will also be returned.
     pub fn inspectable_mut<T: Inspectable>(&mut self) -> Option<&mut T> {
         self.body
             .get_mut()?
@@ -143,22 +181,32 @@ impl VirtualNode {
     }
 }
 
+/// The category this node belongs to. This affects visuals such as the icon but also how the editor treats this node.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum VirtualNodeKind {
     /// This virtual node can contain other nodes.
     ///
     /// This is used for both directories and files that contain multiple subfiles/sections.
     ArcDirectory {
+        /// Whether the directory is empty. If it is, it will be inactive and have a special icon.
         empty: bool,
     },
+    /// A directory in a BRRES file.
     BrresDirectory,
+    /// The root of an MDL0 model. This should contain the section directories `Vertices`, `Normals`.
     Mdl0Root,
+    /// The bytecode section of an MDL0 file.
     Bytecode,
+    /// The bone section of an MDL0 file.
     Bone {
+        /// Whether this is the end bone of a limb. This makes sure it is not displayed as a folder.
         end: bool,
     },
+    /// A vertex buffer in an MDL0 file.
     Vertices,
+    /// A normal buffer in an MDL0 file.
     Normals,
+    /// A color buffer in an MDL0 file.
     Colors,
     Uvs,
     Materials,

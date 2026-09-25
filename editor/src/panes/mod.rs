@@ -22,6 +22,10 @@ impl From<u64> for ContentSignature {
     }
 }
 
+/// A general pane that can be used in the editor.
+///
+/// The tile manager stores every pane as a trait object of this type and does
+/// not know about the pane contents.
 pub trait Pane: Send + Sync {
     fn content_signature(&self) -> ContentSignature;
     /// The title of the current pane.
@@ -34,15 +38,33 @@ pub trait Pane: Send + Sync {
     }
 }
 
+/// Requests to the tile manager to open a new pane.
+///
+/// If a pane with the exact same content signature is found, that pane will be focused instead.
+/// If no equivalent pane is found, a new one will be opened.
+///
+/// See [``] for an explanation on how it is decided where to put the new pane.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RequestNewPane {
-    Outliner { root: VirtualNodeId },
-    Inspector { inspected: VirtualNodeId },
-    Viewer { viewed: Option<VirtualNodeId> },
+    /// Opens a new [`Outliner`]
+    ///
+    /// [`Outliner`]: outliner::OutlinerPane.
+    Outliner {
+        root: VirtualNodeId,
+    },
+    Inspector {
+        inspected: VirtualNodeId,
+    },
+    Viewer {
+        viewed: Option<VirtualNodeId>,
+    },
     Log,
 }
 
 impl RequestNewPane {
+    /// Computes the content signature of the new pane.
+    ///
+    /// This is compared with existing tiles.
     pub fn content_signature(&self) -> ContentSignature {
         let mut hasher = DefaultHasher::new();
 

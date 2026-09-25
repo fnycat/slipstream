@@ -4,20 +4,29 @@ const UP_AXIS: glam::Vec3 = glam::vec3(0.0, 1.0, 0.0);
 const NEAR_PLANE: f32 = 0.1;
 const FAR_PLANE: f32 = 100000.0;
 
+/// The camera data that is sent to the GPU.
 #[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct CameraUniformData {
-    pub viewport_size: glam::Vec4, // vec4 is required here due to padding
+    /// Current dimensions of the pane that the view is being drawn in.
+    /// This does not have to be the entire physical window.
+    pub viewport_size: glam::Vec4,
+    /// The combined view and projection matrices of the camera.
+    ///
+    /// This already includes camera movement.
     pub view_proj: glam::Mat4,
 }
 
 impl CameraUniformData {
+    /// The size in bytes of this uniform block.
     pub const SIZE: NonZeroU64 = NonZeroU64::new(std::mem::size_of::<Self>() as u64).unwrap();
 
+    /// The size in bytes of this uniform block.
     pub const fn size() -> NonZeroU64 {
         Self::SIZE
     }
 
+    /// Returns the wgpu bind group layout for this uniform.
     pub const fn layout() -> wgpu::BindGroupLayoutDescriptor<'static> {
         wgpu::BindGroupLayoutDescriptor {
             label: Some("camera bind group layout"),
@@ -35,8 +44,10 @@ impl CameraUniformData {
     }
 }
 
+/// Represents some kind of camera.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Camera {
+    /// An orbital camera that looks at a specific point and rotates around it.
     Orbit(OrbitCamera),
 }
 

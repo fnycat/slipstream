@@ -8,8 +8,10 @@ use parking_lot::Mutex;
 use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::{Layer, layer::Context};
 
+/// Global vector containing all logs logged by the current process.
 pub static GLOBAL_MEM_LOGS: LazyLock<Mutex<Vec<LogEvent>>> = LazyLock::new(|| Mutex::default());
 
+/// A simple ZST to use as a tracing layer.
 #[derive(Default)]
 pub struct GlobalMemLogLayer;
 
@@ -18,11 +20,13 @@ impl GlobalMemLogLayer {
         Self::default()
     }
 
+    /// Removes all recorded logs from the global data.
     pub fn clear() {
         GLOBAL_MEM_LOGS.lock().clear();
     }
 }
 
+/// A single logging event.
 #[derive(Debug, Clone)]
 pub struct LogEvent {
     pub name: &'static str,
@@ -48,6 +52,7 @@ impl<S: Subscriber> Layer<S> for GlobalMemLogLayer {
     }
 }
 
+/// A very small visitor that extracts a string field called `name` from the log event.
 #[derive(Default)]
 struct MessageVisitor(String);
 

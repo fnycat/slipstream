@@ -8,11 +8,17 @@ use crate::shared::util::RefCursor;
 macro_rules! impl_byteorder_arrays {
     ($($ty: ty),*) => {
         paste::paste! {
+            /// Extends the byteorder [`WriteBytesExt`] trait with reading methods for arrays of primitive types.
+            ///
+            /// [`WriteBytesExt`]: byteorder::WriteBytesExt
             pub trait WriteArrayExt: byteorder::WriteBytesExt {
+                /// Writes a `u8` array of size `N` to the cursor.
                 fn write_u8_array<const N: usize>(&mut self, values: [u8; N]) -> std::io::Result<()>;
+                /// Writes a `i8` array of size `N` to the cursor.
                 fn write_i8_array<const N: usize>(&mut self, values: [i8; N]) -> std::io::Result<()>;
 
                 $(
+                    #[doc = concat!("Writes a `", stringify!($ty), "` array of size `N` to the cursor.")]
                     fn [<write_ $ty _array>]<const N: usize, B: byteorder::ByteOrder>(&mut self, values: [$ty; N])
                         -> std::io::Result<()>;
                 )*
@@ -96,6 +102,7 @@ macro_rules! impl_byteorder_arrays {
 
 impl_byteorder_arrays!(u16, i16, u32, i32, u64, i64, u128, i128, f32, f64);
 
+/// Extend the [`ReadBytesExt`] trait with extra functions for reading string .
 pub trait ReadStringExt: ReadBytesExt {
     /// Reads a `String` with a `u32` length prefix.
     fn read_u32_string<B: byteorder::ByteOrder>(&mut self) -> EditorResult<String>;

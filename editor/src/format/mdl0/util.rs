@@ -8,6 +8,15 @@ use crate::{
     shared::util::RefCursor,
 };
 
+/// The data type used to store vertex data.
+///
+/// These formats are used for positions and UVs.
+/// Normals and colors use their own formats.
+///
+/// The [`NormalFormat`] is a subset of this enum and can be infallibly converted into
+/// this.
+///
+/// [`NormalFormat`]: crate::format::mdl0::normals::NormalFormat
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
@@ -81,6 +90,7 @@ pub enum VectorDivisor {
     Custom(u8),
 }
 
+/// Deserializes a single value of the given format.
 pub fn deserialize_scalar(
     reader: &mut RefCursor<[u8]>,
     format: VertexFormat,
@@ -115,6 +125,7 @@ pub fn deserialize_scalar(
     })
 }
 
+/// Deserializes `count` amount of the values of the given format.
 pub fn deserialize_scalar_data(
     reader: &mut RefCursor<[u8]>,
     count: usize,
@@ -128,7 +139,7 @@ pub fn deserialize_scalar_data(
     Ok(data)
 }
 
-/// Deserializes vertex, normal or UV components.
+/// Deserializes a single vector of the given format and size.
 pub fn deserialize_vector<const N: usize>(
     reader: &mut RefCursor<[u8]>,
     format: VertexFormat,
@@ -175,6 +186,7 @@ pub fn deserialize_vector<const N: usize>(
     })
 }
 
+/// Deserializes a list of vectors of the given `count` and `format`.
 pub fn deserialize_vector_data<const N: usize>(
     reader: &mut RefCursor<[u8]>,
     count: usize,

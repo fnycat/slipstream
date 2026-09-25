@@ -13,10 +13,18 @@ use crate::{
     panes::{ContentSignature, Pane, PaneAction, RequestNewPane, inspector::InspectorPane},
 };
 
+/// The outliner displays a file tree.
+///
+/// It only needs a root node and to start from and will explore and draw the rest
+/// of the file tree by itself.
+///
+/// New suboutliners can be made by creating new panes with a child node set to root.
 pub struct OutlinerPane {
     cmd_sender: mpsc::Sender<PaneAction>,
+    /// The content signature of this pane.
+    ///
+    /// The signature only contains the type of window and the root node ID.
     content_sig: ContentSignature,
-
     root: VirtualNodeId,
     node_map: VirtualNodeMap,
 }

@@ -5,6 +5,7 @@ use crate::{
     shared::GraphicsState,
 };
 
+/// Displays version and licensing info of the editor.
 pub struct InfoPage {
     cmd_channel: AppCommandChannel,
     render_state: GraphicsState,

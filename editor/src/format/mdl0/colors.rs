@@ -46,7 +46,7 @@ impl Deserialize for ColorComponents {
     }
 }
 
-/// Describes the format of the pixels.
+/// Describes the format of the color.
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
@@ -98,6 +98,7 @@ pub enum ColorFormat {
 }
 
 impl ColorFormat {
+    /// The stride in bytes of the format.
     pub const fn stride(&self) -> u32 {
         match self {
             Self::Rgb565 => 2,
@@ -140,6 +141,9 @@ impl Deserialize for ColorFormat {
     }
 }
 
+/// A buffer of vertex colors.
+///
+/// This data cannot be used on its own. It is indexed into by the indices in the shape draw commands.
 #[derive(Debug, Clone)]
 pub struct ColorBuf {
     index: u32,

@@ -23,10 +23,10 @@ const BE_BOM: [u8; 2] = [0xFE, 0xFF];
 /// Returns the amount of sections a subfile has, which depends on the subfile type and version.
 ///
 /// This info comes from [`BRRES Subfiles (File Format)`](https://mkwiiki.org/wiki/BRRES_Subfiles_(File_Format))
-pub fn get_section_count(ty: SubfileType, version: u32) -> EditorResult<usize> {
+pub fn get_section_count(ty: BFileType, version: u32) -> EditorResult<usize> {
     Ok(match ty {
-        SubfileType::Root => 0,
-        SubfileType::Mdl0 => match version {
+        BFileType::Root => 0,
+        BFileType::Mdl0 => match version {
             8 => 11,
             11 => 14,
             _ => {
@@ -37,7 +37,7 @@ pub fn get_section_count(ty: SubfileType, version: u32) -> EditorResult<usize> {
                 .into());
             }
         },
-        SubfileType::Chr0 => match version {
+        BFileType::Chr0 => match version {
             // 3 => 1,
             3 => {
                 return Err(UnsupportedError {
@@ -55,7 +55,7 @@ pub fn get_section_count(ty: SubfileType, version: u32) -> EditorResult<usize> {
                 .into());
             }
         },
-        SubfileType::Pat0 => match version {
+        BFileType::Pat0 => match version {
             4 => 6,
             _ => {
                 return Err(CorruptionError {
@@ -122,16 +122,25 @@ impl Deserialize for Header {
     }
 }
 
-pub trait Subfile {
+/// Files in a BRRES archive.
+///
+/// In the code these are referred to as `BFiles` simply to avoid confusion with files in an
+/// ARC archive, general files or even sections of models.
+pub trait BFile {
+    /// The magic of the given bfile.
     const MAGIC: [u8; 4];
 }
 
+/// The first subfile in a BRRES file.
+///
+/// This only contains the total size of the BRRES file.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RootSubfile {
+pub struct RootSection {
+    /// Size of the entire BRRES file.
     pub size: u32,
 }
 
-impl Deserialize for RootSubfile {
+impl Deserialize for RootSection {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != Self::MAGIC {
@@ -143,18 +152,20 @@ impl Deserialize for RootSubfile {
             .into());
         }
 
-        Ok(RootSubfile {
+        Ok(RootSection {
             size: reader.read_u32::<BigEndian>()?,
         })
     }
 }
 
-impl Subfile for RootSubfile {
+impl BFile for RootSection {
+    /// Magic of the root subsection: `root`.
     const MAGIC: [u8; 4] = [0x72, 0x6f, 0x6f, 0x74]; // "root"
 }
 
+/// The header of a BRRRES section.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SubfileHeader {
+pub struct BFileHeader {
     /// Start position of this header. This is used to compute subfile section positions using their
     /// offsets.
     pub header_start: u32,
@@ -174,8 +185,9 @@ pub struct SubfileHeader {
     pub name_offset: i32,
 }
 
-impl SubfileHeader {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>, ty: SubfileType) -> EditorResult<Self> {
+impl BFileHeader {
+    /// Deserializes a section of the given type.
+    pub fn deserialize(reader: &mut RefCursor<[u8]>, ty: BFileType) -> EditorResult<Self> {
         let header_start = reader.position() as u32 - 4; // Subtract 4 for magic.
         let subfile_length = reader.read_u32::<BigEndian>()?;
         let subfile_version = reader.read_u32::<BigEndian>()?;
@@ -214,17 +226,24 @@ impl SubfileHeader {
     }
 }
 
+/// The filetype of a bfile.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SubfileType {
+pub enum BFileType {
+    /// The root file only contains metadata about the size of the entire BRRES file.
     Root,
+    /// Contains model data, this includes everything from vertices to bones, normals, etc.
     Mdl0,
+    /// Character animations controlling the bones of a mesh.
     Chr0,
     Pat0,
 }
 
+/// Header of a BRRES index group.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndexGroupHeader {
+    /// The length in bytes of the index group.
     pub length: u32,
+    /// The number of entries in this index, excluding the root file.
     pub number: u32,
 }
 
@@ -237,13 +256,26 @@ impl Deserialize for IndexGroupHeader {
     }
 }
 
+/// A section in an index group.
+///
+/// These build a tree that enables the Wii to efficiently find files in archives.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndexGroupEntry {
     pub entry_id: u16,
     pub flag: u16,
     pub left_index: u16,
     pub right_index: u16,
+    /// Pointer to the the name of this entry.
+    ///
+    /// Use [`get_entry_name`] to obtain the name associated with this entry.
+    ///
+    /// [`get_entry_name`]: IndexGroup::get_entry_name
     pub name_pointer: u32,
+    /// Pointer to the data of this entry.
+    ///
+    /// Use [`get_entry_data_start`] to get a pointer to the start of the actual data.
+    ///
+    /// [`get_entry_data_start`]: IndexGroup::get_entry_data_start
     pub data_pointer: u32,
 }
 
@@ -268,6 +300,8 @@ impl Deserialize for IndexGroupEntry {
 }
 
 /// Describes locations of the subfiles in this BRRES file.
+///
+/// This is used for any kind of object that might contain subentries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndexGroup {
     /// Index into the BRRES file where this group starts. Generally this is just right after the BRRES header.
@@ -308,6 +342,7 @@ impl IndexGroup {
         Ok(name)
     }
 
+    /// Obtains a pointer to the start of the data section of the given entry.
     pub fn get_entry_data_start(&self, entry: &IndexGroupEntry) -> u32 {
         self.group_start + entry.data_pointer
     }
@@ -391,7 +426,7 @@ pub fn deserialize_virtual(
         // Skip to root start
         reader.set_position(header.root_offset as u64);
 
-        let _root = RootSubfile::deserialize(&mut reader)?;
+        let _root = RootSection::deserialize(&mut reader)?;
         let root_index = IndexGroup::deserialize(&mut reader)?;
 
         let mut directories = Vec::with_capacity(root_index.entries.len());

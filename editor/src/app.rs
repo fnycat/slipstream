@@ -12,19 +12,26 @@ use crate::{
 
 const CHANNEL_SIZE: usize = 50;
 
+/// The `App` handles the basic state of the application and processes input events.
 pub struct App {
+    /// The received commands are used to perform commands that change the entire app state
+    /// and therefore need access to the root app.
     pub rx: futures::channel::mpsc::Receiver<AppCommand>,
-
+    /// Whenever a panic occurs in the UI code, its metadata is stored in this option.
+    /// When the user closes the panic window, the state is set back to `None`.
     pub panic_info: Option<Box<dyn Any + Send>>,
+    /// The main window background image.
     pub bg_image: Option<egui::load::SizedTexture>,
-
+    /// The state of the renderer. This is purely here to pass it onto pages.
     pub render_state: egui_wgpu::RenderState,
-
+    /// The UI state context.
     pub ctx: egui::Context,
+    /// The state of the current page. This contains all info that is currently displayed in the window.
     pub page_state: Box<dyn RoutablePage>,
 }
 
 impl App {
+    /// Creates a new app using the given `eframe` creation context.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         tracing::info!("Initializing app...");
 
@@ -69,6 +76,10 @@ impl App {
         }
     }
 
+    /// Puts the window at the center of the screen.
+    ///
+    /// This will only work if the window size is up to date, i.e. the next frame after resizing
+    /// the window. Centering before the size is updated will center based on the old size and misalign the window.
     fn center_window(&mut self) {
         let window_rect = self.ctx.viewport_rect();
         let sizex = window_rect.max.x - window_rect.min.x;
@@ -87,6 +98,7 @@ impl App {
         }
     }
 
+    /// Draws the main app UI.
     fn draw_ui(&mut self, ui: &mut egui::Ui) {
         handle_frameless_resize(ui);
 
@@ -98,6 +110,7 @@ impl App {
         self.page_state.draw(ui).unwrap();
     }
 
+    /// Processes an app command.
     pub fn handle_command(&mut self, cmd: AppCommand) {
         match cmd {
             AppCommand::CenterWindow => self.center_window(),
@@ -118,6 +131,7 @@ impl eframe::App for App {
             recv_result = self.rx.try_recv();
         }
 
+        // Run possible update on page state.
         self.page_state.update().unwrap();
     }
 

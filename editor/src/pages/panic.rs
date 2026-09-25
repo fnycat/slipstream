@@ -1,6 +1,9 @@
 use crate::app::App;
 
 impl App {
+    /// Draws a modal displaying information of a panic that was caught.
+    ///
+    /// When the user closes the window, the app's panic info is reset to `None`.
     pub fn draw_panic_modal(&mut self, ui: &mut egui::Ui) {
         let modal_id = egui::Id::new("panic_modal");
         egui::Modal::new(modal_id).show(ui.ctx(), |ui| {

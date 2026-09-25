@@ -77,6 +77,9 @@ fn window_builder_hook(builder: egui::ViewportBuilder) -> egui::ViewportBuilder 
         .with_resizable(false)
 }
 
+/// Starts the entire application.
+///
+/// This function sets up logging and the [`eframe`] instance before launching the application.
 pub fn run() -> EditorResult<()> {
     setup_tracing();
 

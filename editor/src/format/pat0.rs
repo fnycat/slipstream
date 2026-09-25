@@ -3,7 +3,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use crate::error::EditorResult;
 use crate::{
     format::{
-        brres::{IndexGroup, Subfile, SubfileHeader, SubfileType},
+        brres::{BFile, BFileHeader, BFileType, IndexGroup},
         encoding::{Deserialize, ReadStringExt},
     },
     shared::util::RefCursor,
@@ -57,13 +57,13 @@ impl U32Section {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pat0Subfile {
-    pub subfile_header: SubfileHeader,
+    pub subfile_header: BFileHeader,
     pub pat0_header: Pat0Header,
 }
 
 impl Deserialize for Pat0Subfile {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-        let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Pat0)?;
+        let subfile_header = BFileHeader::deserialize(reader, SubfileType::Pat0)?;
         let pat0_header = Pat0Header::deserialize(reader)?;
 
         let name_start = subfile_header.header_start as i64 + subfile_header.name_offset as i64;
@@ -82,6 +82,6 @@ impl Deserialize for Pat0Subfile {
     }
 }
 
-impl Subfile for Pat0Subfile {
+impl BFile for Pat0Subfile {
     const MAGIC: [u8; 4] = [0x50, 0x41, 0x54, 0x30]; // "PAT0"
 }

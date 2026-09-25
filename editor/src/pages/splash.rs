@@ -11,9 +11,15 @@ use crate::{
 
 pub static BACKGROUND_TEXTURE: Mutex<Option<SizedTexture>> = Mutex::new(None);
 
+/// Loading screen shown when the app is opening.
+///
+/// This is used to load initial resources the app might need in the home screen.
 pub struct SplashPage {
     ctx: egui::Context,
+    /// State of the renderer, this is only stored here to pass it on to an editor page
+    /// when it is loaded.
     render_state: GraphicsState,
+    /// Channel to communicate with the parent app instance.
     cmd_channel: AppCommandChannel,
 }
 
@@ -36,6 +42,7 @@ impl SplashPage {
         })
     }
 
+    /// Polls the status of resources being loaded by egui.
     fn poll_preload(&mut self) -> Result<egui::load::TexturePoll, egui::load::LoadError> {
         let bg_image = egui::include_image!("../../images/intro_bg.png");
         bg_image.load(
@@ -81,7 +88,9 @@ impl RoutablePage for SplashPage {
         let poll = self.poll_preload();
         match poll {
             Ok(egui::load::TexturePoll::Ready { texture }) => {
-                tracing::trace!("Background image loaded");
+                // Resources are ready, launch the home menu.
+
+                tracing::trace!("Resources loaded");
 
                 // Reset decorations
 

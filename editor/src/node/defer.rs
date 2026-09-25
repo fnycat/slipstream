@@ -2,6 +2,7 @@ use crate::error::{EditorError, EditorResult, InvalidInputError};
 
 pub const FORCE_EAGER_EVALUATION: bool = false;
 
+/// Possible data passed into the deferred node callback.
 pub struct DeferPayload<P, F, T>
 where
     F: FnOnce(P) -> EditorResult<T>,
@@ -29,12 +30,18 @@ where
     }
 }
 
+/// Implemented by the deferred nodes. This is required to put the callback inside of a
+/// box.
 pub trait DeferParser<T>: Send + Sync {
+    /// Forces the parser to be evaluated, returning the data it produced.
     fn load(&mut self) -> EditorResult<T>;
 }
 
+/// A possibly deferred parsing operation.
 pub enum Deferred<T> {
+    /// The object has not been parsed yet, so no data is available.
     Deferred(Box<dyn DeferParser<T>>),
+    /// The object has been fully parsed and the data is available.
     Evaluated(T),
 }
 
@@ -74,6 +81,7 @@ where
         }
     }
 
+    /// Runs the given closure, and return its output, if this object's contents have been parsed.
     pub fn inspect_mut<F, O>(&mut self, peek_fn: F) -> Option<O>
     where
         F: FnOnce(&mut T) -> O,
@@ -84,10 +92,12 @@ where
         }
     }
 
+    /// Creates a new, already parsed, deferred object.
     pub fn evaluated(data: T) -> Self {
         Self::Evaluated(data)
     }
 
+    /// Forces the current contents to be parsed, returning a mutable reference to the resulting data.
     pub fn evaluate(&mut self) -> EditorResult<&mut T> {
         Ok(match self {
             Self::Evaluated(x) => x,
@@ -117,6 +127,7 @@ where
         }
     }
 
+    /// Whether the inner contents have fully been parsed.
     pub fn is_deferred(&self) -> bool {
         matches!(self, Self::Deferred(_))
     }
@@ -126,7 +137,7 @@ impl<T: std::fmt::Debug> std::fmt::Debug for Deferred<T> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Evaluated(x) => fmt.debug_set().entry(x).finish(),
-            Self::Deferred(_) => fmt.debug_set().finish_non_exhaustive(),
+            Self::Deferred(_) => fmt.debug_set().finish_non_exhaustive(), // can't print a closure, so just print ellipsis.
         }
     }
 }

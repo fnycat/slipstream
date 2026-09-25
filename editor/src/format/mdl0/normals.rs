@@ -109,6 +109,10 @@ impl NormalBufData {
     }
 }
 
+/// A large buffer of normals that the shape draw commands index into to draw their polygons.
+///
+/// The original file might store this data in a lower quality format, but the parser will always convert everything
+/// to floats.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NormalBuf {
     /// Index of this buffer into the `Normals` section of the model.
@@ -186,8 +190,9 @@ impl NormalBuf {
     }
 }
 
+/// Deserializes all buffers in the `Normals` section of an MDL0 file.
 #[tracing::instrument(skip_all, fields(parent_id))]
-pub fn deserialize_virtual(
+pub fn deserialize_normals_section(
     reader: &mut RefCursor<[u8]>,
     header_start: u32,
     parent_id: VirtualNodeId,

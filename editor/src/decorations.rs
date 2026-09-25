@@ -7,15 +7,20 @@ use crate::{
     shared::GraphicsState,
 };
 
+/// The size state of the window.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum WindowState {
+    /// The window is in a normal state, not minimized or maximized.
     #[default]
     Normal,
+    /// The window is currently maximized.
     Maximized,
+    /// The window is currently minimized.
     Minimized,
 }
 
 impl WindowState {
+    /// Determines the current state of the window.
     pub fn get_state(ui: &egui::Ui) -> Self {
         let states = ui.input(|i| {
             let vp = i.viewport();
@@ -31,6 +36,10 @@ impl WindowState {
 }
 
 /// Renders the double square icon to unmaximize the window.
+/// It is a separate function instead of an icon since `phosphoricons` did not have
+/// a fitting icon. The icon is drawn manually using egui's painter.
+///
+/// This should only be called when the window is maximized.
 pub fn draw_unmaximize(ui: &mut egui::Ui) -> egui::Response {
     let padding = ui.style().spacing.button_padding;
     let icon_size = egui::vec2(10.0, 10.0);
@@ -80,6 +89,7 @@ pub fn draw_unmaximize(ui: &mut egui::Ui) -> egui::Response {
     response
 }
 
+/// Draws the current version and Git hash in the bottom of the screen.
 pub fn draw_version_details(ui: &mut egui::Ui) {
     let screen_rect = ui.viewport_rect();
     let pos = egui::pos2(screen_rect.min.x + 12.0, screen_rect.max.y - 12.0);
@@ -170,6 +180,10 @@ pub fn draw_title_buttons(ui: &mut egui::Ui) {
     });
 }
 
+/// Without decorations there is also no frame to resize the window.
+///
+/// This function reimplements resizing by emulating its behaviour when the cursor is near
+/// the borders of the window.
 pub fn handle_frameless_resize(ctx: &egui::Context) {
     let border_width = 6.0;
     let screen_rect = ctx.viewport_rect();
@@ -273,6 +287,7 @@ pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
         });
 }
 
+/// Draws the vertical tool buttons on the right of the menu screen.
 pub fn draw_tool_buttons(
     cmd_channel: &mut AppCommandChannel,
     gfx_state: &GraphicsState,

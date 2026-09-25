@@ -147,7 +147,16 @@ impl Editor {
         self.pane_tree.active_tiles().first().copied()
     }
 
-    /// Handles a new pane request.
+    /// Handles a [`RequestNewPane`] request by either focusing an existing pane with
+    /// the same contents, or creating a new pane.
+    ///
+    /// The existing panes are compared with the potential one by comparing [`ContentSignature`]s. If an
+    /// equal signature is found, that window is focused instead of creating a new pane.
+    ///
+    /// If no existing pane was found, this function will first try to find the root node.
+    /// In case this root node was found and happens to be an individual pane, the root will be turned into a horizontal container
+    /// with both the new pane and old root pane contained in it. If this root was already a container, the new pane will simply be appended to it.
+    /// If no tiles were found at all, this pane will be set as root.
     pub fn on_new_pane_request(
         &mut self,
         request: RequestNewPane,
@@ -240,6 +249,9 @@ impl Editor {
         Ok(new_pane_id)
     }
 
+    /// Draws the editor's upper toolbar.
+    ///
+    /// These are the `File`, `Edit`, buttons you often see in application .
     fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui) {
         let layout_bg = ui.style().visuals.panel_fill;
         let decorations_id = egui::Id::new("title_panel");

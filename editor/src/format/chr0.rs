@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use crate::error::{CorruptionError, EditorError, EditorResult};
 use crate::{
     format::{
-        brres::{IndexGroup, Subfile, SubfileHeader, SubfileType},
+        brres::{BFile, BFileHeader, BFileType, IndexGroup},
         encoding::Deserialize,
     },
     shared::util::RefCursor,
@@ -77,8 +77,10 @@ impl Deserialize for ScalingRule {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Chr0Header {
+    /// The amount of animation frames stored in this file.
     pub frame_count: u16,
     pub anim_data_count: u16,
+    /// Whether the animation loops or is a one time animation.
     pub anim_policy: AnimationPolicy,
     pub scaling_rule: ScalingRule,
 }
@@ -99,21 +101,45 @@ impl Deserialize for Chr0Header {
     }
 }
 
+/// The format used to store the animation.
+///
+/// This affects the quality and behavior of the animation.
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum AnimationFormat {
+    /// The bone is kept in a fixed place. Fixed animations are simply a single value indicating where to
+    /// put the bone.
     Fixed = 0b000,
+    /// A 4-byte format where the animation is evaluated by smoothly interpolating between
+    /// a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create
+    /// smooth curves between frames.
     Interpolated4 = 0b001,
+    /// A 6-byte format where the animation is evaluated by smoothly interpolating between
+    /// a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create
+    /// smooth curves between frames.
     Interpolated6 = 0b010,
+    /// A 12-byte format where the animation is evaluated by smoothly interpolating between
+    /// a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create
+    /// smooth curves between frames.
     Interpolated12 = 0b011,
+    /// Specifies every single keyframe explicitly, but allows for more erratic information instead of the smoothly
+    /// interpolated animations of interpolation formats.
+    ///
+    /// The frame are 1 byte in size.
     Linear1 = 0b100,
+    /// Specifies every single keyframe explicitly, but allows for more erratic information instead of the smoothly
+    /// interpolated animations of interpolation formats.
+    ///
+    /// The frame are 4 bytes in size.
     Linear4 = 0b110,
+    /// A fallback for [`bitenum`], this variant should never be used.
     #[fallback]
     Invalid,
 }
 
 impl AnimationFormat {
+    /// Whether this format is a linear format.
     pub fn is_linear(&self) -> bool {
         const LINEAR_MASK: u8 = 0b100;
         (*self as u8) & LINEAR_MASK != 0
@@ -123,7 +149,7 @@ impl AnimationFormat {
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct AnimationCode {
-    #[bits(1, default = true)]
+    #[bits(1)]
     _unused: bool,
     pub use_identity: bool,
     pub rotation_translation_isotropic: bool,
@@ -184,9 +210,9 @@ pub struct I4Frame {
 }
 
 impl I4Frame {
-    pub const INDEX_MASK: u32 = 0xff000000; // Top 12 bits
+    pub const INDEX_MASK: u32 = 0xff000000; // Top 8 bits
     pub const STEP_MASK: u32 = 0x00fff000; // Middle 12 bits
-    pub const TANGENT_MASK: u32 = 0x00000fff; // Bottom 8 bits
+    pub const TANGENT_MASK: u32 = 0x00000fff; // Bottom 12 bits
 }
 
 impl Deserialize for I4Frame {
@@ -406,7 +432,8 @@ pub struct AnimationData {
 }
 
 impl AnimationData {
-    fn deserialize_anim_frame(
+    /// Deserializes the current keyframe.
+    fn deserialize_key_frame(
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u32,
         header_frame_count: u16,
@@ -440,6 +467,7 @@ impl AnimationData {
         Ok(frames)
     }
 
+    /// Returns the scale data of the current keyframe.
     fn deserialize_scale(
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u32,
@@ -461,7 +489,7 @@ impl AnimationData {
             if anim_ty_code.scale_x_fixed() {
                 iso_scale = ComponentType::Fixed(reader.read_f32::<BigEndian>()?);
             } else {
-                let frame = Self::deserialize_anim_frame(
+                let frame = Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -480,7 +508,7 @@ impl AnimationData {
             if anim_ty_code.scale_x_fixed() {
                 x_scale = ComponentType::Fixed(reader.read_f32::<BigEndian>()?);
             } else {
-                let frame = Self::deserialize_anim_frame(
+                let frame = Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -493,7 +521,7 @@ impl AnimationData {
             if anim_ty_code.scale_y_fixed() {
                 y_scale = ComponentType::Fixed(reader.read_f32::<BigEndian>()?);
             } else {
-                let frame = Self::deserialize_anim_frame(
+                let frame = Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -506,7 +534,7 @@ impl AnimationData {
             if anim_ty_code.scale_z_fixed() {
                 z_scale = ComponentType::Fixed(reader.read_f32::<BigEndian>()?);
             } else {
-                let frame = Self::deserialize_anim_frame(
+                let frame = Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -523,6 +551,7 @@ impl AnimationData {
         }
     }
 
+    /// Reads the rotation data of the current keyframe.
     fn deserialize_rotation(
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u32,
@@ -541,7 +570,7 @@ impl AnimationData {
             let iso_rot = if anim_code.rotation_x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
-                let frame = Self::deserialize_anim_frame(
+                let frame = Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -559,7 +588,7 @@ impl AnimationData {
             let x_rot = if anim_code.rotation_x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
-                let frame = Self::deserialize_anim_frame(
+                let frame = Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -571,7 +600,7 @@ impl AnimationData {
             let y_rot = if anim_code.rotation_y_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
-                let frame = Self::deserialize_anim_frame(
+                let frame = Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -583,7 +612,7 @@ impl AnimationData {
             let z_rot = if anim_code.rotation_z_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
-                let frame = Self::deserialize_anim_frame(
+                let frame = Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -600,6 +629,7 @@ impl AnimationData {
         }
     }
 
+    /// Reads the translation data of the current keyframe.
     fn deserialize_translation(
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u32,
@@ -618,7 +648,7 @@ impl AnimationData {
             let iso_trans = if anim_code.x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
-                ComponentType::Animated(Self::deserialize_anim_frame(
+                ComponentType::Animated(Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -635,7 +665,7 @@ impl AnimationData {
             let trans_x = if anim_code.x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
-                ComponentType::Animated(Self::deserialize_anim_frame(
+                ComponentType::Animated(Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -646,7 +676,7 @@ impl AnimationData {
             let trans_y = if anim_code.y_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
-                ComponentType::Animated(Self::deserialize_anim_frame(
+                ComponentType::Animated(Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -657,7 +687,7 @@ impl AnimationData {
             let trans_z = if anim_code.z_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
-                ComponentType::Animated(Self::deserialize_anim_frame(
+                ComponentType::Animated(Self::deserialize_key_frame(
                     reader,
                     bone_data_start,
                     header_frame_count,
@@ -673,6 +703,7 @@ impl AnimationData {
         }
     }
 
+    /// Deserializes all (translation, rotation and scale) components of a single keyframe.
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u32,
@@ -759,7 +790,7 @@ impl AnimatedBone {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Chr0Subfile {
     /// General header for BRRES subfiles.
-    pub subfile_header: SubfileHeader,
+    pub subfile_header: BFileHeader,
     /// CHR0-specific header data.
     pub chr0_header: Chr0Header,
     /// Per-bone animation data.
@@ -770,7 +801,7 @@ pub struct Chr0Subfile {
 
 impl Deserialize for Chr0Subfile {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
-        let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Chr0)?;
+        let subfile_header = BFileHeader::deserialize(reader, BFileType::Chr0)?;
 
         reader.set_position(reader.position() + 4); // there are 4 bytes of padding between the headers
         let chr0_header = Chr0Header::deserialize(reader)?;
@@ -803,6 +834,7 @@ impl Deserialize for Chr0Subfile {
     }
 }
 
-impl Subfile for Chr0Subfile {
-    const MAGIC: [u8; 4] = [0x43, 0x48, 0x52, 0x30]; // "CHR0"
+impl BFile for Chr0Subfile {
+    /// The first 4 bytes of a CHR0 file: "CHR0"
+    const MAGIC: [u8; 4] = [0x43, 0x48, 0x52, 0x30];
 }

@@ -10,6 +10,9 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+/// An ID referred to a node.
+///
+/// Internally this is simply a `usize`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct VirtualNodeId(NonZeroUsize);
 
@@ -89,6 +92,10 @@ impl VirtualRefCacheMap {
         }
     }
 
+    /// Returns the next unassigned ID.
+    ///
+    /// Node IDs are assigned using a simple counter. This counter is never reset and no generations are used.
+    /// The total node count is unlikely to reach the integer bounds.
     pub fn next_id(&self) -> VirtualNodeId {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         VirtualNodeId(NonZeroUsize::new(id).unwrap())
@@ -101,6 +108,10 @@ impl VirtualRefCacheMap {
         self.refs.get(&id).map(|node| Arc::clone(&node))
     }
 
+    /// Returns a mapped lock guard that returns the list of children of this node.
+    ///
+    /// This is a convenience function and is simply locking the node, then checking whether it is deferred and finally
+    /// accessing its children.
     pub fn get_children(&self, id: VirtualNodeId) -> Option<ChildrenReadGuard> {
         let node = self.get(id)?;
         Some(ChildrenReadGuard::from(node))
@@ -115,6 +126,9 @@ impl VirtualRefCacheMap {
         Some(InspectableReadGuard::from(node))
     }
 
+    /// Inserts a node into the map. Its ID should have previously been obtained with [`next_id`].
+    ///
+    /// [`next_id`]: Self::next_id
     pub fn insert(&self, id: VirtualNodeId, node: VirtualNode) {
         self.refs.insert(id, Arc::new(RwLock::new(node)));
     }

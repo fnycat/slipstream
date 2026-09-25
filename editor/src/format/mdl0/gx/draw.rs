@@ -12,6 +12,7 @@ use crate::{
     shared::util::RefCursor,
 };
 
+/// Position data that is stored directly inside of a draw call.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DirectPosition {
     Xy([f32; 2]),
@@ -39,11 +40,24 @@ impl DirectPosition {
     }
 }
 
+/// How the position data is stored by the draw call.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PositionData {
+    /// This vertex has no data. Skip it.
     NotPresent,
+    /// This vertex is located at the given 8-bit index into a vertex buffer.
+    ///
+    /// The source vertex buffer is listed in the [`Shape`] header.
+    ///
+    /// [`Shape`]: crate::format::mdl0::shape::Shape
     Index8(u8),
+    /// This vertex is located at the given 16-bit index into a vertex buffer.
+    ///
+    /// The source vertex buffer is listed in the [`Shape`] header.
+    ///
+    /// [`Shape`]: crate::format::mdl0::shape::Shape
     Index16(u16),
+    /// The data for this vertex is stored directly inside of the draw call.
     Direct(DirectPosition),
 }
 

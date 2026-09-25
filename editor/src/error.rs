@@ -6,8 +6,10 @@ use std::{
 
 use thiserror::Error;
 
+/// Some type of operation was not supported.
 #[derive(Debug, Error, Default)]
 pub struct UnsupportedError {
+    /// The type of operation that is unsupported.
     pub reason: String,
     pub location: Option<u64>,
 }

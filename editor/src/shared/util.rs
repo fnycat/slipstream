@@ -72,11 +72,16 @@ where
         }
     }
 
+    /// Cuts everything left of the cursor. The underlying buffer will not be modified, but
+    /// the cursor will not see any of the contents anymore.
+    ///
+    /// The position is reset back to 0.
     pub fn set_tail(&mut self) {
         self.lower_bound = self.position();
         self.pos = 0;
     }
 
+    /// The current position of the cursor.
     pub fn position(&self) -> u64 {
         self.pos
     }
@@ -97,9 +102,7 @@ where
         &self.inner.as_ref().as_ref()[(self.pos + self.lower_bound) as usize..]
     }
 
-    /// Returns the length of the entire underlying buffer.
-    ///
-    /// This function completely disregards the slicing mechanics.
+    /// Returns the length of the entire underlying buffer that this cursor has a view into.
     pub fn full_len(&self) -> usize {
         self.inner.as_ref().as_ref().len()
     }
@@ -109,6 +112,7 @@ where
         self.as_remaining().len()
     }
 
+    /// Dumps all contents to the given file as binary.
     pub fn dump<P: AsRef<std::path::Path>>(&self, path: P) -> io::Result<()> {
         std::fs::write(path.as_ref(), self.inner.as_ref())
     }

@@ -5,6 +5,7 @@ pub const LAUNCH_DELAY: Duration = Duration::from_millis(500);
 pub const DEFAULT_SIZE: egui::Vec2 = egui::Vec2::new(800.0, 600.0);
 pub const APP_TITLE: &str = "Mario Kart Wii Editor";
 
+/// Configures the egui style to use for the dark theme.
 pub fn configure_dark_style() -> egui::Style {
     let style = egui::Theme::Dark.default_style();
 
@@ -42,6 +43,7 @@ pub fn configure_dark_style() -> egui::Style {
     }
 }
 
+/// Configures the egui style to use for the light theme.
 pub fn configure_light_style() -> egui::Style {
     let style = egui::Theme::Light.default_style();
 
