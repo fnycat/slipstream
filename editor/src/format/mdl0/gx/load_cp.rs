@@ -96,7 +96,10 @@ pub struct CpVatA {
     #[bits(5)]
     pub uv0_divisor: u8,
     pub dequant: bool,
-    pub norm_l3: bool,
+    /// If this flag is set and [`norm_extended`] is also set, then normals are indexed using
+    /// 3 separate indices. If not set and [`norm_extended`] is set, then the normals will be read
+    /// as 9 consecutive floats.
+    pub norm_i3: bool,
 }
 
 /// Vertex attribute table, part 2/3.

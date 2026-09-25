@@ -11,6 +11,7 @@ use crate::{
     },
     shared::util::RefCursor,
 };
+use crate::format::encoding::ReadArrayExt;
 
 /// Position data that is stored directly inside of a draw call.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -89,8 +90,8 @@ impl PositionData {
 pub enum DirectNormal {
     /// Stores only the normal
     Single([f32; 3]),
-    /// Store the normal, binormal and tangent
-    Triple([f32; 9]),
+    /// Stores the normal, binormal and tangent in a single 9 float block.
+    Packed([f32; 9]),
 }
 
 impl DirectNormal {
@@ -99,7 +100,7 @@ impl DirectNormal {
         decl: &GxVertexDeclaration,
     ) -> EditorResult<Self> {
         Ok(if decl.vat_a.norm_extended() {
-            Self::Triple(deserialize_vector::<9>(
+            Self::Packed(deserialize_vector::<9>(
                 reader,
                 VertexFormat::from(decl.vat_a.norm_format()),
                 VectorDivisor::Normalize,
@@ -114,11 +115,21 @@ impl DirectNormal {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NormalIndex<T> {
+    /// If NBT mode is set, all three normal vectors are read consecutively.
+    /// Otherwise only a single normal vector is read.
+    Single(T),
+    /// Should only appear when NBT mode is set. The three normal vectors each have their
+    /// own indices.
+    Triple([T; 3])
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum NormalData {
     NotPresent,
-    Index8(u8),
-    Index16(u16),
+    Index8(NormalIndex<u8>),
+    Index16(NormalIndex<u16>),
     Direct(DirectNormal),
 }
 
@@ -130,8 +141,24 @@ impl NormalData {
         let norm_storage = decl.vcd_lo.norm_storage();
         Ok(match norm_storage {
             VectorStorage::NotPresent => NormalData::NotPresent,
-            VectorStorage::Index8 => NormalData::Index8(reader.read_u8()?),
-            VectorStorage::Index16 => NormalData::Index16(reader.read_u16::<BigEndian>()?),
+            VectorStorage::Index8 => {
+                let index = match (decl.vat_a.norm_extended(), decl.vat_a.norm_i3()) {
+                    (true, true) => NormalIndex::Triple(reader.read_u8_array::<3>()?),
+                    (_, false) => NormalIndex::Single(reader.read_u8()?),
+                    (false, true) => unreachable!("norm_i3 cannot be set while norm_extended is unset")
+                };
+
+                NormalData::Index8(index)
+            }
+            VectorStorage::Index16 => {
+                let index = match (decl.vat_a.norm_extended(), decl.vat_a.norm_i3()) {
+                    (true, true) => NormalIndex::Triple(reader.read_u16_array::<3, BigEndian>()?),
+                    (_, false) => NormalIndex::Single(reader.read_u16::<BigEndian>()?),
+                    (false, true) => unreachable!("norm_i3 cannot be set while norm_extended is unset")
+                };
+
+                NormalData::Index16(index)
+            }
             VectorStorage::Direct => NormalData::Direct(DirectNormal::deserialize(reader, decl)?),
         })
     }

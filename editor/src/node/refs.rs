@@ -16,6 +16,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct VirtualNodeId(NonZeroUsize);
 
+impl VirtualNodeId {
+    pub fn into_inner(self) -> NonZeroUsize { self.0 }
+}
+
 impl fmt::Display for VirtualNodeId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)

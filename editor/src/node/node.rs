@@ -36,6 +36,12 @@ pub struct InspectableReadGuard<T> {
 }
 
 impl<T> InspectableReadGuard<T> {
+    /// The label of this node.
+    pub fn label(&self) -> &str { &self.guard.label }
+    
+    /// The node's ID.
+    pub fn id(&self) -> VirtualNodeId { self.guard.id }
+    
     /// The type of content that this node contains.
     pub fn kind(&self) -> VirtualNodeKind {
         self.guard.kind

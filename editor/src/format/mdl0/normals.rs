@@ -69,29 +69,24 @@ impl Deserialize for NormalFormat {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum NormalBufType {
     /// Only the normal itself is included in the buffer.
-    NormalOnly,
+    Normal,
     /// All three (normal/binormal/tangent) vectors are included in the buffer.
-    All,
-    /// Any one of the three vectors is in the buffer.
-    Any,
+    All
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum NormalBufData {
     /// Only the normal.
-    NormalOnly(Vec<[f32; 3]>),
+    Single(Vec<[f32; 3]>),
     /// Includes all of the normal, bi-normal and tangent
-    All(Vec<[f32; 9]>),
-    /// Either the normal, bi-normal or tangent.
-    Any(Vec<[f32; 3]>),
+    Triple(Vec<[f32; 9]>),
 }
 
 impl NormalBufData {
     pub fn ty(&self) -> NormalBufType {
         match self {
-            Self::NormalOnly(_) => NormalBufType::NormalOnly,
-            Self::All(_) => NormalBufType::All,
-            Self::Any(_) => NormalBufType::Any,
+            Self::Single(_) => NormalBufType::Normal,
+            Self::Triple(_) => NormalBufType::All
         }
     }
 
@@ -99,12 +94,11 @@ impl NormalBufData {
     ///
     /// This counts the [`All`] variant as one entry.
     ///
-    /// [`All`]: NormalBufType::All
+    /// [`Nbt3`]: NormalBufType::All
     pub fn len(&self) -> usize {
         match self {
-            Self::NormalOnly(x) => x.len(),
-            Self::All(x) => x.len(),
-            Self::Any(x) => x.len(),
+            Self::Single(x) => x.len(),
+            Self::Triple(x) => x.len()
         }
     }
 }
@@ -136,6 +130,15 @@ pub struct NormalBuf {
 }
 
 impl NormalBuf {
+    pub fn get_normal(&self, index: usize) -> Option<[f32; 3]> {
+        match &self.normals {
+            NormalBufData::Single(x) => x.get(index).copied(),
+            NormalBufData::Triple(x) => x
+                .get(index)
+                .map(|[x, y, z, ..]| [*x, *y, *z])
+        }
+    }
+
     pub fn deserialize(reader: &mut RefCursor<[u8]>, header_start: u32) -> EditorResult<Self> {
         let _length = reader.read_u32::<BigEndian>()?;
         let _mdl0_offset = reader.read_i32::<BigEndian>()?;
@@ -152,19 +155,19 @@ impl NormalBuf {
         reader.set_position(normals_start as u64);
 
         let normals = match component_count {
-            COMPONENTS_NORMAL => NormalBufData::NormalOnly(deserialize_vector_data::<3>(
+            COMPONENTS_NORMAL => NormalBufData::Single(deserialize_vector_data::<3>(
                 reader,
                 normal_count as usize,
                 VertexFormat::from(format),
                 VectorDivisor::Custom(divisor),
             )?),
-            COMPONENTS_ALL => NormalBufData::All(deserialize_vector_data::<9>(
+            COMPONENTS_ALL => NormalBufData::Triple(deserialize_vector_data::<9>(
                 reader,
                 normal_count as usize,
                 VertexFormat::from(format),
                 VectorDivisor::Custom(divisor),
             )?),
-            COMPONENTS_ANY => NormalBufData::Any(deserialize_vector_data::<3>(
+            COMPONENTS_ANY => NormalBufData::Single(deserialize_vector_data::<3>(
                 reader,
                 normal_count as usize,
                 VertexFormat::from(format),
