@@ -49,6 +49,7 @@ parking_lot = { version = "0.12.5", features = ["arc_lock"] }
 dashmap = "6.2.1"
 egui_tiles = "0.17.1"
 bitfield-struct = "0.13.0"
+strum = { version = "0.28.0", features = ["derive"] }
 
 [build-dependencies]
 vergen-gitcl = { version = "10.0.3", features = ["build", "cargo", "rustc", "si"] }

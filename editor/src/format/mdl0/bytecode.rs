@@ -1,12 +1,26 @@
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::error::{CorruptionError, EditorResult};
+use crate::error::{CorruptionError, EditorError, EditorResult};
 use crate::format::brres::IndexGroup;
 use crate::format::encoding::Deserialize;
 use crate::node::defer::Deferred;
 use crate::node::node::{VirtualNode, VirtualNodeBody, VirtualNodeKind};
 use crate::node::refs::{VirtualNodeId, VirtualNodeMap, VirtualNodeRef};
 use crate::{format::mdl0::SectionDeserialize, shared::util::RefCursor};
+
+/// The opcode IDs for the possible commands in the definitions section of an MDL0 file.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::FromRepr)]
+#[repr(u8)]
+pub enum DefinitionOpCodeId {
+    Nop = 0x00,
+    End = 0x01,
+    MapNode = 0x02,
+    /// Also referred to as `NodeMix`.
+    Weights = 0x03,
+    Draw = 0x04,
+    WeightIndex = 0x05,
+    DuplicateMatrix = 0x06,
+}
 
 /// Maps a bone index to a matrix index.
 ///
@@ -16,10 +30,6 @@ use crate::{format::mdl0::SectionDeserialize, shared::util::RefCursor};
 pub struct MapNode {
     pub bone_index: u16,
     pub matrix_index: u16,
-}
-
-impl MapNode {
-    pub const OPCODE: u8 = 0x02;
 }
 
 impl Deserialize for MapNode {
@@ -55,10 +65,6 @@ pub struct Weights {
     pub weights: Vec<Weight>,
 }
 
-impl Weights {
-    pub const OPCODE: u8 = 0x03;
-}
-
 impl Deserialize for Weights {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let weight_id = reader.read_u16::<BigEndian>()?;
@@ -74,32 +80,25 @@ impl Deserialize for Weights {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct DrawPolygon {
+pub struct Draw {
     pub material_index: u16,
     pub object_index: u16,
     pub bone_index: u16,
-    pub priority: u8,
+    pub z_index: u8,
 }
 
-impl DrawPolygon {
-    pub const OPCODE: u8 = 0x04;
-}
-
-impl Deserialize for DrawPolygon {
+impl Deserialize for Draw {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let material_index = reader.read_u16::<BigEndian>()?;
         let object_index = reader.read_u16::<BigEndian>()?;
         let bone_index = reader.read_u16::<BigEndian>()?;
         let priority = reader.read_u8()?;
 
-        // Skip over empty bytes
-        reader.set_position(reader.position() + 2);
-
         Ok(Self {
             material_index,
             object_index,
             bone_index,
-            priority,
+            z_index: priority,
         })
     }
 }
@@ -110,17 +109,10 @@ pub struct WeightIndex {
     pub weight_index: u16,
 }
 
-impl WeightIndex {
-    pub const OPCODE: u8 = 0x05;
-}
-
 impl Deserialize for WeightIndex {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let matrix_id = reader.read_u16::<BigEndian>()?;
         let weight_index = reader.read_u16::<BigEndian>()?;
-
-        // Skip over empty bytes
-        reader.set_position(reader.position() + 5);
 
         Ok(Self {
             matrix_id,
@@ -135,17 +127,10 @@ pub struct DuplicateMatrix {
     pub src: u16,
 }
 
-impl DuplicateMatrix {
-    pub const OPCODE: u8 = 0x06;
-}
-
 impl Deserialize for DuplicateMatrix {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let dest = reader.read_u16::<BigEndian>()?;
         let src = reader.read_u16::<BigEndian>()?;
-
-        // Skip over empty bytes
-        reader.set_position(reader.position() + 5);
 
         Ok(Self { dest, src })
     }
@@ -155,7 +140,7 @@ impl Deserialize for DuplicateMatrix {
 pub enum BytecodeCommand {
     MapNode(MapNode),
     Weights(Weights),
-    DrawPolygon(DrawPolygon),
+    Draw(Draw),
     WeightIndex(WeightIndex),
     DuplicateMatrix(DuplicateMatrix),
 }
@@ -166,46 +151,45 @@ pub struct Bytecode {
 }
 
 impl Bytecode {
-    pub const NOPCODE: u8 = 0x00;
-    pub const END_OPCODE: u8 = 0x01;
+    pub fn read_opcode_id(reader: &mut RefCursor<[u8]>) -> EditorResult<DefinitionOpCodeId> {
+        let byte = reader.read_u8()?;
+        dbg!(byte);
+
+        DefinitionOpCodeId::from_repr(byte).ok_or_else(|| CorruptionError {
+            reason: String::from("invalid definition opcode ID"),
+            location: Some(reader.position())
+        }.into())
+    }
 }
 
 impl Deserialize for Bytecode {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> EditorResult<Self> {
         let mut commands = Vec::new();
 
-        let mut opcode = reader.read_u8()?;
-        while opcode != Self::END_OPCODE {
+        let mut opcode = Self::read_opcode_id(reader)?;
+        while opcode != DefinitionOpCodeId::End {
             let command = match opcode {
-                Self::NOPCODE => {
-                    reader.set_position(reader.position() + 8);
-                    opcode = reader.read_u8()?;
+                DefinitionOpCodeId::Nop => {
+                    opcode = Self::read_opcode_id(reader)?;
 
                     continue;
-                } // This command is empty
-                MapNode::OPCODE => BytecodeCommand::MapNode(MapNode::deserialize(reader)?),
-                Weights::OPCODE => BytecodeCommand::Weights(Weights::deserialize(reader)?),
-                DrawPolygon::OPCODE => {
-                    BytecodeCommand::DrawPolygon(DrawPolygon::deserialize(reader)?)
                 }
-                WeightIndex::OPCODE => {
+                DefinitionOpCodeId::MapNode => BytecodeCommand::MapNode(MapNode::deserialize(reader)?),
+                DefinitionOpCodeId::Weights => BytecodeCommand::Weights(Weights::deserialize(reader)?),
+                DefinitionOpCodeId::Draw => {
+                    BytecodeCommand::Draw(Draw::deserialize(reader)?)
+                }
+                DefinitionOpCodeId::WeightIndex => {
                     BytecodeCommand::WeightIndex(WeightIndex::deserialize(reader)?)
                 }
-                DuplicateMatrix::OPCODE => {
+                DefinitionOpCodeId::DuplicateMatrix => {
                     BytecodeCommand::DuplicateMatrix(DuplicateMatrix::deserialize(reader)?)
-                }
-                _ => {
-                    return Err(CorruptionError {
-                        reason: format!("invalid draw list opcode: {opcode:#04x}"),
-                        location: Some(reader.position()),
-                        ..Default::default()
-                    }
-                    .into());
-                }
+                },
+                _ => unreachable!()
             };
 
             commands.push(command);
-            opcode = reader.read_u8()?;
+            opcode = Self::read_opcode_id(reader)?;
         }
 
         Ok(Self { commands })
