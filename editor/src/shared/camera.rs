@@ -15,6 +15,10 @@ pub struct CameraUniformData {
     ///
     /// This already includes camera movement.
     pub view_proj: glam::Mat4,
+    /// The inverse of [`view_proj`].
+    ///
+    /// [`view_proj`]: CameraUniformData::view_proj
+    pub inverse_view_proj: glam::Mat4,
 }
 
 impl CameraUniformData {

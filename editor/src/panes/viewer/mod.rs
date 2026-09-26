@@ -1,3 +1,4 @@
+pub mod grid;
 pub mod pipeline;
 pub mod translator;
 
@@ -10,6 +11,7 @@ use eframe::egui_wgpu;
 use egui::mutex::RwLock;
 use wgpu::util::DeviceExt;
 
+use crate::error::EditorError;
 use crate::{
     error::EditorResult,
     node::refs::{VirtualNodeId, VirtualNodeMap},
@@ -27,7 +29,6 @@ use crate::{
         wgsl_include,
     },
 };
-use crate::error::EditorError;
 
 pub struct ViewerPane {
     cmd_sender: mpsc::Sender<PaneAction>,
