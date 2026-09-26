@@ -82,7 +82,7 @@ impl CameraController for Camera {
         }
     }
 
-    fn scroll_delta(&mut self, delta: glam::Vec2) {
+    fn scroll_delta(&mut self, delta: f32) {
         match self {
             Self::Orbit(x) => x.scroll_delta(delta),
         }
@@ -111,7 +111,7 @@ pub trait CameraController {
     fn set_fov(&mut self, fov: f32);
     fn set_aspect_ratio(&mut self, aspect_ratio: f32);
     fn drag_delta(&mut self, delta: glam::Vec2);
-    fn scroll_delta(&mut self, delta: glam::Vec2);
+    fn scroll_delta(&mut self, delta: f32);
     fn compute_matrix(&self) -> glam::Mat4;
 }
 
@@ -136,8 +136,8 @@ impl CameraController for OrbitCamera {
         self.aspect_ratio = aspect_ratio;
     }
 
-    fn scroll_delta(&mut self, delta: glam::Vec2) {
-        self.radius -= delta.y * self.zoom_sensitivity * self.radius;
+    fn scroll_delta(&mut self, delta: f32) {
+        self.radius -= delta * self.zoom_sensitivity * self.radius;
     }
 
     fn drag_delta(&mut self, delta: glam::Vec2) {
