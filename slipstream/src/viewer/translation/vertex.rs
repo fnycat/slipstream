@@ -5,8 +5,9 @@ use slipstream_ir::gx::GxOpCode;
 use slipstream_ir::gx::draw::{
     DrawOpCode, InlineNormal, InlinePosition, NormalData, NormalIndex, OpVertex, PositionData,
 };
+use slipstream_ir::gx::load_indexed::IndexedLoad;
 use slipstream_ir::mdl0::{MatrixId, NormalBuffer, Polygon, VertexBuffer};
-use slipstream_shared::{SlipstreamResult, try_unwrap};
+use slipstream_shared::{SlipstreamResult, try_unwrap, verify};
 use std::collections::HashMap;
 
 /// A key that completely describes a vertex.
@@ -67,9 +68,12 @@ pub struct TranslatedVertex {
     pub bone_weights: [f32; MAX_BONE_INFLUENCES],
 }
 
+const XF_SLOT_COUNT: usize = 10;
+
+#[derive(Default, Debug)]
 pub struct XfRegisters {
-    position_slots: Vec<()>,
-    normal_slots: Vec<()>,
+    pub positions: [(); XF_SLOT_COUNT],
+    pub normals: [(); XF_SLOT_COUNT],
 }
 
 #[derive(Default, Debug)]
@@ -111,6 +115,7 @@ pub struct IntermediatePolygon {
     /// List of matrix IDs. The vertices index into this array to find the matrices
     /// that transform them.
     pub bone_translation: Vec<MatrixId>,
+    pub xf_registers: XfRegisters,
     /// Stores all inline data of polygon draw commands.
     pub inline: InlineBuffers,
 }
@@ -295,6 +300,39 @@ impl ModelContents<'_> {
         Ok(())
     }
 
+    fn load_position_slot(
+        &self,
+        model: &IntermediateModel,
+        scratch: &mut IntermediatePolygon,
+        polygon: &Polygon,
+        load: &IndexedLoad,
+    ) -> SlipstreamResult<()> {
+        tracing::trace!("Indexed position: {load:?}");
+
+        let address = load.address();
+        verify!(
+            address <= 108 && address % 12 == 0,
+            "Invalid address for position LoadXF command: {address}. Expected an address divisible by 12 and in the range 0..=108"
+        );
+
+        let transfer_count = load.transfer_count();
+        verify!(
+            transfer_count == 11,
+            "Expected position load transfer count to equal 11, got {transfer_count}"
+        );
+
+        let slot_index = address / 12;
+        let matrix_index = MatrixId(load.index());
+
+        tracing::debug!(
+            slot_index = ?slot_index,
+            matrix_index = ?matrix_index,
+            transfer_count
+        );
+
+        Ok(())
+    }
+
     pub fn translate_polygon(
         &self,
         model: &IntermediateModel,
@@ -310,10 +348,10 @@ impl ModelContents<'_> {
                     self.resolve_triangle_strip(model, scratch, polygon, vertices)?
                 }
                 GxOpCode::LoadIndexedPosition(load) => {
-                    tracing::trace!("{load:#?}");
+                    self.load_position_slot(model, scratch, polygon, load)?;
                 }
                 GxOpCode::LoadIndexedNormal(load) => {
-                    tracing::trace!("{load:#?}");
+                    // tracing::trace!("{load:#?}");
                 }
                 _ => {}
             }
