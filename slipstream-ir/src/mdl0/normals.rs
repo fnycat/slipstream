@@ -22,13 +22,16 @@ const COMPONENTS_ANY: u32 = 0x2;
 /// This enum has the same variant to value mapping as [`VertexFormat`] but leaves out
 /// the formats that are invalid for normal data (i.e only signed formats).
 ///
-/// [`VertexFormat`]: crate::format::mdl0::util::VertexFormat
+/// [`VertexFormat`]: slipstream_ir::mdl0::VertexFormat
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
 pub enum NormalFormat {
+    /// A signed byte (`i8`).
     Int8 = 1,
+    /// A signed short (`i16`).
     Int16 = 3,
+    /// A regular float (`f32`).
     Float32 = 4,
     /// Fallback value for `bitenum`, this variant should never be used.
     #[fallback]

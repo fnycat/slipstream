@@ -247,6 +247,7 @@ pub struct BoneLinkTable {
 }
 
 impl BoneLinkTable {
+    /// Returns the amount of entries in this table.
     pub fn len(&self) -> usize {
         self.rigid_bones.len() + self.mixed_bones.len() + self.unconnected_bones.len()
     }
@@ -448,11 +449,19 @@ pub fn deserialize(
 /// Some exceptions to this are `Bones` (no data offset).
 #[derive(Debug, Clone, PartialEq)]
 pub struct SectionHeader {
+    /// Cursor position pointing to the start of this section file.
     pub section_start: u64,
+    /// Length of this section file in bytes.
     pub length: u32,
+    /// Offset to the start of the MDL0 file. This is relative to `section_start`.
+    /// The offset is generally negative.
     pub mdl0_offset: i32,
+    /// Offset to the data of this section file. Not all sections use this offset, but
+    /// for example the [`VertexBuffer`] section stores its raw vertex data at this offset.
     pub data_offset: i32,
+    /// Offset to the name of this section file.
     pub name_offset: i32,
+    /// Index of this section file. This is generally just based on the location within the parent folder.
     pub index: u32,
 }
 
@@ -475,6 +484,7 @@ impl SectionHeader {
         })
     }
 
+    /// Returns the cursor position that points to the start of this section file's data.
     #[inline]
     pub fn get_data_start(&self) -> u64 {
         (self.section_start as i64 + self.data_offset as i64) as u64

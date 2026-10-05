@@ -42,13 +42,35 @@ impl UvData {
     }
 }
 
+/// Stores UVs (texture coordinates).
 #[derive(Debug, Clone, PartialEq)]
 pub struct UvBuffer {
     pub index: u32,
+    /// The format of a single component in the buffer.
+    ///
+    /// The deserializer always converts the data to floats, but the original
+    /// format is kept for reference.
     pub format: VertexFormat,
+    /// The divisor is used to scale vectors at lower quality formats.
+    ///
+    /// For example if the format is [`Uint8`], then naively converting the
+    /// UVs to floats would only give a range of 0-255 with whole integer intervals.
+    ///
+    /// The divisor is the power of 2 that is divided by the vertices to produce floats.
+    /// I.e `float = uint8 / 2^divisor`.
+    ///
+    /// [`Uint8`]: VertexFormat::Uint8
+    ///
+    /// The deserializer always converts the data to floats, but the original
+    /// format is kept for reference.
+    pub divisor: u8,
+    /// The amount of bytes between successive entries in the buffer.
     pub stride: u8,
+    /// The raw UV data.
     pub uvs: UvData,
+    /// First corner of the UV buffer's AABB.
     pub bounding_volume_min: [f32; 2],
+    /// Second corner of the UV buffer's AABB.
     pub bounding_volume_max: [f32; 2],
 }
 
@@ -117,6 +139,7 @@ impl DeserializeContents for UvBuffer {
             index,
             format,
             stride,
+            divisor,
             uvs,
             bounding_volume_min,
             bounding_volume_max,

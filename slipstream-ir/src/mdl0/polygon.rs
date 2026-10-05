@@ -23,7 +23,7 @@ use crate::visitor::{
     VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut,
 };
 
-/// Maps shape local matrix IDs to global ones.
+/// Maps polygon local matrix IDs to global ones.
 ///
 /// Primitives rigged by multiple bones will have their [`pn_index_enabled`] flag set.
 /// Every primitive then stores an index into this table. The table entry then maps this index
@@ -36,7 +36,7 @@ pub struct BoneTable {
 }
 
 impl BoneTable {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let entry_count = reader.read_u32::<BigEndian>()?;
 
         let mut entries = Vec::with_capacity(entry_count as usize);
@@ -47,7 +47,7 @@ impl BoneTable {
         Ok(Self { entries })
     }
 
-    fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
         let entry_count = self.entries.len();
         verify!(
             entry_count <= u32::MAX as usize,
