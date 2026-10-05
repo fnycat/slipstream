@@ -17,9 +17,12 @@ use crate::visitor::{
 const COMPONENTS_XY: u32 = 0x0;
 const COMPONENTS_XYZ: u32 = 0x1;
 
+/// How the vertices are stored in this buffer.
 #[derive(Debug, Clone, PartialEq)]
 pub enum VertexPositionType {
+    /// Stores only two position components.
     Xy,
+    /// Stores all three position components.
     Xyz,
 }
 
@@ -30,6 +33,7 @@ pub enum VertexBufData {
 }
 
 impl VertexBufData {
+    /// Determines the type of this data.
     pub const fn ty(&self) -> VertexPositionType {
         match self {
             Self::Xy(_) => VertexPositionType::Xy,
@@ -44,6 +48,7 @@ impl VertexBufData {
         }
     }
 
+    /// Casts this vertex data to a byte slice using [`bytemuck`].
     pub fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Xy(verts) => bytemuck::cast_slice(verts),
@@ -59,6 +64,7 @@ impl VertexBufData {
         }
     }
 
+    /// Returns the amount of vertices in this buffer.
     pub fn len(&self) -> usize {
         match self {
             Self::Xy(verts) => verts.len(),
@@ -75,6 +81,7 @@ impl VertexBufData {
 /// [`Shape`]: crate::format::mdl0::shapes::Shape
 #[derive(Debug, Clone, PartialEq)]
 pub struct VertexBuffer {
+    /// The MDL0 section file header.
     pub header: SectionHeader,
     /// The format of the vertices in this buffer.
     pub format: VertexFormat,
@@ -90,8 +97,9 @@ pub struct VertexBuffer {
     pub divisor: u8,
     /// The size in bytes of each position.
     pub stride: u8,
+    /// First corner of the vertex buffer's AABB.
     pub bounding_volume_min: [f32; 3],
-    /// Outer AABB of this vertex buffer.
+    /// Second corner of the vertex buffer's AABB.
     pub bounding_volume_max: [f32; 3],
     /// The vertex data.
     pub vertices: VertexBufData,

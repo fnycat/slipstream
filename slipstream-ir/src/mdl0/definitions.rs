@@ -163,7 +163,7 @@ impl Weights {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Draw {
     pub material_index: u16,
-    pub object_index: u16,
+    pub polygon_index: u16,
     pub bone_index: BoneIndex,
     pub z_index: u8,
 }
@@ -171,15 +171,15 @@ pub struct Draw {
 impl Draw {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let material_index = reader.read_u16::<BigEndian>()?;
-        let object_index = reader.read_u16::<BigEndian>()?;
+        let polygon_index = reader.read_u16::<BigEndian>()?;
         let bone_index = BoneIndex(reader.read_u16::<BigEndian>()?);
-        let priority = reader.read_u8()?;
+        let z_index = reader.read_u8()?;
 
         Ok(Self {
             material_index,
-            object_index,
+            polygon_index,
             bone_index,
-            z_index: priority,
+            z_index,
         })
     }
 
@@ -187,7 +187,7 @@ impl Draw {
         writer.reserve(7);
 
         writer.write_u16::<BigEndian>(self.material_index)?;
-        writer.write_u16::<BigEndian>(self.object_index)?;
+        writer.write_u16::<BigEndian>(self.polygon_index)?;
         writer.write_u16::<BigEndian>(self.bone_index.0)?;
         writer.write_u8(self.z_index)?;
 
@@ -238,6 +238,7 @@ impl DuplicateMatrix {
     }
 }
 
+/// All possible commands in a [`Definitions`] file.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DefCommand {
     MapNode(MapNode),
@@ -247,6 +248,16 @@ pub enum DefCommand {
     DuplicateMatrix(DuplicateMatrix),
 }
 
+/// Model-wide setup code.
+///
+/// `Definitions` contains the model weights, top-level polygon draw commands and mappings
+/// between bones and matrix IDs.
+///
+/// There are a few different types of `Definitions` files with their own contents.
+/// - `DrawOpa` generally contains only draw commands that delegate further drawing to the model's polygons.
+/// - `DrawXlu` TODO
+/// - `NodeTree` consists of only [`MapNode`] entries.
+/// - `NodeMix`: if the model uses weights, this file contains all of them.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Definitions {
     pub commands: Vec<DefCommand>,
