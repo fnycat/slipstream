@@ -1,13 +1,13 @@
 //! Translates between Wii models and wgpu ones.
 
 use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT};
-use crate::viewer::translation::{IntermediateModel, ModelContents};
+use crate::viewer::translation::{IntermediateModel, ModelContents, VertexBoneData};
 use slipstream_ir::gx::GxOpCode;
 use slipstream_ir::gx::draw::{
     DrawOpCode, InlineNormal, InlinePosition, NormalData, NormalIndex, OpVertex, PositionData,
 };
 use slipstream_ir::mdl0::definitions::{
-    BoneId, DRAW_OPA_NAME, Definitions, MatrixId, NODE_MIX_NAME, NODE_TREE_NAME, WeightId,
+    BoneIndex, DRAW_OPA_NAME, Definitions, MatrixId, NODE_MIX_NAME, NODE_TREE_NAME, WeightId,
 };
 use slipstream_ir::mdl0::normals::NormalBuffer;
 use slipstream_ir::mdl0::polygon::{BoneBind, Polygon};
@@ -23,19 +23,46 @@ use std::ops::{ControlFlow, Deref};
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
+/// A key that completely describes a vertex.
+///
+/// On GX hardware, all data is put into separate buffers for positions, normals, etc.
+/// Modern-day GPUs prefer all this vertex data being in a single buffer with all data
+/// interleaved instead of being stored separately.
+///
+/// In other words:
+///
+/// ```ignore
+/// GX:
+/// ```
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct VertexKey {
     /// The matrix that transforms this vertex.
-    pub transform: Option<u8>,
+    pub mtx_id: Option<u8>,
     pub position: VertexAttrKey,
     pub normal: VertexAttrKey,
 }
 
+/// Describes how the vertex data should be retrieved.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub enum VertexAttrKey {
+    /// The data is not present. The translator just replaces the data with a default
+    /// value in this case.
+    ///
+    /// It corresponds to the `NotPresent` vertex data in the polygon draw commands.
     #[default]
     NotPresent,
+    /// The data is stored in a different buffer and should loaded using the index.
+    ///
+    /// This corresponds directly to *both* the `Index8` and `Index16` variants of data
+    /// in the polygon draw commands.
+    ///
+    /// The buffer that the data is stored in is given by the `*_array_id` fields of the [`Polygon`].
     Indexed(u16),
+    /// The data is stored in an inline buffer and should be loaded using the index.
+    ///
+    /// Some polygon draw commands might have their vertex data stored in the command itself
+    /// instead of through an index. The translator keeps track of these using separate buffers,
+    /// this is an index into those buffers.
     Inline(u16),
 }
 
@@ -54,6 +81,39 @@ pub struct TranslatedVertex {
     pub bone_weights: [f32; MAX_BONE_INFLUENCES],
 }
 
+pub struct XfRegisters {
+    position_slots: Vec<()>,
+    normal_slots: Vec<()>,
+}
+
+#[derive(Default, Debug)]
+pub struct InlineBuffers {
+    /// Buffer of positions that are stored inline in the draw command.
+    positions: Vec<[f32; 3]>,
+    /// Buffer of normals that are stored inline in the draw command.
+    normals: Vec<[f32; 3]>,
+}
+
+impl InlineBuffers {
+    pub fn positions(&self) -> &[[f32; 3]] {
+        &self.positions
+    }
+
+    pub fn normals(&self) -> &[[f32; 3]] {
+        &self.normals
+    }
+
+    pub fn insert_position(&mut self, position: [f32; 3]) -> VertexAttrKey {
+        self.positions.push(position);
+        VertexAttrKey::Inline(self.positions.len() as u16 - 1)
+    }
+
+    pub fn insert_normal(&mut self, normal: [f32; 3]) -> VertexAttrKey {
+        self.normals.push(normal);
+        VertexAttrKey::Inline(self.normals.len() as u16 - 1)
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct IntermediatePolygon {
     /// Maps a vertex index to a location in `vertices`.
@@ -65,22 +125,8 @@ pub struct IntermediatePolygon {
     /// List of matrix IDs. The vertices index into this array to find the matrices
     /// that transform them.
     pub bone_translation: Vec<MatrixId>,
-    /// Buffer of positions that are stored inline in the draw command.
-    pub inline_positions: Vec<[f32; 3]>,
-    /// Buffer of normals that are stored inline in the draw command.
-    pub inline_normals: Vec<[f32; 3]>,
-}
-
-impl IntermediatePolygon {
-    pub fn insert_inline_position(&mut self, position: [f32; 3]) -> VertexAttrKey {
-        self.inline_positions.push(position);
-        VertexAttrKey::Inline(self.inline_positions.len() as u16 - 1)
-    }
-
-    pub fn insert_inline_normal(&mut self, normal: [f32; 3]) -> VertexAttrKey {
-        self.inline_normals.push(normal);
-        VertexAttrKey::Inline(self.inline_normals.len() as u16 - 1)
-    }
+    /// Stores all inline data of polygon draw commands.
+    pub inline: InlineBuffers,
 }
 
 impl ModelContents<'_> {
@@ -111,117 +157,11 @@ impl ModelContents<'_> {
     ) -> SlipstreamResult<TranslatedVertex> {
         const POSITION_DEFAULT: [f32; 3] = [0.0; 3];
         const NORMAL_DEFAULT: [f32; 3] = [0.0, 1.0, 0.0];
-        const WEIGHTS_DEFAULT: [f32; MAX_BONE_INFLUENCES] = {
-            let mut def = [0.0; MAX_BONE_INFLUENCES];
-            def[0] = 1.0;
-            def
-        };
 
-        let (bone_indices, bone_weights) = match &polygon.bone_bind {
-            BoneBind::Rigid(rigid) => {
-                let mut bone_indices = [0; MAX_BONE_INFLUENCES];
-                bone_indices[0] = *rigid;
-
-                (bone_indices, WEIGHTS_DEFAULT)
-            }
-            BoneBind::Mixed(mixed) => {
-                let pn_id = if let Some(id) = vertex_key.transform {
-                    id
-                } else {
-                    tracing::error!("Missing GX_VA_PNMTXIDX for vertex, attaching it to matrix 0");
-                    0
-                };
-
-                let bone_id = *try_unwrap!(
-                    mixed.entries.get(pn_id as usize),
-                    "bone table index out of range: {pn_id}"
-                )?;
-
-                let matrix_id = try_unwrap!(
-                    model.bone_map.get_matrix(BoneId(bone_id)),
-                    "bone map entry out of range: {bone_id}"
-                )?;
-
-                // Check if weights are involved
-                match &model.bone_weights {
-                    Some(weights) => {
-                        let mut resolved = try_unwrap!(
-                            weights.get_by_matrix_id(matrix_id),
-                            "bone weights lookup out of range: {matrix_id:?}"
-                        )?
-                        .to_vec();
-
-                        tracing::info!(
-                            pn_id = ?pn_id,
-                            bone_id = ?bone_id,
-                            matrix_id = ?matrix_id,
-                            influences = ?resolved,
-                            "vertex bone mapping"
-                        );
-
-                        if resolved.len() > MAX_BONE_INFLUENCES {
-                            tracing::warn!(
-                                "vertex has {} bone influences, truncated to {MAX_BONE_INFLUENCES} strongest influences",
-                                resolved.len()
-                            );
-
-                            resolved.sort_unstable_by(|left, right| {
-                                right.weight.total_cmp(&left.weight)
-                            });
-                        }
-
-                        let mut bone_indices = [0; MAX_BONE_INFLUENCES];
-                        let mut bone_weights = WEIGHTS_DEFAULT;
-
-                        let mut sum = 0.0;
-                        for (i, infl) in resolved.iter().take(MAX_BONE_INFLUENCES).enumerate() {
-                            tracing::info!(
-                                influence_bone = ?infl.bone_id,
-                                influence_weight = ?infl.weight
-                            );
-
-                            bone_indices[i] = infl.bone_id.0 as u32;
-                            bone_weights[i] = infl.weight;
-                            sum += infl.weight;
-                        }
-
-                        if sum != 1.0 {
-                            tracing::warn!(
-                                "vertex weights do not add up to 1.0, normalizing the weights..."
-                            );
-
-                            // Then normalize the influences back to a sum of 1.0
-                            let factor = 1.0 / sum;
-                            for weight in &mut bone_weights {
-                                *weight *= factor;
-                            }
-                        }
-
-                        (bone_indices, bone_weights)
-                    }
-                    None => {
-                        // The polygon has no bone table, so we assume every matrix index is a
-                        // global index already.
-                        //
-                        // tracing::error!(
-                        //     "Polygon has mixed bone bind but model does not specify bone weights"
-                        // );
-
-                        tracing::info!(
-                            pn_id = ?pn_id,
-                            bone_id = ?bone_id,
-                            matrix_id = ?matrix_id,
-                            "vertex bone mapping"
-                        );
-                        
-                        let mut bone_indices = [0; MAX_BONE_INFLUENCES];
-                        bone_indices[0] = bone_id as u32;
-
-                        (bone_indices, WEIGHTS_DEFAULT)
-                    }
-                }
-            }
-        };
+        let VertexBoneData {
+            ids: indices,
+            weights,
+        } = self.translate_bones(model, scratch, polygon, vertex_key)?;
 
         let position = match vertex_key.position {
             VertexAttrKey::NotPresent => POSITION_DEFAULT,
@@ -234,7 +174,8 @@ impl ModelContents<'_> {
                 })?
             }
             VertexAttrKey::Inline(idx) => *scratch
-                .inline_positions
+                .inline
+                .positions()
                 .get(idx as usize)
                 .expect("inline position index out of range"),
         };
@@ -250,7 +191,8 @@ impl ModelContents<'_> {
                 })?
             }
             VertexAttrKey::Inline(idx) => *scratch
-                .inline_normals
+                .inline
+                .normals()
                 .get(idx as usize)
                 .expect("inline normal index out of range"),
         };
@@ -258,8 +200,8 @@ impl ModelContents<'_> {
         Ok(TranslatedVertex {
             position,
             normal,
-            bone_indices,
-            bone_weights,
+            bone_indices: indices,
+            bone_weights: weights,
         })
     }
 
@@ -272,7 +214,7 @@ impl ModelContents<'_> {
     ) -> SlipstreamResult<crate::viewer::translation::vertex::VertexIndex> {
         let mut vertex_key = VertexKey::default();
 
-        vertex_key.transform = vertex.pn_matrix_index;
+        vertex_key.mtx_id = vertex.pn_matrix_index;
 
         match &vertex.position {
             PositionData::NotPresent => vertex_key.position = VertexAttrKey::NotPresent,
@@ -380,6 +322,12 @@ impl ModelContents<'_> {
                 }
                 GxOpCode::DrawTriangleStrip(DrawOpCode { vertices }) => {
                     self.resolve_triangle_strip(model, scratch, polygon, vertices)?
+                }
+                GxOpCode::LoadIndexedPosition(load) => {
+                    tracing::trace!("{load:#?}");
+                }
+                GxOpCode::LoadIndexedNormal(load) => {
+                    tracing::trace!("{load:#?}");
                 }
                 _ => {}
             }

@@ -3,5 +3,5 @@
 use slipstream_shared::error::SlipstreamResult;
 
 fn main() -> SlipstreamResult<()> {
-    slipstream::run()
+    slipstream_core::run()
 }

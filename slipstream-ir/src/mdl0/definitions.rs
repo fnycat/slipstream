@@ -44,6 +44,11 @@ impl Default for MatrixId {
 pub struct BoneId(pub u16);
 
 /// Simple newtype that makes types with many IDs a lot clearer.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct BoneIndex(pub u16);
+
+/// Simple newtype that makes types with many IDs a lot clearer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct WeightId(pub u16);
@@ -68,13 +73,13 @@ pub enum DefinitionOpCodeId {
 /// matrix to each of the bones.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MapNode {
-    pub bone_index: BoneId,
+    pub bone_index: BoneIndex,
     pub matrix_index: MatrixId,
 }
 
 impl MapNode {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        let bone_index = BoneId(reader.read_u16::<BigEndian>()?);
+        let bone_index = BoneIndex(reader.read_u16::<BigEndian>()?);
         let matrix_index = MatrixId(reader.read_u16::<BigEndian>()?);
 
         Ok(Self {
@@ -94,8 +99,8 @@ impl MapNode {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoneWeight {
-    /// The bone that this weight affects.
-    pub bone_id: BoneId,
+    /// The matrix that this weight affects.
+    pub matrix_id: MatrixId,
     /// A value between 0.0 and 1.0 that determines how much geometry "sticks" to this bone
     /// when moving. A vertex can be affected by multiple bones. The weights must add up to 1.0.
     pub weight: f32,
@@ -103,15 +108,15 @@ pub struct BoneWeight {
 
 impl BoneWeight {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        let bone_id = BoneId(reader.read_u16::<BigEndian>()?);
+        let matrix_id = MatrixId(reader.read_u16::<BigEndian>()?);
         let weight = reader.read_f32::<BigEndian>()?;
 
-        Ok(Self { bone_id, weight })
+        Ok(Self { matrix_id, weight })
     }
 
     fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
         // memory is reserved in `Weights` instead.
-        writer.write_u16::<BigEndian>(self.bone_id.0)?;
+        writer.write_u16::<BigEndian>(self.matrix_id.0)?;
         writer.write_f32::<BigEndian>(self.weight)?;
         Ok(())
     }
@@ -159,7 +164,7 @@ impl Weights {
 pub struct Draw {
     pub material_index: u16,
     pub object_index: u16,
-    pub bone_index: BoneId,
+    pub bone_index: BoneIndex,
     pub z_index: u8,
 }
 
@@ -167,7 +172,7 @@ impl Draw {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let material_index = reader.read_u16::<BigEndian>()?;
         let object_index = reader.read_u16::<BigEndian>()?;
-        let bone_index = BoneId(reader.read_u16::<BigEndian>()?);
+        let bone_index = BoneIndex(reader.read_u16::<BigEndian>()?);
         let priority = reader.read_u8()?;
 
         Ok(Self {
@@ -234,7 +239,7 @@ impl DuplicateMatrix {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum BytecodeCommand {
+pub enum DefCommand {
     MapNode(MapNode),
     Weights(Weights),
     Draw(Draw),
@@ -244,7 +249,7 @@ pub enum BytecodeCommand {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Definitions {
-    pub commands: Vec<BytecodeCommand>,
+    pub commands: Vec<DefCommand>,
 }
 
 impl Definitions {
@@ -290,18 +295,14 @@ impl DeserializeContents for Definitions {
 
                     continue;
                 }
-                DefinitionOpCodeId::MapNode => {
-                    BytecodeCommand::MapNode(MapNode::deserialize(reader)?)
-                }
-                DefinitionOpCodeId::Weights => {
-                    BytecodeCommand::Weights(Weights::deserialize(reader)?)
-                }
-                DefinitionOpCodeId::Draw => BytecodeCommand::Draw(Draw::deserialize(reader)?),
+                DefinitionOpCodeId::MapNode => DefCommand::MapNode(MapNode::deserialize(reader)?),
+                DefinitionOpCodeId::Weights => DefCommand::Weights(Weights::deserialize(reader)?),
+                DefinitionOpCodeId::Draw => DefCommand::Draw(Draw::deserialize(reader)?),
                 DefinitionOpCodeId::WeightIndex => {
-                    BytecodeCommand::WeightIndex(WeightIndex::deserialize(reader)?)
+                    DefCommand::WeightIndex(WeightIndex::deserialize(reader)?)
                 }
                 DefinitionOpCodeId::DuplicateMatrix => {
-                    BytecodeCommand::DuplicateMatrix(DuplicateMatrix::deserialize(reader)?)
+                    DefCommand::DuplicateMatrix(DuplicateMatrix::deserialize(reader)?)
                 }
                 _ => unreachable!(),
             };

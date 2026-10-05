@@ -105,6 +105,8 @@ impl PolygonModifier {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BoneBind {
     /// The entire polygon is bound to a single bone.
+    ///
+    /// The index refers to the bone's `id` field.
     Rigid(u32),
     /// Sections of the polygon are bound to different bones.
     ///
