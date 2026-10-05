@@ -31,21 +31,27 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
-    var pos = vec4f(0.0);
-    var nrm = vec3f(0.0);
-
-    for (var i = 0u; i < 1u; i += 1) {
-        let weight = input.bone_weights[i];
-        if (weight > 0.0) {
-            let transform = static_bind_poses[input.bone_indices[i]];
-            pos += weight * (transform * vec4f(input.position, 1.0));
-            nrm += weight * (mat3x3f(transform[0].xyz, transform[1].xyz, transform[2].xyz) * input.normal);
-        }
-    }
+//    var pos = vec4f(0.0);
+//    var nrm = vec3f(0.0);
+//
+//    for (var i = 0u; i < 1u; i += 1) {
+//        let weight = input.bone_weights[i];
+//        if (weight > 0.0) {
+//            let transform = static_bind_poses[input.bone_indices[i]];
+//            pos += weight * (transform * vec4f(input.position, 1.0));
+//            nrm += weight * (mat3x3f(transform[0].xyz, transform[1].xyz, transform[2].xyz) * input.normal);
+//        }
+//    }
+//
+//    var output: VertexOutput;
+//    output.vertex = camera.view_proj * pos;
+//    output.normal = normalize(nrm);
+//    output.bone_index = input.bone_indices[0];
+//    return output;
 
     var output: VertexOutput;
-    output.vertex = camera.view_proj * pos;
-    output.normal = normalize(nrm);
+    output.vertex = camera.view_proj * vec4f(input.position, 1.0);
+    output.normal = input.normal;
     output.bone_index = input.bone_indices[0];
     return output;
 }
@@ -64,16 +70,15 @@ fn compute_diffuse(normal: vec3f) -> vec3f {
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     var color: vec3f = input.normal * 0.5 + 0.5;
-    if (input.bone_index == 1 || input.bone_index == 2 || input.bone_index == 3) {
-        // left leg (red)
-        color = vec3f(1.0, 0.0, 0.0);
-    } else if (input.bone_index == 4 || input.bone_index == 5 || input.bone_index == 6) {
-        // right leg (green)
-        color = vec3f(0.0, 1.0, 0.0);
-    } else if (input.bone_index == 8 || input.bone_index == 9 || input.bone_index == 10) {
-        // left arm (blue)
-        color = vec3f(0.0, 0.0, 1.0);
-    }
+//    if (input.bone_index == 2) {
+//        // shell
+//        color = vec3f(1.0, 0.0, 0.0);
+//    } else if (input.bone_index == 1 || input.bone_index == 0) {
+//        // head and mouth
+//        color = vec3f(0.0, 1.0, 0.0);
+//    } else {
+//        color = vec3f(0.0, 0.0, 0.0);
+//    }
 
     // Convert the linear colours to SRGB.
     // Without this, the colours will look very washed out in the editor.

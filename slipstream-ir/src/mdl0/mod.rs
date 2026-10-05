@@ -441,6 +441,9 @@ pub fn deserialize(
     Ok(mdl_root_key)
 }
 
+/// General section header that fits most MDL0 sections.
+///
+/// Some exceptions to this are `Bones` (no data offset).
 #[derive(Debug, Clone, PartialEq)]
 pub struct SectionHeader {
     pub section_start: u64,

@@ -5,9 +5,9 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_shared::{
     cursor::{MutCursor, RefCursor},
     error::{CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult},
+    try_unwrap,
 };
 
-use crate::node::node::IrNode;
 use crate::visitor::{
     VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut,
 };
@@ -20,6 +20,7 @@ use crate::{
     },
     visitor::{Visitable, Visitor},
 };
+use crate::{mdl0::SectionHeader, node::node::IrNode};
 
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
@@ -113,9 +114,6 @@ impl BillboardSetting {
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnresolvedBone {
     pub bone_start: u32,
-    pub mdl0_offset: i32,
-    pub name_offset: i32,
-    /// The index of this bone in `Bones` section of the MDL0 file.
     pub index: u32,
     pub id: u32,
     pub flags: BoneFlags,
@@ -141,10 +139,11 @@ impl UnresolvedBone {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let start = reader.position();
 
-        let length = reader.read_u32::<BigEndian>()?;
-        let mdl0_offset = reader.read_i32::<BigEndian>()?;
-        let name_offset = reader.read_i32::<BigEndian>()?;
+        let _length = reader.read_u32::<BigEndian>()?;
+        let _mdl0_offset = reader.read_i32::<BigEndian>()?;
+        let _name_offset = reader.read_i32::<BigEndian>()?;
         let index = reader.read_u32::<BigEndian>()?;
+
         let id = reader.read_u32::<BigEndian>()?;
         let flags = BoneFlags::from_bits(reader.read_u32::<BigEndian>()?);
         let billboard_setting = BillboardSetting::deserialize(reader)?;
@@ -163,12 +162,8 @@ impl UnresolvedBone {
         let transform_matrix = reader.read_f32_array::<12, BigEndian>()?;
         let inverse_matrix = reader.read_f32_array::<12, BigEndian>()?;
 
-        reader.set_position(start + length as u64);
-
         Ok(Self {
             bone_start: start as u32,
-            mdl0_offset,
-            name_offset,
             index,
             id,
             flags,
@@ -199,7 +194,10 @@ pub struct LabeledBone {
 
 #[derive(Debug)]
 pub struct Bone {
+    /// Regular MDL0 index of this section. As bones are stored as a linear array of "files" within the MDL0 file,
+    /// these indices correspond to the index of this bone into this array.
     pub index: u32,
+    /// The ID stored inside the bone.
     pub id: u32,
     pub flags: BoneFlags,
     pub billboard_setting: BillboardSetting,
@@ -260,7 +258,7 @@ impl Visitable for Bone {
 fn build_skeleton_tree(
     reader: &mut RefCursor<[u8]>,
     _root_key: IrNodeKey,
-    bones: &[LabeledBone],
+    bones: Vec<LabeledBone>,
     arena: &IrArena,
 ) -> SlipstreamResult<IrNodeKey> {
     /// The offset between the start of the bone and the bone's index.
@@ -282,6 +280,7 @@ fn build_skeleton_tree(
         .collect::<Vec<_>>();
 
     let mut found_root = None; // The bone that was determined to be the root of the skeleton.
+
     for (i, bone) in bones.iter().enumerate() {
         let curr_key = virtual_bones[i];
 
@@ -316,10 +315,14 @@ fn build_skeleton_tree(
 
         // Add this bone to its parent's children.
         let parent_key = virtual_bones[parent_index as usize];
-        arena.update(parent_key, |parent_node| {
-            parent_node.ty = IrNodeType::Bone { end: false };
-            parent_node.children.push(curr_key);
-        });
+        try_unwrap!(
+            arena.update(parent_key, |parent_node| {
+                parent_node.ty = IrNodeType::Bone { end: false };
+                parent_node.children.push(curr_key);
+                parent_node.children.len() as u16 - 1
+            }),
+            "parent node {parent_key:?} was not found during skeleton resolution"
+        )?;
 
         // Then update this bone's parent.
         arena.update(curr_key, |curr_node| {
@@ -370,7 +373,7 @@ pub fn deserialize_skeleton(
         bones.push(LabeledBone { label, data: bone });
     }
 
-    let node = build_skeleton_tree(reader, parent_id, &bones, arena)?;
+    let node = build_skeleton_tree(reader, parent_id, bones, arena)?;
     let root_key = arena.insert(IrNodeDescriptor {
         label: "Bones".to_owned(),
         ty: IrNodeType::Bone { end: false },
