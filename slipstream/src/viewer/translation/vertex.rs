@@ -226,7 +226,7 @@ impl ModelContents<'_> {
                     InlinePosition::Xyz(xyz) => *xyz,
                 };
 
-                vertex_key.position = scratch.insert_inline_position(position);
+                vertex_key.position = scratch.inline.insert_position(position);
             }
         }
 
@@ -246,7 +246,7 @@ impl ModelContents<'_> {
                     InlineNormal::Packed(x) => [x[0], x[1], x[2]],
                 };
 
-                vertex_key.normal = scratch.insert_inline_normal(normal);
+                vertex_key.normal = scratch.inline.insert_normal(normal);
             }
         }
 
