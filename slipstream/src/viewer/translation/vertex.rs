@@ -72,8 +72,8 @@ const XF_SLOT_COUNT: usize = 10;
 
 #[derive(Default, Debug)]
 pub struct XfRegisters {
-    pub positions: [(); XF_SLOT_COUNT],
-    pub normals: [(); XF_SLOT_COUNT],
+    pub positions: [MatrixId; XF_SLOT_COUNT],
+    pub normals: [MatrixId; XF_SLOT_COUNT],
 }
 
 #[derive(Default, Debug)]
@@ -307,8 +307,6 @@ impl ModelContents<'_> {
         polygon: &Polygon,
         load: &IndexedLoad,
     ) -> SlipstreamResult<()> {
-        tracing::trace!("Indexed position: {load:?}");
-
         let address = load.address();
         verify!(
             address <= 108 && address % 12 == 0,
@@ -329,6 +327,20 @@ impl ModelContents<'_> {
             matrix_index = ?matrix_index,
             transfer_count
         );
+
+        scratch.xf_registers.positions[slot_index as usize] = matrix_index;
+
+        Ok(())
+    }
+
+    fn load_normal_slot(
+        &self,
+        model: &IntermediateModel,
+        scratch: &mut IntermediatePolygon,
+        polygon: &Polygon,
+        load: &IndexedLoad,
+    ) -> SlipstreamResult<()> {
+        todo!("normal indexed load");
 
         Ok(())
     }
