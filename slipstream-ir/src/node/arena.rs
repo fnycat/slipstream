@@ -187,8 +187,6 @@ impl IrArena {
 
         let guard = root.read();
         for &child in &guard.children {
-            tracing::trace!("{:?}", child);
-
             // Visits the child's contents and returns a control flow.
             let flow = self
                 .inspect(child, |child| {

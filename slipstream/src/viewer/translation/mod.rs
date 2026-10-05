@@ -2,12 +2,16 @@ mod skeleton;
 mod vertex;
 
 pub use skeleton::*;
-use slipstream_ir::mdl0::{Bone, Definitions, NormalBuffer, Polygon, VertexBuffer};
+use slipstream_ir::mdl0::{
+    Bone, DRAW_OPA_NAME, Definitions, MatrixId, NODE_MIX_NAME, NODE_TREE_NAME, NormalBuffer,
+    Polygon, VertexBuffer,
+};
 pub use vertex::*;
 
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::visitor::{Visitable, Visitor, VisitorContext};
 use slipstream_shared::{SlipstreamResult, try_unwrap};
+use std::collections::HashMap;
 use std::ops::ControlFlow;
 
 #[derive(Default, Debug)]
@@ -17,7 +21,7 @@ pub struct IntermediateModel {
 
     /// The transformation matrices to obtain the bind pose for each bone.
     /// The bone ID is a matrix into this array.
-    pub bind_poses: Vec<glam::Mat4>,
+    pub matrix_table: Vec<glam::Mat4>,
 
     pub polygons: Vec<IntermediatePolygon>,
 }
@@ -92,12 +96,11 @@ impl<'a> ModelContents<'a> {
         out: &mut IntermediateModel,
         arena: &IrArena,
     ) -> SlipstreamResult<()> {
-        struct DefinitionVisitor<'a> {
-            model: &'a ModelContents<'a>,
+        struct DefinitionVisitor {
             result: SlipstreamResult<BoneMap>,
         }
 
-        impl Visitor for DefinitionVisitor<'_> {
+        impl Visitor for DefinitionVisitor {
             fn visit_definitions(
                 &mut self,
                 context: VisitorContext<'_, Definitions>,
@@ -111,7 +114,6 @@ impl<'a> ModelContents<'a> {
 
         if let Some(node_tree) = self.node_tree {
             let mut visitor = DefinitionVisitor {
-                model: self,
                 result: Ok(BoneMap::default()),
             };
             arena.visit(node_tree, &mut visitor)?;
@@ -204,6 +206,8 @@ impl<'a> ModelContents<'a> {
         let mut model = IntermediateModel::default();
 
         self.translate_node_tree(&mut model, arena)?;
+        tracing::debug!("Bone map: {:?}", model.bone_map);
+
         self.translate_node_mix(&mut model, arena)?;
         self.traverse_skeleton(&mut model, arena)?;
         self.translate_polygons(&mut model, arena)?;

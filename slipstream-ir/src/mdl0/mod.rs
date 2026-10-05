@@ -27,7 +27,7 @@ pub use vertices::*;
 use std::ops::ControlFlow;
 
 use crate::brres::{self, BFileHeader, BFileType};
-use crate::encoding::ReadArrayExt;
+use crate::encoding::{Deserialize, ReadArrayExt};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
 use crate::visitor::{
@@ -208,6 +208,24 @@ impl Deserialize for EnvelopeMatrixMode {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct MatrixTable {
+    pub entries: Vec<i32>,
+}
+
+impl MatrixTable {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let count = reader.read_i32::<BigEndian>()?;
+        let mut entries = Vec::with_capacity(count as usize);
+
+        for _ in 0..count {
+            entries.push(reader.read_i32::<BigEndian>()?);
+        }
+
+        Ok(Self { entries })
+    }
+}
+
 pub trait SectionDeserialize: Sized {
     fn deserialize_section(
         reader: &mut RefCursor<[u8]>,
@@ -230,10 +248,11 @@ pub struct Mdl0Header {
     pub envelope_matrix_mode: EnvelopeMatrixMode,
     pub bounding_volume_minimum: [f32; 3],
     pub bounding_volume_maximum: [f32; 3],
+    pub matrix_table: MatrixTable,
 }
 
 impl Mdl0Header {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let start = reader.position();
 
         let header_length = reader.read_u32::<BigEndian>()?;
@@ -251,6 +270,13 @@ impl Mdl0Header {
         let data_offset = reader.read_u32::<BigEndian>()?;
         let bounding_volume_minimum = reader.read_f32_array::<3, BigEndian>()?;
         let bounding_volume_maximum = reader.read_f32_array::<3, BigEndian>()?;
+
+        tracing::warn!("offset: {:#04x}", reader.position() - start);
+
+        reader.set_position(start + data_offset as u64);
+
+        let matrix_table = MatrixTable::deserialize(reader)?;
+        dbg!(&matrix_table);
 
         tracing::trace!(
             "Read {}, must have {}",
@@ -273,6 +299,7 @@ impl Mdl0Header {
             envelope_matrix_mode,
             bounding_volume_minimum,
             bounding_volume_maximum,
+            matrix_table,
         })
     }
 }
