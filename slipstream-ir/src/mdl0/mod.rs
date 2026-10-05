@@ -174,6 +174,40 @@ impl TryFrom<u32> for SectionType {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
+pub enum EnvelopeMatrixMode {
+    Normal = 0,
+    Approximate = 1,
+    Exact = 2,
+}
+
+impl TryFrom<u8> for EnvelopeMatrixMode {
+    type Error = SlipstreamError;
+
+    fn try_from(value: u8) -> SlipstreamResult<Self> {
+        Ok(match value {
+            0 => Self::Normal,
+            1 => Self::Approximate,
+            2 => Self::Exact,
+            _ => {
+                return Err(CorruptionError {
+                    reason: format!("invalid envelope matrix mode: {value}, expected 0, 1 or 2"),
+                    ..Default::default()
+                }
+                .into());
+            }
+        })
+    }
+}
+
+impl Deserialize for EnvelopeMatrixMode {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let byte = reader.read_u8()?;
+        Self::try_from(byte)
+    }
+}
+
 pub trait SectionDeserialize: Sized {
     fn deserialize_section(
         reader: &mut RefCursor<[u8]>,
@@ -183,16 +217,17 @@ pub trait SectionDeserialize: Sized {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mdl0Header {
-    pub file_header_offset: i32,
+    pub mdl0_offset: i32,
     pub scaling_mode: ScalingMode,
     pub texture_matrix_mode: TextureMatrixMode,
     pub vertex_count: i32,
-    pub face_count: i32,
-    pub matrix_count: u32,
-    pub require_normalized_matrix_array: bool,
-    pub require_texture_matrix_array: bool,
-    pub enable_bounding_volume_data: bool,
-    pub matrix_table_offset: i32,
+    pub triangle_count: i32,
+    pub name_offset: i32,
+    pub node_count: u32,
+    pub needs_normal_matrix_array: bool,
+    pub needs_texture_matrix_array: bool,
+    pub enable_bounding_volumes: bool,
+    pub envelope_matrix_mode: EnvelopeMatrixMode,
     pub bounding_volume_minimum: [f32; 3],
     pub bounding_volume_maximum: [f32; 3],
 }
@@ -202,34 +237,40 @@ impl Mdl0Header {
         let start = reader.position();
 
         let header_length = reader.read_u32::<BigEndian>()?;
-        let file_header_offset = reader.read_i32::<BigEndian>()?;
+        let mdl0_offset = reader.read_i32::<BigEndian>()?;
         let scaling_mode = ScalingMode::deserialize(reader)?;
         let texture_matrix_mode = TextureMatrixMode::deserialize(reader)?;
         let vertex_count = reader.read_i32::<BigEndian>()?;
-        let face_count = reader.read_i32::<BigEndian>()?;
-        let _unused1 = reader.read_i32::<BigEndian>()?;
-        let matrix_count = reader.read_u32::<BigEndian>()?;
-        let require_normalized_matrix_array = reader.read_u8()? != 0;
-        let require_texture_matrix_array = reader.read_u8()? != 0;
-        let enable_bounding_volume_data = reader.read_u8()? != 0;
-        let _unknown1 = reader.read_u8()?;
-        let matrix_table_offset = reader.read_i32::<BigEndian>()?;
+        let triangle_count = reader.read_i32::<BigEndian>()?;
+        let name_offset = reader.read_i32::<BigEndian>()?;
+        let node_count = reader.read_u32::<BigEndian>()?;
+        let needs_normal_matrix_array = reader.read_u8()? != 0;
+        let needs_texture_matrix_array = reader.read_u8()? != 0;
+        let enable_bounding_volumes = reader.read_u8()? != 0;
+        let envelope_matrix_mode = EnvelopeMatrixMode::deserialize(reader)?;
+        let data_offset = reader.read_u32::<BigEndian>()?;
         let bounding_volume_minimum = reader.read_f32_array::<3, BigEndian>()?;
         let bounding_volume_maximum = reader.read_f32_array::<3, BigEndian>()?;
 
+        tracing::trace!(
+            "Read {}, must have {}",
+            reader.position(),
+            start + header_length as u64
+        );
         reader.set_position(start + header_length as u64);
 
         Ok(Self {
-            file_header_offset,
+            mdl0_offset,
             scaling_mode,
             texture_matrix_mode,
             vertex_count,
-            face_count,
-            matrix_count,
-            require_normalized_matrix_array,
-            require_texture_matrix_array,
-            enable_bounding_volume_data,
-            matrix_table_offset,
+            triangle_count,
+            name_offset,
+            node_count,
+            needs_normal_matrix_array,
+            needs_texture_matrix_array,
+            enable_bounding_volumes,
+            envelope_matrix_mode,
             bounding_volume_minimum,
             bounding_volume_maximum,
         })
