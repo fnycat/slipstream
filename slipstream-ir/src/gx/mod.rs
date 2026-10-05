@@ -10,7 +10,7 @@ use crate::{
         call::CallDisplayList, draw::DrawOpCode, load_bp::LoadBpOpCode, load_cp::LoadCpOpCode,
         load_indexed::IndexedLoad, load_xf::LoadXfOpCode,
     },
-    mdl0::polygon::GxVertexDeclaration,
+    mdl0::GxVertexDeclaration,
 };
 
 pub mod call;

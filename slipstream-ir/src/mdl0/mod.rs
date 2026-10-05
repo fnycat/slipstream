@@ -1,30 +1,33 @@
-pub mod bones;
-pub mod colors;
-pub mod definitions;
-pub mod materials;
-pub mod normals;
-pub mod pal_links;
-pub mod polygon;
-pub mod section;
-pub mod tevs;
-pub mod tex_links;
-pub mod uvs;
-pub mod vertices;
+mod bones;
+mod colors;
+mod definitions;
+mod materials;
+mod normals;
+mod pal_links;
+mod polygon;
+mod section;
+mod tevs;
+mod tex_links;
+mod uvs;
+mod vertices;
+
+pub use bones::*;
+pub use colors::*;
+pub use definitions::*;
+pub use materials::*;
+pub use normals::*;
+pub use pal_links::*;
+pub use polygon::*;
+pub use section::*;
+pub use tevs::*;
+pub use tex_links::*;
+pub use uvs::*;
+pub use vertices::*;
 
 use std::ops::ControlFlow;
 
 use crate::brres::{self, BFileHeader, BFileType};
 use crate::encoding::ReadArrayExt;
-use crate::mdl0::colors::ColorBuffer;
-use crate::mdl0::definitions::Definitions;
-use crate::mdl0::materials::MaterialBuffer;
-use crate::mdl0::normals::NormalBuffer;
-use crate::mdl0::pal_links::PaletteLinks;
-use crate::mdl0::polygon::Polygon;
-use crate::mdl0::tevs::Tev;
-use crate::mdl0::tex_links::TextureLinks;
-use crate::mdl0::uvs::UvBuffer;
-use crate::mdl0::vertices::VertexBuffer;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
 use crate::visitor::{
@@ -32,7 +35,6 @@ use crate::visitor::{
     VisitorContextNodeMut,
 };
 use byteorder::{BigEndian, ReadBytesExt};
-use section::deserialize_leaf_section;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{
     CorruptionError, SlipstreamError, SlipstreamResult, UnsupportedError,

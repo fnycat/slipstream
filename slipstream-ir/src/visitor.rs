@@ -1,18 +1,12 @@
-use crate::node::arena::IrNodeKey;
-use crate::node::node::{ContentSlot, IrNode, IrNodeType};
-use crate::tex0::Texture;
-use crate::{
-    arc::{ArcDirectory, UnknownFile},
-    mdl0::{
-        self, bones::Bone, colors::ColorBuffer, definitions::Definitions,
-        materials::MaterialBuffer, normals::NormalBuffer, pal_links::PaletteLinks,
-        polygon::Polygon, tevs::Tev, tex_links::TextureLinks, uvs::UvBuffer,
-        vertices::VertexBuffer,
-    },
+use crate::arc::{ArcDirectory, UnknownFile};
+use crate::mdl0::{
+    self, Bone, ColorBuffer, Definitions, MaterialBuffer, NormalBuffer, PaletteLinks, Polygon, Tev,
+    TextureLinks, UvBuffer, VertexBuffer,
 };
+use crate::node::arena::IrNodeKey;
+use crate::node::node::{IrNode, IrNodeType};
+use crate::tex0::Texture;
 use downcast_rs::{Downcast, impl_downcast};
-use std::any::Any;
-use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref, DerefMut};
 
 pub struct VisitorContextNode<'a> {

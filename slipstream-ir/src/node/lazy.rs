@@ -4,19 +4,10 @@ use slipstream_shared::SlipstreamResult;
 use slipstream_shared::error::UnsupportedError;
 use slipstream_shared::{assert::AssertSendSync, cursor::RefCursor};
 
-use crate::mdl0::SectionType::Tevs;
-use crate::mdl0::colors::ColorBuffer;
-use crate::mdl0::definitions::Definitions;
-use crate::mdl0::materials::MaterialBuffer;
-use crate::mdl0::normals::NormalBuffer;
-use crate::mdl0::pal_links::PaletteLinks;
-use crate::mdl0::polygon::Polygon;
-use crate::mdl0::section::DeserializeContents;
-use crate::mdl0::tevs::Tev;
-use crate::mdl0::tex_links::TextureLinks;
-
-use crate::mdl0::uvs::UvBuffer;
-use crate::mdl0::vertices::VertexBuffer;
+use crate::mdl0::{
+    ColorBuffer, Definitions, DeserializeContents, MaterialBuffer, NormalBuffer, PaletteLinks,
+    Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer,
+};
 use crate::{
     node::{
         node::IrNodeType,
