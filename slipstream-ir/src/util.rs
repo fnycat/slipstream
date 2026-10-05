@@ -5,7 +5,7 @@ use slipstream_shared::{
     error::{CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult},
 };
 
-use crate::{encoding::ReadArrayExt, mdl0::normals::NormalFormat};
+use crate::{encoding::ReadArrayExt, mdl0::NormalFormat};
 
 /// The data type used to store vertex data.
 ///

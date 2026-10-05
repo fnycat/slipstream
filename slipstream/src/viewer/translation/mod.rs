@@ -2,23 +2,12 @@ mod skeleton;
 mod vertex;
 
 pub use skeleton::*;
+use slipstream_ir::mdl0::{Bone, Definitions, NormalBuffer, Polygon, VertexBuffer};
 pub use vertex::*;
 
-use slipstream_ir::gx::GxOpCode;
-use slipstream_ir::gx::draw::{
-    DrawOpCode, InlineNormal, InlinePosition, NormalData, NormalIndex, OpVertex, PositionData,
-};
-use slipstream_ir::mdl0::bones::Bone;
-use slipstream_ir::mdl0::definitions::{
-    BoneIndex, DRAW_OPA_NAME, Definitions, NODE_MIX_NAME, NODE_TREE_NAME,
-};
-use slipstream_ir::mdl0::normals::NormalBuffer;
-use slipstream_ir::mdl0::polygon::Polygon;
-use slipstream_ir::mdl0::vertices::VertexBuffer;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::visitor::{Visitable, Visitor, VisitorContext};
-use slipstream_shared::{SlipstreamResult, try_unwrap, verify};
-use std::collections::HashMap;
+use slipstream_shared::{SlipstreamResult, try_unwrap};
 use std::ops::ControlFlow;
 
 #[derive(Default, Debug)]

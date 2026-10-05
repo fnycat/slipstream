@@ -1,8 +1,6 @@
 use slipstream_ir::{
     mdl0::{
-        bones::Bone,
-        definitions::{BoneIndex, BoneWeight, DefCommand, Definitions, MatrixId, WeightId},
-        polygon::{BoneBind, Polygon},
+        Bone, BoneBind, BoneIndex, BoneWeight, DefCommand, Definitions, MatrixId, Polygon, WeightId,
     },
     node::arena::IrArena,
     visitor::{Visitor, VisitorContext},

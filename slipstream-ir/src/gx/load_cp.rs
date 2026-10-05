@@ -6,7 +6,7 @@ use slipstream_shared::{
 };
 
 use crate::{
-    mdl0::{colors::ColorFormat, normals::NormalFormat},
+    mdl0::{ColorFormat, NormalFormat},
     util::VertexFormat,
 };
 

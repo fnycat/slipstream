@@ -1,14 +1,8 @@
 use crate::panes::{ContentSignature, Pane, PaneAction};
 use crate::reg_icon;
-use slipstream_ir::mdl0::bones::Bone;
-use slipstream_ir::mdl0::definitions::Definitions;
-use slipstream_ir::mdl0::polygon::Polygon;
-use slipstream_ir::mdl0::tex_links::TextureLinks;
-use slipstream_ir::mdl0::vertices::VertexBuffer;
+use slipstream_ir::mdl0::{Bone, Definitions, Polygon, TextureLinks, VertexBuffer};
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
-use slipstream_ir::visitor::{
-    Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNodeMut,
-};
+use slipstream_ir::visitor::{Visitor, VisitorContextMut, VisitorContextNodeMut};
 use slipstream_shared::inspect::Inspect;
 use slipstream_shared::{SlipstreamError, SlipstreamResult};
 use std::ops::ControlFlow;

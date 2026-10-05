@@ -1,27 +1,13 @@
 //! Translates between Wii models and wgpu ones.
 
-use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT};
 use crate::viewer::translation::{IntermediateModel, ModelContents, VertexBoneData};
 use slipstream_ir::gx::GxOpCode;
 use slipstream_ir::gx::draw::{
     DrawOpCode, InlineNormal, InlinePosition, NormalData, NormalIndex, OpVertex, PositionData,
 };
-use slipstream_ir::mdl0::definitions::{
-    BoneIndex, DRAW_OPA_NAME, Definitions, MatrixId, NODE_MIX_NAME, NODE_TREE_NAME, WeightId,
-};
-use slipstream_ir::mdl0::normals::NormalBuffer;
-use slipstream_ir::mdl0::polygon::{BoneBind, Polygon};
-use slipstream_ir::mdl0::vertices::VertexBuffer;
-use slipstream_ir::node::arena::{IrArena, IrNodeKey};
-use slipstream_ir::node::guard::ContentReadGuard;
-use slipstream_ir::node::node::IrNodeType;
-use slipstream_ir::visitor::{Visitable, Visitor, VisitorContext};
-use slipstream_shared::error::{InvalidInputError, SlipstreamError, SlipstreamResult};
-use slipstream_shared::{try_unwrap, verify};
+use slipstream_ir::mdl0::{MatrixId, NormalBuffer, Polygon, VertexBuffer};
+use slipstream_shared::{SlipstreamResult, try_unwrap};
 use std::collections::HashMap;
-use std::ops::{ControlFlow, Deref};
-use std::sync::Arc;
-use wgpu::util::DeviceExt;
 
 /// A key that completely describes a vertex.
 ///

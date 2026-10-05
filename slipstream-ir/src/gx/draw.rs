@@ -4,7 +4,7 @@ use slipstream_shared::{cursor::RefCursor, error::SlipstreamResult};
 use crate::{
     encoding::ReadArrayExt,
     gx::load_cp::VectorStorage,
-    mdl0::{colors::deserialize_color, polygon::GxVertexDeclaration},
+    mdl0::{GxVertexDeclaration, deserialize_color},
     util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector},
 };
 
