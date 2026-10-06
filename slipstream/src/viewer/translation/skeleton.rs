@@ -12,14 +12,6 @@ use crate::viewer::translation::{
     IntermediateModel, IntermediatePolygon, MAX_BONE_INFLUENCES, ModelContents, VertexKey,
 };
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(C)]
-pub struct BoneTransformation {
-    pub translation: [f32; 3],
-    pub rotation: [f32; 3],
-    pub scale: [f32; 3],
-}
-
 /// Maps bone IDs to matrices in the matrix table
 #[derive(Default, Debug)]
 pub struct BoneMap {

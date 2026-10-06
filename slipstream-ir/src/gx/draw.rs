@@ -11,8 +11,8 @@ use crate::{
 /// Position data that is stored directly inside of a draw call.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum InlinePosition {
-    Xy([f32; 2]),
-    Xyz([f32; 3]),
+    Xy(glam::Vec2),
+    Xyz(glam::Vec3),
 }
 
 impl InlinePosition {
@@ -21,23 +21,23 @@ impl InlinePosition {
         decl: &GxVertexDeclaration,
     ) -> SlipstreamResult<Self> {
         Ok(if decl.vat_a.pos_extended() {
-            Self::Xyz(deserialize_vector::<3>(
+            Self::Xyz(glam::Vec3::from_array(deserialize_vector::<3>(
                 reader,
                 decl.vat_a.pos_format(),
                 VectorDivisor::Custom(decl.vat_a.pos_divisor()),
-            )?)
+            )?))
         } else {
-            Self::Xy(deserialize_vector::<2>(
+            Self::Xy(glam::Vec2::from_array(deserialize_vector::<2>(
                 reader,
                 decl.vat_a.pos_format(),
                 VectorDivisor::Custom(decl.vat_a.pos_divisor()),
-            )?)
+            )?))
         })
     }
 
-    pub fn to_xyz(&self) -> [f32; 3] {
+    pub fn to_vec3(&self) -> glam::Vec3 {
         match self {
-            Self::Xy([x, y]) => [*x, *y, 0.0],
+            Self::Xy(glam::Vec2 { x, y }) => glam::vec3(*x, *y, 0.0),
             Self::Xyz(x) => *x,
         }
     }
@@ -84,28 +84,43 @@ impl PositionData {
 #[derive(Debug, Clone, PartialEq)]
 pub enum InlineNormal {
     /// Stores only the normal
-    Single([f32; 3]),
+    Single(glam::Vec3),
     /// Stores the normal, binormal and tangent in a single 9 float block.
-    Packed([f32; 9]),
+    Packed([glam::Vec3; 3]),
 }
 
 impl InlineNormal {
+    /// Returns the normal only.
+    #[inline]
+    pub fn to_vec3(&self) -> glam::Vec3 {
+        match self {
+            Self::Single(x) => *x,
+            Self::Packed(x) => x[0],
+        }
+    }
+
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
         decl: &GxVertexDeclaration,
     ) -> SlipstreamResult<Self> {
         Ok(if decl.vat_a.norm_extended() {
-            Self::Packed(deserialize_vector::<9>(
+            // custom implementation because it doesn't work with the existing vector functions.
+            let data = deserialize_vector::<9>(
                 reader,
                 VertexFormat::from(decl.vat_a.norm_format()),
                 VectorDivisor::Normalize,
-            )?)
+            )?;
+            let normal = glam::Vec3::from_slice(&data[..3]);
+            let tangent = glam::Vec3::from_slice(&data[3..6]);
+            let binormal = glam::Vec3::from_slice(&data[6..9]);
+
+            Self::Packed([normal, tangent, binormal])
         } else {
-            Self::Single(deserialize_vector::<3>(
+            Self::Single(glam::Vec3::from_array(deserialize_vector::<3>(
                 reader,
                 VertexFormat::from(decl.vat_a.norm_format()),
                 VectorDivisor::Normalize,
-            )?)
+            )?))
         })
     }
 }

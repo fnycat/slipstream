@@ -28,8 +28,8 @@ pub enum VertexPositionType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum VertexBufData {
-    Xy(Vec<[f32; 2]>),
-    Xyz(Vec<[f32; 3]>),
+    Xy(Vec<glam::Vec2>),
+    Xyz(Vec<glam::Vec3>),
 }
 
 impl VertexBufData {
@@ -59,8 +59,8 @@ impl VertexBufData {
     /// Returns the buffer size in bytes.
     pub fn size(&self) -> usize {
         match self {
-            Self::Xy(verts) => 2 * size_of::<f32>() * verts.len(),
-            Self::Xyz(verts) => 3 * size_of::<f32>() * verts.len(),
+            Self::Xy(verts) => size_of::<glam::Vec2>() * verts.len(),
+            Self::Xyz(verts) => size_of::<glam::Vec3>() * verts.len(),
         }
     }
 
@@ -98,9 +98,9 @@ pub struct VertexBuffer {
     /// The size in bytes of each position.
     pub stride: u8,
     /// First corner of the vertex buffer's AABB.
-    pub bounding_volume_min: [f32; 3],
+    pub bounding_volume_min: glam::Vec3,
     /// Second corner of the vertex buffer's AABB.
-    pub bounding_volume_max: [f32; 3],
+    pub bounding_volume_max: glam::Vec3,
     /// The vertex data.
     pub vertices: VertexBufData,
 }
@@ -108,9 +108,11 @@ pub struct VertexBuffer {
 impl VertexBuffer {
     /// Convenience method that loads the vertex at the given index and upcasts it to an XYZ vertex.
     /// For vertices with only two components, the Z component is set 0.
-    pub fn get_xyz(&self, index: usize) -> Option<[f32; 3]> {
+    pub fn get_xyz(&self, index: usize) -> Option<glam::Vec3> {
         match &self.vertices {
-            VertexBufData::Xy(xy) => xy.get(index).map(|[x, y]| [*x, *y, 0.0]),
+            VertexBufData::Xy(xy) => xy
+                .get(index)
+                .map(|glam::Vec2 { x, y }| glam::vec3(*x, *y, 0.0)),
             VertexBufData::Xyz(xyz) => xyz.get(index).copied(),
         }
     }
@@ -142,21 +144,21 @@ impl DeserializeContents for VertexBuffer {
         let divisor = reader.read_u8()?;
         let stride = reader.read_u8()?;
         let vertex_count = reader.read_u16::<BigEndian>()?;
-        let bounding_volume_min = reader.read_f32_array::<3, BigEndian>()?;
-        let bounding_volume_max = reader.read_f32_array::<3, BigEndian>()?;
+        let bounding_volume_min = glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?);
+        let bounding_volume_max = glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?);
 
         tracing::trace!("Reading {vertex_count} vertices");
 
         reader.set_position(header.get_data_start());
 
         let vertices = match component_count {
-            COMPONENTS_XY => VertexBufData::Xy(deserialize_vector_data::<2>(
+            COMPONENTS_XY => VertexBufData::Xy(deserialize_vector_data::<2, glam::Vec2>(
                 reader,
                 vertex_count as usize,
                 format,
                 VectorDivisor::Custom(divisor),
             )?),
-            COMPONENTS_XYZ => VertexBufData::Xyz(deserialize_vector_data::<3>(
+            COMPONENTS_XYZ => VertexBufData::Xyz(deserialize_vector_data::<3, glam::Vec3>(
                 reader,
                 vertex_count as usize,
                 format,

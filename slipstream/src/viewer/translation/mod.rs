@@ -3,8 +3,8 @@ mod vertex;
 
 pub use skeleton::*;
 use slipstream_ir::mdl0::{
-    Bone, DRAW_OPA_NAME, Definitions, MatrixId, NODE_MIX_NAME, NODE_TREE_NAME, NormalBuffer,
-    Polygon, VertexBuffer,
+    Bone, ColorBuffer, DRAW_OPA_NAME, Definitions, MatrixId, NODE_MIX_NAME, NODE_TREE_NAME,
+    NormalBuffer, Polygon, VertexBuffer,
 };
 pub use vertex::*;
 
@@ -35,6 +35,7 @@ pub struct ModelContents<'a> {
 
     vertices: Vec<IrNodeKey>,
     normals: Vec<IrNodeKey>,
+    colors: Vec<IrNodeKey>,
     polygons: Vec<IrNodeKey>,
 }
 
@@ -51,6 +52,7 @@ impl<'a> ModelContents<'a> {
 
             vertices: Vec::new(),
             normals: Vec::new(),
+            colors: Vec::new(),
             polygons: Vec::new(),
         };
         arena.walk(root, &mut visitor)?;
@@ -71,21 +73,18 @@ impl<'a> ModelContents<'a> {
         let out = self
             .arena
             .inspect(key, |node| {
-                let buf = try_unwrap!(
-                    node.contents.get_or_try_init()?,
-                    "vertex buffer had no content"
-                )?;
+                let buf = try_unwrap!(node.contents.get_or_try_init()?, "buffer had no content")?;
 
                 let buf = try_unwrap!(
                     buf.as_any().downcast_ref::<U>(),
-                    "vertex buffer had an incorrect `Visitable` type"
+                    "buffer had an incorrect `Visitable` type"
                 )?;
 
                 inspect_fn(buf)
             })
             .transpose()?;
 
-        try_unwrap!(out, "vertex buffer {key:?} did not exist")
+        try_unwrap!(out, "buffer {key:?} did not exist")
     }
 
     /// Populates the `bone -> matrix` map.
@@ -247,6 +246,11 @@ impl Visitor for ModelContents<'_> {
 
     fn visit_normals(&mut self, normals: VisitorContext<'_, NormalBuffer>) -> ControlFlow<()> {
         self.normals.push(normals.meta.key);
+        ControlFlow::Break(())
+    }
+
+    fn visit_colors(&mut self, colors: VisitorContext<'_, ColorBuffer>) -> ControlFlow<()> {
+        self.colors.push(colors.meta.key);
         ControlFlow::Break(())
     }
 

@@ -6,7 +6,7 @@ use slipstream_ir::gx::draw::{
     DrawOpCode, InlineNormal, InlinePosition, NormalData, NormalIndex, OpVertex, PositionData,
 };
 use slipstream_ir::gx::load_indexed::IndexedLoad;
-use slipstream_ir::mdl0::{MatrixId, NormalBuffer, Polygon, VertexBuffer};
+use slipstream_ir::mdl0::{ColorBuffer, MatrixId, NormalBuffer, Polygon, VertexBuffer};
 use slipstream_shared::{SlipstreamResult, try_unwrap, verify};
 use std::collections::HashMap;
 
@@ -27,6 +27,7 @@ pub struct VertexKey {
     pub mtx_id: Option<MatrixId>,
     pub position: VertexAttrKey,
     pub normal: VertexAttrKey,
+    // pub color0: VertexAttrKey,
 }
 
 /// Describes how the vertex data should be retrieved.
@@ -61,9 +62,10 @@ pub const MAX_BONE_INFLUENCES: usize = 4;
 #[repr(C)]
 pub struct TranslatedVertex {
     /// The position of the vertex.
-    pub position: [f32; 3],
+    pub position: glam::Vec3,
     /// The normal of the vertex.
-    pub normal: [f32; 3],
+    pub normal: glam::Vec3,
+    // pub color0: glam::U8Vec4,
     pub bone_indices: [u32; MAX_BONE_INFLUENCES],
     pub bone_weights: [f32; MAX_BONE_INFLUENCES],
 }
@@ -79,28 +81,39 @@ pub struct XfRegisters {
 #[derive(Default, Debug)]
 pub struct InlineBuffers {
     /// Buffer of positions that are stored inline in the draw command.
-    positions: Vec<[f32; 3]>,
+    positions: Vec<glam::Vec3>,
     /// Buffer of normals that are stored inline in the draw command.
-    normals: Vec<[f32; 3]>,
+    normals: Vec<glam::Vec3>,
+    /// Buffer of colors that are stored inline in the draw command.
+    colors: Vec<glam::U8Vec4>,
 }
 
 impl InlineBuffers {
-    pub fn positions(&self) -> &[[f32; 3]] {
+    pub fn positions(&self) -> &[glam::Vec3] {
         &self.positions
     }
 
-    pub fn normals(&self) -> &[[f32; 3]] {
+    pub fn normals(&self) -> &[glam::Vec3] {
         &self.normals
     }
 
-    pub fn insert_position(&mut self, position: [f32; 3]) -> VertexAttrKey {
+    pub fn colors(&self) -> &[glam::U8Vec4] {
+        &self.colors
+    }
+
+    pub fn insert_position(&mut self, position: glam::Vec3) -> VertexAttrKey {
         self.positions.push(position);
         VertexAttrKey::Inline(self.positions.len() as u16 - 1)
     }
 
-    pub fn insert_normal(&mut self, normal: [f32; 3]) -> VertexAttrKey {
+    pub fn insert_normal(&mut self, normal: glam::Vec3) -> VertexAttrKey {
         self.normals.push(normal);
         VertexAttrKey::Inline(self.normals.len() as u16 - 1)
+    }
+
+    pub fn insert_color(&mut self, color: glam::U8Vec4) -> VertexAttrKey {
+        self.colors.push(color);
+        VertexAttrKey::Inline(self.colors.len() as u16 - 1)
     }
 }
 
@@ -135,6 +148,15 @@ impl ModelContents<'_> {
         self.try_inspect_inner(*key, inspect_fn)
     }
 
+    fn try_inspect_colors<F, T>(&self, index: usize, inspect_fn: F) -> SlipstreamResult<T>
+    where
+        F: FnOnce(&ColorBuffer) -> SlipstreamResult<T>,
+    {
+        let key = try_unwrap!(self.colors.get(index), "color buffer index out of range")?;
+
+        self.try_inspect_inner(*key, inspect_fn)
+    }
+
     fn translate_vertex(
         &self,
         model: &IntermediateModel,
@@ -142,8 +164,9 @@ impl ModelContents<'_> {
         polygon: &Polygon,
         vertex_key: &VertexKey,
     ) -> SlipstreamResult<TranslatedVertex> {
-        const POSITION_DEFAULT: [f32; 3] = [0.0; 3];
-        const NORMAL_DEFAULT: [f32; 3] = [0.0, 1.0, 0.0];
+        const POSITION_DEFAULT: glam::Vec3 = glam::Vec3::ZERO;
+        const NORMAL_DEFAULT: glam::Vec3 = glam::vec3(0.0, 1.0, 0.0);
+        const COLOR_DEFAULT: glam::U8Vec4 = glam::u8vec4(0, 255, 0, 255);
 
         let VertexBoneData {
             ids: indices,
@@ -184,9 +207,27 @@ impl ModelContents<'_> {
                 .expect("inline normal index out of range"),
         };
 
+        // let color0 = match vertex_key.color0 {
+        //     VertexAttrKey::NotPresent => COLOR_DEFAULT,
+        //     VertexAttrKey::Indexed(idx) => {
+        //         self.try_inspect_colors(polygon.color_array_ids[0] as usize, |buf| {
+        //             try_unwrap!(
+        //                 buf.get_rgba(idx as usize),
+        //                 "color {idx} did not exist in color buffer"
+        //             )
+        //         })?
+        //     }
+        //     VertexAttrKey::Inline(idx) => *scratch
+        //         .inline
+        //         .colors()
+        //         .get(idx as usize)
+        //         .expect("inline color0 index out of range"),
+        // };
+
         Ok(TranslatedVertex {
             position,
             normal,
+            // color0,
             bone_indices: indices,
             bone_weights: weights,
         })
@@ -212,11 +253,7 @@ impl ModelContents<'_> {
             PositionData::Index8(idx) => vertex_key.position = VertexAttrKey::Indexed(*idx as u16),
             PositionData::Index16(idx) => vertex_key.position = VertexAttrKey::Indexed(*idx),
             PositionData::Direct(x) => {
-                let position = match x {
-                    InlinePosition::Xy(xy) => [xy[0], xy[1], 0.0],
-                    InlinePosition::Xyz(xyz) => *xyz,
-                };
-
+                let position = x.to_vec3();
                 vertex_key.position = scratch.inline.insert_position(position);
             }
         }
@@ -232,11 +269,7 @@ impl ModelContents<'_> {
                 NormalIndex::Triple(x) => vertex_key.normal = VertexAttrKey::Indexed(x[0]),
             },
             NormalData::Direct(x) => {
-                let normal = match x {
-                    InlineNormal::Single(x) => *x,
-                    InlineNormal::Packed(x) => [x[0], x[1], x[2]],
-                };
-
+                let normal = x.to_vec3();
                 vertex_key.normal = scratch.inline.insert_normal(normal);
             }
         }
