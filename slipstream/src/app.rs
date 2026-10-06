@@ -58,6 +58,11 @@ impl App {
         let cmd_channel = AppCommandChannel::new(tx);
 
         let egui_rs = cc.wgpu_render_state.as_ref().unwrap();
+        tracing::info!(
+            "Using graphics API `{}`",
+            egui_rs.adapter.get_info().backend
+        );
+
         let render_state = GraphicsState {
             instance: egui_rs.instance.clone(),
             device: egui_rs.device.clone(),

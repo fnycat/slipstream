@@ -371,12 +371,6 @@ impl ModelContents<'_> {
         let slot_index = address / 12;
         let matrix_index = MatrixId(load.index());
 
-        tracing::debug!(
-            slot_index = ?slot_index,
-            matrix_index = ?matrix_index,
-            transfer_count
-        );
-
         model.xf_slots.positions[slot_index as usize] = matrix_index;
 
         Ok(())
@@ -412,9 +406,12 @@ impl ModelContents<'_> {
                     self.load_position_slot(model, scratch, polygon, load)?;
                 }
                 GxOpCode::LoadIndexedNormal(load) => {
-                    // tracing::trace!("{load:#?}");
+                    // tracing::trace!("TODO: {load:?}");
                 }
-                _ => {}
+                GxOpCode::LoadIndexedTextureMatrix(load) => {
+                    // tracing::trace!("TODO: {load:?}");
+                }
+                _ => todo!("{call:?}"),
             }
         }
 
