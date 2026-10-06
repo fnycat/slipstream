@@ -100,12 +100,13 @@ pub struct WgpuPolygon {
 impl WgpuPolygon {
     pub const INDEX_FORMAT: wgpu::IndexFormat = wgpu::IndexFormat::Uint16;
     pub const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-        array_stride: 56,
+        array_stride: 72,
         attributes: &wgpu::vertex_attr_array![
             0 => Float32x3,
             1 => Float32x3,
-            2 => Uint32x4,
-            3 => Float32x4,
+            2 => Float32x4,
+            3 => Uint32x4,
+            4 => Float32x4,
         ],
         step_mode: wgpu::VertexStepMode::Vertex,
     };

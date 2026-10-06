@@ -185,6 +185,14 @@ pub enum DirectColor {
 }
 
 impl DirectColor {
+    #[inline]
+    pub fn to_rgba(&self) -> glam::U8Vec4 {
+        match self {
+            Self::AlphaDisabled(x) => *x,
+            Self::AlphaEnabled(x) => *x,
+        }
+    }
+
     pub fn deserialize_col0(
         reader: &mut RefCursor<[u8]>,
         decl: &GxVertexDeclaration,
