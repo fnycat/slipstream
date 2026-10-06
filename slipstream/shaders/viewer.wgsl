@@ -17,47 +17,45 @@ var<storage, read> bone_transformations: array<mat4x4f>;
 struct VertexInput {
     @location(0) position: vec3f,
     @location(1) normal: vec3f,
+    @location(2) color0: vec4f,
     /// Indices of the bones that this vertex is connected to.
-    @location(2) bone_indices: vec4u,
+    @location(3) bone_indices: vec4u,
     /// Weights for the indices above.
-    @location(3) bone_weights: vec4f
+    @location(4) bone_weights: vec4f
 }
 
 struct VertexOutput {
     @builtin(position) vertex: vec4f,
     @location(0) normal: vec3f,
-    @location(1) @interpolate(flat) bone_index: u32
+    @location(1) color0: vec4f,
+    @location(2) @interpolate(flat) bone_index: u32
 }
 
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
-   var pos = vec4f(0.0);
-   var nrm = vec3f(0.0);
+    var pos = vec4f(0.0);
+    var nrm = vec3f(0.0);
 
-   for (var i = 0u; i < 1u; i += 1) {
-       let weight = input.bone_weights[i];
-       if (weight > 0.0) {
-           let transform = bone_transformations[input.bone_indices[i]];
-           pos += weight * (transform * vec4f(input.position, 1.0));
-           nrm += weight * (mat3x3f(transform[0].xyz, transform[1].xyz, transform[2].xyz) * input.normal);
-       }
-   }
+    for (var i = 0u; i < 1u; i += 1) {
+        let weight = input.bone_weights[i];
+        if (weight > 0.0) {
+            let transform = bone_transformations[input.bone_indices[i]];
+            pos += weight * (transform * vec4f(input.position, 1.0));
+            nrm += weight * (mat3x3f(transform[0].xyz, transform[1].xyz, transform[2].xyz) * input.normal);
+        }
+    }
 
-   var output: VertexOutput;
-   output.vertex = camera.view_proj * pos;
-   output.normal = normalize(nrm);
-   output.bone_index = input.bone_indices[0];
-   return output;
-
-    // var output: VertexOutput;
-    // output.vertex = camera.view_proj * vec4f(input.position, 1.0);
-    // output.normal = input.normal;
-    // output.bone_index = input.bone_indices[0];
-    // return output;
+    var output: VertexOutput;
+    output.vertex = camera.view_proj * pos;
+    output.normal = normalize(nrm);
+    output.color0 = input.color0;
+    output.bone_index = input.bone_indices[0];
+    return output;
 }
 
-fn linear_to_srgb(color: vec3f) -> vec3f {
-    return 1.055 * pow(color, vec3f(1.0 / 2.4)) - 0.055;
+fn linear_to_srgb(color: vec4f) -> vec4f {
+    let rgb = 1.055 * pow(color.rgb, vec3f(1.0 / 2.4)) - 0.055;
+    return vec4f(rgb, color.a);
 }
 
 fn compute_diffuse(normal: vec3f) -> vec3f {
@@ -69,19 +67,12 @@ fn compute_diffuse(normal: vec3f) -> vec3f {
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4f {
-    var color: vec3f = input.normal * 0.5 + 0.5;
-//    if (input.bone_index == 2) {
-//        // shell
-//        color = vec3f(1.0, 0.0, 0.0);
-//    } else if (input.bone_index == 1 || input.bone_index == 0) {
-//        // head and mouth
-//        color = vec3f(0.0, 1.0, 0.0);
-//    } else {
-//        color = vec3f(0.0, 0.0, 0.0);
-//    }
+    // var color: vec4f = vec4f(input.normal * 0.5 + 0.5, 1.0);
+    // var color: vec4f = vec4f(f32(input.bone_index) / 15.0, 0.0, 0.0, 1.0);
+    let color = input.color0;
 
     // Convert the linear colours to SRGB.
     // Without this, the colours will look very washed out in the editor.
     let srgb = linear_to_srgb(color);
-    return vec4f(srgb, 1.0);
+    return srgb;
 }
