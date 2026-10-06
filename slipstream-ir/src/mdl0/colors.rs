@@ -173,6 +173,13 @@ pub struct ColorBuffer {
     colors: Vec<glam::U8Vec4>,
 }
 
+impl ColorBuffer {
+    #[inline]
+    pub fn get_rgba(&self, index: usize) -> Option<glam::U8Vec4> {
+        self.colors.get(index).copied()
+    }
+}
+
 pub fn deserialize_color(
     reader: &mut RefCursor<[u8]>,
     format: ColorFormat,

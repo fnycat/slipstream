@@ -186,15 +186,15 @@ pub fn deserialize_vector<const N: usize>(
 }
 
 /// Deserializes a list of vectors of the given `count` and `format`.
-pub fn deserialize_vector_data<const N: usize>(
+pub fn deserialize_vector_data<const N: usize, I: From<[f32; N]>>(
     reader: &mut RefCursor<[u8]>,
     count: usize,
     format: VertexFormat,
     divisor: VectorDivisor,
-) -> SlipstreamResult<Vec<[f32; N]>> {
+) -> SlipstreamResult<Vec<I>> {
     let mut data = Vec::with_capacity(count);
     for _ in 0..count {
-        data.push(deserialize_vector::<N>(reader, format, divisor)?);
+        data.push(I::from(deserialize_vector::<N>(reader, format, divisor)?));
     }
     Ok(data)
 }

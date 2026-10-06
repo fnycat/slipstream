@@ -30,7 +30,7 @@ pub enum UvDataType {
 #[derive(Debug, Clone, PartialEq)]
 pub enum UvData {
     S(Vec<f32>),
-    St(Vec<[f32; 2]>),
+    St(Vec<glam::Vec2>),
 }
 
 impl UvData {
@@ -69,9 +69,9 @@ pub struct UvBuffer {
     /// The raw UV data.
     pub uvs: UvData,
     /// First corner of the UV buffer's AABB.
-    pub bounding_volume_min: [f32; 2],
+    pub bounding_volume_min: glam::Vec2,
     /// Second corner of the UV buffer's AABB.
-    pub bounding_volume_max: [f32; 2],
+    pub bounding_volume_max: glam::Vec2,
 }
 
 impl Visitable for UvBuffer {
@@ -106,8 +106,8 @@ impl DeserializeContents for UvBuffer {
         let stride = reader.read_u8()?;
 
         let uv_count = reader.read_u16::<BigEndian>()?;
-        let bounding_volume_min = reader.read_f32_array::<2, BigEndian>()?;
-        let bounding_volume_max = reader.read_f32_array::<2, BigEndian>()?;
+        let bounding_volume_min = glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?);
+        let bounding_volume_max = glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?);
 
         let header_start = mdl0_offset_start as i64 + mdl0_offset as i64;
         let uv_start = header_start as i64 + data_offset as i64;
@@ -120,7 +120,7 @@ impl DeserializeContents for UvBuffer {
                 format,
                 VectorDivisor::Custom(divisor),
             )?),
-            COMPONENTS_ST => UvData::St(deserialize_vector_data::<2>(
+            COMPONENTS_ST => UvData::St(deserialize_vector_data::<2, glam::Vec2>(
                 reader,
                 uv_count as usize,
                 format,

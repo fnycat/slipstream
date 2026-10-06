@@ -6,10 +6,11 @@ use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 use slipstream_shared::verify;
 
+use crate::encoding::ReadArrayExt;
 use crate::mdl0::SectionHeader;
 use crate::mdl0::section::DeserializeContents;
 use crate::node::node::{IrNode, IrNodeType};
-use crate::util::{VectorDivisor, VertexFormat, deserialize_vector_data};
+use crate::util::{VectorDivisor, VertexFormat, deserialize_vector, deserialize_vector_data};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
     VisitorContextNodeMut,
@@ -90,9 +91,9 @@ pub enum NormalBufType {
 #[derive(Debug, Clone, PartialEq)]
 pub enum NormalBufData {
     /// Only the normal.
-    Single(Vec<[f32; 3]>),
+    Single(Vec<glam::Vec3>),
     /// Includes all of the normal, bi-normal and tangent
-    Triple(Vec<[f32; 9]>),
+    Triple(Vec<[glam::Vec3; 3]>),
 }
 
 impl NormalBufData {
@@ -142,10 +143,10 @@ pub struct NormalBuffer {
 }
 
 impl NormalBuffer {
-    pub fn get_normal(&self, index: usize) -> Option<[f32; 3]> {
+    pub fn get_normal(&self, index: usize) -> Option<glam::Vec3> {
         match &self.normals {
             NormalBufData::Single(x) => x.get(index).copied(),
-            NormalBufData::Triple(x) => x.get(index).map(|[x, y, z, ..]| [*x, *y, *z]),
+            NormalBufData::Triple(x) => x.get(index).map(|x| x[0]),
         }
     }
 }
@@ -180,19 +181,31 @@ impl DeserializeContents for NormalBuffer {
         reader.set_position(header.get_data_start());
 
         let normals = match component_count {
-            COMPONENTS_NORMAL => NormalBufData::Single(deserialize_vector_data::<3>(
+            COMPONENTS_NORMAL => NormalBufData::Single(deserialize_vector_data::<3, glam::Vec3>(
                 reader,
                 normal_count as usize,
                 VertexFormat::from(format),
                 VectorDivisor::Custom(divisor),
             )?),
-            COMPONENTS_ALL => NormalBufData::Triple(deserialize_vector_data::<9>(
-                reader,
-                normal_count as usize,
-                VertexFormat::from(format),
-                VectorDivisor::Custom(divisor),
-            )?),
-            COMPONENTS_ANY => NormalBufData::Single(deserialize_vector_data::<3>(
+            COMPONENTS_ALL => {
+                // custom implementation because it doesn't work with the existing vector functions.
+
+                let mut entries = Vec::with_capacity(normal_count as usize);
+                for _ in 0..normal_count {
+                    let data = deserialize_vector::<9>(
+                        reader,
+                        VertexFormat::from(format),
+                        VectorDivisor::Custom(divisor),
+                    )?;
+                    let normal = glam::Vec3::from_slice(&data[..3]);
+                    let tangent = glam::Vec3::from_slice(&data[3..6]);
+                    let binormal = glam::Vec3::from_slice(&data[6..9]);
+
+                    entries.push([normal, tangent, binormal]);
+                }
+                NormalBufData::Triple(entries)
+            }
+            COMPONENTS_ANY => NormalBufData::Single(deserialize_vector_data::<3, glam::Vec3>(
                 reader,
                 normal_count as usize,
                 VertexFormat::from(format),
