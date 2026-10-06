@@ -24,7 +24,7 @@ use std::collections::HashMap;
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct VertexKey {
     /// The matrix that transforms this vertex.
-    pub mtx_id: Option<u8>,
+    pub mtx_id: Option<MatrixId>,
     pub position: VertexAttrKey,
     pub normal: VertexAttrKey,
 }
@@ -112,10 +112,6 @@ pub struct IntermediatePolygon {
     pub indices: Vec<VertexIndex>,
     /// This will become the new vertex buffer.
     pub vertices: Vec<TranslatedVertex>,
-    /// List of matrix IDs. The vertices index into this array to find the matrices
-    /// that transform them.
-    pub bone_translation: Vec<MatrixId>,
-    pub xf_registers: XfRegisters,
     /// Stores all inline data of polygon draw commands.
     pub inline: InlineBuffers,
 }
@@ -205,7 +201,11 @@ impl ModelContents<'_> {
     ) -> SlipstreamResult<crate::viewer::translation::vertex::VertexIndex> {
         let mut vertex_key = VertexKey::default();
 
-        vertex_key.mtx_id = vertex.pn_matrix_index;
+        let matrix_id = vertex
+            .pn_matrix_index
+            .map(|id| model.xf_slots.positions[id as usize]);
+
+        vertex_key.mtx_id = matrix_id;
 
         match &vertex.position {
             PositionData::NotPresent => vertex_key.position = VertexAttrKey::NotPresent,
@@ -302,7 +302,7 @@ impl ModelContents<'_> {
 
     fn load_position_slot(
         &self,
-        model: &IntermediateModel,
+        model: &mut IntermediateModel,
         scratch: &mut IntermediatePolygon,
         polygon: &Polygon,
         load: &IndexedLoad,
@@ -328,14 +328,14 @@ impl ModelContents<'_> {
             transfer_count
         );
 
-        scratch.xf_registers.positions[slot_index as usize] = matrix_index;
+        model.xf_slots.positions[slot_index as usize] = matrix_index;
 
         Ok(())
     }
 
     fn load_normal_slot(
         &self,
-        model: &IntermediateModel,
+        model: &mut IntermediateModel,
         scratch: &mut IntermediatePolygon,
         polygon: &Polygon,
         load: &IndexedLoad,
@@ -347,7 +347,7 @@ impl ModelContents<'_> {
 
     pub fn translate_polygon(
         &self,
-        model: &IntermediateModel,
+        model: &mut IntermediateModel,
         scratch: &mut IntermediatePolygon,
         polygon: &Polygon,
     ) -> SlipstreamResult<()> {

@@ -11,17 +11,14 @@ pub use vertex::*;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::visitor::{Visitable, Visitor, VisitorContext};
 use slipstream_shared::{SlipstreamResult, try_unwrap};
-use std::collections::HashMap;
 use std::ops::ControlFlow;
 
 #[derive(Default, Debug)]
 pub struct IntermediateModel {
     pub bone_map: BoneMap,
     pub bone_weights: Option<BoneWeights>,
-
-    /// The transformation matrices to obtain the bind pose for each bone.
-    /// The bone ID is a matrix into this array.
-    pub matrix_table: Vec<glam::Mat4>,
+    pub bone_translations: Vec<glam::Mat4>,
+    pub xf_slots: XfRegisters,
 
     pub polygons: Vec<IntermediatePolygon>,
 }
@@ -91,6 +88,7 @@ impl<'a> ModelContents<'a> {
         try_unwrap!(out, "vertex buffer {key:?} did not exist")
     }
 
+    /// Populates the `bone -> matrix` map.
     fn translate_node_tree(
         &self,
         out: &mut IntermediateModel,
@@ -123,6 +121,7 @@ impl<'a> ModelContents<'a> {
         Ok(())
     }
 
+    /// Loads all of the bone weights.
     fn translate_node_mix(
         &self,
         out: &mut IntermediateModel,
@@ -163,8 +162,8 @@ impl<'a> ModelContents<'a> {
         arena: &IrArena,
     ) -> SlipstreamResult<()> {
         struct PolygonVisitor<'a> {
-            out: &'a IntermediateModel,
-            model: &'a ModelContents<'a>,
+            out: &'a mut IntermediateModel,
+            input: &'a ModelContents<'a>,
             scratch: &'a mut IntermediatePolygon,
             result: SlipstreamResult<()>,
         }
@@ -173,7 +172,7 @@ impl<'a> ModelContents<'a> {
             fn visit_polygon(&mut self, context: VisitorContext<'_, Polygon>) -> ControlFlow<()> {
                 tracing::trace!("Translating polygon `{}`", context.meta.label);
                 self.result = self
-                    .model
+                    .input
                     .translate_polygon(self.out, self.scratch, context.content);
 
                 ControlFlow::Break(())
@@ -185,7 +184,7 @@ impl<'a> ModelContents<'a> {
             let mut intermediate = IntermediatePolygon::default();
             let mut visitor = PolygonVisitor {
                 out,
-                model: self,
+                input: self,
                 scratch: &mut intermediate,
                 result: Ok(()),
             };
@@ -206,10 +205,8 @@ impl<'a> ModelContents<'a> {
         let mut model = IntermediateModel::default();
 
         self.translate_node_tree(&mut model, arena)?;
-        tracing::debug!("Bone map: {:?}", model.bone_map);
-
         self.translate_node_mix(&mut model, arena)?;
-        self.traverse_skeleton(&mut model, arena)?;
+        self.populate_primary_influences(&mut model, arena)?;
         self.translate_polygons(&mut model, arena)?;
 
         Ok(model)
