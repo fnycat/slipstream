@@ -58,18 +58,20 @@ fn linear_to_srgb(color: vec4f) -> vec4f {
     return vec4f(rgb, color.a);
 }
 
-fn compute_diffuse(normal: vec3f) -> vec3f {
-    let sunDirection = vec3f(0.0, -1.0, 1.0);
+fn compute_diffuse(normal: vec3f, color: vec4f) -> vec4f {
+    let sunDirection = vec3f(0.0, 0.0, 1.0);
     let dot = dot(normal, sunDirection);
 
-    return vec3f(normal * 0.5 + 0.5) * dot;
+    return color * dot;
 }
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     // var color: vec4f = vec4f(input.normal * 0.5 + 0.5, 1.0);
     // var color: vec4f = vec4f(f32(input.bone_index) / 15.0, 0.0, 0.0, 1.0);
-    let color = input.color0;
+    // let color = input.color0;
+
+    let color = compute_diffuse(input.normal, vec4f(input.normal, 1.0));
 
     // Convert the linear colours to SRGB.
     // Without this, the colours will look very washed out in the editor.

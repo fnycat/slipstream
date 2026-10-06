@@ -186,6 +186,11 @@ impl IrArena {
             .clone();
 
         let guard = root.read();
+        if let Some(content) = guard.contents.get_or_try_init()? {
+            let _ = content.accept(VisitorContextNode::from(&*guard), visitor);
+        }
+
+        let guard = root.read();
         for &child in &guard.children {
             // Visits the child's contents and returns a control flow.
             let flow = self

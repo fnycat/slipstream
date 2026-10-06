@@ -30,6 +30,7 @@ use crate::brres::{self, BFileHeader, BFileType};
 use crate::encoding::{Deserialize, ReadArrayExt};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
+use crate::util::Box3;
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
     VisitorContextNodeMut,
@@ -234,7 +235,7 @@ pub trait SectionDeserialize: Sized {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Mdl0Header {
+pub struct ModelHeader {
     pub mdl0_offset: i32,
     pub scaling_mode: ScalingMode,
     pub texture_matrix_mode: TextureMatrixMode,
@@ -246,12 +247,11 @@ pub struct Mdl0Header {
     pub needs_texture_matrix_array: bool,
     pub enable_bounding_volumes: bool,
     pub envelope_matrix_mode: EnvelopeMatrixMode,
-    pub bounding_volume_minimum: [f32; 3],
-    pub bounding_volume_maximum: [f32; 3],
+    pub bounding_volume: Box3,
     pub matrix_table: MatrixTable,
 }
 
-impl Mdl0Header {
+impl ModelHeader {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let start = reader.position();
 
@@ -268,15 +268,14 @@ impl Mdl0Header {
         let enable_bounding_volumes = reader.read_u8()? != 0;
         let envelope_matrix_mode = EnvelopeMatrixMode::deserialize(reader)?;
         let data_offset = reader.read_u32::<BigEndian>()?;
-        let bounding_volume_minimum = reader.read_f32_array::<3, BigEndian>()?;
-        let bounding_volume_maximum = reader.read_f32_array::<3, BigEndian>()?;
+
+        let bounding_volume = Box3::deserialize(reader)?;
 
         tracing::warn!("offset: {:#04x}", reader.position() - start);
 
         reader.set_position(start + data_offset as u64);
 
         let matrix_table = MatrixTable::deserialize(reader)?;
-        dbg!(&matrix_table);
 
         tracing::trace!(
             "Read {}, must have {}",
@@ -297,8 +296,7 @@ impl Mdl0Header {
             needs_texture_matrix_array,
             enable_bounding_volumes,
             envelope_matrix_mode,
-            bounding_volume_minimum,
-            bounding_volume_maximum,
+            bounding_volume,
             matrix_table,
         })
     }
@@ -354,6 +352,7 @@ impl BoneLinkTable {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Model {
+    pub header: ModelHeader,
     pub bone_link_table: BoneLinkTable,
 }
 
@@ -407,7 +406,7 @@ pub fn deserialize(
         .into());
     }
 
-    let _mdl0_header = Mdl0Header::deserialize(reader)?;
+    let mdl0_header = ModelHeader::deserialize(reader)?;
 
     let bone_link_table = BoneLinkTable::deserialize(reader)?;
     let mdl_root_key = arena.reserve_key();
@@ -505,7 +504,10 @@ pub fn deserialize(
             ty: IrNodeType::Mdl0Root,
             parent: Some(parent_id),
             children: files,
-            contents: ContentSlot::eager(Box::new(Model { bone_link_table })),
+            contents: ContentSlot::eager(Box::new(Model {
+                header: mdl0_header,
+                bone_link_table,
+            })),
         },
     );
 

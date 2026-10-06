@@ -453,14 +453,32 @@ impl ViewerPipeline {
     ) -> SlipstreamResult<Self> {
         let viewport_size = glam::uvec2(800, 600);
 
+        let (lookat, radius) = if let Some(model) = &intermediate_model {
+            // Position camera based on model bounding box.
+            // This ensures the camera doesn't have to be fully zoomed out to see the model.
+            // It also centers the model in the view.
+
+            let volume = model.bounding_volume;
+            tracing::debug!("{volume:?}");
+
+            let model_center = volume.max.midpoint(volume.min);
+            let model_diameter = volume.max.distance(volume.min).max(1.0); // set to a min of 1.0 so we don't divide by zero and get NaN output.
+
+            (model_center, model_diameter * 0.5)
+        } else {
+            (glam::Vec3::ZERO, 5.0)
+        };
+
+        tracing::debug!("lookat: {lookat}, radius: {radius}");
+
         let camera = Camera::Orbit(OrbitCamera {
-            radius: 2.0,
+            radius,
+            lookat,
             sensitivity: 0.01,
             vertical_fov: 90.0,
             aspect_ratio: viewport_size.x as f32 / viewport_size.y as f32,
             zoom_sensitivity: 0.01,
             orientation: glam::Quat::default(),
-            lookat: glam::Vec3::ZERO,
         });
 
         let camera_state = CameraState::new(camera, &graphics_state, viewport_size);

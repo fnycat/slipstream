@@ -7,6 +7,21 @@ use slipstream_shared::{
 
 use crate::{encoding::ReadArrayExt, mdl0::NormalFormat};
 
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct Box3 {
+    pub min: glam::Vec3,
+    pub max: glam::Vec3,
+}
+
+impl Box3 {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        Ok(Self {
+            min: glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?),
+            max: glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?),
+        })
+    }
+}
+
 /// The data type used to store vertex data.
 ///
 /// These formats are used for positions and UVs.

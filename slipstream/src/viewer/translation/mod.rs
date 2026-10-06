@@ -3,9 +3,10 @@ mod vertex;
 
 pub use skeleton::*;
 use slipstream_ir::mdl0::{
-    Bone, ColorBuffer, DRAW_OPA_NAME, Definitions, MatrixId, NODE_MIX_NAME, NODE_TREE_NAME,
-    NormalBuffer, Polygon, VertexBuffer,
+    Bone, ColorBuffer, DRAW_OPA_NAME, Definitions, MatrixId, Model, ModelHeader, NODE_MIX_NAME,
+    NODE_TREE_NAME, NormalBuffer, Polygon, VertexBuffer,
 };
+use slipstream_ir::util::Box3;
 pub use vertex::*;
 
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
@@ -20,12 +21,16 @@ pub struct IntermediateModel {
     pub bone_translations: Vec<glam::Mat4>,
     pub xf_slots: XfRegisters,
 
+    pub bounding_volume: Box3,
+
     pub polygons: Vec<IntermediatePolygon>,
 }
 
 #[derive(Clone)]
 pub struct ModelContents<'a> {
     arena: &'a IrArena,
+
+    bounding_volume: Box3,
 
     node_tree: Option<IrNodeKey>,
     node_mix: Option<IrNodeKey>,
@@ -40,25 +45,6 @@ pub struct ModelContents<'a> {
 }
 
 impl<'a> ModelContents<'a> {
-    pub fn from_root(root: IrNodeKey, arena: &'a IrArena) -> SlipstreamResult<Self> {
-        let mut visitor = Self {
-            arena,
-
-            node_tree: None,
-            node_mix: None,
-            draw_opaque: None,
-
-            skeleton_root: None,
-
-            vertices: Vec::new(),
-            normals: Vec::new(),
-            colors: Vec::new(),
-            polygons: Vec::new(),
-        };
-        arena.walk(root, &mut visitor)?;
-        Ok(visitor)
-    }
-
     /// Retrieves the given key from the map, downcasts it to `U`
     /// and runs `inspect_fn` on it.
     pub(super) fn try_inspect_inner<F, T, U>(
@@ -203,6 +189,7 @@ impl<'a> ModelContents<'a> {
     pub fn to_intermediate(&self, arena: &IrArena) -> SlipstreamResult<IntermediateModel> {
         let mut model = IntermediateModel::default();
 
+        model.bounding_volume = self.bounding_volume;
         self.translate_node_tree(&mut model, arena)?;
         self.translate_node_mix(&mut model, arena)?;
         self.populate_primary_influences(&mut model, arena)?;
@@ -210,9 +197,37 @@ impl<'a> ModelContents<'a> {
 
         Ok(model)
     }
+
+    pub fn from_root(root: IrNodeKey, arena: &'a IrArena) -> SlipstreamResult<Self> {
+        let mut visitor = Self {
+            arena,
+
+            bounding_volume: Box3::default(),
+
+            node_tree: None,
+            node_mix: None,
+            draw_opaque: None,
+
+            skeleton_root: None,
+
+            vertices: Vec::new(),
+            normals: Vec::new(),
+            colors: Vec::new(),
+            polygons: Vec::new(),
+        };
+
+        arena.walk(root, &mut visitor)?;
+        Ok(visitor)
+    }
 }
 
 impl Visitor for ModelContents<'_> {
+    fn visit_mdl0(&mut self, model: VisitorContext<'_, Model>) -> ControlFlow<()> {
+        self.bounding_volume = model.header.bounding_volume;
+
+        ControlFlow::Continue(())
+    }
+
     fn visit_definitions(
         &mut self,
         definitions: VisitorContext<'_, Definitions>,
