@@ -12,7 +12,7 @@ var<uniform> camera: CameraUniformData;
 /// to the character when no animations are playing. These are required to
 /// make the character render properly, as the vertex positions are in bone space.
 @group(1) @binding(0)
-var<storage, read> static_bind_poses: array<mat4x4f>;
+var<storage, read> bone_transformations: array<mat4x4f>;
 
 struct VertexInput {
     @location(0) position: vec3f,
@@ -37,7 +37,7 @@ fn vs_main(input: VertexInput) -> VertexOutput {
    for (var i = 0u; i < 1u; i += 1) {
        let weight = input.bone_weights[i];
        if (weight > 0.0) {
-           let transform = static_bind_poses[input.bone_indices[i]];
+           let transform = bone_transformations[input.bone_indices[i]];
            pos += weight * (transform * vec4f(input.position, 1.0));
            nrm += weight * (mat3x3f(transform[0].xyz, transform[1].xyz, transform[2].xyz) * input.normal);
        }

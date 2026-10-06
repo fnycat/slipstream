@@ -12,6 +12,14 @@ use crate::viewer::translation::{
     IntermediateModel, IntermediatePolygon, MAX_BONE_INFLUENCES, ModelContents, VertexKey,
 };
 
+#[derive(Debug, Default, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
+pub struct BoneTransformation {
+    pub translation: [f32; 3],
+    pub rotation: [f32; 3],
+    pub scale: [f32; 3],
+}
+
 /// Maps bone IDs to matrices in the matrix table
 #[derive(Default, Debug)]
 pub struct BoneMap {
@@ -157,18 +165,10 @@ impl ModelContents<'_> {
             BoneBind::Mixed(mixed) => {
                 // The polygon has a bone table.
 
-                // The PNMTXID (position-normal matrix ID) should be present in the vertex when
-                // the polygon has a bone table.
-                let pn_id = vertex_key.mtx_id.unwrap_or_else(|| {
-                    tracing::error!("Missing PNMTXIDX for vertex, attaching it to bone 0. This might mess up animations and model structure.");
-                    0
+                let matrix_id = vertex_key.mtx_id.unwrap_or_else(|| {
+                    tracing::error!("Missing PNMTXIDX for vertex, attaching it to global matrix 0. This might mess up animations and model structure.");
+                    MatrixId(0)
                 });
-
-                let matrix_id = scratch.xf_registers.positions[pn_id as usize];
-                tracing::debug!(
-                    pn_id = ?pn_id,
-                    matrix_id = ?matrix_id
-                );
 
                 //                 // Using the bone table, we map the vertex's PNMTXID to a bone index.
                 //                 let bone_index = *try_unwrap!(
@@ -213,31 +213,17 @@ impl ModelContents<'_> {
         })
     }
 
-    pub(super) fn traverse_skeleton(
+    pub(super) fn populate_primary_influences(
         &self,
         out: &mut IntermediateModel,
         arena: &IrArena,
     ) -> SlipstreamResult<()> {
-        struct RecursiveBoneVisitor<'a> {
-            arena: &'a IrArena,
-            transforms: HashMap<BoneIndex, glam::Mat4>,
-            result: SlipstreamResult<()>,
+        struct BoneVisitor<'a> {
+            transforms: &'a mut HashMap<BoneIndex, glam::Mat4>,
         }
 
-        impl Visitor for RecursiveBoneVisitor<'_> {
+        impl Visitor for BoneVisitor<'_> {
             fn visit_bone(&mut self, bone: VisitorContext<'_, Bone>) -> ControlFlow<()> {
-                // let [a, b, c] = bone.rotation_vector;
-                // let mat = glam::Mat4::from_scale_rotation_translation(
-                //     glam::Vec3::from_array(bone.scaling_vector),
-                //     glam::Quat::from_euler(
-                //         glam::EulerRot::XYZEx,
-                //         a.to_radians(),
-                //         b.to_radians(),
-                //         c.to_radians(),
-                //     ),
-                //     glam::Vec3::from_array(bone.translation_vector),
-                // );
-
                 let m = &bone.transform_matrix;
                 let mat = glam::mat4(
                     glam::vec4(m[0], m[4], m[8], 0.0),
@@ -246,35 +232,19 @@ impl ModelContents<'_> {
                     glam::vec4(m[3], m[7], m[11], 1.0),
                 );
 
-                self.transforms.insert(BoneIndex(bone.index as u16), mat);
+                self.transforms.insert(BoneIndex(bone.id as u16), mat);
 
-                for child in bone.meta.children {
-                    let mut child_visitor = Self {
-                        arena: self.arena,
-                        transforms: HashMap::new(),
-                        result: Ok(()),
-                    };
-
-                    self.arena
-                        .visit(*child, &mut child_visitor)
-                        .expect("failed to iterate over bone children");
-
-                    self.transforms.extend(child_visitor.transforms.iter());
-                }
-
-                ControlFlow::Break(())
+                ControlFlow::Continue(())
             }
         }
 
         let skeleton_root = try_unwrap!(self.skeleton_root, "skeleton root was not found")?;
 
-        let mut visitor = RecursiveBoneVisitor {
-            arena,
-            transforms: HashMap::new(),
-            result: Ok(()),
+        let mut transforms = HashMap::new();
+        let mut visitor = BoneVisitor {
+            transforms: &mut transforms,
         };
-        arena.visit(skeleton_root, &mut visitor)?;
-        visitor.result?;
+        arena.walk(skeleton_root, &mut visitor)?;
 
         // Find max bone ID to resize the vector.
         let max_bone_index = visitor
@@ -284,19 +254,12 @@ impl ModelContents<'_> {
             .copied()
             .unwrap_or(BoneIndex(0));
 
-        out.matrix_table
+        out.bone_translations
             .resize(max_bone_index.0 as usize + 1, glam::Mat4::IDENTITY);
 
         for (bone_index, transform) in visitor.transforms {
-            let matrix_id = out.bone_map.get_matrix(bone_index).unwrap();
-
-            if out.matrix_table.len() <= matrix_id.0 as usize {
-                out.matrix_table
-                    .resize(matrix_id.0 as usize + 1, glam::Mat4::IDENTITY);
-            }
-
-            tracing::trace!("Set {matrix_id:?} for {bone_index:?}");
-            out.matrix_table[matrix_id.0 as usize] = transform;
+            out.bone_translations[bone_index.0 as usize] = *transform;
+            tracing::trace!("Wrote matrix for bone ID {bone_index:?}");
         }
 
         Ok(())

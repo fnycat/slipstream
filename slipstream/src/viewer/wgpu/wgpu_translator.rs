@@ -25,7 +25,7 @@ impl WgpuModel {
     ) -> SlipstreamResult<Self> {
         let bind_pose_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("bind pose storage buffer"),
-            contents: bytemuck::cast_slice(&ir.matrix_table),
+            contents: bytemuck::cast_slice(&ir.bone_translations),
             usage: wgpu::BufferUsages::STORAGE,
         });
 
