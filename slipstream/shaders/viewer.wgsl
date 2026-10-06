@@ -71,7 +71,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     // var color: vec4f = vec4f(f32(input.bone_index) / 15.0, 0.0, 0.0, 1.0);
     // let color = input.color0;
 
-    let color = compute_diffuse(input.normal, vec4f(input.normal, 1.0));
+    let color = compute_diffuse(input.normal, input.color0);
+    // let color = compute_diffuse(input.normal, vec4f(input.normal, 1.0));
 
     // Convert the linear colours to SRGB.
     // Without this, the colours will look very washed out in the editor.
