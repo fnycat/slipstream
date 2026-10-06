@@ -91,7 +91,7 @@ impl BoneWeights {
 
                     let weight_sum = weights.weights.iter().fold(0.0, |acc, w| acc + w.weight);
 
-                    if weight_sum != 1.0 {
+                    if (weight_sum - 1.0).abs() > 0.001 {
                         tracing::error!(
                             "Weights of ID {} do not add up to 1.0 ({weight_sum})",
                             weights.id.0
@@ -140,12 +140,18 @@ impl ModelContents<'_> {
 
                 tracing::debug!("RIGID {rigid}");
 
+                // Find the matrix corresponding to this bone.
+                let matrix_id = model.bone_map.get_matrix(BoneIndex(*rigid as u16)).unwrap();
+
                 let mut bone_ids = [0; MAX_BONE_INFLUENCES];
-                bone_ids[0] = *rigid;
+                bone_ids[0] = matrix_id.0 as u32;
+
+                let mut weights = WEIGHTS_DEFAULT;
+                weights[3] = -42.0;
 
                 VertexBoneData {
                     ids: bone_ids,
-                    weights: WEIGHTS_DEFAULT,
+                    weights,
                 }
             }
             BoneBind::Mixed(mixed) => {
@@ -158,14 +164,20 @@ impl ModelContents<'_> {
                     0
                 });
 
-                // TODO: Make sure to keep track of the currently set registers.
-                // todo!("the pn_id likely points to an XF register slot, previously loaded with an `Indexed` command");
+                let matrix_id = scratch.xf_registers.positions[pn_id as usize];
+                tracing::debug!(
+                    pn_id = ?pn_id,
+                    matrix_id = ?matrix_id
+                );
 
-                // Using the bone table, we map the vertex's PNMTXID to a bone index.
-                let bone_index = *try_unwrap!(
-                    mixed.entries.get(pn_id as usize),
-                    "bone table index out of range: {pn_id}"
-                )?;
+                //                 // Using the bone table, we map the vertex's PNMTXID to a bone index.
+                //                 let bone_index = *try_unwrap!(
+                //                     mixed.entries.get(pn_id as usize),
+                //                     "bone table index out of range: {pn_id}"
+                //                 )?;
+                //
+                //                 // then map the bone index to a matrix id.
+                //                 let matrix_id = model.bone_map.get_matrix(BoneIndex(bone_index)).unwrap();
 
                 // Check if weights are involved
                 match &model.bone_weights {
@@ -173,12 +185,15 @@ impl ModelContents<'_> {
                         // The bone influences are weighted. This is used to control how a vertex
                         // moves when it's influenced by multiple bones.
 
-                        tracing::debug!("bone index {bone_index}");
+                        tracing::debug!("matrix ID {matrix_id:?}");
 
                         let mut bone_indices = [0; MAX_BONE_INFLUENCES];
-                        bone_indices[0] = bone_index as u32;
+                        bone_indices[0] = matrix_id.0 as u32;
 
-                        todo!("the ");
+                        VertexBoneData {
+                            ids: bone_indices,
+                            weights: [1.0, 0.0, 0.0, -1.0],
+                        }
                     }
                     None => {
                         // The polygon has multiple different bones affecting it.
@@ -186,11 +201,11 @@ impl ModelContents<'_> {
                         // one bone affects this vertex.
 
                         let mut bone_indices = [0; MAX_BONE_INFLUENCES];
-                        bone_indices[0] = bone_index as u32;
+                        bone_indices[0] = matrix_id.0 as u32;
 
                         VertexBoneData {
                             ids: bone_indices,
-                            weights: WEIGHTS_DEFAULT,
+                            weights: [1.0, 0.0, 0.0, -2.0],
                         }
                     }
                 }
@@ -261,8 +276,6 @@ impl ModelContents<'_> {
         arena.visit(skeleton_root, &mut visitor)?;
         visitor.result?;
 
-        tracing::debug!("bind poses buffer: {:#?}", visitor.transforms);
-
         // Find max bone ID to resize the vector.
         let max_bone_index = visitor
             .transforms
@@ -271,11 +284,19 @@ impl ModelContents<'_> {
             .copied()
             .unwrap_or(BoneIndex(0));
 
-        out.bind_poses
+        out.matrix_table
             .resize(max_bone_index.0 as usize + 1, glam::Mat4::IDENTITY);
 
         for (bone_index, transform) in visitor.transforms {
-            out.bind_poses[bone_index.0 as usize] = transform;
+            let matrix_id = out.bone_map.get_matrix(bone_index).unwrap();
+
+            if out.matrix_table.len() <= matrix_id.0 as usize {
+                out.matrix_table
+                    .resize(matrix_id.0 as usize + 1, glam::Mat4::IDENTITY);
+            }
+
+            tracing::trace!("Set {matrix_id:?} for {bone_index:?}");
+            out.matrix_table[matrix_id.0 as usize] = transform;
         }
 
         Ok(())

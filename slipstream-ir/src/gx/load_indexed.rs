@@ -5,16 +5,19 @@ use slipstream_shared::{
     error::SlipstreamResult,
 };
 
+/// Loads a matrix from the table and puts it into the given slot.
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct IndexedLoad {
-    /// Address into the indexed array.
+    /// Address into the indexed array. This should be divided by 12 to get the XF slot number.
+    /// This value will always be between 0 and 108 (i.e. there are 10 hardware XF slots)
     #[bits(12)]
     pub address: u16,
-    /// Transfer count - 1
+    /// Transfer count - 1. This indicates the amount of words to read from the the index.
+    /// For example a 3x4 position matrix is 12 floats, therefore a position load will have `transfer_count` of 11.
     #[bits(4)]
-    pub transfer_count_one: u8,
-    /// The slot to pull the data from.
+    pub transfer_count: u8,
+    /// The matrix slot to pull the data from
     #[bits(16)]
     pub index: u16,
 }
