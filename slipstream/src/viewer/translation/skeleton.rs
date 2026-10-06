@@ -149,10 +149,10 @@ impl ModelContents<'_> {
                 tracing::debug!("RIGID {rigid}");
 
                 // Find the matrix corresponding to this bone.
-                let matrix_id = model.bone_map.get_matrix(BoneIndex(*rigid as u16)).unwrap();
+                // let matrix_id = model.bone_map.get_matrix(BoneIndex(*rigid as u16)).unwrap();
 
                 let mut bone_ids = [0; MAX_BONE_INFLUENCES];
-                bone_ids[0] = matrix_id.0 as u32;
+                bone_ids[0] = *rigid as u32;
 
                 let mut weights = WEIGHTS_DEFAULT;
                 weights[3] = -42.0;
@@ -170,22 +170,11 @@ impl ModelContents<'_> {
                     MatrixId(0)
                 });
 
-                //                 // Using the bone table, we map the vertex's PNMTXID to a bone index.
-                //                 let bone_index = *try_unwrap!(
-                //                     mixed.entries.get(pn_id as usize),
-                //                     "bone table index out of range: {pn_id}"
-                //                 )?;
-                //
-                //                 // then map the bone index to a matrix id.
-                //                 let matrix_id = model.bone_map.get_matrix(BoneIndex(bone_index)).unwrap();
-
                 // Check if weights are involved
                 match &model.bone_weights {
                     Some(weights) => {
                         // The bone influences are weighted. This is used to control how a vertex
                         // moves when it's influenced by multiple bones.
-
-                        tracing::debug!("matrix ID {matrix_id:?}");
 
                         let mut bone_indices = [0; MAX_BONE_INFLUENCES];
                         bone_indices[0] = matrix_id.0 as u32;
