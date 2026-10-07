@@ -5,10 +5,10 @@ use slipstream_shared::{SlipstreamResult, cursor::MutCursor};
 
 /// Placeholder that is used for 32-bit offsets. A recognizable placeholder
 /// makes it easier to find offsets.
-pub const DEFER_PLACEHOLDER: u32 = 0xDEADBEEF;
+pub const DEFER_PLACEHOLDER: u32 = 0xDEAD_BEEF;
 /// Placeholder that is used for 24-bit offsets. A recognizable placeholder
 /// makes it easier to find offsets.
-pub const DEFER_PLACEHOLDER24: u32 = 0xDEBEEF;
+pub const DEFER_PLACEHOLDER24: u32 = 0xDE_BEEF;
 
 #[derive(Debug)]
 pub struct DeferredString {
@@ -83,6 +83,7 @@ impl DeferredPass {
 /// Keeps track of the current entries in the string pool.
 ///
 /// This is only used for serialisation.
+#[derive(Default)]
 pub struct StringPool {
     /// Maps a string to an index into the string pool.
     strings: HashMap<String, u32>,

@@ -7,7 +7,9 @@ use slipstream_shared::error::{
 };
 
 use crate::brres::{self, BRRES_MAGIC};
-use crate::deferred_pass::{DEFER_PLACEHOLDER, DEFER_PLACEHOLDER24, DeferredPass, DeferredString};
+use crate::deferred_pass::{
+    DEFER_PLACEHOLDER, DEFER_PLACEHOLDER24, DeferredPass, DeferredString, StringPool,
+};
 use crate::encoding::{ReadArrayExt, ReadStringExt, WriteArrayExt};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
@@ -18,6 +20,7 @@ use crate::visitor::{
 
 /// Magic of an ARC file.
 pub const ARC_MAGIC: [u8; 4] = [0x55, 0xAA, 0x38, 0x2D];
+pub const ARC_NODE_SIZE: usize = 0xC;
 
 /// See [`Custom Mario Kart Wiiki`](https://mkwiiki.org/wiki/ARC_(File_Format)) for more info.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,8 +31,6 @@ struct Header {
     pub size: i32,
     /// File offset of data.
     pub file_offset: i32,
-    /// Reserved.
-    pub reserved: [i32; 4],
 }
 
 impl Header {
@@ -47,13 +48,12 @@ impl Header {
         let node_offset = reader.read_i32::<BigEndian>()?;
         let size = reader.read_i32::<BigEndian>()?;
         let file_offset = reader.read_i32::<BigEndian>()?;
-        let reserved = reader.read_i32_array::<4, BigEndian>()?;
+        let _reserved = reader.read_i32_array::<4, BigEndian>()?;
 
         Ok(Self {
             node_offset,
             size,
             file_offset,
-            reserved,
         })
     }
 
@@ -108,9 +108,6 @@ impl TryFrom<u8> for NodeType {
         })
     }
 }
-
-/// Exact size of a single ARC node.
-const ARC_NODE_SIZE: usize = 0x0c;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum NodeContent {
@@ -384,4 +381,59 @@ pub fn deserialize(
         construct_directory_tree(&mut nodes, parent_id, arena, name, header.size, &mut cursor)?;
     tracing::trace!("Constructed directory tree successfully");
     Ok(ret)
+}
+
+pub fn serialize(
+    arena: &IrArena,
+    node: IrNodeKey,
+    writer: &mut MutCursor,
+    pass: &mut DeferredPass,
+) -> SlipstreamResult<()> {
+    tracing::trace!("Serializing ARC file");
+
+    #[derive(Default)]
+    struct NodeDiscovery {
+        node_count: usize,
+        string_pool: StringPool,
+    }
+
+    impl Visitor for NodeDiscovery {
+        fn stop_when_uninterested(&self) -> bool {
+            true
+        }
+
+        fn visit_arc(&mut self, arc: VisitorContext<'_, ArcDirectory>) -> ControlFlow<()> {
+            self.node_count += 1;
+            self.string_pool
+                .insert(arc.meta.label)
+                .expect("failed to write to string pool");
+
+            ControlFlow::Continue(())
+        }
+    }
+
+    let mut discovery = NodeDiscovery::default();
+    arena.walk(node, &mut discovery)?;
+
+    let NodeDiscovery {
+        node_count,
+        string_pool,
+    } = discovery;
+    let string_pool = string_pool.finish();
+
+    let header_start = writer.len();
+    let arc_size = node_count * ARC_NODE_SIZE + string_pool.len();
+
+    let header: Header = Header {
+        node_offset: 0x20, // Header is 32 bytes long, first node starts directly after header.
+        file_offset: (header_start + arc_size) as i32 + 1, // Files start directly after the string pool.
+        size: arc_size as i32, // node_count * node_size + string_pool_size
+    };
+    tracing::debug!("ARC header {header:?}");
+    header.serialize(writer)?;
+
+    // Root is always a directory.
+    NodeType::Directory.serialize(writer)?;
+
+    Ok(())
 }
