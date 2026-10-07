@@ -278,13 +278,15 @@ pub enum UvData {
 }
 
 /// Implements the deserialisation methods for all 7 UV fields.
+///
+/// `$id` is the id of the UV (ranging from 0-7)
+///
+/// `$cp1` is the subcommand that contains the format and extended flag.
+/// `$cp2` contains the divisor.
+/// For all, except uv4, these are equal.
 // This is incredibly overengineered, but oh well.
 macro_rules! impl_uv_de {
-    // $id is the id of the UV (ranging from 0-7)
-    //
-    // $cp1 is the subcommand that contains the format and extended flag.
-    // $cp2 contains the divisor.
-    // For all, except uv4, these are equal.
+
     ($($id:literal => $cp1:ident + $cp2:ident),*) => {
         paste::paste! {
             impl DirectUv {

@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use slipstream_shared::SlipstreamResult;
-use slipstream_shared::cursor::RefCursor;
+use slipstream_shared::cursor::{MutCursor, RefCursor};
 
 use crate::node::arena::IrNodeKey;
 use crate::node::lazy::LazyContent;
