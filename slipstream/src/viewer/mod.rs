@@ -1,3 +1,4 @@
+pub mod camera;
 pub mod grid;
 pub mod pipeline;
 pub mod translation;
@@ -8,7 +9,7 @@ use std::{
     sync::{Arc, mpsc},
 };
 
-use crate::viewer::translation::ModelContents;
+use crate::viewer::{camera::CameraController, translation::ModelContents};
 use crate::viewer::{
     pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipeline},
     wgpu::WgpuModel,
@@ -16,7 +17,7 @@ use crate::viewer::{
 use crate::{
     panes::{ContentSignature, Pane, PaneAction},
     reg_icon,
-    shared::{GraphicsState, camera::CameraController},
+    shared::GraphicsState,
 };
 use eframe::egui_wgpu;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
@@ -152,7 +153,7 @@ impl Pane for ViewerPane {
                 pipeline
                     .camera_state
                     .camera
-                    .drag_delta(glam::vec2(drag_delta.x, drag_delta.y));
+                    .on_drag(glam::vec2(drag_delta.x, drag_delta.y));
 
                 camera_updated = true;
             }
@@ -164,7 +165,7 @@ impl Pane for ViewerPane {
                     // to use this editor on a mobile device)
                     let delta = 20.0 * (i.zoom_delta() - 1.0);
 
-                    pipeline.camera_state.camera.scroll_delta(delta);
+                    pipeline.camera_state.camera.on_scroll(delta);
 
                     camera_updated = true;
                 }
@@ -172,8 +173,39 @@ impl Pane for ViewerPane {
                 if i.is_scrolling() && response.contains_pointer() {
                     let scroll_delta = i.smooth_scroll_delta();
 
-                    pipeline.camera_state.camera.scroll_delta(scroll_delta.y);
+                    pipeline.camera_state.camera.on_scroll(scroll_delta.y);
 
+                    camera_updated = true;
+                }
+
+                let mut move_delta = glam::Vec3::ZERO;
+
+                if i.key_down(egui::Key::W) {
+                    move_delta.z += 1.0;
+                }
+
+                if i.key_down(egui::Key::S) {
+                    move_delta.z -= 1.0;
+                }
+
+                if i.key_down(egui::Key::A) {
+                    move_delta.x -= 1.0;
+                }
+
+                if i.key_down(egui::Key::D) {
+                    move_delta.x += 1.0;
+                }
+
+                if i.key_down(egui::Key::Space) {
+                    move_delta.y += 1.0;
+                }
+
+                if i.key_down(egui::Key::ControlLeft) {
+                    move_delta.y -= 1.0;
+                }
+
+                if move_delta != glam::Vec3::ZERO {
+                    pipeline.camera_state.camera.on_move(move_delta);
                     camera_updated = true;
                 }
             });

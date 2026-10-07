@@ -34,14 +34,14 @@ struct VertexOutput {
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var pos = vec4f(0.0);
-    var nrm = vec3f(0.0);
+    var nrm = input.normal;
 
     for (var i = 0u; i < 1u; i += 1) {
         let weight = input.bone_weights[i];
         if (weight > 0.0) {
             let transform = bone_transformations[input.bone_indices[i]];
             pos += weight * (transform * vec4f(input.position, 1.0));
-            nrm += weight * (mat3x3f(transform[0].xyz, transform[1].xyz, transform[2].xyz) * input.normal);
+            // nrm += weight * (mat3x3f(transform[0].xyz, transform[1].xyz, transform[2].xyz) * input.normal);
         }
     }
 
@@ -62,16 +62,16 @@ fn compute_diffuse(normal: vec3f, color: vec4f) -> vec4f {
     let sunDirection = vec3f(0.0, 0.0, 1.0);
     let dot = dot(normal, sunDirection);
 
-    return color * dot;
+    return color * dot + vec4f(0.2);
 }
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     // var color: vec4f = vec4f(input.normal * 0.5 + 0.5, 1.0);
     // var color: vec4f = vec4f(f32(input.bone_index) / 15.0, 0.0, 0.0, 1.0);
-    // let color = input.color0;
+    let color = input.color0;
 
-    let color = compute_diffuse(input.normal, input.color0);
+    // let color = compute_diffuse(input.normal, input.color0);
     // let color = compute_diffuse(input.normal, vec4f(input.normal, 1.0));
 
     // Convert the linear colours to SRGB.
