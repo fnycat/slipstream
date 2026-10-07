@@ -30,13 +30,13 @@ impl RoutablePage for InfoPage {
     }
 
     fn draw(&mut self, ui: &mut egui::Ui) -> SlipstreamResult<()> {
-        let window_bg = ui.visuals().panel_fill;
+        // let window_bg = ui.visuals().panel_fill;
 
         egui::Modal::new(egui::Id::new("app_info_modal"))
-            .backdrop_color(egui::Color32::from_black_alpha(125))
+            // .backdrop_color(egui::Color32::from_black_alpha(125))
             .show(ui, |ui| {
                 egui::Frame::new()
-                    .fill(window_bg)
+                    // .fill(window_bg)
                     .inner_margin(24.0)
                     .show(ui, |ui| {
                         if ui
@@ -56,12 +56,12 @@ impl RoutablePage for InfoPage {
                                     env!("VERGEN_RUSTC_SEMVER")
                                 ));
 
-                                ui.spacing_mut().button_padding = egui::vec2(10.0, 10.0);
-                                ui.visuals_mut().widgets.inactive.fg_stroke =
-                                    egui::Stroke::new(0.0, egui::Color32::WHITE);
-
-                                ui.visuals_mut().widgets.active.fg_stroke =
-                                    egui::Stroke::new(0.0, egui::Color32::WHITE);
+                                //                                 ui.spacing_mut().button_padding = egui::vec2(10.0, 10.0);
+                                //                                 ui.visuals_mut().widgets.inactive.fg_stroke =
+                                //                                     egui::Stroke::new(0.0, egui::Color32::WHITE);
+                                //
+                                //                                 ui.visuals_mut().widgets.active.fg_stroke =
+                                //                                     egui::Stroke::new(0.0, egui::Color32::WHITE);
 
                                 ui.hyperlink("https://github.com/RadiatedMonkey/slipstream");
 

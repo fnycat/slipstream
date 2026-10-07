@@ -133,6 +133,7 @@ impl Pane for ViewerPane {
                 id: pipeline.screen_texture_state.egui_texture_id,
                 size: panel_bounds.size(),
             })
+            .tint(egui::Color32::WHITE) // some custom themes seem to add a tint to the viewer
             .sense(egui::Sense::click_and_drag());
 
             // Camera
