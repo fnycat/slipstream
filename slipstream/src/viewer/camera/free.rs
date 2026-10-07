@@ -59,11 +59,11 @@ impl CameraController for FreeCamera {
         let up = self.orientation * WORLD_UP;
         let view_matrix = glam::camera::lh::view::look_to_mat4(self.position, forward, up);
 
-        let proj_matrix = glam::camera::lh::proj::directx::perspective(
+        let proj_matrix = glam::camera::lh::proj::directx::perspective_infinite_reverse(
             self.vertical_fov,
             self.aspect_ratio,
             NEAR_PLANE,
-            FAR_PLANE,
+            // FAR_PLANE,
         );
 
         proj_matrix * view_matrix

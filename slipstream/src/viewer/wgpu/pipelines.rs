@@ -86,7 +86,7 @@ impl PipelineRegistry {
                     depth_stencil: Some(wgpu::DepthStencilState {
                         format: DEPTH_FORMAT,
                         depth_write_enabled: Some(true),
-                        depth_compare: Some(wgpu::CompareFunction::Less),
+                        depth_compare: Some(wgpu::CompareFunction::Greater),
                         bias: wgpu::DepthBiasState::default(),
                         stencil: wgpu::StencilState::default(),
                     }),
