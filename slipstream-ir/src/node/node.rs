@@ -131,6 +131,8 @@ pub enum IrNodeType {
     ///
     /// This is used for both directories and files that contain multiple subfiles/sections.
     ArcDirectory {
+        /// Whether this directory is the root of a file.
+        is_root: bool,
         /// Whether the directory is empty. If it is, it will be inactive and have a special icon.
         empty: bool,
     },
@@ -138,7 +140,6 @@ pub enum IrNodeType {
     BrresFile,
     /// The directories prefixed with `NW4R`.
     Nw4rDirectory,
-
     /// The root of an MDL0 model. This should contain the section directories `Vertices`, `Normals`.
     Mdl0Root,
     /// The bytecode section of an MDL0 file.
