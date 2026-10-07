@@ -6,6 +6,7 @@ use slipstream_shared::{RefCursor, SlipstreamResult, error::UnsupportedError, tr
 use crate::{
     brres::{BFileHeader, BFileType},
     encoding::Deserialize,
+    img::{CmprDescriptor, CmprImage},
     node::{
         arena::{IrArena, IrNodeDescriptor, IrNodeKey},
         node::{ContentSlot, IrNodeType},
@@ -83,6 +84,20 @@ pub fn deserialize(
     let _unused = reader.read_u32::<BigEndian>()?;
 
     reader.set_position(subfile_header.get_section_start(0)?);
+
+    match format {
+        TextureFormat::Cmpr => {
+            let cmpr = CmprImage::deserialize(
+                reader,
+                CmprDescriptor {
+                    width: pixel_width,
+                    height: pixel_height,
+                    mipmap_count: mipmap_count,
+                },
+            )?;
+        }
+        _ => {}
+    }
 
     let key = arena.insert(IrNodeDescriptor {
         label: name,
