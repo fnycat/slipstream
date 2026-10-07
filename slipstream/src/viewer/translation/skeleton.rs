@@ -136,10 +136,6 @@ impl ModelContents<'_> {
                 // If the bone binding is rigid, we don't even have to look at the vertex's
                 // pn index.
 
-                // `rigid` refers to the bone's ID field.
-
-                tracing::debug!("RIGID {rigid}");
-
                 // Find the matrix corresponding to this bone.
                 // let matrix_id = model.bone_map.get_matrix(BoneIndex(*rigid as u16)).unwrap();
 

@@ -403,7 +403,6 @@ impl DrawOpCode {
         cp_opcodes: &GxVertexDeclaration,
     ) -> SlipstreamResult<Self> {
         let vertex_count = reader.read_u16::<BigEndian>()?;
-        tracing::trace!("deserializing {vertex_count} vertices");
 
         let mut vertices = Vec::with_capacity(vertex_count as usize);
         for _ in 0..vertex_count {

@@ -62,13 +62,13 @@ fn compute_diffuse(normal: vec3f, color: vec4f) -> vec4f {
     let sunDirection = vec3f(0.0, 100.0, 100.0);
     let dot = dot(normal, sunDirection);
 
-    return min(color * dot, vec4f(0.2));
+    return color * dot + vec4f(0.2);
 }
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4f {
-    let diffuse = compute_diffuse(input.normal, input.color0);
-    let color = mix(input.color0, diffuse, 0.5);
+    let color = compute_diffuse(input.normal, input.color0);
+    // let color = mix(input.color0, diffuse, 0.5);
 
     // let color = compute_diffuse(input.normal, input.color0);
     // let color = compute_diffuse(input.normal, vec4f(input.normal, 1.0));

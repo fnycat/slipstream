@@ -26,7 +26,7 @@ impl From<u64> for ContentSignature {
 /// The tile manager stores every pane as a trait object of this type and does
 /// not know about the pane contents.
 pub trait Pane: Send + Sync {
-    fn content_signature(&self) -> ContentSignature;
+    fn ty(&self) -> PaneId;
     /// The title of the current pane.
     fn title(&self) -> egui::WidgetText;
     /// Draws the UI of the pane.
@@ -42,7 +42,7 @@ pub enum PaneId {
     Outliner,
     Inspector,
     Viewer,
-    Log,
+    Logs,
 }
 
 /// Requests to the tile manager to open a new pane.
@@ -74,7 +74,7 @@ impl RequestNewPane {
             Self::Outliner { .. } => PaneId::Outliner,
             Self::Inspector { .. } => PaneId::Inspector,
             Self::Viewer { .. } => PaneId::Viewer,
-            Self::Log => PaneId::Log,
+            Self::Log => PaneId::Logs,
         }
     }
 

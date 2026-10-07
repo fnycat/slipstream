@@ -1,4 +1,4 @@
-use crate::panes::PaneAction;
+use crate::panes::{PaneAction, PaneId};
 use crate::{
     panes::{ContentSignature, Pane},
     reg_icon,
@@ -30,8 +30,8 @@ impl LogPane {
 }
 
 impl Pane for LogPane {
-    fn content_signature(&self) -> ContentSignature {
-        *LOG_PANE_CONTENT_ID
+    fn ty(&self) -> PaneId {
+        PaneId::Logs
     }
 
     fn title(&self) -> egui::WidgetText {

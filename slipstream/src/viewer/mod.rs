@@ -9,10 +9,13 @@ use std::{
     sync::{Arc, mpsc},
 };
 
-use crate::viewer::{camera::CameraController, translation::ModelContents};
 use crate::viewer::{
     pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipeline},
     wgpu::WgpuModel,
+};
+use crate::{
+    panes::PaneId,
+    viewer::{camera::CameraController, translation::ModelContents},
 };
 use crate::{
     panes::{ContentSignature, Pane, PaneAction},
@@ -26,7 +29,6 @@ use slipstream_shared::error::SlipstreamResult;
 
 pub struct ViewerPane {
     cmd_sender: mpsc::Sender<PaneAction>,
-    content_sig: ContentSignature,
     node: Option<IrNodeKey>,
     arena: Arc<IrArena>,
 
@@ -37,7 +39,6 @@ impl ViewerPane {
     /// `mdl0_node` should be the ID of an MDL0 file.
     pub fn new(
         cmd_sender: mpsc::Sender<PaneAction>,
-        content_sig: ContentSignature,
         mdl0_node: Option<IrNodeKey>,
         arena: Arc<IrArena>,
         render_state: GraphicsState,
@@ -60,7 +61,6 @@ impl ViewerPane {
 
         Ok(Box::new(Self {
             cmd_sender,
-            content_sig,
             node: mdl0_node,
             arena,
             render_state,
@@ -69,8 +69,8 @@ impl ViewerPane {
 }
 
 impl Pane for ViewerPane {
-    fn content_signature(&self) -> ContentSignature {
-        self.content_sig
+    fn ty(&self) -> PaneId {
+        PaneId::Viewer
     }
 
     fn title(&self) -> egui::WidgetText {
