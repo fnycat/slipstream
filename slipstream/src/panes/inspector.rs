@@ -17,9 +17,7 @@ struct InspectorVisitor<'ui> {
 
 impl Visitor for InspectorVisitor<'_> {
     fn visit_mdl0_mut(&mut self, context: VisitorContextMut<'_, Model>) -> ControlFlow<()> {
-        egui::ScrollArea::vertical().show(self.ui, |ui| {
-            ui.label(format!("{:#?}", context.content));
-        });
+        self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }
 
@@ -27,16 +25,12 @@ impl Visitor for InspectorVisitor<'_> {
         &mut self,
         context: VisitorContextMut<'_, Definitions>,
     ) -> ControlFlow<()> {
-        egui::ScrollArea::vertical().show(self.ui, |ui| {
-            ui.label(format!("{:#?}", context.content));
-        });
+        self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }
 
     fn visit_bone_mut(&mut self, context: VisitorContextMut<'_, Bone>) -> ControlFlow<()> {
-        egui::ScrollArea::vertical().show(self.ui, |ui| {
-            ui.label(format!("{:#?}", context.content));
-        });
+        self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }
 
@@ -44,16 +38,12 @@ impl Visitor for InspectorVisitor<'_> {
         &mut self,
         context: VisitorContextMut<'_, VertexBuffer>,
     ) -> ControlFlow<()> {
-        egui::ScrollArea::vertical().show(self.ui, |ui| {
-            ui.label(format!("{:#?}", context.content));
-        });
+        self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }
 
     fn visit_polygon_mut(&mut self, context: VisitorContextMut<'_, Polygon>) -> ControlFlow<()> {
-        egui::ScrollArea::vertical().show(self.ui, |ui| {
-            ui.label(format!("{:#?}", context.content));
-        });
+        self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }
 
@@ -61,27 +51,20 @@ impl Visitor for InspectorVisitor<'_> {
         &mut self,
         context: VisitorContextMut<'_, MaterialBuffer>,
     ) -> ControlFlow<()> {
-        egui::ScrollArea::vertical().show(self.ui, |ui| {
-            ui.label(format!("{:#?}", context.content));
-        });
+        self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }
 
     fn visit_tex0_mut(&mut self, context: VisitorContextMut<'_, Texture>) -> ControlFlow<()> {
-        egui::ScrollArea::vertical().show(self.ui, |ui| {
-            ui.label(format!("{:#?}", context.content));
-        });
+        self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }
 
     fn visit_texture_links_mut(
         &mut self,
-        mut links: VisitorContextMut<'_, TextureLinks>,
+        context: VisitorContextMut<'_, TextureLinks>,
     ) -> ControlFlow<()> {
-        links.draw(&mut |fields| {
-            for field in fields {}
-        });
-
+        self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }
 }
@@ -120,9 +103,13 @@ impl InspectorPane {
 
                 // Evaluate contents if lazy
                 let contents = node.contents.get_or_try_init_mut()?.unwrap();
+                egui::ScrollArea::both().show(ui, |ui| {
+                    // Take up the whole pane.
+                    ui.set_min_size(ui.available_size());
 
-                let mut visitor = InspectorVisitor { ui };
-                let _ = contents.accept_mut(context, &mut visitor); // ignore the control flow as we're not continuing anyways.
+                    let mut visitor = InspectorVisitor { ui };
+                    let _ = contents.accept_mut(context, &mut visitor); // ignore the control flow as we're not continuing anyways.
+                });
 
                 Ok::<_, SlipstreamError>(())
             })
@@ -137,28 +124,17 @@ impl Pane for InspectorPane {
         PaneId::Inspector
     }
 
-    fn title(&self) -> egui::WidgetText {
-        egui::WidgetText::Text(String::from("Inspector"))
+    fn title(&self) -> &str {
+        "Properties"
     }
 
-    fn draw(&mut self, ui: &mut egui::Ui, tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
-        let egui::InnerResponse { inner, .. } = ui.horizontal(|ui| {
-            let drag_started = ui.heading("Inspector").drag_started();
-
-            if ui.button(reg_icon!(X)).clicked() {
-                self.cmd_sender.send(PaneAction::RemoveTile(tile_id))?;
-            }
-
-            Ok::<_, SlipstreamError>(drag_started)
-        });
-        let drag_started = inner.expect("failed to send pane close request");
-
+    fn draw_content(
+        &mut self,
+        ui: &mut egui::Ui,
+        tile_id: egui_tiles::TileId,
+    ) -> egui_tiles::UiResponse {
         self.draw_properties(ui).unwrap();
 
-        if drag_started {
-            egui_tiles::UiResponse::DragStarted
-        } else {
-            egui_tiles::UiResponse::None
-        }
+        egui_tiles::UiResponse::None
     }
 }

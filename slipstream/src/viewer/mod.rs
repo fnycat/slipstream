@@ -25,6 +25,7 @@ use crate::{
     shared::GraphicsState,
 };
 use eframe::egui_wgpu;
+use egui_phosphor::thin::X;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_shared::error::SlipstreamResult;
 use slipstream_shared::{SlipstreamError, try_unwrap};
@@ -88,22 +89,25 @@ impl Pane for ViewerPane {
         PaneId::Viewer
     }
 
-    fn title(&self) -> egui::WidgetText {
-        egui::WidgetText::Text(String::from("3D Viewer"))
+    fn title(&self) -> &str {
+        "Model view"
     }
 
-    fn draw(&mut self, ui: &mut egui::Ui, tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
-        let egui::InnerResponse { inner, .. } = ui.horizontal(|ui| {
-            let drag_started = ui.heading("3D viewer").drag_started();
+    fn draw_window(
+        &mut self,
+        ui: &mut egui::Ui,
+        tile_id: egui_tiles::TileId,
+    ) -> egui_tiles::UiResponse {
+        let response = self.draw_pane_header(ui);
+        let _ = self.draw_content(ui, tile_id);
+        response
+    }
 
-            if ui.button(reg_icon!(X)).clicked() {
-                self.cmd_sender.send(PaneAction::RemoveTile(tile_id))?;
-            }
-
-            Ok::<_, SlipstreamError>(drag_started)
-        });
-        let drag_started = inner.expect("failed to send pane close request");
-
+    fn draw_content(
+        &mut self,
+        ui: &mut egui::Ui,
+        tile_id: egui_tiles::TileId,
+    ) -> egui_tiles::UiResponse {
         egui::Frame::canvas(ui.style()).show(ui, |ui| {
             let target_size = ui.available_size();
             let panel_bounds = egui::Rect::from_min_size(ui.cursor().min, target_size);
@@ -236,10 +240,6 @@ impl Pane for ViewerPane {
             .expect("failed to update pipeline state");
         });
 
-        if drag_started {
-            egui_tiles::UiResponse::DragStarted
-        } else {
-            egui_tiles::UiResponse::None
-        }
+        egui_tiles::UiResponse::None
     }
 }
