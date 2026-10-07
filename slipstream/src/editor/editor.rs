@@ -352,7 +352,7 @@ impl Editor {
         let mut writer = MutCursor::new();
         self.arena
             .inspect(self.file_base_node, |node| {
-                serialize_node(node, &mut writer)
+                serialize_node(&self.arena, node, &mut writer)
             })
             .transpose()?;
 

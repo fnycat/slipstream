@@ -150,7 +150,7 @@ impl IrArena {
     {
         let guard = self.map.read();
         guard.get(&key).map(|lock| {
-            let guard = lock.write();
+            let guard = lock.read();
             inspect_fn(&guard)
         })
     }
@@ -172,18 +172,25 @@ impl IrArena {
     ///
     /// # Errors
     /// This function returns an error if the given root node does not exist.
-    pub fn walk(&self, root: IrNodeKey, visitor: &mut dyn Visitor) -> SlipstreamResult<()> {
+    pub fn walk(&self, root_key: IrNodeKey, visitor: &mut dyn Visitor) -> SlipstreamResult<()> {
         let root = self
             .map
             .read()
-            .get(&root)
+            .get(&root_key)
             .ok_or_else(|| {
                 SlipstreamError::from(InvalidInputError {
-                    reason: format!("root node {root:?} does not exist"),
+                    reason: format!("root node {root_key:?} does not exist"),
                     ..Default::default()
                 })
             })?
             .clone();
+
+        tracing::debug!(
+            "Is {:?} locked?: write: {} read: {}",
+            root_key,
+            root.is_locked_exclusive(),
+            root.is_locked()
+        );
 
         let guard = root.read();
         if let Some(content) = guard.contents.get_or_try_init()? {

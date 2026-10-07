@@ -1,18 +1,56 @@
+use std::ops::ControlFlow;
+
 use slipstream_shared::{SlipstreamResult, cursor::MutCursor, error::UnsupportedError};
 
 use crate::{
+    arc::{self, ArcDirectory},
+    deferred_pass::DeferredPass,
     mdl0::{
         ColorBuffer, Definitions, DeserializeContents, MaterialBuffer, NormalBuffer, PaletteLinks,
         Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer,
     },
     node::{
+        arena::IrArena,
         lazy::{DeferPayload, DynContent},
         node::{IrNode, IrNodeType},
     },
+    visitor::{Visitor, VisitorContext},
 };
 
-pub fn serialize_node(node: &IrNode, writer: &mut MutCursor) -> SlipstreamResult<()> {
-    todo!()
+pub struct SerializeVisitor<'a> {
+    arena: &'a IrArena,
+    pass: &'a mut DeferredPass,
+    writer: &'a mut MutCursor,
+    result: SlipstreamResult<()>,
+}
+
+impl Visitor for SerializeVisitor<'_> {
+    fn visit_arc(&mut self, arc: VisitorContext<'_, ArcDirectory>) -> ControlFlow<()> {
+        self.result = arc::serialize(self.arena, arc.meta.key, self.writer, self.pass);
+        match self.result {
+            Ok(()) => ControlFlow::Continue(()),
+            Err(_) => ControlFlow::Break(()),
+        }
+    }
+}
+
+/// Serializes the given node and all its children to the given writer.
+pub fn serialize_node(
+    arena: &IrArena,
+    node: &IrNode,
+    writer: &mut MutCursor,
+) -> SlipstreamResult<()> {
+    tracing::trace!("Serializing node {:?}", node.key());
+
+    let mut pass = DeferredPass::new();
+    let mut visitor = SerializeVisitor {
+        arena,
+        writer,
+        pass: &mut pass,
+        result: Ok(()),
+    };
+    arena.walk(node.key, &mut visitor)?;
+    visitor.result
 }
 
 #[cold]

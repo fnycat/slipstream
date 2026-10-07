@@ -103,136 +103,264 @@ impl<'a, T: 'static> DerefMut for VisitorContextMut<'a, T> {
 /// This means that further children of the node will not be visited.
 #[allow(unused_variables)]
 pub trait Visitor {
+    /// Whether to stop traversing the tree when an unimplemented visitor method is encountered.
+    ///
+    /// This is used by ARC files to discover how many nodes they have without having to manually
+    /// implementing breaking control flow on every other possible type.
+    fn stop_when_uninterested(&self) -> bool {
+        false
+    }
+
     fn visit_arc(&mut self, arc: VisitorContext<'_, ArcDirectory>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
 
     fn visit_arc_mut(&mut self, arc: VisitorContextMut<'_, ArcDirectory>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
 
     // MDL0 visitor methods
     // ==================================================================================================
 
     fn visit_mdl0(&mut self, model: VisitorContext<'_, mdl0::Model>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_definitions(
         &mut self,
         definitions: VisitorContext<'_, Definitions>,
     ) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_bone(&mut self, bone: VisitorContext<'_, Bone>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_vertices(&mut self, vertex_buf: VisitorContext<'_, VertexBuffer>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_normals(&mut self, normal_buf: VisitorContext<'_, NormalBuffer>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_colors(&mut self, color_buf: VisitorContext<'_, ColorBuffer>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_uvs(&mut self, uv_buf: VisitorContext<'_, UvBuffer>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_polygon(&mut self, polygon: VisitorContext<'_, Polygon>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_material(&mut self, material: VisitorContext<'_, MaterialBuffer>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_tev(&mut self, tev: VisitorContext<'_, Tev>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_palette_links(&mut self, links: VisitorContext<'_, PaletteLinks>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_texture_links(&mut self, links: VisitorContext<'_, TextureLinks>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_unknown(&mut self, unknown: VisitorContext<'_, UnknownFile>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
 
     // Mutable MDL0 visitor methods
     // ==================================================================================================
 
     fn visit_mdl0_mut(&mut self, model: VisitorContextMut<'_, mdl0::Model>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_definitions_mut(
         &mut self,
         definitions: VisitorContextMut<'_, Definitions>,
     ) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_bone_mut(&mut self, bone: VisitorContextMut<'_, Bone>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_vertices_mut(
         &mut self,
         vertex_buf: VisitorContextMut<'_, VertexBuffer>,
     ) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_normals_mut(
         &mut self,
         normal_buf: VisitorContextMut<'_, NormalBuffer>,
     ) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_colors_mut(
         &mut self,
         color_buf: VisitorContextMut<'_, ColorBuffer>,
     ) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_uvs_mut(&mut self, uv_buf: VisitorContextMut<'_, UvBuffer>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_polygon_mut(&mut self, polygon: VisitorContextMut<'_, Polygon>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_material_mut(
         &mut self,
         material: VisitorContextMut<'_, MaterialBuffer>,
     ) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_tev_mut(&mut self, tev: VisitorContextMut<'_, Tev>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_palette_links_mut(
         &mut self,
         links: VisitorContextMut<'_, PaletteLinks>,
     ) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_texture_links_mut(
         &mut self,
         links: VisitorContextMut<'_, TextureLinks>,
     ) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
     fn visit_unknown_mut(
         &mut self,
         unknown: VisitorContextMut<'_, UnknownFile>,
     ) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
 
     // TEX0 methods
     // ==================================================================================================
 
     fn visit_tex0(&mut self, texture: VisitorContext<'_, Texture>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
 
     fn visit_tex0_mut(&mut self, texture: VisitorContextMut<'_, Texture>) -> ControlFlow<()> {
-        ControlFlow::Continue(())
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
     }
 }
 
