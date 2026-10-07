@@ -7,7 +7,7 @@ pub use free::*;
 pub use orbit::*;
 
 const WORLD_UP: glam::Vec3 = glam::Vec3::Y;
-const NEAR_PLANE: f32 = 0.1;
+const NEAR_PLANE: f32 = 1.0;
 const FAR_PLANE: f32 = 100_000.0;
 
 /// The camera data that is sent to the GPU.

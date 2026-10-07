@@ -370,7 +370,7 @@ impl PipelineState {
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: DEPTH_FORMAT,
                     depth_write_enabled: Some(true),
-                    depth_compare: Some(wgpu::CompareFunction::Less),
+                    depth_compare: Some(wgpu::CompareFunction::Greater),
                     stencil: wgpu::StencilState {
                         front: wgpu::StencilFaceState::IGNORE,
                         back: wgpu::StencilFaceState::IGNORE,
@@ -556,7 +556,7 @@ impl ViewerPipeline {
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &self.screen_texture_state.depth_view,
                 depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
+                    load: wgpu::LoadOp::Clear(0.0),
                     store: wgpu::StoreOp::Store,
                 }),
                 stencil_ops: None,
@@ -572,15 +572,6 @@ impl ViewerPipeline {
         if let Some(model) = &self.model_state {
             model.draw(&mut render_pass);
         }
-
-        // render_pass.set_pipeline(&self.pipeline_state.pipeline);
-        // render_pass.set_bind_group(0, &self.camera_state.bind_group, &[]);
-        // render_pass.set_vertex_buffer(0, self.model_state.vertex_buffer.slice(..));
-        // render_pass.set_index_buffer(
-        //     self.model_state.index_buffer.slice(..),
-        //     wgpu::IndexFormat::Uint16,
-        // );
-        // render_pass.draw_indexed(0..36, 0, 0..1);
 
         Vec::new()
     }
