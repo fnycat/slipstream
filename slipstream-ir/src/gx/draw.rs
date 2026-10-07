@@ -256,7 +256,17 @@ impl ColorData {
 #[derive(Debug, Clone, PartialEq)]
 pub enum DirectUv {
     S(f32),
-    St([f32; 2]),
+    St(glam::Vec2),
+}
+
+impl DirectUv {
+    #[inline]
+    pub fn to_st(&self) -> glam::Vec2 {
+        match self {
+            Self::S(x) => glam::vec2(*x, 0.0),
+            Self::St(x) => *x,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -284,7 +294,7 @@ macro_rules! impl_uv_de {
                         let divisor = decl.[< $cp2 >].[< uv $id _divisor >]();
 
                         Ok(if decl.[< $cp1 >].[< uv $id _extended >]() {
-                            Self::St(deserialize_vector::<2>(reader, format, VectorDivisor::Custom(divisor))?)
+                            Self::St(glam::Vec2::from_array(deserialize_vector::<2>(reader, format, VectorDivisor::Custom(divisor))?))
                         } else {
                             Self::S(deserialize_scalar(reader, format, VectorDivisor::Custom(divisor))?)
                         })

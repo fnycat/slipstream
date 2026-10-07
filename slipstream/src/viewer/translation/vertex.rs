@@ -4,10 +4,12 @@ use crate::viewer::translation::{IntermediateModel, ModelContents, VertexBoneDat
 use slipstream_ir::gx::GxOpCode;
 use slipstream_ir::gx::draw::{
     ColorData, DrawOpCode, InlineNormal, InlinePosition, NormalData, NormalIndex, OpVertex,
-    PositionData,
+    PositionData, UvData,
 };
 use slipstream_ir::gx::load_indexed::IndexedLoad;
-use slipstream_ir::mdl0::{ColorBuffer, MatrixId, NormalBuffer, Polygon, VertexBuffer};
+use slipstream_ir::mdl0::{
+    ColorBuffer, MatrixId, NormalBuffer, Polygon, UvBufData, UvBuffer, VertexBuffer,
+};
 use slipstream_shared::{SlipstreamResult, try_unwrap, verify};
 use std::collections::HashMap;
 
@@ -29,10 +31,12 @@ pub struct VertexKey {
     pub position: VertexAttrKey,
     pub normal: VertexAttrKey,
     pub color0: VertexAttrKey,
+    pub color1: VertexAttrKey,
+    pub uvs: [VertexAttrKey; 8],
 }
 
 /// Describes how the vertex data should be retrieved.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VertexAttrKey {
     /// The data is not present. The translator just replaces the data with a default
     /// value in this case.
@@ -53,6 +57,16 @@ pub enum VertexAttrKey {
     /// instead of through an index. The translator keeps track of these using separate buffers,
     /// this is an index into those buffers.
     Inline(u16),
+}
+
+impl VertexAttrKey {
+    #[inline]
+    pub const fn is_present(&self) -> bool {
+        match self {
+            Self::NotPresent => false,
+            _ => true,
+        }
+    }
 }
 
 type VertexIndex = u16;
@@ -87,6 +101,8 @@ pub struct InlineBuffers {
     normals: Vec<glam::Vec3>,
     /// Buffer of colors that are stored inline in the draw command.
     colors: Vec<glam::U8Vec4>,
+    /// Buffer of texture coordinates that are stored inline in the draw command.
+    uvs: Vec<glam::Vec2>,
 }
 
 impl InlineBuffers {
@@ -100,6 +116,10 @@ impl InlineBuffers {
 
     pub fn colors(&self) -> &[glam::U8Vec4] {
         &self.colors
+    }
+
+    pub fn uvs(&self) -> &[glam::Vec2] {
+        &self.uvs
     }
 
     pub fn insert_position(&mut self, position: glam::Vec3) -> VertexAttrKey {
@@ -116,7 +136,15 @@ impl InlineBuffers {
         self.colors.push(color);
         VertexAttrKey::Inline(self.colors.len() as u16 - 1)
     }
+
+    pub fn insert_uv(&mut self, uv: glam::Vec2) -> VertexAttrKey {
+        self.uvs.push(uv);
+        VertexAttrKey::Inline(self.uvs.len() as u16 - 1)
+    }
 }
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Material {}
 
 #[derive(Default, Debug)]
 pub struct IntermediatePolygon {
@@ -126,6 +154,8 @@ pub struct IntermediatePolygon {
     pub indices: Vec<VertexIndex>,
     /// This will become the new vertex buffer.
     pub vertices: Vec<TranslatedVertex>,
+    pub material: Material,
+    pub uv_buffer: Vec<glam::Vec2>,
     /// Stores all inline data of polygon draw commands.
     pub inline: InlineBuffers,
 }
@@ -158,16 +188,29 @@ impl ModelContents<'_> {
         self.try_inspect_inner(*key, inspect_fn)
     }
 
+    fn try_inspect_uvs<F, T>(&self, index: usize, inspect_fn: F) -> SlipstreamResult<T>
+    where
+        F: FnOnce(&UvBuffer) -> SlipstreamResult<T>,
+    {
+        let key = try_unwrap!(self.uvs.get(index), "color buffer index out of range")?;
+
+        self.try_inspect_inner(*key, inspect_fn)
+    }
+
+    /// Generates a new translated vertex that can be used by the shaders.
+    ///
+    /// UV coordinates are instead stored in the UV buffer of the polygon.
     fn translate_vertex(
         &self,
         model: &IntermediateModel,
-        scratch: &IntermediatePolygon,
+        scratch: &mut IntermediatePolygon,
         polygon: &Polygon,
         vertex_key: &VertexKey,
     ) -> SlipstreamResult<TranslatedVertex> {
         const POSITION_DEFAULT: glam::Vec3 = glam::Vec3::ZERO;
         const NORMAL_DEFAULT: glam::Vec3 = glam::vec3(0.0, 1.0, 0.0);
         const COLOR_DEFAULT: glam::U8Vec4 = glam::u8vec4(0, 255, 0, 255);
+        const UV_DEFAULT: glam::Vec2 = glam::Vec2::ZERO;
 
         let VertexBoneData {
             ids: indices,
@@ -230,6 +273,28 @@ impl ModelContents<'_> {
         // Divide by 255 to get the colour components into the [0, 1] range.
         let color0 = (color0.as_vec4() / 255.0).to_array();
 
+        for (i, uv) in vertex_key.uvs.iter().enumerate() {
+            let uv_array_id = polygon.uv_array_ids[i];
+            let uv_data = match uv {
+                VertexAttrKey::NotPresent => UV_DEFAULT,
+                VertexAttrKey::Indexed(idx) => {
+                    self.try_inspect_uvs(uv_array_id as usize, |buf| {
+                        try_unwrap!(
+                            buf.get_st(*idx as usize),
+                            "UV coordinate {idx} did not exist in UV buffer {uv_array_id}"
+                        )
+                    })?
+                }
+                VertexAttrKey::Inline(idx) => *scratch
+                    .inline
+                    .uvs()
+                    .get(*idx as usize)
+                    .expect("inline UV index out of range"),
+            };
+
+            scratch.uv_buffer.push(uv_data)
+        }
+
         Ok(TranslatedVertex {
             position,
             normal,
@@ -290,6 +355,40 @@ impl ModelContents<'_> {
             }
         }
 
+        match &vertex.color0 {
+            ColorData::NotPresent => vertex_key.color1 = VertexAttrKey::NotPresent,
+            ColorData::Index8(idx) => vertex_key.color1 = VertexAttrKey::Indexed(*idx as u16),
+            ColorData::Index16(idx) => vertex_key.color1 = VertexAttrKey::Indexed(*idx),
+            ColorData::Direct(x) => {
+                let color = x.to_rgba();
+                vertex_key.color1 = scratch.inline.insert_color(color);
+            }
+        }
+
+        // Set material's UV count if it hasn't been discovered yet.
+        // if scratch.material.uv_count == u32::MAX {
+        //     // Count how many UVs are present.
+        //     scratch.material.uv_count = vertex.uvs.iter().fold(0, |acc, uv| {
+        //         if matches!(uv, UvData::NotPresent) {
+        //             acc
+        //         } else {
+        //             acc + 1
+        //         }
+        //     });
+        // }
+
+        for (uv, key) in vertex.uvs.iter().zip(vertex_key.uvs.iter_mut()) {
+            match uv {
+                UvData::NotPresent => *key = VertexAttrKey::NotPresent,
+                UvData::Index8(idx) => *key = VertexAttrKey::Indexed(*idx as u16),
+                UvData::Index16(idx) => *key = VertexAttrKey::Indexed(*idx),
+                UvData::Direct(x) => {
+                    let uv = x.to_st();
+                    *key = scratch.inline.insert_uv(uv);
+                }
+            }
+        }
+
         // Check if the index has already been seen before. In case it has not
         // a new index will be generated.
         let vertex_index = match scratch.map.get(&vertex_key) {
@@ -300,6 +399,7 @@ impl ModelContents<'_> {
 
                 let index =
                     scratch.vertices.len() as crate::viewer::translation::vertex::VertexIndex - 1;
+
                 scratch.map.insert(vertex_key, index);
                 index
             }

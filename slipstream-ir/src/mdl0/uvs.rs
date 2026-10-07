@@ -28,12 +28,12 @@ pub enum UvDataType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum UvData {
+pub enum UvBufData {
     S(Vec<f32>),
     St(Vec<glam::Vec2>),
 }
 
-impl UvData {
+impl UvBufData {
     pub fn ty(&self) -> UvDataType {
         match self {
             Self::S(_) => UvDataType::S,
@@ -67,11 +67,20 @@ pub struct UvBuffer {
     /// The amount of bytes between successive entries in the buffer.
     pub stride: u8,
     /// The raw UV data.
-    pub uvs: UvData,
+    pub uvs: UvBufData,
     /// First corner of the UV buffer's AABB.
     pub bounding_volume_min: glam::Vec2,
     /// Second corner of the UV buffer's AABB.
     pub bounding_volume_max: glam::Vec2,
+}
+
+impl UvBuffer {
+    pub fn get_st(&self, index: usize) -> Option<glam::Vec2> {
+        match &self.uvs {
+            UvBufData::S(x) => x.get(index).map(|x| glam::vec2(*x, 0.0)),
+            UvBufData::St(x) => x.get(index).copied(),
+        }
+    }
 }
 
 impl Visitable for UvBuffer {
@@ -114,13 +123,13 @@ impl DeserializeContents for UvBuffer {
         reader.set_position(uv_start as u64);
 
         let uvs = match component_count {
-            COMPONENTS_S => UvData::S(deserialize_scalar_data(
+            COMPONENTS_S => UvBufData::S(deserialize_scalar_data(
                 reader,
                 uv_count as usize,
                 format,
                 VectorDivisor::Custom(divisor),
             )?),
-            COMPONENTS_ST => UvData::St(deserialize_vector_data::<2, glam::Vec2>(
+            COMPONENTS_ST => UvBufData::St(deserialize_vector_data::<2, glam::Vec2>(
                 reader,
                 uv_count as usize,
                 format,
