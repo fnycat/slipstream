@@ -85,11 +85,11 @@ fn fs_main(@builtin(position) fragCoord: vec4f) -> @location(0) vec4f {
 
     let grid_size = 5.0;
 
-    let x = step(0.5, fract(uv.x * 10.0));
+    let x = step(0.5, fract(uv.x * 10.0 * camera.viewport_size.x / camera.viewport_size.y));
     let y = step(0.5, fract(uv.y * 10.0));
 
-    let a = vec3f(0.2);
-    let b = vec3f(0.1);
+    let a = vec3f(0.3);
+    let b = vec3f(0.2);
 
     return vec4f(mix(a, b, f32(x != y)), 1.0);
 }

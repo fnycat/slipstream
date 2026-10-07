@@ -111,7 +111,7 @@ impl Display for InvalidInputError {
     }
 }
 
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Error, Clone, PartialEq, Eq)]
 pub struct AssertFailed {
     pub reason: String,
     pub location: Option<u64>,

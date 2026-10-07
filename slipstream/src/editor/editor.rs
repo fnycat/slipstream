@@ -4,7 +4,7 @@ use std::{path::PathBuf, sync::Arc};
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::root;
 use slipstream_shared::cursor::RefCursor;
-use slipstream_shared::error::SlipstreamResult;
+use slipstream_shared::error::{AssertFailed, SlipstreamResult};
 
 use crate::cmd::AppCommandChannel;
 use crate::decorations::{self, WindowState};
@@ -90,17 +90,9 @@ impl Editor {
         let container = egui_tiles::Linear::new(egui_tiles::LinearDir::Horizontal, Vec::new());
         let container_id = tiles.insert_container(container);
 
-        let outliner_sig = RequestNewPane::Outliner { root: root_node }.content_signature();
-        let outliner = OutlinerPane::new(tx.clone(), outliner_sig, root_node, Arc::clone(&arena));
+        let outliner = OutlinerPane::new(tx.clone(), root_node, Arc::clone(&arena));
 
-        let viewer_sig = RequestNewPane::Viewer { viewed: None }.content_signature();
-        let viewer = ViewerPane::new(
-            tx.clone(),
-            viewer_sig,
-            None,
-            Arc::clone(&arena),
-            render_state.clone(),
-        );
+        let viewer = ViewerPane::new(tx.clone(), None, Arc::clone(&arena), render_state.clone());
 
         let panes = [outliner, viewer?]
             .into_iter()
@@ -163,9 +155,8 @@ impl Editor {
         request: RequestNewPane,
     ) -> SlipstreamResult<egui_tiles::TileId> {
         // Check if this pane already exists.
-        // This is done using its content ID
-        let content_sig = request.content_signature();
-        if let Some(existing_tile) = self
+
+        let existing_tile = self
             .pane_tree
             .tiles
             .iter()
@@ -174,32 +165,22 @@ impl Editor {
                     return None;
                 };
 
-                (pane.content_signature() == content_sig).then_some(id)
+                (pane.ty() == request.id()).then_some(id)
             })
-            .copied()
-        {
-            // An existing tile has been found, make it active.
-            todo!("Found existing pane: {existing_tile:?}");
-            return Ok(existing_tile);
-        }
+            .copied();
 
         // Pane was not found, create a new one
         let new_pane = match request {
-            RequestNewPane::Outliner { root } => OutlinerPane::new(
-                self.pane_behavior.sender.clone(),
-                content_sig,
-                root,
-                self.arena.clone(),
-            ),
+            RequestNewPane::Outliner { root } => {
+                OutlinerPane::new(self.pane_behavior.sender.clone(), root, self.arena.clone())
+            }
             RequestNewPane::Inspector { inspected } => InspectorPane::new(
                 self.pane_behavior.sender.clone(),
-                content_sig,
                 inspected,
                 self.arena.clone(),
             ),
             RequestNewPane::Viewer { viewed } => ViewerPane::new(
                 self.pane_behavior.sender.clone(),
-                content_sig,
                 viewed,
                 self.arena.clone(),
                 self.render_state.clone(),
@@ -207,47 +188,74 @@ impl Editor {
             RequestNewPane::Log => LogPane::new(self.pane_behavior.sender.clone()),
         };
 
-        let new_pane_id = self.pane_tree.tiles.insert_pane(new_pane);
-
-        match self.pane_tree.root {
-            None => {
-                // Tree is completely empty, just make the pane the root.
-                self.pane_tree.root = Some(new_pane_id);
-                tracing::trace!("Handled open pane request, setting it as root");
+        Ok(if let Some(existing_tile) = existing_tile {
+            match self
+                .pane_tree
+                .tiles
+                .get_mut(existing_tile)
+                .expect("tile was removed during pane request")
+            {
+                egui_tiles::Tile::Pane(pane) => {
+                    *pane = new_pane;
+                }
+                _ => {
+                    return Err(AssertFailed {
+                        reason: format!(
+                            "tile {existing_tile:?} was a container, expected it to be a pane"
+                        ),
+                        ..Default::default()
+                    }
+                    .into());
+                }
             }
-            Some(root_id) => match self.pane_tree.tiles.get_mut(root_id) {
-                // Tree has some content
-                Some(egui_tiles::Tile::Container(container)) => {
-                    // If the root is a container, just add to it.
-                    container.add_child(new_pane_id);
-                    tracing::trace!("Handled open pane request, adding it to root");
-                }
-                Some(egui_tiles::Tile::Pane(_)) => {
-                    // If the root is a pane, we can't add another pane to it.
-                    // Thus we create a container and add both panes as children.
-                    // Then the container is set as root.
 
-                    let new_root = self
-                        .pane_tree
-                        .tiles
-                        .insert_horizontal_tile(vec![root_id, new_pane_id]);
+            self.pane_tree
+                .make_active(|tile_id, _tile| tile_id == existing_tile);
 
-                    self.pane_tree.root = Some(new_root);
-                    tracing::trace!(
-                        "Handled open pane request, creating a new root container and moving the panes into it"
-                    );
-                }
+            existing_tile
+        } else {
+            let new_pane_id = self.pane_tree.tiles.insert_pane(new_pane);
+
+            match self.pane_tree.root {
                 None => {
-                    tracing::error!(
-                        "Tile root points to a non-existent tile, overriding root with new pane"
-                    );
-
+                    // Tree is completely empty, just make the pane the root.
                     self.pane_tree.root = Some(new_pane_id);
+                    tracing::trace!("Handled open pane request, setting it as root");
                 }
-            },
-        }
+                Some(root_id) => match self.pane_tree.tiles.get_mut(root_id) {
+                    // Tree has some content
+                    Some(egui_tiles::Tile::Container(container)) => {
+                        // If the root is a container, just add to it.
+                        container.add_child(new_pane_id);
+                        tracing::trace!("Handled open pane request, adding it to root");
+                    }
+                    Some(egui_tiles::Tile::Pane(_)) => {
+                        // If the root is a pane, we can't add another pane to it.
+                        // Thus we create a container and add both panes as children.
+                        // Then the container is set as root.
 
-        Ok(new_pane_id)
+                        let new_root = self
+                            .pane_tree
+                            .tiles
+                            .insert_horizontal_tile(vec![root_id, new_pane_id]);
+
+                        self.pane_tree.root = Some(new_root);
+                        tracing::trace!(
+                            "Handled open pane request, creating a new root container and moving the panes into it"
+                        );
+                    }
+                    None => {
+                        tracing::error!(
+                            "Tile root points to a non-existent tile, overriding root with new pane"
+                        );
+
+                        self.pane_tree.root = Some(new_pane_id);
+                    }
+                },
+            }
+
+            new_pane_id
+        })
     }
 
     /// Draws the editor's upper toolbar.

@@ -1,4 +1,4 @@
-use crate::panes::{ContentSignature, Pane, PaneAction};
+use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
 use crate::reg_icon;
 use slipstream_ir::mdl0::{Bone, Definitions, Model, Polygon, TextureLinks, VertexBuffer};
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
@@ -77,7 +77,6 @@ impl Visitor for InspectorVisitor<'_> {
 pub struct InspectorPane {
     cmd_sender: mpsc::Sender<PaneAction>,
 
-    content_sig: ContentSignature,
     inspected: IrNodeKey,
     arena: Arc<IrArena>,
 }
@@ -85,13 +84,11 @@ pub struct InspectorPane {
 impl InspectorPane {
     pub fn new(
         cmd_sender: mpsc::Sender<PaneAction>,
-        content_sig: ContentSignature,
         inspected: IrNodeKey,
         arena: Arc<IrArena>,
     ) -> Box<dyn Pane> {
         Box::new(Self {
             cmd_sender,
-            content_sig,
             inspected,
             arena,
         })
@@ -124,8 +121,8 @@ impl InspectorPane {
 }
 
 impl Pane for InspectorPane {
-    fn content_signature(&self) -> ContentSignature {
-        self.content_sig
+    fn ty(&self) -> PaneId {
+        PaneId::Inspector
     }
 
     fn title(&self) -> egui::WidgetText {

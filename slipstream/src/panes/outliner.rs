@@ -20,10 +20,6 @@ use crate::{
 /// New suboutliners can be made by creating new panes with a child node set to root.
 pub struct OutlinerPane {
     cmd_sender: mpsc::Sender<PaneAction>,
-    /// The content signature of this pane.
-    ///
-    /// The signature only contains the type of window and the root node ID.
-    content_sig: ContentSignature,
     root: IrNodeKey,
     arena: Arc<IrArena>,
 }
@@ -35,13 +31,11 @@ impl OutlinerPane {
     /// to create outliners of subsets of the project.
     pub fn new(
         cmd_sender: mpsc::Sender<PaneAction>,
-        content_sig: ContentSignature,
         root_key: IrNodeKey,
         arena: Arc<IrArena>,
     ) -> Box<dyn Pane> {
         Box::new(Self {
             cmd_sender,
-            content_sig,
             root: root_key,
             arena,
         })
@@ -218,8 +212,8 @@ impl OutlinerPane {
 }
 
 impl Pane for OutlinerPane {
-    fn content_signature(&self) -> ContentSignature {
-        self.content_sig
+    fn ty(&self) -> PaneId {
+        PaneId::Outliner
     }
 
     fn title(&self) -> egui::WidgetText {
