@@ -1,4 +1,6 @@
+use std::io::Write;
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_shared::cursor::{MutCursor, RefCursor};
@@ -63,8 +65,6 @@ impl Header {
         writer.write_i32::<BigEndian>(self.size)?;
         writer.write_i32::<BigEndian>(self.file_offset)?;
         writer.write_i32_array::<_, BigEndian>([0; 4])?;
-
-        todo!("substitute offsets");
 
         Ok(())
     }
@@ -162,34 +162,6 @@ impl Node {
 
         Ok(Self { name, data })
     }
-
-    pub fn serialize(
-        &self,
-        writer: &mut MutCursor,
-        pass: &mut DeferredPass,
-    ) -> SlipstreamResult<()> {
-        match &self.data {
-            NodeContent::File { data } => {
-                NodeType::File.serialize(writer)?;
-
-                pass.defer_arc_string(writer, &self.name)?;
-
-                writer.write_u32::<BigEndian>(DEFER_PLACEHOLDER)?; // substitute with data start
-                writer.write_u32::<BigEndian>(data.full_len() as u32)?;
-            }
-            NodeContent::Directory { parent, skip_node } => {
-                NodeType::Directory.serialize(writer)?;
-                pass.defer_arc_string(writer, &self.name)?;
-
-                writer.write_u32::<BigEndian>(*parent)?;
-                writer.write_u32::<BigEndian>(*skip_node)?;
-            }
-        }
-
-        todo!();
-
-        Ok(())
-    }
 }
 
 pub struct UnknownFile {
@@ -267,6 +239,7 @@ fn construct_directory_tree(
     parent: Option<IrNodeKey>,
     arena: &IrArena,
     label: String,
+    is_root: bool,
     uncompressed_size: i32,
     cursor: &mut usize,
 ) -> SlipstreamResult<IrNodeKey> {
@@ -294,6 +267,7 @@ fn construct_directory_tree(
                     Some(key),
                     arena,
                     name,
+                    false,
                     uncompressed_size,
                     cursor,
                 )?;
@@ -313,6 +287,7 @@ fn construct_directory_tree(
         IrNodeDescriptor {
             label,
             ty: IrNodeType::ArcDirectory {
+                is_root,
                 empty: children.is_empty(),
             },
             parent,
@@ -377,10 +352,77 @@ pub fn deserialize(
     let mut cursor = 0;
 
     tracing::trace!("Constructing directory tree and parsing nodes...");
-    let ret =
-        construct_directory_tree(&mut nodes, parent_id, arena, name, header.size, &mut cursor)?;
+    let ret = construct_directory_tree(
+        &mut nodes,
+        parent_id,
+        arena,
+        name,
+        true,
+        header.size,
+        &mut cursor,
+    )?;
     tracing::trace!("Constructed directory tree successfully");
     Ok(ret)
+}
+
+pub fn serialize_inner(
+    arena: &IrArena,
+    node: IrNodeKey,
+    writer: &mut MutCursor,
+    string_pool: &mut StringPool,
+    pass: &mut DeferredPass,
+    id_counter: &mut u32,
+    parent: u32,
+) -> SlipstreamResult<()> {
+    arena
+        .inspect(node, |node| {
+            let root_id = *id_counter;
+            *id_counter += 1;
+
+            // Skip over the root ARC.
+            //             let arc_node = match node.ty {
+            //                 IrNodeType::ArcDirectory { is_root: true, .. } => None,
+            //                 IrNodeType::ArcDirectory { is_root: false, .. } => {
+            //                     // NodeType::Directory.serialize(writer)?;
+            //                     //
+            //                     // pass.defer_arc_string(writer, node.label())?;
+            //                     // writer.write_u32::<BigEndian>(parent)?;
+            //                     //
+            //                     // let skip_node_offset = writer.len();
+            //                     // writer.write_u32::<BigEndian>()?;
+            //                     todo!();
+            //                 }
+            //                 _ => {
+            //                     // We encountered a file. The file itself will take over from here, so stop treating them like ARC nodes.
+            //                     // Some(Node {
+            //                     //     name: node.label.clone(),
+            //                     //     data: NodeContent::File {
+            //                     //         data: RefCursor::new(Arc::new([])),
+            //                     //     },
+            //                     // });
+            //
+            //                     return Ok(());
+            //                 }
+            //             };
+            todo!();
+
+            for child in &node.children {
+                serialize_inner(
+                    arena,
+                    *child,
+                    writer,
+                    string_pool,
+                    pass,
+                    id_counter,
+                    root_id,
+                )?;
+            }
+
+            Ok::<_, SlipstreamError>(())
+        })
+        .transpose()?;
+
+    Ok(())
 }
 
 pub fn serialize(
@@ -391,49 +433,35 @@ pub fn serialize(
 ) -> SlipstreamResult<()> {
     tracing::trace!("Serializing ARC file");
 
-    #[derive(Default)]
-    struct NodeDiscovery {
-        node_count: usize,
-        string_pool: StringPool,
-    }
+    let mut node_count = 0;
+    let mut string_pool = StringPool::new();
 
-    impl Visitor for NodeDiscovery {
-        fn stop_when_uninterested(&self) -> bool {
-            true
-        }
+    serialize_inner(
+        arena,
+        node,
+        writer,
+        &mut string_pool,
+        pass,
+        &mut node_count,
+        0,
+    )?;
 
-        fn visit_arc(&mut self, arc: VisitorContext<'_, ArcDirectory>) -> ControlFlow<()> {
-            self.node_count += 1;
-            self.string_pool
-                .insert(arc.meta.label)
-                .expect("failed to write to string pool");
-
-            ControlFlow::Continue(())
-        }
-    }
-
-    let mut discovery = NodeDiscovery::default();
-    arena.walk(node, &mut discovery)?;
-
-    let NodeDiscovery {
-        node_count,
-        string_pool,
-    } = discovery;
     let string_pool = string_pool.finish();
-
     let header_start = writer.len();
-    let arc_size = node_count * ARC_NODE_SIZE + string_pool.len();
+    let arc_size = node_count as usize * ARC_NODE_SIZE + string_pool.len();
 
     let header: Header = Header {
         node_offset: 0x20, // Header is 32 bytes long, first node starts directly after header.
         file_offset: (header_start + arc_size) as i32 + 1, // Files start directly after the string pool.
-        size: arc_size as i32, // node_count * node_size + string_pool_size
+        size: 0x20 + arc_size as i32, // node_offset + node_count * node_size + string_pool_size
     };
     tracing::debug!("ARC header {header:?}");
     header.serialize(writer)?;
 
     // Root is always a directory.
     NodeType::Directory.serialize(writer)?;
+
+    writer.write_all(&string_pool.into_inner())?;
 
     Ok(())
 }

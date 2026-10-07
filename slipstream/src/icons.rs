@@ -43,7 +43,7 @@ pub trait NodeIconsExt {
 impl NodeIconsExt for IrNodeType {
     fn open_icon(&self) -> egui::RichText {
         match self {
-            Self::ArcDirectory { empty: false } | Self::BrresFile | Self::Nw4rDirectory => {
+            Self::ArcDirectory { empty: false, .. } | Self::BrresFile | Self::Nw4rDirectory => {
                 reg_icon!(FOLDER_OPEN)
             }
             // Just reuse the closed icon for everything else.
@@ -53,8 +53,8 @@ impl NodeIconsExt for IrNodeType {
 
     fn closed_icon(&self) -> egui::RichText {
         match self {
-            Self::ArcDirectory { empty: false } | Self::Nw4rDirectory => reg_icon!(FOLDER),
-            Self::ArcDirectory { empty: true } => reg_icon!(FOLDER_DASHED),
+            Self::ArcDirectory { empty: false, .. } | Self::Nw4rDirectory => reg_icon!(FOLDER),
+            Self::ArcDirectory { empty: true, .. } => reg_icon!(FOLDER_DASHED),
             Self::BrresFile => reg_icon!(FOLDER),
 
             Self::Mdl0Root => reg_icon!(PERSON),

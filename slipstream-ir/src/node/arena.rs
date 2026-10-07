@@ -167,12 +167,12 @@ impl IrArena {
         })
     }
 
-    /// Walks the entire tree from a root node. This function forces any lazy nodes it encounters
-    /// to be evaluated.
-    ///
-    /// # Errors
-    /// This function returns an error if the given root node does not exist.
-    pub fn walk(&self, root_key: IrNodeKey, visitor: &mut dyn Visitor) -> SlipstreamResult<()> {
+    fn walk_inner(
+        &self,
+        root_key: IrNodeKey,
+        visit_root: bool,
+        visitor: &mut dyn Visitor,
+    ) -> SlipstreamResult<()> {
         let root = self
             .map
             .read()
@@ -185,15 +185,8 @@ impl IrArena {
             })?
             .clone();
 
-        tracing::debug!(
-            "Is {:?} locked?: write: {} read: {}",
-            root_key,
-            root.is_locked_exclusive(),
-            root.is_locked()
-        );
-
         let guard = root.read();
-        if let Some(content) = guard.contents.get_or_try_init()? {
+        if visit_root && let Some(content) = guard.contents.get_or_try_init()? {
             let _ = content.accept(VisitorContextNode::from(&*guard), visitor);
         }
 
@@ -215,11 +208,30 @@ impl IrArena {
 
             if flow.is_continue() {
                 // Walk this node's children only if the visitor wants to continue.
-                self.walk(child, visitor)?;
+                self.walk_inner(child, false, visitor)?;
             }
         }
 
         Ok(())
+    }
+
+    /// Walks the entire tree from a root node. This function forces any lazy nodes it encounters
+    /// to be evaluated.
+    ///
+    /// # Errors
+    /// This function returns an error if the given root node does not exist.
+    #[inline]
+    pub fn walk(&self, root_key: IrNodeKey, visitor: &mut dyn Visitor) -> SlipstreamResult<()> {
+        self.walk_inner(root_key, true, visitor)
+    }
+
+    #[inline]
+    pub fn walk_children(
+        &self,
+        root_key: IrNodeKey,
+        visitor: &mut dyn Visitor,
+    ) -> SlipstreamResult<()> {
+        self.walk_inner(root_key, false, visitor)
     }
 }
 
