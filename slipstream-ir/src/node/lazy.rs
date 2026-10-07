@@ -8,6 +8,7 @@ use crate::mdl0::{
     ColorBuffer, Definitions, DeserializeContents, MaterialBuffer, NormalBuffer, PaletteLinks,
     Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer,
 };
+use crate::node::encoding::deserialize_node;
 use crate::{
     node::{
         node::IrNodeType,
@@ -16,7 +17,7 @@ use crate::{
     visitor::Visitable,
 };
 
-type DynContent = dyn Visitable + Send + Sync;
+pub type DynContent = dyn Visitable + Send + Sync;
 
 #[derive(Clone)]
 pub struct DeferPayload {
@@ -93,7 +94,7 @@ impl LazyContent {
             // INVARIANT: Initiated from mutable reference, don't drop because we read it.
             let guard = PoisonOnPanic(this);
 
-            let data = parse_payload(payload.clone())?;
+            let data = deserialize_node(payload.clone())?;
             guard.0.data.get_mut().content = ManuallyDrop::new(data);
             guard.0.once.complete();
 
@@ -125,7 +126,7 @@ impl LazyContent {
             // SAFETY: `call_once` only runs this closure once, ever.
             let data = unsafe { &mut *this.data.get() };
             let payload = unsafe { ManuallyDrop::take(&mut data.payload) };
-            let value = parse_payload(payload)?;
+            let value = deserialize_node(payload)?;
             data.content = ManuallyDrop::new(value);
 
             Ok(())
@@ -214,46 +215,6 @@ impl AssertSendSync for Box<DynContent> {}
 impl AssertSendSync for DeferPayload {}
 unsafe impl Sync for LazyContent {}
 unsafe impl Send for LazyContent {}
-
-#[cold]
-fn parse_payload(mut payload: DeferPayload) -> SlipstreamResult<Box<DynContent>> {
-    Ok(match payload.ty {
-        IrNodeType::Definitions => {
-            Box::new(Definitions::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::VertexBuffer => {
-            Box::new(VertexBuffer::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::NormalBuffer => {
-            Box::new(NormalBuffer::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::ColorBuffer => {
-            Box::new(ColorBuffer::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::UvBuffer => Box::new(UvBuffer::deserialize_contents(&mut payload.reader)?),
-        IrNodeType::Material => {
-            Box::new(MaterialBuffer::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::Tevs => Box::new(Tev::deserialize_contents(&mut payload.reader)?),
-        IrNodeType::Polygon => Box::new(Polygon::deserialize_contents(&mut payload.reader)?),
-        IrNodeType::TextureLinks => {
-            Box::new(TextureLinks::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::PaletteLinks => {
-            Box::new(PaletteLinks::deserialize_contents(&mut payload.reader)?)
-        }
-        _ => {
-            return Err(UnsupportedError {
-                reason: format!(
-                    "lazily parsing a node of type {:?} is not supported",
-                    payload.ty
-                ),
-                location: Some(payload.reader.position()),
-            }
-            .into());
-        }
-    })
-}
 
 #[cold]
 #[inline(never)]

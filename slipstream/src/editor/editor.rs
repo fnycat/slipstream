@@ -1,9 +1,11 @@
+use std::path::Path;
 use std::sync::mpsc;
 use std::{path::PathBuf, sync::Arc};
 
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
+use slipstream_ir::node::encoding::serialize_node;
 use slipstream_ir::node::root;
-use slipstream_shared::cursor::RefCursor;
+use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{AssertFailed, SlipstreamResult};
 
 use crate::cmd::AppCommandChannel;
@@ -291,7 +293,6 @@ impl Editor {
                 }
 
                 if response.drag_started() {
-                    // ui.send_viewport_cmd(egui::ViewportCommand::Maximized(false));
                     ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
                 }
 
@@ -299,11 +300,21 @@ impl Editor {
                     egui::MenuBar::new().ui(ui, |ui| {
                         ui.menu_button("File", |ui| {
                             if ui.button("Save").clicked() {
-                                todo!()
+                                todo!("save file");
                             }
 
                             if ui.button("Save as").clicked() {
-                                todo!()
+                                #[cfg(not(target_arch = "wasm32"))]
+                                {
+                                    if let Some(path) = rfd::FileDialog::new().save_file() {
+                                        self.save_file(&path).expect("failed to save file");
+                                    }
+                                }
+
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    todo!("save as dialog on wasm32")
+                                }
                             }
 
                             if ui.button("Close").clicked() {
@@ -321,7 +332,8 @@ impl Editor {
                         });
 
                         if ui.button("Logs").clicked() {
-                            self.on_new_pane_request(RequestNewPane::Log);
+                            self.on_new_pane_request(RequestNewPane::Log)
+                                .expect("failed to open logs");
                         }
 
                         ui.menu_button("Settings", |ui| {
@@ -334,6 +346,27 @@ impl Editor {
                     decorations::draw_title_buttons(ui);
                 });
             });
+    }
+
+    fn save_file(&self, path: &Path) -> SlipstreamResult<()> {
+        let mut writer = MutCursor::new();
+        self.arena
+            .inspect(self.file_base_node, |node| {
+                serialize_node(node, &mut writer)
+            })
+            .transpose()?;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            std::fs::write(path, writer.into_inner())?;
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            todo!("save file on wasm")
+        }
+
+        Ok(())
     }
 }
 

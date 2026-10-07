@@ -1,6 +1,8 @@
 use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
 use crate::reg_icon;
-use slipstream_ir::mdl0::{Bone, Definitions, Model, Polygon, TextureLinks, VertexBuffer};
+use slipstream_ir::mdl0::{
+    Bone, Definitions, MaterialBuffer, Model, Polygon, TextureLinks, VertexBuffer,
+};
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::tex0::Texture;
 use slipstream_ir::visitor::{Visitor, VisitorContextMut, VisitorContextNodeMut};
@@ -49,6 +51,16 @@ impl Visitor for InspectorVisitor<'_> {
     }
 
     fn visit_polygon_mut(&mut self, context: VisitorContextMut<'_, Polygon>) -> ControlFlow<()> {
+        egui::ScrollArea::vertical().show(self.ui, |ui| {
+            ui.label(format!("{:#?}", context.content));
+        });
+        ControlFlow::Continue(())
+    }
+
+    fn visit_material_mut(
+        &mut self,
+        context: VisitorContextMut<'_, MaterialBuffer>,
+    ) -> ControlFlow<()> {
         egui::ScrollArea::vertical().show(self.ui, |ui| {
             ui.label(format!("{:#?}", context.content));
         });
