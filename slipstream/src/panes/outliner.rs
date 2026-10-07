@@ -216,21 +216,16 @@ impl Pane for OutlinerPane {
         PaneId::Outliner
     }
 
-    fn title(&self) -> egui::WidgetText {
-        egui::WidgetText::Text(String::from("Outliner"))
+    fn title(&self) -> &str {
+        "Files"
     }
 
-    fn draw(&mut self, ui: &mut egui::Ui, tile_id: egui_tiles::TileId) -> egui_tiles::UiResponse {
-        let egui::InnerResponse { inner, .. } = ui.horizontal(|ui| {
-            let drag_started = ui.heading("Outliner").drag_started();
-
-            if ui.button(reg_icon!(X)).clicked() {
-                self.cmd_sender.send(PaneAction::RemoveTile(tile_id))?;
-            }
-
-            Ok::<_, SlipstreamError>(drag_started)
-        });
-        let drag_started = inner.expect("failed to send pane close request");
+    fn draw_content(
+        &mut self,
+        ui: &mut egui::Ui,
+        tile_id: egui_tiles::TileId,
+    ) -> egui_tiles::UiResponse {
+        ui.set_min_size(ui.available_size());
 
         ui.spacing_mut().item_spacing.y = 7.5;
 
@@ -238,11 +233,7 @@ impl Pane for OutlinerPane {
             self.draw_file_tree(self.root, ui).unwrap();
         });
 
-        if drag_started {
-            egui_tiles::UiResponse::DragStarted
-        } else {
-            egui_tiles::UiResponse::None
-        }
+        egui_tiles::UiResponse::None
     }
 }
 

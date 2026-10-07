@@ -264,13 +264,12 @@ impl Editor {
     ///
     /// These are the `File`, `Edit`, buttons you often see in application .
     fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui) {
-        let layout_bg = ui.style().visuals.panel_fill;
         let decorations_id = egui::Id::new("title_panel");
 
         egui::Panel::top(decorations_id)
             .frame(
                 egui::Frame::new()
-                    .fill(layout_bg)
+                    .fill(ui.visuals().window_fill)
                     .inner_margin(egui::Margin::symmetric(8, 0))
                     .outer_margin(egui::Margin::ZERO),
             )

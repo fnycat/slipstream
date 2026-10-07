@@ -36,7 +36,8 @@ impl CameraController for FreeCamera {
     }
 
     fn on_scroll(&mut self, delta: f32) {
-        self.move_speed += delta;
+        // Clamp move speed to >0.0 so that the camera doesn't reverse.
+        self.move_speed = (self.move_speed + delta).max(0.0);
     }
 
     fn on_drag(&mut self, delta: glam::Vec2) {
