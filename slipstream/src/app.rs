@@ -46,13 +46,6 @@ impl App {
         );
 
         cc.egui_ctx.set_fonts(fonts);
-        cc.egui_ctx.set_theme(egui::Theme::Dark);
-
-        cc.egui_ctx
-            .set_style_of(egui::Theme::Dark, configure_dark_style());
-
-        cc.egui_ctx
-            .set_style_of(egui::Theme::Light, configure_light_style());
 
         let (tx, rx) = futures::channel::mpsc::channel(CHANNEL_SIZE);
         let cmd_channel = AppCommandChannel::new(tx);

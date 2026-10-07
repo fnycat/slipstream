@@ -36,45 +36,60 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     return out;
 }
 
+// @fragment
+// fn fs_main(in: VertexOutput) -> @location(0) vec4f {
+//     let ndc = vec2f(
+//         (in.position.x / camera.viewport_size.x) * 2.0 - 1.0,
+//         1.0 - (in.position.y / camera.viewport_size.y) * 2.0
+//     );
+//
+//     let near = camera.inv_view_proj * vec4f(ndc, 0.0, 1.0);
+//     let far = camera.inv_view_proj * vec4f(ndc, 1.0, 1.0);
+//
+//     let near_world = near.xyz / near.w;
+//     let far_world = far.xyz / far.w;
+//
+//     let ray_orig = near_world;
+//     let ray_dir = normalize(far_world - near_world);
+//
+//     // Intersect with y = 0
+//     let t = -ray_orig.y / ray_dir.y;
+//
+//     if t < 0.0 {
+//         discard;
+//     }
+//
+//     let world_pos = ray_orig + ray_dir * t;
+//
+//     let grid_uv = world_pos.xz / GRID_SPACING;
+//     let grid_line = abs(fract(grid_uv - 0.5) * 0.5);
+//
+//     let der = fwidth(world_pos.xz);
+//     let line_thickness = grid_line / der;
+//
+//     let min_dist = min(line_thickness.x, line_thickness.y);
+//
+//     // Step alpha such that only the grid lines are opaque.
+//     let line_alpha = 1.0 - smoothstep(0.0, 1.0, min_dist);
+//
+//     // Then add another smoothstep to fade out the grid lines in the
+//     // distance. This reduces the noise in the distance.
+//     let dist_alpha = 1.0 - smoothstep(0.0, 50.0, t);
+//
+//     return vec4f(GRID_COLOR.rgb, GRID_COLOR.a * line_alpha * dist_alpha);
+// }
+
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    let ndc = vec2f(
-        (in.position.x / camera.viewport_size.x) * 2.0 - 1.0,
-        1.0 - (in.position.y / camera.viewport_size.y) * 2.0
-    );
+fn fs_main(@builtin(position) fragCoord: vec4f) -> @location(0) vec4f {
+    let uv = fragCoord / camera.viewport_size;
 
-    let near = camera.inv_view_proj * vec4f(ndc, 0.0, 1.0);
-    let far = camera.inv_view_proj * vec4f(ndc, 1.0, 1.0);
+    let grid_size = 5.0;
 
-    let near_world = near.xyz / near.w;
-    let far_world = far.xyz / far.w;
+    let x = step(0.5, fract(uv.x * 10.0));
+    let y = step(0.5, fract(uv.y * 10.0));
 
-    let ray_orig = near_world;
-    let ray_dir = normalize(far_world - near_world);
+    let a = vec3f(0.2);
+    let b = vec3f(0.1);
 
-    // Intersect with y = 0
-    let t = -ray_orig.y / ray_dir.y;
-
-    if t < 0.0 {
-        discard;
-    }
-
-    let world_pos = ray_orig + ray_dir * t;
-
-    let grid_uv = world_pos.xz / GRID_SPACING;
-    let grid_line = abs(fract(grid_uv - 0.5) * 0.5);
-
-    let der = fwidth(world_pos.xz);
-    let line_thickness = grid_line / der;
-
-    let min_dist = min(line_thickness.x, line_thickness.y);
-
-    // Step alpha such that only the grid lines are opaque.
-    let line_alpha = 1.0 - smoothstep(0.0, 1.0, min_dist);
-
-    // Then add another smoothstep to fade out the grid lines in the
-    // distance. This reduces the noise in the distance.
-    let dist_alpha = 1.0 - smoothstep(0.0, 50.0, t);
-
-    return vec4f(GRID_COLOR.rgb, GRID_COLOR.a * line_alpha * dist_alpha);
+    return vec4f(mix(a, b, f32(x != y)), 1.0);
 }

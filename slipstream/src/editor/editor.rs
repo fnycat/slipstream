@@ -64,6 +64,8 @@ pub struct Editor {
     pub file_base_node: IrNodeKey,
     pub arena: Arc<IrArena>,
 
+    pub show_theme_editor: bool,
+    pub theme_editor_state: egui_thematic::ThemeEditorState,
     pub pane_behavior: PaneBehavior,
     pub pane_tree: egui_tiles::Tree<Box<dyn Pane>>,
 }
@@ -124,6 +126,8 @@ impl Editor {
             cmd: cmd_channel,
             render_state: render_state.clone(),
 
+            show_theme_editor: false,
+            theme_editor_state: egui_thematic::ThemeEditorState::default(),
             arena,
             file_info,
             file_base_node: root_node,
@@ -312,7 +316,11 @@ impl Editor {
                             self.on_new_pane_request(RequestNewPane::Log);
                         }
 
-                        ui.menu_button("Settings", |_ui| {});
+                        ui.menu_button("Settings", |ui| {
+                            if ui.button("Edit theme").clicked() {
+                                self.show_theme_editor = true;
+                            }
+                        });
                     });
 
                     decorations::draw_title_buttons(ui);
@@ -345,6 +353,12 @@ impl RoutablePage for Editor {
     fn draw(&mut self, ui: &mut egui::Ui) -> SlipstreamResult<()> {
         self.draw_upper_toolbar(ui);
         self.pane_tree.ui(&mut self.pane_behavior, ui);
+
+        egui_thematic::render_theme_panel(
+            ui.ctx(),
+            &mut self.theme_editor_state,
+            &mut self.show_theme_editor,
+        );
 
         Ok(())
     }
