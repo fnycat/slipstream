@@ -279,10 +279,10 @@ impl ModelContents<'_> {
                 VertexAttrKey::NotPresent => UV_DEFAULT,
                 VertexAttrKey::Indexed(idx) => {
                     self.try_inspect_uvs(uv_array_id as usize, |buf| {
-                        try_unwrap!(
+                        dbg!(try_unwrap!(
                             buf.get_st(*idx as usize),
                             "UV coordinate {idx} did not exist in UV buffer {uv_array_id}"
-                        )
+                        ))
                     })?
                 }
                 VertexAttrKey::Inline(idx) => *scratch

@@ -95,6 +95,7 @@ pub struct WgpuPolygon {
     indices: u32,
     index_buffer: wgpu::Buffer,
     vertex_buffer: wgpu::Buffer,
+    uv_buffer: wgpu::Buffer,
 }
 
 impl WgpuPolygon {
@@ -107,6 +108,16 @@ impl WgpuPolygon {
             2 => Float32x4,
             3 => Uint32x4,
             4 => Float32x4,
+        ],
+        step_mode: wgpu::VertexStepMode::Vertex,
+    };
+    pub const UV_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+        array_stride: 64,
+        attributes: &wgpu::vertex_attr_array![
+            5 => Float32x4,
+            6 => Float32x4,
+            7 => Float32x4,
+            8 => Float32x4
         ],
         step_mode: wgpu::VertexStepMode::Vertex,
     };
@@ -130,10 +141,16 @@ impl WgpuPolygon {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
+        let uv_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("polygon uv buffer"),
+            contents: bytemuck::cast_slice(&ir.uv_buffer),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
         let pipeline_signature = pipelines.register(PipelineDescriptor {
             name: "polygon",
             bind_group_layouts: &[Some(camera_layout), Some(bind_pose_layout)],
-            vertex_layouts: &[Some(Self::VERTEX_LAYOUT)],
+            vertex_layouts: &[Some(Self::VERTEX_LAYOUT), Some(Self::UV_LAYOUT)],
         });
 
         tracing::trace!("Generated wgpu model with {} indices", ir.indices.len());
@@ -143,6 +160,7 @@ impl WgpuPolygon {
             indices: ir.indices.len() as u32,
 
             vertex_buffer,
+            uv_buffer,
             index_buffer,
         })
     }
@@ -160,6 +178,7 @@ impl WgpuPolygon {
         render_pass.set_bind_group(0, camera_group, &[]);
         render_pass.set_bind_group(1, bind_pose_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.uv_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), Self::INDEX_FORMAT);
         render_pass.draw_indexed(0..self.indices, 0, 0..1);
     }

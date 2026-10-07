@@ -6,7 +6,8 @@ struct CameraUniformData {
 }
 
 struct Material {
-    uv_count: u32
+    /// If UV `n` is enabled, bit `n` will be set.
+    enabled_uvs: u32
 }
 
 @group(0) @binding(0)
@@ -17,11 +18,6 @@ var<uniform> camera: CameraUniformData;
 /// make the character render properly, as the vertex positions are in bone space.
 @group(1) @binding(0)
 var<storage, read> bone_transformations: array<mat4x4f>;
-
-/// Stores the UV coordinates of the model. These are stored in a separate buffer because there can
-/// be up to 8 of them.
-@group(1) @binding(1)
-var<storage, read> uvs: array<vec2f>;
 
 @group(1) @binding(2)
 var<uniform> material: Material;
@@ -43,7 +39,13 @@ struct VertexInput {
     /// Indices of the bones that this vertex is connected to.
     @location(3) bone_indices: vec4u,
     /// Weights for the indices above.
-    @location(4) bone_weights: vec4f
+    @location(4) bone_weights: vec4f,
+
+    /// UVs are packed in pairs to save on attribute slots.
+    @location(5) uv01: vec4f,
+    @location(6) uv23: vec4f,
+    @location(7) uv45: vec4f,
+    @location(8) uv67: vec4f,
 }
 
 struct VertexOutput {
@@ -51,10 +53,6 @@ struct VertexOutput {
     @location(0) normal: vec3f,
     @location(1) color0: vec4f,
     @location(2) @interpolate(flat) bone_index: u32
-}
-
-fn get_uv(vertex_index: u32, channel: u32) -> vec2f {
-    return uvs[vertex_index * material.uv_count + channel];
 }
 
 @vertex
