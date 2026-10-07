@@ -1,14 +1,19 @@
+use std::time::Instant;
+
 use eframe::egui_wgpu;
 use slipstream_shared::SlipstreamResult;
 use wgpu::util::DeviceExt;
 
-use crate::shared::{
-    GraphicsState,
-    camera::{Camera, CameraController, CameraUniformData, OrbitCamera},
-    vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex3},
-};
+use crate::viewer::camera::{CameraController, FreeCamera, OrbitCamera};
 use crate::viewer::translation::IntermediateModel;
 use crate::viewer::{grid::GridPipeline, wgpu::WgpuModel};
+use crate::{
+    shared::{
+        GraphicsState,
+        vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex3},
+    },
+    viewer::camera::{Camera, CameraUniformData},
+};
 
 const DEFAULT_VIEWPORT: egui::Rect =
     egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0));
@@ -453,32 +458,45 @@ impl ViewerPipeline {
     ) -> SlipstreamResult<Self> {
         let viewport_size = glam::uvec2(800, 600);
 
+        let camera_move_speed;
         let (lookat, radius) = if let Some(model) = &intermediate_model {
             // Position camera based on model bounding box.
             // This ensures the camera doesn't have to be fully zoomed out to see the model.
             // It also centers the model in the view.
 
             let volume = model.bounding_volume;
-            tracing::debug!("{volume:?}");
 
             let model_center = volume.max.midpoint(volume.min);
             let model_diameter = volume.max.distance(volume.min).max(1.0); // set to a min of 1.0 so we don't divide by zero and get NaN output.
 
+            camera_move_speed = model_diameter * 0.01;
+
             (model_center, model_diameter * 0.5)
         } else {
+            camera_move_speed = 1.0;
             (glam::Vec3::ZERO, 5.0)
         };
 
-        tracing::debug!("lookat: {lookat}, radius: {radius}");
+        // let camera = Camera::Orbit(OrbitCamera {
+        //     radius,
+        //     lookat,
+        //     sensitivity: 0.01,
+        //     vertical_fov: 90.0,
+        //     move_speed: camera_move_speed,
+        //     aspect_ratio: viewport_size.x as f32 / viewport_size.y as f32,
+        //     zoom_sensitivity: 0.01,
+        //     last_update: Instant::now(),
+        //     orientation: glam::Quat::default(),
+        // });
 
-        let camera = Camera::Orbit(OrbitCamera {
-            radius,
-            lookat,
+        let camera = Camera::Free(FreeCamera {
+            last_update: Instant::now(),
+            position: glam::Vec3::ZERO,
             sensitivity: 0.01,
+            move_speed: camera_move_speed,
+            orientation: glam::Quat::default(),
             vertical_fov: 90.0,
             aspect_ratio: viewport_size.x as f32 / viewport_size.y as f32,
-            zoom_sensitivity: 0.01,
-            orientation: glam::Quat::default(),
         });
 
         let camera_state = CameraState::new(camera, &graphics_state, viewport_size);

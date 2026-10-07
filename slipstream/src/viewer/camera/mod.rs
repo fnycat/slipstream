@@ -1,8 +1,14 @@
 use std::num::NonZeroU64;
 
-const UP_AXIS: glam::Vec3 = glam::vec3(0.0, 1.0, 0.0);
+mod free;
+mod orbit;
+
+pub use free::*;
+pub use orbit::*;
+
+const WORLD_UP: glam::Vec3 = glam::Vec3::Y;
 const NEAR_PLANE: f32 = 0.1;
-const FAR_PLANE: f32 = 100000.0;
+const FAR_PLANE: f32 = 100_000.0;
 
 /// The camera data that is sent to the GPU.
 #[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
@@ -53,50 +59,64 @@ impl CameraUniformData {
 pub enum Camera {
     /// An orbital camera that looks at a specific point and rotates around it.
     Orbit(OrbitCamera),
-}
-
-impl Camera {
-    pub fn as_orbit(&self) -> &OrbitCamera {
-        match self {
-            Self::Orbit(x) => x,
-        }
-    }
-
-    pub fn as_orbit_mut(&mut self) -> &mut OrbitCamera {
-        match self {
-            Self::Orbit(x) => x,
-        }
-    }
+    /// A camera that can freely fly around.
+    Free(FreeCamera),
 }
 
 impl CameraController for Camera {
+    fn on_update(&mut self) {
+        match self {
+            Self::Orbit(x) => x.on_update(),
+            Self::Free(x) => x.on_update(),
+        }
+    }
+
+    fn delta_time(&self) -> f32 {
+        match self {
+            Self::Orbit(x) => x.delta_time(),
+            Self::Free(x) => x.delta_time(),
+        }
+    }
+
     fn set_fov(&mut self, fov: f32) {
         match self {
             Self::Orbit(x) => x.set_fov(fov),
+            Self::Free(x) => x.set_fov(fov),
         }
     }
 
     fn set_aspect_ratio(&mut self, aspect_ratio: f32) {
         match self {
             Self::Orbit(x) => x.set_aspect_ratio(aspect_ratio),
+            Self::Free(x) => x.set_aspect_ratio(aspect_ratio),
         }
     }
 
-    fn scroll_delta(&mut self, delta: f32) {
+    fn on_scroll(&mut self, delta: f32) {
         match self {
-            Self::Orbit(x) => x.scroll_delta(delta),
+            Self::Orbit(x) => x.on_scroll(delta),
+            Self::Free(x) => x.on_scroll(delta),
         }
     }
 
-    fn drag_delta(&mut self, delta: glam::Vec2) {
+    fn on_drag(&mut self, delta: glam::Vec2) {
         match self {
-            Self::Orbit(x) => x.drag_delta(delta),
+            Self::Orbit(x) => x.on_drag(delta),
+            Self::Free(x) => x.on_drag(delta),
+        }
+    }
+
+    fn on_move(&mut self, delta: glam::Vec3) {
+        match self {
+            Self::Orbit(x) => x.on_move(delta),
+            Self::Free(x) => x.on_move(delta),
         }
     }
 
     fn compute_matrix(&self) -> glam::Mat4 {
         match self {
             Self::Orbit(x) => x.compute_matrix(),
+            Self::Free(x) => x.compute_matrix(),
         }
     }
 }
@@ -107,60 +127,28 @@ impl From<OrbitCamera> for Camera {
     }
 }
 
+impl From<FreeCamera> for Camera {
+    fn from(value: FreeCamera) -> Self {
+        Self::Free(value)
+    }
+}
+
 pub trait CameraController {
+    /// Tells the camera it has updated. This is used to keep track of delta time.
+    fn on_update(&mut self);
+    /// Computes the time since last update.
+    fn delta_time(&self) -> f32;
+    /// Sets the vertical FOV of the camera to the specified value.
     fn set_fov(&mut self, fov: f32);
+    /// Sets the aspect ratio of the camera. This should be set when the viewport is resized
+    /// to prevent warping of the output image.
     fn set_aspect_ratio(&mut self, aspect_ratio: f32);
-    fn drag_delta(&mut self, delta: glam::Vec2);
-    fn scroll_delta(&mut self, delta: f32);
+    /// Called when the cursor drags across the viewport.
+    fn on_drag(&mut self, delta: glam::Vec2);
+    /// Called when the scroll wheel is used or when a pinch gesture is made (on touchscreens and touchpads).
+    fn on_scroll(&mut self, delta: f32);
+    /// Called when the camera should move. Generally this is called on WASD inputs.
+    fn on_move(&mut self, delta: glam::Vec3);
+    /// Computes the camera transformation matrix.
     fn compute_matrix(&self) -> glam::Mat4;
-}
-
-/// A camera orbiting around a given point.
-#[derive(Debug, Clone, PartialEq)]
-pub struct OrbitCamera {
-    pub orientation: glam::Quat,
-    pub zoom_sensitivity: f32,
-    pub sensitivity: f32,
-    pub vertical_fov: f32,
-    pub aspect_ratio: f32,
-    pub lookat: glam::Vec3,
-    pub radius: f32,
-}
-
-impl CameraController for OrbitCamera {
-    fn set_fov(&mut self, fov: f32) {
-        self.vertical_fov = fov;
-    }
-
-    fn set_aspect_ratio(&mut self, aspect_ratio: f32) {
-        self.aspect_ratio = aspect_ratio;
-    }
-
-    fn scroll_delta(&mut self, delta: f32) {
-        self.radius -= delta * self.zoom_sensitivity * self.radius;
-    }
-
-    fn drag_delta(&mut self, delta: glam::Vec2) {
-        let yaw_rot = glam::Quat::from_axis_angle(UP_AXIS, delta.x * self.sensitivity);
-
-        let right = self.orientation * glam::Vec3::X;
-        let pitch_rot = glam::Quat::from_axis_angle(right, -delta.y * self.sensitivity);
-
-        self.orientation = (yaw_rot * pitch_rot * self.orientation).normalize();
-    }
-
-    fn compute_matrix(&self) -> glam::Mat4 {
-        let eye = self.lookat + self.orientation * (glam::Vec3::Z * self.radius);
-        let up = self.orientation * glam::Vec3::Y;
-        let view_matrix = glam::camera::lh::view::look_at_mat4(eye, self.lookat, up);
-
-        let proj_matrix = glam::camera::lh::proj::directx::perspective(
-            self.vertical_fov,
-            self.aspect_ratio,
-            NEAR_PLANE,
-            FAR_PLANE,
-        );
-
-        proj_matrix * view_matrix
-    }
 }
