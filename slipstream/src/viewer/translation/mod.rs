@@ -4,7 +4,7 @@ mod vertex;
 pub use skeleton::*;
 use slipstream_ir::mdl0::{
     Bone, ColorBuffer, DRAW_OPA_NAME, Definitions, MatrixId, Model, ModelHeader, NODE_MIX_NAME,
-    NODE_TREE_NAME, NormalBuffer, Polygon, VertexBuffer,
+    NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer,
 };
 use slipstream_ir::util::Box3;
 pub use vertex::*;
@@ -18,11 +18,12 @@ use std::ops::ControlFlow;
 pub struct IntermediateModel {
     pub bone_map: BoneMap,
     pub bone_weights: Option<BoneWeights>,
-    pub bone_translations: Vec<glam::Mat4>,
+
     pub xf_slots: XfRegisters,
 
     pub bounding_volume: Box3,
 
+    pub bone_translations: Vec<glam::Mat4>,
     pub polygons: Vec<IntermediatePolygon>,
 }
 
@@ -41,6 +42,7 @@ pub struct ModelContents<'a> {
     vertices: Vec<IrNodeKey>,
     normals: Vec<IrNodeKey>,
     colors: Vec<IrNodeKey>,
+    uvs: Vec<IrNodeKey>,
     polygons: Vec<IrNodeKey>,
 }
 
@@ -213,6 +215,7 @@ impl<'a> ModelContents<'a> {
             vertices: Vec::new(),
             normals: Vec::new(),
             colors: Vec::new(),
+            uvs: Vec::new(),
             polygons: Vec::new(),
         };
 
@@ -266,6 +269,11 @@ impl Visitor for ModelContents<'_> {
 
     fn visit_colors(&mut self, colors: VisitorContext<'_, ColorBuffer>) -> ControlFlow<()> {
         self.colors.push(colors.meta.key);
+        ControlFlow::Break(())
+    }
+
+    fn visit_uvs(&mut self, uvs: VisitorContext<'_, UvBuffer>) -> ControlFlow<()> {
+        self.uvs.push(uvs.meta.key);
         ControlFlow::Break(())
     }
 

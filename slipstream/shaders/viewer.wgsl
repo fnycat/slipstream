@@ -5,6 +5,10 @@ struct CameraUniformData {
     inv_view_proj: mat4x4f
 }
 
+struct Material {
+    uv_count: u32
+}
+
 @group(0) @binding(0)
 var<uniform> camera: CameraUniformData;
 
@@ -13,6 +17,24 @@ var<uniform> camera: CameraUniformData;
 /// make the character render properly, as the vertex positions are in bone space.
 @group(1) @binding(0)
 var<storage, read> bone_transformations: array<mat4x4f>;
+
+/// Stores the UV coordinates of the model. These are stored in a separate buffer because there can
+/// be up to 8 of them.
+@group(1) @binding(1)
+var<storage, read> uvs: array<vec2f>;
+
+@group(1) @binding(2)
+var<uniform> material: Material;
+
+// Texture bindings
+@group(2) @binding(0) var tex0: texture_2d<f32>;
+@group(2) @binding(1) var tex1: texture_2d<f32>;
+@group(2) @binding(2) var tex2: texture_2d<f32>;
+@group(2) @binding(3) var tex3: texture_2d<f32>;
+@group(2) @binding(4) var tex4: texture_2d<f32>;
+@group(2) @binding(5) var tex5: texture_2d<f32>;
+@group(2) @binding(6) var tex6: texture_2d<f32>;
+@group(2) @binding(7) var tex7: texture_2d<f32>;
 
 struct VertexInput {
     @location(0) position: vec3f,
@@ -29,6 +51,10 @@ struct VertexOutput {
     @location(0) normal: vec3f,
     @location(1) color0: vec4f,
     @location(2) @interpolate(flat) bone_index: u32
+}
+
+fn get_uv(vertex_index: u32, channel: u32) -> vec2f {
+    return uvs[vertex_index * material.uv_count + channel];
 }
 
 @vertex
