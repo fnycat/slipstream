@@ -6,7 +6,7 @@ use slipstream_ir::mdl0::{
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::tex0::Texture;
 use slipstream_ir::visitor::{Visitor, VisitorContextMut, VisitorContextNodeMut};
-use slipstream_shared::inspect::Inspect;
+use slipstream_shared::inspect::{FieldConfig, Inspect};
 use slipstream_shared::{SlipstreamError, SlipstreamResult};
 use std::ops::ControlFlow;
 use std::sync::{Arc, mpsc};
@@ -30,13 +30,14 @@ impl Visitor for InspectorVisitor<'_> {
     }
 
     fn visit_bone_mut(&mut self, context: VisitorContextMut<'_, Bone>) -> ControlFlow<()> {
-        self.ui.label(format!("{:#?}", context.content));
+        context.content.draw_value(self.ui, &FieldConfig::default());
+
         ControlFlow::Continue(())
     }
 
     fn visit_vertices_mut(
         &mut self,
-        context: VisitorContextMut<'_, VertexBuffer>,
+        mut context: VisitorContextMut<'_, VertexBuffer>,
     ) -> ControlFlow<()> {
         self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
@@ -92,8 +93,6 @@ impl InspectorPane {
     fn draw_properties(&mut self, ui: &mut egui::Ui) -> SlipstreamResult<()> {
         self.arena
             .update(self.inspected, |node| {
-                ui.label(format!("Inspecting {} (ID {:?})", node.label, node.key()));
-
                 let context = VisitorContextNodeMut {
                     key: node.key(),
                     label: &mut node.label,

@@ -6,7 +6,6 @@ use std::{
 use egui_phosphor::thin::X;
 use slipstream_ir::node::arena::IrNodeKey;
 
-pub mod inspector;
 pub mod log;
 pub mod outliner;
 
@@ -22,7 +21,7 @@ impl From<u64> for ContentSignature {
     }
 }
 
-pub const PANE_HEADER_MARGIN: f32 = 5.0;
+pub const PANE_MARGIN: f32 = 5.0;
 pub const PANE_TITLE_SIZE: f32 = 15.0;
 
 /// A general pane that can be used in the editor.
@@ -37,8 +36,9 @@ pub trait Pane: Send + Sync {
     fn draw_pane_header(&self, ui: &mut egui::Ui) -> egui_tiles::UiResponse {
         let mut drag_response = egui_tiles::UiResponse::None;
         egui::Frame::new()
-            .inner_margin(PANE_HEADER_MARGIN)
+            .inner_margin(PANE_MARGIN)
             .fill(ui.visuals().faint_bg_color)
+            .inner_margin(PANE_MARGIN)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     if ui
@@ -206,6 +206,7 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
         pane.title().into()
     }
 
+    #[inline]
     fn is_tab_closable(
         &self,
         _tiles: &egui_tiles::Tiles<Box<dyn Pane>>,

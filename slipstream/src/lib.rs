@@ -5,6 +5,7 @@ pub mod config;
 pub mod decorations;
 pub mod editor;
 pub mod icons;
+pub mod inspector;
 pub mod pages;
 pub mod panes;
 pub mod shared;

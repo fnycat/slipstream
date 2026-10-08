@@ -1,3 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["slipstream", "slipstream-derive", "slipstream-ir", "slipstream-shared"]
+
+[workspace.dependencies]
+egui = { version = "0.36.2", features = ["rayon"] }
+glam = { version = "0.34.1", features = ["bytemuck"] }
