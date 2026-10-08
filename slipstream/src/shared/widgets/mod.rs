@@ -6,16 +6,42 @@ pub struct HeaderIcons {
 }
 
 pub struct CollapseDescriptor<B, C> {
-    pub state_id: egui::Id,
-    pub icons: Option<HeaderIcons>,
-    pub label: egui::RichText,
+    state_id: egui::Id,
+    icons: Option<HeaderIcons>,
+    label: egui::RichText,
 
-    pub on_body: B,
-    pub on_context_menu: C,
+    on_body: B,
+    on_ctx_menu: C,
+}
+
+impl<B, C> CollapseDescriptor<B, C>
+where
+    B: Fn(&mut egui::Ui) -> SlipstreamResult<()>,
+    C: Fn(&mut egui::Ui),
+{
+    pub fn new(
+        state_id: egui::Id,
+        label: egui::RichText,
+        icons: Option<HeaderIcons>,
+        on_body: B,
+        on_ctx_menu: C,
+    ) -> Self {
+        Self {
+            state_id,
+            label,
+            icons,
+            on_body,
+            on_ctx_menu,
+        }
+    }
 }
 
 /// Draws the icon of files and folders in the outliner.
-pub fn draw_header_icon(ui: &mut egui::Ui, icon: egui::RichText, response: &egui::Response) {
+pub fn draw_header_icon<'a, 'r>(
+    ui: &'a mut egui::Ui,
+    icon: egui::RichText,
+    response: &'r egui::Response,
+) {
     let galley = egui::WidgetText::from(icon).into_galley(
         ui,
         Some(egui::TextWrapMode::Extend),
@@ -29,12 +55,12 @@ pub fn draw_header_icon(ui: &mut egui::Ui, icon: egui::RichText, response: &egui
         .galley(center_pos, galley, ui.visuals().text_color());
 }
 
-pub fn draw_collapsing_state<B, C>(
+pub fn draw_collapsing_state<'a, 'b, B, C>(
     desc: CollapseDescriptor<B, C>,
-    ui: &mut egui::Ui,
+    ui: &'a mut egui::Ui,
 ) -> SlipstreamResult<()>
 where
-    B: FnOnce(&mut egui::Ui) -> SlipstreamResult<()>,
+    B: Fn(&mut egui::Ui) -> SlipstreamResult<()>,
     C: Fn(&mut egui::Ui),
 {
     let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -95,8 +121,8 @@ where
             }
 
             // We also need separate context menus for the row and label responses, although they both display the same content.
-            row_response.context_menu(|ui| (desc.on_context_menu)(ui));
-            label_response.context_menu(|ui| (desc.on_context_menu)(ui));
+            row_response.context_menu(|ui| (desc.on_ctx_menu)(ui));
+            label_response.context_menu(|ui| (desc.on_ctx_menu)(ui));
         });
 
         if ui.rect_contains_pointer(row_rect) {
