@@ -813,9 +813,9 @@ Bits: 10..11*/
             &mut self,
             ui: &mut egui::Ui,
             cfg: &slipstream_shared::inspect::FieldConfig,
-        ) -> Option<egui::Response> {
+        ) -> slipstream_shared::inspect::Changes {
             use slipstream_shared::widgets;
-            let mut res = None;
+            let mut changes = slipstream_shared::inspect::Changes::default();
             widgets::draw_collapsing_state(
                 widgets::CollapseDescriptor::new(
                     ui.id().with("CollapsingState"),
@@ -823,8 +823,268 @@ Bits: 10..11*/
                     None,
                     widgets::HeaderAlignment::Right,
                     |ui| {
-                        res = {
-                            let mut acc = None;
+                        ui.horizontal(|ui| {
+                            ui.label("Use Identity: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "use_identity",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.use_identity(),
+                                        on_update: |v| self.set_use_identity(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Translation Isotropic: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "translation_isotropic",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.translation_isotropic(),
+                                        on_update: |v| self.set_translation_isotropic(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Rotation Isotropic: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "rotation_isotropic",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.rotation_isotropic(),
+                                        on_update: |v| self.set_rotation_isotropic(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Scale Isotropic: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "scale_isotropic",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.scale_isotropic(),
+                                        on_update: |v| self.set_scale_isotropic(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Scale Uniform: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "scale_uniform",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.scale_uniform(),
+                                        on_update: |v| self.set_scale_uniform(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Apply Scale Compensate: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "apply_scale_compensate",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.apply_scale_compensate(),
+                                        on_update: |v| self.set_apply_scale_compensate(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Apply Child Scale Compensate: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "apply_child_scale_compensate",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.apply_child_scale_compensate(),
+                                        on_update: |v| self.set_apply_child_scale_compensate(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Disable Classic Scale: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "disable_classic_scale",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.disable_classic_scale(),
+                                        on_update: |v| self.set_disable_classic_scale(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Is Visible: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "is_visible",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.is_visible(),
+                                        on_update: |v| self.set_is_visible(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Is Display Matrix: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "is_display_matrix",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.is_display_matrix(),
+                                        on_update: |v| self.set_is_display_matrix(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Is Billboard Child: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "is_billboard_child",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = slipstream_shared::inspect::BitFieldWrapper {
+                                        value: self.is_billboard_child(),
+                                        on_update: |v| self.set_is_billboard_child(v),
+                                    }
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        Ok(())
+                    },
+                ),
+                ui,
+            );
+            changes
+        }
+        fn draw_value(
+            &mut self,
+            ui: &mut egui::Ui,
+            cfg: &slipstream_shared::inspect::FieldConfig,
+        ) -> slipstream_shared::inspect::Changes {
+            let egui::InnerResponse { inner, .. } = egui::CollapsingHeader::new(
+                    "Bone Flags",
+                )
+                .show(
+                    ui,
+                    |ui| {
+                        let mut changes = slipstream_shared::inspect::Changes::default();
+                        ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.label("Use Identity: ");
                                 ui.with_layout(
@@ -842,12 +1102,7 @@ Bits: 10..11*/
                                             on_update: |v| self.set_use_identity(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -869,12 +1124,7 @@ Bits: 10..11*/
                                             on_update: |v| self.set_translation_isotropic(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -896,12 +1146,7 @@ Bits: 10..11*/
                                             on_update: |v| self.set_rotation_isotropic(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -923,12 +1168,7 @@ Bits: 10..11*/
                                             on_update: |v| self.set_scale_isotropic(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -950,12 +1190,7 @@ Bits: 10..11*/
                                             on_update: |v| self.set_scale_uniform(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -977,12 +1212,7 @@ Bits: 10..11*/
                                             on_update: |v| self.set_apply_scale_compensate(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -1004,12 +1234,7 @@ Bits: 10..11*/
                                             on_update: |v| self.set_apply_child_scale_compensate(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -1031,12 +1256,7 @@ Bits: 10..11*/
                                             on_update: |v| self.set_disable_classic_scale(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -1058,12 +1278,7 @@ Bits: 10..11*/
                                             on_update: |v| self.set_is_visible(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -1085,12 +1300,7 @@ Bits: 10..11*/
                                             on_update: |v| self.set_is_display_matrix(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -1112,342 +1322,16 @@ Bits: 10..11*/
                                             on_update: |v| self.set_is_billboard_child(v),
                                         }
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
                             ui.end_row();
-                            acc
-                        };
-                        Ok(())
-                    },
-                ),
-                ui,
-            );
-            res
-        }
-        fn draw_value(
-            &mut self,
-            ui: &mut egui::Ui,
-            cfg: &slipstream_shared::inspect::FieldConfig,
-        ) -> Option<egui::Response> {
-            egui::CollapsingHeader::new("Bone Flags")
-                .show(
-                    ui,
-                    |ui| {
-                        let mut res = None;
-                        ui.vertical(|ui| {
-                            res = {
-                                let mut acc = None;
-                                ui.horizontal(|ui| {
-                                    ui.label("Use Identity: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "use_identity",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.use_identity(),
-                                                on_update: |v| self.set_use_identity(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Translation Isotropic: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "translation_isotropic",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.translation_isotropic(),
-                                                on_update: |v| self.set_translation_isotropic(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Rotation Isotropic: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "rotation_isotropic",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.rotation_isotropic(),
-                                                on_update: |v| self.set_rotation_isotropic(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Scale Isotropic: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "scale_isotropic",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.scale_isotropic(),
-                                                on_update: |v| self.set_scale_isotropic(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Scale Uniform: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "scale_uniform",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.scale_uniform(),
-                                                on_update: |v| self.set_scale_uniform(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Apply Scale Compensate: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "apply_scale_compensate",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.apply_scale_compensate(),
-                                                on_update: |v| self.set_apply_scale_compensate(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Apply Child Scale Compensate: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "apply_child_scale_compensate",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.apply_child_scale_compensate(),
-                                                on_update: |v| self.set_apply_child_scale_compensate(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Disable Classic Scale: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "disable_classic_scale",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.disable_classic_scale(),
-                                                on_update: |v| self.set_disable_classic_scale(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Is Visible: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "is_visible",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.is_visible(),
-                                                on_update: |v| self.set_is_visible(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Is Display Matrix: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "is_display_matrix",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.is_display_matrix(),
-                                                on_update: |v| self.set_is_display_matrix(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Is Billboard Child: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "is_billboard_child",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = slipstream_shared::inspect::BitFieldWrapper {
-                                                value: self.is_billboard_child(),
-                                                on_update: |v| self.set_is_billboard_child(v),
-                                            }
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                acc
-                            };
                         });
-                        res
+                        changes
                     },
-                )
-                .body_response
+                );
+            inner
         }
     }
     /// Configures the way billboarding is used for this object.
@@ -1573,127 +1457,87 @@ Bits: 10..11*/
             &mut self,
             ui: &mut egui::Ui,
             cfg: &slipstream_shared::inspect::FieldConfig,
-        ) -> Option<egui::Response> {
+        ) -> slipstream_shared::inspect::Changes {
             ::core::panicking::panic("not yet implemented");
         }
         fn draw_value(
             &mut self,
             ui: &mut egui::Ui,
             cfg: &slipstream_shared::inspect::FieldConfig,
-        ) -> Option<egui::Response> {
+        ) -> slipstream_shared::inspect::Changes {
             let curr_label = slipstream_shared::inspect::AsEnumLabel::as_label(self);
-            let mut res = None;
+            let mut changes = slipstream_shared::inspect::Changes::default();
             egui::ComboBox::new(ui.id().with("ComboBox"), "")
                 .selected_text(curr_label)
                 .show_ui(
                     ui,
                     |ui| {
-                        res = {
-                            let mut acc = None;
-                            let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
-                                self,
-                            ) == 0usize;
-                            let response = ui.selectable_label(is_selected, "Disabled");
-                            if response.clicked() {
-                                *self = Self::Disabled;
-                            }
-                            acc = match (acc.take(), response) {
-                                (Some(acc), Some(x)) => Some(acc | x),
-                                (Some(acc), None) => Some(acc),
-                                (None, Some(x)) => Some(x),
-                                (None, None) => None,
-                            };
-                            let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
-                                self,
-                            ) == 1usize;
-                            let response = ui.selectable_label(is_selected, "Billboard");
-                            if response.clicked() {
-                                *self = Self::Billboard;
-                            }
-                            acc = match (acc.take(), response) {
-                                (Some(acc), Some(x)) => Some(acc | x),
-                                (Some(acc), None) => Some(acc),
-                                (None, Some(x)) => Some(x),
-                                (None, None) => None,
-                            };
-                            let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
-                                self,
-                            ) == 2usize;
-                            let response = ui
-                                .selectable_label(is_selected, "Perspective Billboard");
-                            if response.clicked() {
-                                *self = Self::PerspectiveBillboard;
-                            }
-                            acc = match (acc.take(), response) {
-                                (Some(acc), Some(x)) => Some(acc | x),
-                                (Some(acc), None) => Some(acc),
-                                (None, Some(x)) => Some(x),
-                                (None, None) => None,
-                            };
-                            let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
-                                self,
-                            ) == 3usize;
-                            let response = ui
-                                .selectable_label(is_selected, "Camera Billboard");
-                            if response.clicked() {
-                                *self = Self::CameraBillboard;
-                            }
-                            acc = match (acc.take(), response) {
-                                (Some(acc), Some(x)) => Some(acc | x),
-                                (Some(acc), None) => Some(acc),
-                                (None, Some(x)) => Some(x),
-                                (None, None) => None,
-                            };
-                            let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
-                                self,
-                            ) == 4usize;
-                            let response = ui
-                                .selectable_label(
-                                    is_selected,
-                                    "Camera Perspective Billboard",
-                                );
-                            if response.clicked() {
-                                *self = Self::CameraPerspectiveBillboard;
-                            }
-                            acc = match (acc.take(), response) {
-                                (Some(acc), Some(x)) => Some(acc | x),
-                                (Some(acc), None) => Some(acc),
-                                (None, Some(x)) => Some(x),
-                                (None, None) => None,
-                            };
-                            let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
-                                self,
-                            ) == 5usize;
-                            let response = ui
-                                .selectable_label(is_selected, "Y Billboard");
-                            if response.clicked() {
-                                *self = Self::YBillboard;
-                            }
-                            acc = match (acc.take(), response) {
-                                (Some(acc), Some(x)) => Some(acc | x),
-                                (Some(acc), None) => Some(acc),
-                                (None, Some(x)) => Some(x),
-                                (None, None) => None,
-                            };
-                            let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
-                                self,
-                            ) == 6usize;
-                            let response = ui
-                                .selectable_label(is_selected, "Y Perspective Billboard");
-                            if response.clicked() {
-                                *self = Self::YPerspectiveBillboard;
-                            }
-                            acc = match (acc.take(), response) {
-                                (Some(acc), Some(x)) => Some(acc | x),
-                                (Some(acc), None) => Some(acc),
-                                (None, Some(x)) => Some(x),
-                                (None, None) => None,
-                            };
-                            acc
-                        };
+                        let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
+                            self,
+                        ) == 0usize;
+                        let response = ui.selectable_label(is_selected, "Disabled");
+                        if response.clicked() {
+                            *self = Self::Disabled;
+                            changes.changed = true;
+                        }
+                        let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
+                            self,
+                        ) == 1usize;
+                        let response = ui.selectable_label(is_selected, "Billboard");
+                        if response.clicked() {
+                            *self = Self::Billboard;
+                            changes.changed = true;
+                        }
+                        let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
+                            self,
+                        ) == 2usize;
+                        let response = ui
+                            .selectable_label(is_selected, "Perspective Billboard");
+                        if response.clicked() {
+                            *self = Self::PerspectiveBillboard;
+                            changes.changed = true;
+                        }
+                        let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
+                            self,
+                        ) == 3usize;
+                        let response = ui
+                            .selectable_label(is_selected, "Camera Billboard");
+                        if response.clicked() {
+                            *self = Self::CameraBillboard;
+                            changes.changed = true;
+                        }
+                        let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
+                            self,
+                        ) == 4usize;
+                        let response = ui
+                            .selectable_label(
+                                is_selected,
+                                "Camera Perspective Billboard",
+                            );
+                        if response.clicked() {
+                            *self = Self::CameraPerspectiveBillboard;
+                            changes.changed = true;
+                        }
+                        let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
+                            self,
+                        ) == 5usize;
+                        let response = ui.selectable_label(is_selected, "Y Billboard");
+                        if response.clicked() {
+                            *self = Self::YBillboard;
+                            changes.changed = true;
+                        }
+                        let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(
+                            self,
+                        ) == 6usize;
+                        let response = ui
+                            .selectable_label(is_selected, "Y Perspective Billboard");
+                        if response.clicked() {
+                            *self = Self::YPerspectiveBillboard;
+                            changes.changed = true;
+                        }
                     },
                 );
-            res
+            changes
         }
     }
     impl BillboardSetting {
@@ -2026,9 +1870,9 @@ Bits: 10..11*/
             &mut self,
             ui: &mut egui::Ui,
             cfg: &slipstream_shared::inspect::FieldConfig,
-        ) -> Option<egui::Response> {
+        ) -> slipstream_shared::inspect::Changes {
             use slipstream_shared::widgets;
-            let mut res = None;
+            let mut changes = slipstream_shared::inspect::Changes::default();
             widgets::draw_collapsing_state(
                 widgets::CollapseDescriptor::new(
                     ui.id().with("CollapsingState"),
@@ -2036,8 +1880,190 @@ Bits: 10..11*/
                     None,
                     widgets::HeaderAlignment::Right,
                     |ui| {
-                        res = {
-                            let mut acc = None;
+                        ui.horizontal(|ui| {
+                            ui.label("Index: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "index",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = self.index.draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Id: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "id",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = self.id.draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Flags: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "flags",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = self.flags.draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Billboard Setting: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "billboard_setting",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = self
+                                        .billboard_setting
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Billboard Reference: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "billboard_reference",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = self
+                                        .billboard_reference
+                                        .draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Translation: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "translation",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = self.translation.draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Rotation: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "ROTATION",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: Some(" °"),
+                                    };
+                                    let response = self.rotation.draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Scale: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "scale",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = self.scale.draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        ui.horizontal(|ui| {
+                            ui.label("Bounding Volume: ");
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Min),
+                                |ui| {
+                                    const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
+                                        label: "bounding_volume",
+                                        category: None,
+                                        read_only: false,
+                                        range: None,
+                                        suffix: None,
+                                    };
+                                    let response = self.bounding_volume.draw_value(ui, &CONFIG);
+                                    changes |= response;
+                                },
+                            );
+                        });
+                        ui.end_row();
+                        Ok(())
+                    },
+                ),
+                ui,
+            );
+            changes
+        }
+        fn draw_value(
+            &mut self,
+            ui: &mut egui::Ui,
+            cfg: &slipstream_shared::inspect::FieldConfig,
+        ) -> slipstream_shared::inspect::Changes {
+            let egui::InnerResponse { inner, .. } = egui::CollapsingHeader::new("Bone")
+                .show(
+                    ui,
+                    |ui| {
+                        let mut changes = slipstream_shared::inspect::Changes::default();
+                        ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.label("Index: ");
                                 ui.with_layout(
@@ -2051,12 +2077,7 @@ Bits: 10..11*/
                                             suffix: None,
                                         };
                                         let response = self.index.draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -2074,12 +2095,7 @@ Bits: 10..11*/
                                             suffix: None,
                                         };
                                         let response = self.id.draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -2097,12 +2113,7 @@ Bits: 10..11*/
                                             suffix: None,
                                         };
                                         let response = self.flags.draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -2122,12 +2133,7 @@ Bits: 10..11*/
                                         let response = self
                                             .billboard_setting
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -2147,12 +2153,7 @@ Bits: 10..11*/
                                         let response = self
                                             .billboard_reference
                                             .draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -2170,12 +2171,7 @@ Bits: 10..11*/
                                             suffix: None,
                                         };
                                         let response = self.translation.draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -2193,12 +2189,7 @@ Bits: 10..11*/
                                             suffix: Some(" °"),
                                         };
                                         let response = self.rotation.draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -2216,12 +2207,7 @@ Bits: 10..11*/
                                             suffix: None,
                                         };
                                         let response = self.scale.draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
@@ -2239,256 +2225,16 @@ Bits: 10..11*/
                                             suffix: None,
                                         };
                                         let response = self.bounding_volume.draw_value(ui, &CONFIG);
-                                        acc = match (acc.take(), response) {
-                                            (Some(acc), Some(x)) => Some(acc | x),
-                                            (Some(acc), None) => Some(acc),
-                                            (None, Some(x)) => Some(x),
-                                            (None, None) => None,
-                                        };
+                                        changes |= response;
                                     },
                                 );
                             });
                             ui.end_row();
-                            acc
-                        };
-                        Ok(())
-                    },
-                ),
-                ui,
-            );
-            res
-        }
-        fn draw_value(
-            &mut self,
-            ui: &mut egui::Ui,
-            cfg: &slipstream_shared::inspect::FieldConfig,
-        ) -> Option<egui::Response> {
-            egui::CollapsingHeader::new("Bone")
-                .show(
-                    ui,
-                    |ui| {
-                        let mut res = None;
-                        ui.vertical(|ui| {
-                            res = {
-                                let mut acc = None;
-                                ui.horizontal(|ui| {
-                                    ui.label("Index: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "index",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = self.index.draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Id: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "id",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = self.id.draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Flags: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "flags",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = self.flags.draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Billboard Setting: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "billboard_setting",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = self
-                                                .billboard_setting
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Billboard Reference: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "billboard_reference",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = self
-                                                .billboard_reference
-                                                .draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Translation: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "translation",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = self.translation.draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Rotation: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "ROTATION",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: Some(" °"),
-                                            };
-                                            let response = self.rotation.draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Scale: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "scale",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = self.scale.draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                ui.horizontal(|ui| {
-                                    ui.label("Bounding Volume: ");
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Min),
-                                        |ui| {
-                                            const CONFIG: slipstream_shared::inspect::FieldConfig = slipstream_shared::inspect::FieldConfig {
-                                                label: "bounding_volume",
-                                                category: None,
-                                                read_only: false,
-                                                range: None,
-                                                suffix: None,
-                                            };
-                                            let response = self.bounding_volume.draw_value(ui, &CONFIG);
-                                            acc = match (acc.take(), response) {
-                                                (Some(acc), Some(x)) => Some(acc | x),
-                                                (Some(acc), None) => Some(acc),
-                                                (None, Some(x)) => Some(x),
-                                                (None, None) => None,
-                                            };
-                                        },
-                                    );
-                                });
-                                ui.end_row();
-                                acc
-                            };
                         });
-                        res
+                        changes
                     },
-                )
-                .body_response
+                );
+            inner
         }
     }
     impl Bone {

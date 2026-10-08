@@ -175,10 +175,8 @@ impl FieldOpt {
 
             f.ignore == false && !bitfield_ignore
         });
-        let mut tokens = quote! {
-            let mut acc = None;
-        };
 
+        let mut tokens = proc_macro2::TokenStream::new();
         for field in fields {
             let name = field.name();
             let accessor = field.accessor(is_bitfield);
@@ -190,21 +188,12 @@ impl FieldOpt {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
                         const CONFIG: slipstream_shared::inspect::FieldConfig = #config;
                         let response = #accessor.draw_value(ui, &CONFIG);
-                        acc = match (acc.take(), response) {
-                            (Some(acc), Some(x)) => Some(acc | x),
-                            (Some(acc), None) => Some(acc),
-                            (None, Some(x)) => Some(x),
-                            (None, None) => None
-                        };
+                        changes |= response;
                     });
                 });
                 ui.end_row();
             });
         }
-
-        tokens.append_all(quote! {
-            acc
-        });
 
         tokens
     }
@@ -239,10 +228,7 @@ impl FieldVariant {
             .enumerate()
             .filter(|(_, f)| f.ignore == false);
 
-        let mut tokens = quote! {
-            let mut acc = None;
-        };
-
+        let mut tokens = proc_macro2::TokenStream::new();
         for (i, variant) in variants {
             let name = &names[i];
             let ident = &variant.ident;
@@ -253,18 +239,10 @@ impl FieldVariant {
 
                 if response.clicked() {
                     *self = Self::#ident;
+                    changes.changed = true;
                 }
-
-                acc = match acc.take() {
-                    Some(x) => Some(x | response),
-                    None => Some(response)
-                };
             });
         }
-
-        tokens.append_all(quote! {
-            acc
-        });
 
         tokens
     }
@@ -305,10 +283,10 @@ impl Input {
             /// This function generates an abstract representation of the current struct
             // #ty is specified twice because we need to both specify the generic and the impl we want to use.
             impl slipstream_shared::inspect::Inspect for #ident {
-                fn draw_inspect(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> Option<egui::Response> {
+                fn draw_inspect(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
                     use slipstream_shared::widgets;
 
-                    let mut res = None;
+                    let mut changes = slipstream_shared::inspect::Changes::default();
                     widgets::draw_collapsing_state(
                         widgets::CollapseDescriptor::new(
                             ui.id().with("CollapsingState"),
@@ -316,29 +294,25 @@ impl Input {
                             None,
                             widgets::HeaderAlignment::Right,
                             |ui| {
-                                res = {
-                                    #fields
-                                };
+                                #fields
 
                                 Ok(())
                             }
                         ),
                         ui
                     );
-
-                    res
+                    changes
                 }
 
-                fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> Option<egui::Response> {
-                    egui::CollapsingHeader::new(#name).show(ui, |ui| {
-                        let mut res = None;
+                fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
+                    let egui::CollapsingResponse { body_returned, .. } =egui::CollapsingHeader::new(#name).show(ui, |ui| {
+                        let mut changes = slipstream_shared::inspect::Changes::default();
                         ui.vertical(|ui| {
-                            res = {
-                                #fields
-                            };
+                            #fields
                         });
-                        res
-                    }).body_response
+                        changes
+                    });
+                    body_returned.unwrap_or_default()
                 }
             }
         });
@@ -418,23 +392,21 @@ impl Input {
             }
 
             impl slipstream_shared::inspect::Inspect for #ident {
-                fn draw_inspect(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> Option<egui::Response> {
+                fn draw_inspect(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
                     todo!();
                 }
 
-                fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> Option<egui::Response> {
+                fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
                     let curr_label = slipstream_shared::inspect::AsEnumLabel::as_label(self);
 
-                    let mut res = None;
+                    let mut changes = slipstream_shared::inspect::Changes::default();
                     egui::ComboBox::new(ui.id().with("ComboBox"), "")
                         .selected_text(curr_label)
                         .show_ui(ui, |ui| {
-                            res = {
-                                #fields
-                            };
+                            #fields
                         });
 
-                    res
+                    changes
                 }
             }
         })
