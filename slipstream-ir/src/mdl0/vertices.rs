@@ -75,10 +75,10 @@ impl VertexBufData {
 
 /// A vertex buffer.
 ///
-/// These buffers are not useful on their own. The model's [`Shape`]s contain setup and
+/// These buffers are not useful on their own. The model's [`Polygon`]s contain setup and
 /// draw calls that use indices into these buffers.
 ///
-/// [`Shape`]: crate::format::mdl0::shapes::Shape
+/// [`Polygon`]: crate::format::mdl0::polygon::Polygon
 #[derive(Debug, Clone, PartialEq)]
 pub struct VertexBuffer {
     /// The MDL0 section file header.
