@@ -10,6 +10,7 @@ use crate::{
     icons::NodeIconsExt,
     panes::{ContentSignature, Pane, PaneAction, PaneId, RequestNewPane},
     reg_icon,
+    shared::widgets::{self, CollapseDescriptor, HeaderIcons},
 };
 
 /// The outliner displays a file tree.
@@ -49,7 +50,7 @@ impl OutlinerPane {
         ui.make_persistent_id(salt)
     }
 
-    fn draw_context_menu(&self, node: &IrNode, ui: &mut egui::Ui) -> SlipstreamResult<()> {
+    fn draw_context_menu(&self, node: &IrNode, ui: &mut egui::Ui) {
         if ui.button("Rename").clicked() {
             todo!("rename");
         }
@@ -60,7 +61,8 @@ impl OutlinerPane {
                 self.cmd_sender
                     .send(PaneAction::RequestNewPane(RequestNewPane::Viewer {
                         viewed: Some(node.key()),
-                    }))?;
+                    }))
+                    .expect("failed to send context command");
             }
         }
 
@@ -68,20 +70,43 @@ impl OutlinerPane {
             self.cmd_sender
                 .send(PaneAction::RequestNewPane(RequestNewPane::Outliner {
                     root: node.key(),
-                }))?;
+                }))
+                .expect("failed to send context command");
         }
 
         if ui.button("Properties").clicked() {
             self.cmd_sender
                 .send(PaneAction::RequestNewPane(RequestNewPane::Inspector {
                     inspected: node.key(),
-                }))?;
+                }))
+                .expect("failed to send context command");
         }
-
-        Ok(())
     }
 
     fn draw_directory_node(&self, node: &IrNode, ui: &mut egui::Ui) -> SlipstreamResult<()> {
+        widgets::draw_collapsing_state(
+            CollapseDescriptor::new(
+                Self::get_state_id(node.key(), ui),
+                node.label.clone().into(),
+                Some(HeaderIcons {
+                    open: node.ty.open_icon(),
+                    closed: node.ty.closed_icon(),
+                }),
+                |ui| {
+                    // Render the children of this node.
+                    for &child in node.children_keys() {
+                        // Then start the whole file tree process over again, but for this sub node.
+                        // `ui` needs to be reborrowed to ensure it does not move.
+                        self.draw_file_tree(child, &mut *ui)?;
+                    }
+
+                    Ok(())
+                },
+                |ui| self.draw_context_menu(node, ui),
+            ),
+            ui,
+        );
+
         let state_id = Self::get_state_id(node.key(), ui);
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
@@ -131,13 +156,9 @@ impl OutlinerPane {
                 }
 
                 // We also need separate context menus for the row and label responses, although they both display the same content.
-                row_response.context_menu(|ui| {
-                    self.draw_context_menu(node, ui).unwrap();
-                });
+                row_response.context_menu(|ui| self.draw_context_menu(node, ui));
 
-                label_response.context_menu(|ui| {
-                    self.draw_context_menu(node, ui).unwrap();
-                });
+                label_response.context_menu(|ui| self.draw_context_menu(node, ui));
             });
 
             if ui.rect_contains_pointer(row_rect) {
@@ -183,9 +204,7 @@ impl OutlinerPane {
                     .expect("failed to send inspector pane open request");
             }
 
-            response.context_menu(|ui| {
-                self.draw_context_menu(node, ui).unwrap();
-            });
+            response.context_menu(|ui| self.draw_context_menu(node, ui));
         });
 
         Ok(())
