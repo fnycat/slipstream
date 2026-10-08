@@ -201,15 +201,8 @@ impl ModelContents<'_> {
 
         impl Visitor for BoneVisitor<'_> {
             fn visit_bone(&mut self, bone: VisitorContext<'_, Bone>) -> ControlFlow<()> {
-                let m = &bone.transform_matrix;
-                let mat = glam::mat4(
-                    glam::vec4(m[0], m[4], m[8], 0.0),
-                    glam::vec4(m[1], m[5], m[9], 0.0),
-                    glam::vec4(m[2], m[6], m[10], 0.0),
-                    glam::vec4(m[3], m[7], m[11], 1.0),
-                );
-
-                self.transforms.insert(BoneIndex(bone.id as u16), mat);
+                self.transforms
+                    .insert(BoneIndex(bone.id as u16), bone.transform_matrix);
 
                 ControlFlow::Continue(())
             }

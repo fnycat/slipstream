@@ -10,9 +10,9 @@ use slipstream_shared::error::{AssertFailed, SlipstreamResult};
 
 use crate::cmd::AppCommandChannel;
 use crate::decorations::{self, WindowState};
+use crate::inspector::InspectorPane;
 use crate::pages::RoutablePage;
 use crate::pages::intro::IntroPage;
-use crate::panes::inspector::InspectorPane;
 use crate::panes::log::LogPane;
 use crate::panes::outliner::OutlinerPane;
 use crate::panes::{Pane, PaneAction, PaneBehavior, RequestNewPane};

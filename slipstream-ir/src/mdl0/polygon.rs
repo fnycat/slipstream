@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::{
     cursor::{MutCursor, RefCursor},
     error::{CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult},

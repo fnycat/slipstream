@@ -4,8 +4,11 @@ use crate::node::{
 };
 use crate::visitor::{Visitor, VisitorContextNode};
 use parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock};
-use slipstream_shared::error::InvalidInputError;
 use slipstream_shared::{SlipstreamError, SlipstreamResult};
+use slipstream_shared::{
+    error::InvalidInputError,
+    inspect::{FieldConfig, Inspect},
+};
 use std::ops::ControlFlow;
 use std::{
     collections::HashMap,
@@ -22,6 +25,12 @@ use std::{
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct IrNodeKey(NonZeroU64);
+
+impl Inspect for IrNodeKey {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+        ui.label(format!("{self:?}"))
+    }
+}
 
 impl From<IrNodeKey> for NonZeroU64 {
     fn from(value: IrNodeKey) -> Self {

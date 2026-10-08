@@ -99,8 +99,13 @@ impl<'a, T: 'static> DerefMut for VisitorContextMut<'a, T> {
     }
 }
 
+/// Visitor for node-level data. See [`PropertyVisitor`] for a more fine-grained visitor
+/// that can operate on struct fields themselves.
+///
 /// Returning `ControlFlow::Break` from the visitor will end the walk in the current branch.
 /// This means that further children of the node will not be visited.
+///
+/// [`PropertyVisitor`]: slipstream_shared::inspect::PropertyVisitor
 #[allow(unused_variables)]
 pub trait Visitor {
     /// Whether to stop traversing the tree when an unimplemented visitor method is encountered.

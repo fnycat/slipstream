@@ -2,15 +2,14 @@ use std::ops::ControlFlow;
 
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::{
     cursor::{MutCursor, RefCursor},
     error::{CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult},
+    inspect::{FieldConfig, Inspect},
     try_unwrap,
 };
 
-use crate::visitor::{
-    VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut,
-};
 use crate::{
     encoding::ReadArrayExt,
     index::IndexGroup,
@@ -20,7 +19,10 @@ use crate::{
     },
     visitor::{Visitable, Visitor},
 };
-use crate::{mdl0::SectionHeader, node::node::IrNode};
+use crate::{
+    util::Box3,
+    visitor::{VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut},
+};
 
 #[bitfield(u32)]
 #[derive(PartialEq, Eq)]
@@ -38,6 +40,12 @@ pub struct BoneFlags {
     pub is_billboard_child: bool,
     #[bits(21)]
     pub _unused: u32,
+}
+
+impl Inspect for BoneFlags {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+        ui.label("bone flags")
+    }
 }
 
 /// Configures the way billboarding is used for this object.
@@ -107,6 +115,12 @@ impl BillboardSetting {
     }
 }
 
+impl Inspect for BillboardSetting {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+        ui.label("billboard setting")
+    }
+}
+
 /// A bone that already has all its data deserialized but without resolved references.
 ///
 /// When constructing the skeleton, a new [`Bone`] is created that contains proper references
@@ -120,19 +134,18 @@ pub struct UnresolvedBone {
     /// Configures how billboarding is used for this bone.
     pub billboard_setting: BillboardSetting,
     pub billboard_transform: u32,
-    pub scaling_vector: [f32; 3],
-    pub rotation_vector: [f32; 3],
-    pub translation_vector: [f32; 3],
-    pub bounding_volume_min: [f32; 3],
-    pub bounding_volume_max: [f32; 3],
+    pub scaling_vector: glam::Vec3,
+    pub rotation_vector: glam::Vec3,
+    pub translation_vector: glam::Vec3,
+    pub bounding_volume: Box3,
     /// The offset in bytes to the parent of this bone.
     pub parent_offset: i32,
     pub first_child_offset: i32,
     pub next_sibling_offset: i32,
     pub previous_sibling_offset: i32,
     pub user_data_offset: i32,
-    pub transform_matrix: [f32; 12],
-    pub inverse_matrix: [f32; 12],
+    pub transform_matrix: glam::Mat4,
+    pub inverse_matrix: glam::Mat4,
 }
 
 impl UnresolvedBone {
@@ -149,18 +162,31 @@ impl UnresolvedBone {
         let billboard_setting = BillboardSetting::deserialize(reader)?;
         let billboard_transform = reader.read_u32::<BigEndian>()?;
 
-        let scaling_vector = reader.read_f32_array::<3, BigEndian>()?;
-        let rotation_vector = reader.read_f32_array::<3, BigEndian>()?;
-        let translation_vector = reader.read_f32_array::<3, BigEndian>()?;
-        let bounding_volume_min = reader.read_f32_array::<3, BigEndian>()?;
-        let bounding_volume_max = reader.read_f32_array::<3, BigEndian>()?;
+        let scaling_vector = glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?);
+        let rotation_vector = glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?);
+        let translation_vector = glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?);
+        let bounding_volume = Box3::deserialize(reader)?;
         let parent_offset = reader.read_i32::<BigEndian>()?;
         let first_child_offset = reader.read_i32::<BigEndian>()?;
         let next_sibling_offset = reader.read_i32::<BigEndian>()?;
         let previous_sibling_offset = reader.read_i32::<BigEndian>()?;
         let user_data_offset = reader.read_i32::<BigEndian>()?;
-        let transform_matrix = reader.read_f32_array::<12, BigEndian>()?;
-        let inverse_matrix = reader.read_f32_array::<12, BigEndian>()?;
+
+        let m = reader.read_f32_array::<12, BigEndian>()?;
+        let transform_matrix = glam::mat4(
+            glam::vec4(m[0], m[4], m[8], 0.0),
+            glam::vec4(m[1], m[5], m[9], 0.0),
+            glam::vec4(m[2], m[6], m[10], 0.0),
+            glam::vec4(m[3], m[7], m[11], 1.0),
+        );
+
+        let m = reader.read_f32_array::<12, BigEndian>()?;
+        let inverse_matrix = glam::mat4(
+            glam::vec4(m[0], m[4], m[8], 0.0),
+            glam::vec4(m[1], m[5], m[9], 0.0),
+            glam::vec4(m[2], m[6], m[10], 0.0),
+            glam::vec4(m[3], m[7], m[11], 1.0),
+        );
 
         Ok(Self {
             bone_start: start as u32,
@@ -172,8 +198,7 @@ impl UnresolvedBone {
             scaling_vector,
             rotation_vector,
             translation_vector,
-            bounding_volume_min,
-            bounding_volume_max,
+            bounding_volume,
             parent_offset,
             first_child_offset,
             next_sibling_offset,
@@ -192,7 +217,7 @@ pub struct LabeledBone {
     pub data: UnresolvedBone,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Inspect)]
 pub struct Bone {
     /// Regular MDL0 index of this section. As bones are stored as a linear array of "files" within the MDL0 file,
     /// these indices correspond to the index of this bone into this array.
@@ -202,15 +227,19 @@ pub struct Bone {
     pub flags: BoneFlags,
     pub billboard_setting: BillboardSetting,
     pub billboard_reference: Option<IrNodeKey>,
-    pub scaling_vector: [f32; 3],
-    pub rotation_vector: [f32; 3],
-    pub translation_vector: [f32; 3],
-    pub bounding_volume_min: [f32; 3],
-    pub bounding_volume_max: [f32; 3],
+    pub translation: glam::Vec3,
+    #[inspect(degrees)]
+    pub rotation: glam::Vec3,
+    pub scale: glam::Vec3,
+    pub bounding_volume: Box3,
+    #[inspect(ignore)]
     pub parent: Option<IrNodeKey>,
+    #[inspect(ignore)]
     pub user_data_offset: i32,
-    pub transform_matrix: [f32; 12],
-    pub inverse_matrix: [f32; 12],
+    #[inspect(ignore)]
+    pub transform_matrix: glam::Mat4,
+    #[inspect(ignore)]
+    pub inverse_matrix: glam::Mat4,
 }
 
 impl Bone {
@@ -227,11 +256,10 @@ impl Bone {
             flags: bone.flags.clone(),
             billboard_setting: bone.billboard_setting,
             billboard_reference: billboard_id,
-            scaling_vector: bone.scaling_vector,
-            rotation_vector: bone.rotation_vector,
-            translation_vector: bone.translation_vector,
-            bounding_volume_min: bone.bounding_volume_min,
-            bounding_volume_max: bone.bounding_volume_max,
+            scale: bone.scaling_vector,
+            rotation: bone.rotation_vector,
+            translation: bone.translation_vector,
+            bounding_volume: bone.bounding_volume,
             parent: parent_id,
             user_data_offset: bone.user_data_offset,
             transform_matrix: bone.transform_matrix,

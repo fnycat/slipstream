@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+egui.workspace = true
+glam.workspace = true
+
 eframe = "0.36.2"
 futures = "0.3.34"
+smallvec = "1.16.2"
 thiserror = "2.0.21"

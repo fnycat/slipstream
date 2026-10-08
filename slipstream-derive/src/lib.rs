@@ -1,4 +1,6 @@
+use darling::ast::Data;
 use darling::{FromDeriveInput, FromField};
+use heck::ToTitleCase;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{ToTokens, TokenStreamExt, quote};
@@ -11,9 +13,10 @@ use syn::{PathSegment, Result};
 #[darling(attributes(inspect))]
 struct FieldOpt {
     pub ident: Option<Ident>,
-    pub vis: Visibility,
     pub ty: Type,
 
+    #[darling(default)]
+    pub degrees: bool,
     #[darling(default)]
     pub min: Option<syn::Expr>,
     #[darling(default)]
@@ -23,7 +26,7 @@ struct FieldOpt {
     #[darling(default)]
     pub category: Option<String>,
     #[darling(default)]
-    pub hidden: Option<bool>,
+    pub ignore: bool,
     #[darling(default)]
     pub rename: Option<String>,
     #[darling(default)]
@@ -31,13 +34,29 @@ struct FieldOpt {
 }
 
 impl FieldOpt {
-    fn construct_field_value(&self) -> proc_macro2::TokenStream {
+    pub fn accessor(&self) -> Ident {
+        match &self.ident {
+            Some(x) => x.clone(),
+            None => todo!(),
+        }
+    }
+
+    pub fn name(&self) -> String {
+        match (&self.rename, &self.ident) {
+            (Some(rename), _) => rename.to_title_case(),
+            (None, Some(ident)) => ident.to_string().to_title_case(),
+            (None, None) => String::from("<unknown>"),
+        }
+    }
+
+    pub fn config(&self) -> proc_macro2::TokenStream {
         let Self {
             ident,
             ty,
             read_only,
             min,
             max,
+            degrees,
             ..
         } = self;
 
@@ -90,57 +109,34 @@ impl FieldOpt {
             },
         };
 
-        quote! {
-            {
-                use slipstream_shared::inspect::{AsFieldValue, FieldConfig};
-                <#ty as AsFieldValue>::as_field_value(&mut self.#ident, &FieldConfig {
-                    range: #range,
-                    read_only: #read_only
-                })
+        let label = if let Some(name) = &self.rename {
+            quote! {
+                #name
             }
-        }
-    }
-}
+        } else {
+            quote! {
+                stringify!(#ident)
+            }
+        };
 
-impl ToTokens for FieldOpt {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self {
-            ident,
-            ty,
-            vis,
-            category,
-            hidden,
-            rename,
-            with,
-            ..
-        } = self;
+        let category = if let Some(category) = &self.category {
+            quote! {
+                Some(#category)
+            }
+        } else {
+            quote! {
+                None
+            }
+        };
 
-        let is_hidden = hidden.unwrap_or(!matches!(vis, Visibility::Public(_)));
-        if !is_hidden {
-            let name = match rename {
-                Some(rename) => quote! { #rename },
-                None => {
-                    let ident = ident
-                        .clone()
-                        .unwrap_or_else(|| Ident::new("<unknown>", Span::call_site()));
-
-                    quote! { stringify!(#ident) }
-                }
-            };
-
-            let field_value = self.construct_field_value();
-            let category = category
-                .as_deref()
-                .map(|c| quote! { Some(#c) })
-                .unwrap_or_else(|| quote! { None });
-
-            tokens.append_all(quote! {
-                slipstream_shared::inspect::InspectFieldHelper {
-                    label: #name,
-                    category: #category,
-                    value: #field_value
-                }
-            });
+        quote! {
+            slipstream_shared::inspect::FieldConfig {
+                label: #label,
+                category: #category,
+                read_only: #read_only,
+                range: #range,
+                degrees: #degrees
+            }
         }
     }
 }
@@ -148,11 +144,14 @@ impl ToTokens for FieldOpt {
 #[derive(Debug, darling::FromVariant)]
 struct FieldVariant {
     pub ident: Ident,
-    pub vis: Visibility,
 
     #[darling(default)]
     pub rename: Option<String>,
+    #[darling(default)]
+    pub ignore: bool,
 }
+
+impl FieldVariant {}
 
 #[derive(Debug, FromDeriveInput)]
 #[darling(attributes(inspect))]
@@ -164,42 +163,92 @@ struct Input {
     pub label: Option<String>,
 }
 
-impl ToTokens for Input {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { ident, data, label } = self;
+impl Input {
+    fn fields_to_tokens(&self, fields: &[FieldOpt]) -> proc_macro2::TokenStream {
+        let fields = fields.iter().filter(|f| f.ignore == false);
+        let mut tokens = quote! {
+            let mut inner_response = None;
+        };
 
-        let label = label
-            .as_ref()
-            .map(|s| Ident::new(s, Span::call_site()))
-            .unwrap_or(ident.clone());
+        for field in fields {
+            let name = field.name();
+            let accessor = field.accessor();
+            let config = field.config();
 
-        let data = data.as_struct().expect("input was not a struct");
-        if data.style != darling::ast::Style::Struct {
-            panic!(
-                "{}",
-                darling::error::Error::unsupported_shape("non-field struct")
-            );
+            tokens.append_all(quote! {
+                ui.horizontal(|ui| {
+                    ui.label(concat!(#name, ": "));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                        if let Some(res) = &mut inner_response {
+                            *res |= self.#accessor.draw_value(ui, &#config);
+                        } else {
+                            inner_response = Some(self.#accessor.draw_value(ui, &#config));
+                        }
+                    });
+                });
+                ui.end_row();
+            });
         }
 
-        let fields = &data.fields;
+        tokens.append_all(quote! {
+            inner_response.expect("property window response was empty")
+        });
 
+        tokens
+    }
+
+    fn struct_to_tokens(&self, fields: &[FieldOpt], tokens: &mut proc_macro2::TokenStream) {
+        let Self { ident, label, .. } = self;
+
+        let fields = self.fields_to_tokens(&fields);
         tokens.append_all(quote! {
             /// Automatically generated by the [`Inspect`] derive macro.
             ///
             /// This function generates an abstract representation of the current struct
             // #ty is specified twice because we need to both specify the generic and the impl we want to use.
             impl slipstream_shared::inspect::Inspect for #ident {
-                #[inline]
-                fn label(&self) -> &str {
-                    stringify!(#ident)
+                fn draw_inspect(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> egui::Response {
+                    egui::Grid::new(ui.id().with(concat!(stringify!(#ident), "_properties")))
+                        .num_columns(2)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            #fields
+                        }).response
                 }
 
-                #[inline]
-                fn draw(&mut self, draw_fn: &mut dyn Fn(&mut [slipstream_shared::inspect::InspectFieldHelper<'_>])) {
-                    draw_fn(&mut [#(#fields),*]);
+                fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> egui::Response {
+                    let egui::InnerResponse { inner, .. } = ui.vertical(|ui| {
+                        #fields
+                    });
+                    inner
                 }
             }
         });
+    }
+
+    fn enum_to_tokens(&self, variants: &[FieldVariant], tokens: &mut proc_macro2::TokenStream) {
+        let Self { ident, label, .. } = self;
+
+        tokens.append_all(quote! {
+            impl slipstream_shared::inspect::Inspect for #ident {
+                fn draw_inspect(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> egui::Response {
+
+                }
+
+                fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> egui::Response {
+                    egui::
+                }
+            }
+        })
+    }
+}
+
+impl ToTokens for Input {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match &self.data {
+            Data::Struct(data) => self.struct_to_tokens(&data.fields, tokens),
+            Data::Enum(data) => self.enum_to_tokens(&data, tokens),
+        }
     }
 }
 
@@ -211,15 +260,6 @@ pub fn derive_inspect(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
     let input = Input::from_derive_input(&input).expect("failed to parse input");
     let tokens = input.into_token_stream();
-
-    #[cfg(debug_assertions)]
-    {
-        if let Ok(parsed) = syn::parse2::<syn::File>(tokens.clone()) {
-            eprintln!("{}", prettyplease::unparse(&parsed));
-        } else {
-            eprintln!("RAW OUTPUT: {}", tokens.to_string());
-        }
-    }
 
     TokenStream::from(tokens)
 }

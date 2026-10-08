@@ -1,5 +1,6 @@
 use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::{
     cursor::RefCursor,
     error::{CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult},
@@ -7,7 +8,7 @@ use slipstream_shared::{
 
 use crate::{encoding::ReadArrayExt, mdl0::NormalFormat};
 
-#[derive(Debug, Default, Copy, Clone, PartialEq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Inspect)]
 pub struct Box3 {
     pub min: glam::Vec3,
     pub max: glam::Vec3,
