@@ -1,18 +1,22 @@
-use crate::node::{
-    guard::ContentReadGuard,
-    node::{ContentSlot, IrNode, IrNodeType},
-};
-use crate::visitor::{Visitor, VisitorContextNode};
 use parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock};
-use slipstream_shared::{SlipstreamError, SlipstreamResult};
 use slipstream_shared::{
+    SlipstreamError, SlipstreamResult,
     error::InvalidInputError,
-    inspect::{FieldConfig, Inspect},
+    inspect::{Changes, FieldConfig, Inspect},
 };
-use std::ops::ControlFlow;
+
+use crate::{
+    node::{
+        guard::ContentReadGuard,
+        node::{ContentSlot, IrNode, IrNodeType},
+    },
+    visitor::{Visitor, VisitorContextNode},
+};
+
 use std::{
     collections::HashMap,
     num::NonZeroU64,
+    ops::ControlFlow,
     sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -27,8 +31,8 @@ use std::{
 pub struct IrNodeKey(NonZeroU64);
 
 impl Inspect for IrNodeKey {
-    fn draw_value(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Option<egui::Response> {
-        Some(ui.label(format!("{self:?}")))
+    fn draw_value(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
+        ui.label(format!("{self:?}")).into()
     }
 }
 
@@ -136,22 +140,6 @@ impl IrArena {
         self.map.read().get(&key).map(|lock| lock.read_arc())
     }
 
-    pub fn visit(&self, key: IrNodeKey, visitor: &mut dyn Visitor) -> SlipstreamResult<()> {
-        let guard = self.map.read();
-        guard
-            .get(&key)
-            .map(|lock| {
-                let guard = lock.read();
-                if let Some(content) = guard.contents.get_or_try_init()? {
-                    let _ = content.accept(VisitorContextNode::from(&*guard), visitor);
-                }
-
-                Ok::<_, SlipstreamError>(())
-            })
-            .transpose()?;
-        Ok(())
-    }
-
     /// Loads the given node and runs `inspect_fn` with a shared reference to it.
     pub fn inspect<T, F>(&self, key: IrNodeKey, inspect_fn: F) -> Option<T>
     where
@@ -174,6 +162,22 @@ impl IrArena {
             let mut guard = lock.write();
             update_fn(&mut guard)
         })
+    }
+
+    pub fn visit(&self, key: IrNodeKey, visitor: &mut dyn Visitor) -> SlipstreamResult<()> {
+        let guard = self.map.read();
+        guard
+            .get(&key)
+            .map(|lock| {
+                let guard = lock.read();
+                if let Some(content) = guard.contents.get_or_try_init()? {
+                    let _ = content.accept(VisitorContextNode::from(&*guard), visitor);
+                }
+
+                Ok::<_, SlipstreamError>(())
+            })
+            .transpose()?;
+        Ok(())
     }
 
     fn walk_inner(

@@ -11,3 +11,5 @@ eframe = "0.36.2"
 futures = "0.3.34"
 smallvec = "1.16.2"
 thiserror = "2.0.21"
+egui-phosphor = { version = "0.14.0", features = ["subset"] }
+parking_lot = { version = "0.12.5", features = ["arc_lock"] }

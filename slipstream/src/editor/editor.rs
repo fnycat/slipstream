@@ -89,23 +89,21 @@ impl Editor {
 
         let (tx, rx) = mpsc::channel();
 
-        let container = egui_tiles::Linear::new(egui_tiles::LinearDir::Horizontal, Vec::new());
+        let outliner = OutlinerPane::new(tx.clone(), root_node, Arc::clone(&arena));
+        let viewer = ViewerPane::new(tx.clone(), None, Arc::clone(&arena), render_state.clone())?;
+
+        let tile_ids = [tiles.insert_pane(outliner), tiles.insert_pane(viewer)];
+
+        let container =
+            egui_tiles::Linear::new_binary(egui_tiles::LinearDir::Horizontal, tile_ids, 0.2);
+
         let container_id = tiles.insert_container(container);
 
-        let outliner = OutlinerPane::new(tx.clone(), root_node, Arc::clone(&arena));
+        // let egui_tiles::Tile::Container(grid) = tiles.get_mut(container_id).unwrap() else {
+        //     unreachable!()
+        // };
 
-        let viewer = ViewerPane::new(tx.clone(), None, Arc::clone(&arena), render_state.clone());
-
-        let panes = [outliner, viewer?]
-            .into_iter()
-            .map(|pane| tiles.insert_pane(pane))
-            .collect::<Vec<_>>();
-
-        let egui_tiles::Tile::Container(grid) = tiles.get_mut(container_id).unwrap() else {
-            unreachable!()
-        };
-
-        panes.iter().for_each(|&id| grid.add_child(id));
+        // panes.iter().for_each(|&id| grid.add_child(id));
 
         let pane_behavior = PaneBehavior {
             receiver: rx,
