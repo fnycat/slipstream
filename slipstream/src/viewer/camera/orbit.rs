@@ -61,11 +61,10 @@ impl CameraController for OrbitCamera {
         let up = self.orientation * WORLD_UP;
         let view_matrix = glam::camera::lh::view::look_at_mat4(eye, self.lookat, up);
 
-        let proj_matrix = glam::camera::lh::proj::directx::perspective(
+        let proj_matrix = glam::camera::lh::proj::directx::perspective_infinite_reverse(
             self.vertical_fov,
             self.aspect_ratio,
             NEAR_PLANE,
-            FAR_PLANE,
         );
 
         proj_matrix * view_matrix

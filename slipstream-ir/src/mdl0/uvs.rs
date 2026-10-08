@@ -6,7 +6,7 @@ use slipstream_shared::{
     error::{CorruptionError, SlipstreamResult},
 };
 
-use crate::mdl0::section::DeserializeContents;
+use crate::mdl0::{SectionHeader, section::DeserializeContents};
 use crate::node::node::IrNode;
 use crate::visitor::{
     VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut,
@@ -45,7 +45,7 @@ impl UvBufData {
 /// Stores UVs (texture coordinates).
 #[derive(Debug, Clone, PartialEq)]
 pub struct UvBuffer {
-    pub index: u32,
+    pub header: SectionHeader,
     /// The format of a single component in the buffer.
     ///
     /// The deserializer always converts the data to floats, but the original
@@ -103,12 +103,7 @@ impl DeserializeContents for UvBuffer {
 
     #[tracing::instrument(skip_all)]
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        let _length = reader.read_u32::<BigEndian>()?;
-        let mdl0_offset_start = reader.position();
-        let mdl0_offset = reader.read_i32::<BigEndian>()?;
-        let data_offset = reader.read_i32::<BigEndian>()?;
-        let _name_offset = reader.read_i32::<BigEndian>()?;
-        let index = reader.read_u32::<BigEndian>()?;
+        let header = SectionHeader::deserialize(reader)?;
         let component_count = reader.read_u32::<BigEndian>()?;
         let format = VertexFormat::deserialize(reader)?;
         let divisor = reader.read_u8()?;
@@ -118,9 +113,7 @@ impl DeserializeContents for UvBuffer {
         let bounding_volume_min = glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?);
         let bounding_volume_max = glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?);
 
-        let header_start = mdl0_offset_start as i64 + mdl0_offset as i64;
-        let uv_start = header_start as i64 + data_offset as i64;
-        reader.set_position(uv_start as u64);
+        reader.set_position(header.get_data_start());
 
         let uvs = match component_count {
             COMPONENTS_S => UvBufData::S(deserialize_scalar_data(
@@ -145,7 +138,7 @@ impl DeserializeContents for UvBuffer {
         };
 
         Ok(Self {
-            index,
+            header,
             format,
             stride,
             divisor,

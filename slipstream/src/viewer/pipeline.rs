@@ -477,27 +477,27 @@ impl ViewerPipeline {
             (glam::Vec3::ZERO, 5.0)
         };
 
-        // let camera = Camera::Orbit(OrbitCamera {
-        //     radius,
-        //     lookat,
-        //     sensitivity: 0.01,
-        //     vertical_fov: 90.0,
-        //     move_speed: camera_move_speed,
-        //     aspect_ratio: viewport_size.x as f32 / viewport_size.y as f32,
-        //     zoom_sensitivity: 0.01,
-        //     last_update: Instant::now(),
-        //     orientation: glam::Quat::default(),
-        // });
-
-        let camera = Camera::Free(FreeCamera {
-            last_update: Instant::now(),
-            position: glam::Vec3::ZERO,
+        let camera = Camera::Orbit(OrbitCamera {
+            radius,
+            lookat,
             sensitivity: 0.01,
-            move_speed: camera_move_speed,
-            orientation: glam::Quat::default(),
             vertical_fov: 90.0,
+            move_speed: camera_move_speed,
             aspect_ratio: viewport_size.x as f32 / viewport_size.y as f32,
+            zoom_sensitivity: 0.1,
+            last_update: Instant::now(),
+            orientation: glam::Quat::default(),
         });
+
+        // let camera = Camera::Free(FreeCamera {
+        //     last_update: Instant::now(),
+        //     position: glam::Vec3::ZERO,
+        //     sensitivity: 0.01,
+        //     move_speed: camera_move_speed,
+        //     orientation: glam::Quat::default(),
+        //     vertical_fov: 90.0,
+        //     aspect_ratio: viewport_size.x as f32 / viewport_size.y as f32,
+        // });
 
         let camera_state = CameraState::new(camera, &graphics_state, viewport_size);
         let screen_texture_state = ScreenTextureState::new(&graphics_state, viewport_size);
