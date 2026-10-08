@@ -92,7 +92,7 @@ impl<T: Inspect + Copy, F: FnMut(T)> Inspect for BitFieldWrapper<T, F> {
 
 impl Inspect for bool {
     fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
-        let checkbox = egui::Checkbox::new(self, cfg.label);
+        let checkbox = egui::Checkbox::new(self, "");
         Some(ui.add(checkbox))
     }
 }
