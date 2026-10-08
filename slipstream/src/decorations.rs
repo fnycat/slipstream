@@ -1,9 +1,8 @@
-use slipstream_shared::error::SlipstreamResult;
+use slipstream_shared::{error::SlipstreamResult, reg_icon};
 
 use crate::{
     cmd::AppCommandChannel,
     config::APP_TITLE,
-    icons::icons,
     pages::{info::InfoPage, settings::SettingsPage},
     shared::GraphicsState,
 };
@@ -154,7 +153,7 @@ pub fn draw_title_buttons(ui: &mut egui::Ui) {
         ui.visuals_mut().widgets.inactive.weak_bg_fill = layout_bg;
         ui.spacing_mut().button_padding = egui::vec2(16.0, 8.0);
 
-        let close_button = egui::Button::new(icons::regular::X).corner_radius(0.0);
+        let close_button = egui::Button::new(reg_icon!(X)).corner_radius(0.0);
         if ui.add(close_button).clicked() {
             ui.send_viewport_cmd(egui::ViewportCommand::Close);
         }
@@ -168,13 +167,13 @@ pub fn draw_title_buttons(ui: &mut egui::Ui) {
                 ui.send_viewport_cmd(egui::ViewportCommand::Maximized(false));
             }
         } else {
-            let maximize_button = egui::Button::new(icons::regular::SQUARE).corner_radius(0.0);
+            let maximize_button = egui::Button::new(reg_icon!(SQUARE)).corner_radius(0.0);
             if ui.add(maximize_button).clicked() {
                 ui.send_viewport_cmd(egui::ViewportCommand::Maximized(true));
             }
         }
 
-        let minimize_button = egui::Button::new(icons::regular::MINUS).corner_radius(0.0);
+        let minimize_button = egui::Button::new(reg_icon!(MINUS)).corner_radius(0.0);
         if ui.add(minimize_button).clicked() {
             ui.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
         }
@@ -301,7 +300,7 @@ pub fn draw_tool_buttons(
                 ui.spacing_mut().button_padding = egui::vec2(10.0, 10.0);
                 ui.spacing_mut().item_spacing = egui::vec2(5.0, 5.0);
 
-                let power_button = egui::Button::new(icons::regular::POWER);
+                let power_button = egui::Button::new(reg_icon!(POWER));
                 if ui
                     .add(power_button)
                     .on_hover_text_at_pointer("Quit")
@@ -312,7 +311,7 @@ pub fn draw_tool_buttons(
 
                 if ui.theme() == egui::Theme::Dark {
                     if ui
-                        .button(icons::regular::SUN)
+                        .button(reg_icon!(SUN))
                         .on_hover_text("Switch to light theme")
                         .clicked()
                     {
@@ -320,7 +319,7 @@ pub fn draw_tool_buttons(
                     }
                 } else {
                     if ui
-                        .button(icons::regular::MOON)
+                        .button(reg_icon!(MOON))
                         .on_hover_text("Switch to dark theme")
                         .clicked()
                     {
@@ -329,7 +328,7 @@ pub fn draw_tool_buttons(
                 }
 
                 if ui
-                    .button(icons::regular::GEAR_FINE)
+                    .button(reg_icon!(GEAR_FINE))
                     .on_hover_text("Open settings")
                     .clicked()
                 {
@@ -338,7 +337,7 @@ pub fn draw_tool_buttons(
                 }
 
                 if ui
-                    .button(icons::regular::INFO)
+                    .button(reg_icon!(INFO))
                     .on_hover_text("Open app info")
                     .clicked()
                 {
@@ -346,7 +345,7 @@ pub fn draw_tool_buttons(
                 }
 
                 if ui
-                    .button(icons::regular::GITHUB_LOGO)
+                    .button(reg_icon!(GITHUB_LOGO))
                     .on_hover_text("Open the project on GitHub")
                     .clicked()
                 {

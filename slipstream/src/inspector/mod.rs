@@ -1,5 +1,4 @@
 use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
-use crate::reg_icon;
 use slipstream_ir::mdl0::{
     Bone, Definitions, MaterialBuffer, Model, Polygon, TextureLinks, VertexBuffer,
 };

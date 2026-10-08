@@ -1,28 +1,58 @@
-use slipstream_shared::SlipstreamResult;
+use crate::SlipstreamResult;
 
 pub struct HeaderIcons {
     pub open: egui::RichText,
     pub closed: egui::RichText,
 }
 
+pub enum HeaderAlignment {
+    Left,
+    Right,
+}
+
 pub struct CollapseDescriptor<B, C> {
     state_id: egui::Id,
     icons: Option<HeaderIcons>,
     label: egui::RichText,
+    header_alignment: HeaderAlignment,
 
     on_body: B,
-    on_ctx_menu: C,
+    on_ctx_menu: Option<C>,
 }
 
-impl<B, C> CollapseDescriptor<B, C>
+// Set `C` to a default function pointer so we don't have to explicitly name the type.
+impl<B> CollapseDescriptor<B, fn(&mut egui::Ui)>
 where
-    B: Fn(&mut egui::Ui) -> SlipstreamResult<()>,
-    C: Fn(&mut egui::Ui),
+    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
 {
     pub fn new(
         state_id: egui::Id,
         label: egui::RichText,
         icons: Option<HeaderIcons>,
+        header_alignment: HeaderAlignment,
+        on_body: B,
+    ) -> Self {
+        Self {
+            state_id,
+            label,
+            icons,
+            header_alignment,
+            on_body,
+            on_ctx_menu: None,
+        }
+    }
+}
+
+impl<B, C> CollapseDescriptor<B, C>
+where
+    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
+    C: FnMut(&mut egui::Ui),
+{
+    pub fn with_context_menu(
+        state_id: egui::Id,
+        label: egui::RichText,
+        icons: Option<HeaderIcons>,
+        header_alignment: HeaderAlignment,
         on_body: B,
         on_ctx_menu: C,
     ) -> Self {
@@ -30,8 +60,9 @@ where
             state_id,
             label,
             icons,
+            header_alignment,
             on_body,
-            on_ctx_menu,
+            on_ctx_menu: Some(on_ctx_menu),
         }
     }
 }
@@ -56,12 +87,12 @@ pub fn draw_header_icon<'a, 'r>(
 }
 
 pub fn draw_collapsing_state<'a, 'b, B, C>(
-    desc: CollapseDescriptor<B, C>,
+    mut desc: CollapseDescriptor<B, C>,
     ui: &'a mut egui::Ui,
 ) -> SlipstreamResult<()>
 where
-    B: Fn(&mut egui::Ui) -> SlipstreamResult<()>,
-    C: Fn(&mut egui::Ui),
+    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
+    C: FnMut(&mut egui::Ui),
 {
     let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
@@ -96,7 +127,7 @@ where
         //
         // This block also handles responses.
         ui.allocate_ui(egui::vec2(row_height, row_height), |ui| {
-            let icon_response = desc.icons.map(|icon| {
+            let icon_response = if let Some(icon) = desc.icons {
                 state.show_toggle_button(ui, move |ui, openness, response| {
                     if openness > 0.5 {
                         draw_header_icon(ui, icon.open, response)
@@ -104,9 +135,21 @@ where
                         draw_header_icon(ui, icon.closed, response)
                     }
                 })
-            });
+            } else {
+                state.show_toggle_button(ui, move |ui, openness, response| {
+                    egui::collapsing_header::paint_default_icon(ui, openness, response)
+                })
+            };
 
-            let label_response = ui.label(desc.label);
+            let label_response = match desc.header_alignment {
+                HeaderAlignment::Left => ui.label(desc.label.strong()),
+                HeaderAlignment::Right => {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(desc.label.strong())
+                    })
+                    .response
+                }
+            };
 
             // This is a hack, but the collapsing states responses kind of suck.
             //
@@ -114,15 +157,15 @@ where
             // not respond to these by default.
             // We also need to ensure the icon is not below the cursor, as the icon lies within the outliner row. Otherwise
             // the collapsing state itself will also respond and we will attempt to toggle the node twice.
-            if (row_response.clicked() || label_response.clicked())
-                && !icon_response.map(|r| r.hovered()).unwrap_or(false)
-            {
+            if (row_response.clicked() || label_response.clicked()) && !icon_response.hovered() {
                 state.toggle(ui);
             }
 
             // We also need separate context menus for the row and label responses, although they both display the same content.
-            row_response.context_menu(|ui| (desc.on_ctx_menu)(ui));
-            label_response.context_menu(|ui| (desc.on_ctx_menu)(ui));
+            if let Some(ctx_fn) = &mut desc.on_ctx_menu {
+                row_response.context_menu(|ui| ctx_fn(ui));
+                label_response.context_menu(|ui| ctx_fn(ui));
+            }
         });
 
         if ui.rect_contains_pointer(row_rect) {

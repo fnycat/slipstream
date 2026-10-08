@@ -1,7 +1,6 @@
 use crate::panes::{PaneAction, PaneId};
 use crate::{
     panes::{ContentSignature, Pane},
-    reg_icon,
     shared::mem_logger::GLOBAL_MEM_LOGS,
 };
 use slipstream_shared::{SlipstreamError, SlipstreamResult};

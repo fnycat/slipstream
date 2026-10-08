@@ -4,7 +4,6 @@ pub mod cmd;
 pub mod config;
 pub mod decorations;
 pub mod editor;
-pub mod icons;
 pub mod inspector;
 pub mod pages;
 pub mod panes;
@@ -16,7 +15,7 @@ mod web;
 
 use slipstream_shared::error::SlipstreamResult;
 
-use crate::app::App;
+use crate::{app::App, config::DEFAULT_SIZE};
 
 /// Initialises the tracing subscriber for the current environment.
 ///
@@ -70,7 +69,7 @@ pub fn setup_tracing() {
 fn window_builder_hook(builder: egui::ViewportBuilder) -> egui::ViewportBuilder {
     builder
         .with_title("Slipstream")
-        .with_inner_size(egui::Vec2::new(600.0, 200.0))
+        .with_inner_size(DEFAULT_SIZE)
         .with_decorations(false)
         .with_resizable(false)
 }

@@ -1,16 +1,10 @@
 use std::{cell::UnsafeCell, fmt, mem::ManuallyDrop, ptr};
 
-use slipstream_shared::SlipstreamResult;
-use slipstream_shared::error::UnsupportedError;
-use slipstream_shared::{assert::AssertSendSync, cursor::RefCursor};
+use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::mdl0::{
-    ColorBuffer, Definitions, DeserializeContents, MaterialBuffer, NormalBuffer, PaletteLinks,
-    Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer,
-};
-use crate::node::encoding::deserialize_node;
 use crate::{
     node::{
+        encoding::deserialize_node,
         node::IrNodeType,
         once::{Once, OnceState},
     },
@@ -211,8 +205,6 @@ impl From<Box<DynContent>> for LazyContent {
     }
 }
 
-impl AssertSendSync for Box<DynContent> {}
-impl AssertSendSync for DeferPayload {}
 unsafe impl Sync for LazyContent {}
 unsafe impl Send for LazyContent {}
 

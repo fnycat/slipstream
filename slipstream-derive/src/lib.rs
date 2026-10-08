@@ -234,23 +234,37 @@ impl FieldVariant {
     }
 
     pub fn to_tokens(names: &[String], variants: &[FieldVariant]) -> proc_macro2::TokenStream {
-        let mut tokens = proc_macro2::TokenStream::default();
-
         let variants = variants
             .iter()
             .enumerate()
             .filter(|(_, f)| f.ignore == false);
+
+        let mut tokens = quote! {
+            let mut acc = None;
+        };
 
         for (i, variant) in variants {
             let name = &names[i];
             let ident = &variant.ident;
 
             tokens.append_all(quote! {
-                if ui.button(#name).clicked() {
+                let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(self) == #i;
+                let response = ui.selectable_label(is_selected, #name);
+
+                if response.clicked() {
                     *self = Self::#ident;
+                }
+
+                acc = match acc.take() {
+                    Some(x) => Some(x | response),
+                    None => Some(response)
                 };
             });
         }
+
+        tokens.append_all(quote! {
+            acc
+        });
 
         tokens
     }
@@ -292,32 +306,27 @@ impl Input {
             // #ty is specified twice because we need to both specify the generic and the impl we want to use.
             impl slipstream_shared::inspect::Inspect for #ident {
                 fn draw_inspect(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> Option<egui::Response> {
-                    let state = egui::collapsing_header::CollapsingState::load_with_default_open(
-                        ui.ctx(),
-                        ui.id().with("header"),
-                        true,
+                    use slipstream_shared::widgets;
+
+                    let mut res = None;
+                    widgets::draw_collapsing_state(
+                        widgets::CollapseDescriptor::new(
+                            ui.id().with("CollapsingState"),
+                            "header".into(),
+                            None,
+                            widgets::HeaderAlignment::Right,
+                            |ui| {
+                                res = {
+                                    #fields
+                                };
+
+                                Ok(())
+                            }
+                        ),
+                        ui
                     );
-                    state
-                        .show_header(ui, |ui| {
-                            ui.label("header");
-                        })
-                        .body_unindented(|ui| ui.label("Body"));
 
-                    None
-
-//                     // egui::CollapsingHeader::new(#name).show(ui, |ui| {
-//                         let mut res = None;
-//                         egui::Grid::new(ui.id().with(concat!(stringify!(#ident), "_properties")))
-//                             .num_columns(2)
-//                             .striped(true)
-//                             .show(ui, |ui| {
-//                                 res = {
-//                                     #fields
-//                                 }
-//                             });
-//
-//                         res
-//                     // }).body_response
+                    res
                 }
 
                 fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> Option<egui::Response> {
@@ -326,7 +335,7 @@ impl Input {
                         ui.vertical(|ui| {
                             res = {
                                 #fields
-                            }
+                            };
                         });
                         res
                     }).body_response
@@ -349,7 +358,6 @@ impl Input {
                 Style::Struct => Some(quote! { { .. } }),
                 Style::Tuple => {
                     // Repeat the `_` pattern to match the whole tuple.
-
                     let dash_repeat = std::iter::repeat(quote! { _ }).take(field_count);
                     Some(quote! {
                         (#(#dash_repeat),*)
@@ -367,8 +375,41 @@ impl Input {
             }
         });
 
+        let variant_indices = variants.iter().enumerate().map(|(i, variant)| {
+            let ident = &variant.ident;
+
+            let field_count = variant.fields.fields.len();
+            let pattern_content = match variant.fields.style {
+                Style::Struct => Some(quote! { { .. } }),
+                Style::Tuple => {
+                    // Repeat the `_` pattern to match the whole tuple.
+                    let dash_repeat = std::iter::repeat(quote! { _ }).take(field_count);
+                    Some(quote! {
+                        (#(#dash_repeat),*)
+                    })
+                }
+                Style::Unit => None,
+            };
+
+            let pattern = quote! {
+                Self::#ident #pattern_content
+            };
+
+            quote! {
+                #pattern => #i,
+            }
+        });
+
         tokens.append_all(quote! {
             impl slipstream_shared::inspect::AsEnumLabel for #ident {
+                #[inline]
+                fn as_index(&self) -> usize {
+                    match self {
+                        #(#variant_indices)*
+                    }
+                }
+
+                #[inline]
                 fn as_label(&self) -> &'static str {
                     match self {
                         #(#variant_names)*
@@ -382,12 +423,18 @@ impl Input {
                 }
 
                 fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> Option<egui::Response> {
-                    let label = slipstream_shared::inspect::AsEnumLabel::as_label(self);
-                    ui.menu_button(label, |ui| {
-                        #fields
-                    });
+                    let curr_label = slipstream_shared::inspect::AsEnumLabel::as_label(self);
 
-                    None
+                    let mut res = None;
+                    egui::ComboBox::new(ui.id().with("ComboBox"), "")
+                        .selected_text(curr_label)
+                        .show_ui(ui, |ui| {
+                            res = {
+                                #fields
+                            };
+                        });
+
+                    res
                 }
             }
         })

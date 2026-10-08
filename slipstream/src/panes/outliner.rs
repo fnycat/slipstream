@@ -4,14 +4,13 @@ use slipstream_ir::node::{
     arena::{IrArena, IrNodeKey},
     node::{IrNode, IrNodeType},
 };
-use slipstream_shared::error::{SlipstreamError, SlipstreamResult};
-
-use crate::{
-    icons::NodeIconsExt,
-    panes::{ContentSignature, Pane, PaneAction, PaneId, RequestNewPane},
-    reg_icon,
-    shared::widgets::{self, CollapseDescriptor, HeaderIcons},
+use slipstream_shared::{
+    error::{SlipstreamError, SlipstreamResult},
+    fill_icon, reg_icon,
 };
+
+use crate::panes::{ContentSignature, Pane, PaneAction, PaneId, RequestNewPane};
+use slipstream_shared::widgets::{self, CollapseDescriptor, HeaderAlignment, HeaderIcons};
 
 /// The outliner displays a file tree.
 ///
@@ -85,13 +84,14 @@ impl OutlinerPane {
 
     fn draw_directory_node(&self, node: &IrNode, ui: &mut egui::Ui) -> SlipstreamResult<()> {
         widgets::draw_collapsing_state(
-            CollapseDescriptor::new(
+            CollapseDescriptor::with_context_menu(
                 Self::get_state_id(node.key(), ui),
                 node.label.clone().into(),
                 Some(HeaderIcons {
                     open: node.ty.open_icon(),
                     closed: node.ty.closed_icon(),
                 }),
+                HeaderAlignment::Left,
                 |ui| {
                     // Render the children of this node.
                     for &child in node.children_keys() {
@@ -105,87 +105,7 @@ impl OutlinerPane {
                 |ui| self.draw_context_menu(node, ui),
             ),
             ui,
-        );
-
-        let state_id = Self::get_state_id(node.key(), ui);
-        let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
-            ui.ctx(),
-            state_id,
-            false,
-        );
-
-        // Determines the rect that should be coloured when the node is hovered over.
-        let row_height = ui.spacing().interact_size.y;
-        let row_rect = egui::Rect::from_min_size(
-            ui.cursor().min,
-            egui::vec2(ui.available_width(), row_height),
-        );
-
-        let row_response = ui.interact(row_rect, state_id.with("interact"), egui::Sense::click());
-
-        // If the cursor hovers over the node, fill the background with a different colour.
-        if ui.rect_contains_pointer(row_rect) {
-            ui.painter().rect_filled(
-                row_rect,
-                ui.visuals().widgets.hovered.corner_radius,
-                ui.visuals().widgets.hovered.bg_fill,
-            );
-        }
-
-        let egui::InnerResponse { inner, .. } = ui.horizontal(|ui| {
-            // Draw the folder icon and label.
-            //
-            // This block also handles responses.
-            ui.allocate_ui(egui::vec2(row_height, row_height), |ui| {
-                let node_ty = node.ty;
-                let icon_response = state.show_toggle_button(ui, move |ui, openness, response| {
-                    draw_outliner_node_icon(ui, openness, node_ty, response)
-                });
-
-                let label_response = ui.label(node.label());
-
-                // This is a hack, but the collapsing states responses kind of suck.
-                //
-                // We generate our own responses on the outliner row and label of the file, as the collapsing header does
-                // not respond to these by default.
-                // We also need to ensure the icon is not below the cursor, as the icon lies within the outliner row. Otherwise
-                // the collapsing state itself will also respond and we will attempt to toggle the node twice.
-                if (row_response.clicked() || label_response.clicked()) && !icon_response.hovered()
-                {
-                    state.toggle(ui);
-                }
-
-                // We also need separate context menus for the row and label responses, although they both display the same content.
-                row_response.context_menu(|ui| self.draw_context_menu(node, ui));
-
-                label_response.context_menu(|ui| self.draw_context_menu(node, ui));
-            });
-
-            if ui.rect_contains_pointer(row_rect) {
-                // Set a custom cursor to make the outliner feel more responsive.
-                ui.set_cursor_icon(egui::CursorIcon::PointingHand);
-            }
-
-            Ok::<_, SlipstreamError>(())
-        });
-
-        inner?;
-
-        let body_response = state.show_body_indented(&row_response, ui, |ui| {
-            // Render the children of this node.
-            for &child in node.children_keys() {
-                // Then start the whole file tree process over again, but for this sub node.
-                self.draw_file_tree(child, ui)?;
-            }
-
-            Ok::<(), SlipstreamError>(())
-        });
-
-        if let Some(egui::InnerResponse { inner, .. }) = body_response {
-            inner?;
-        }
-
-        Ok(())
+        )
     }
 
     /// Draws a file in the outliner.
@@ -236,13 +156,13 @@ impl Pane for OutlinerPane {
     }
 
     fn title(&self) -> &str {
-        "Files"
+        "Explorer"
     }
 
     fn draw_content(
         &mut self,
         ui: &mut egui::Ui,
-        tile_id: egui_tiles::TileId,
+        _tile_id: egui_tiles::TileId,
     ) -> egui_tiles::UiResponse {
         ui.set_min_size(ui.available_size());
 
@@ -280,4 +200,50 @@ fn draw_outliner_node_icon(
 
     ui.painter()
         .galley(center_pos, galley, ui.visuals().text_color());
+}
+
+/// Extends [`IrNodeType`], providing UI specific utilities to node types.
+pub trait NodeIconsExt {
+    /// The icon to display when this node is open.
+    fn open_icon(&self) -> egui::RichText;
+    /// The icon to display when this node is closed.
+    fn closed_icon(&self) -> egui::RichText;
+}
+
+impl NodeIconsExt for IrNodeType {
+    fn open_icon(&self) -> egui::RichText {
+        match self {
+            Self::ArcDirectory { empty: false, .. } | Self::BrresFile | Self::Nw4rDirectory => {
+                reg_icon!(FOLDER_OPEN)
+            }
+            // Just reuse the closed icon for everything else.
+            _ => self.closed_icon(),
+        }
+    }
+
+    fn closed_icon(&self) -> egui::RichText {
+        match self {
+            Self::ArcDirectory { empty: false, .. } | Self::Nw4rDirectory => reg_icon!(FOLDER),
+            Self::ArcDirectory { empty: true, .. } => reg_icon!(FOLDER_DASHED),
+            Self::BrresFile => reg_icon!(FOLDER),
+
+            Self::Mdl0Root => reg_icon!(PERSON),
+            Self::Definitions => reg_icon!(FILE_CODE),
+            Self::Bone { end: false } => reg_icon!(BONE),
+            Self::Bone { end: true } => fill_icon!(BONE),
+            Self::VertexBuffer => reg_icon!(POLYGON),
+            Self::NormalBuffer => reg_icon!(ARROW_ELBOW_RIGHT),
+            Self::ColorBuffer => reg_icon!(PAINT_BRUSH_HOUSEHOLD),
+            Self::UvBuffer => reg_icon!(BOUNDING_BOX),
+            Self::Material => reg_icon!(PALETTE),
+            Self::Tevs => reg_icon!(GRAPHICS_CARD),
+            Self::Polygon => reg_icon!(CUBE),
+            Self::TextureLinks => reg_icon!(LINK),
+            Self::PaletteLinks => reg_icon!(LINK),
+
+            Self::Texture => reg_icon!(IMAGES),
+
+            Self::Unknown => reg_icon!(FILE),
+        }
+    }
 }

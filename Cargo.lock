@@ -3551,8 +3551,10 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
+ "egui-phosphor",
  "futures",
  "glam",
+ "parking_lot",
  "smallvec",
  "thiserror 2.0.21",
 ]

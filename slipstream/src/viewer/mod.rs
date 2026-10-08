@@ -5,30 +5,21 @@ pub mod toolbar;
 pub mod translation;
 pub mod wgpu;
 
-use std::{
-    hash::Hasher,
-    sync::{Arc, mpsc},
-};
+use std::sync::{Arc, mpsc};
 
-use crate::viewer::{
-    camera::Camera,
-    pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipeline},
-    wgpu::WgpuModel,
-};
+use crate::viewer::pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipeline};
 use crate::{
     panes::PaneId,
     viewer::{camera::CameraController, translation::ModelContents},
 };
 use crate::{
-    panes::{ContentSignature, Pane, PaneAction},
-    reg_icon,
+    panes::{Pane, PaneAction},
     shared::GraphicsState,
 };
 use eframe::egui_wgpu;
-use egui_phosphor::thin::X;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_shared::error::SlipstreamResult;
-use slipstream_shared::{SlipstreamError, try_unwrap};
+use slipstream_shared::try_unwrap;
 
 pub struct ViewerPane {
     cmd_sender: mpsc::Sender<PaneAction>,
@@ -106,7 +97,7 @@ impl Pane for ViewerPane {
     fn draw_content(
         &mut self,
         ui: &mut egui::Ui,
-        tile_id: egui_tiles::TileId,
+        _tile_id: egui_tiles::TileId,
     ) -> egui_tiles::UiResponse {
         egui::Frame::canvas(ui.style()).show(ui, |ui| {
             let target_size = ui.available_size();
