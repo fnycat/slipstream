@@ -45,7 +45,7 @@ pub struct BoneFlags {
 /// Configures the way billboarding is used for this object.
 ///
 /// This can be used to make something always face the camera.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 pub enum BillboardSetting {
     /// No influence.
     Disabled,
@@ -106,12 +106,6 @@ impl BillboardSetting {
     fn serialize(self, writer: &mut MutCursor) -> SlipstreamResult<()> {
         writer.write_u32::<BigEndian>(self as u32)?;
         Ok(())
-    }
-}
-
-impl Inspect for BillboardSetting {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
-        ui.label("billboard setting")
     }
 }
 

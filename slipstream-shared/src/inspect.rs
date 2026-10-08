@@ -10,19 +10,24 @@ pub trait IntoBounds<T: Into<f64>> {
     fn into_bounds(min: Option<T>, max: Option<T>) -> RangeInclusive<f64>;
 }
 
+pub trait AsEnumLabel {
+    /// Converts the current enum variant to a human-readable name.
+    fn as_label(&self) -> &'static str;
+}
+
 pub trait Inspect {
     /// Draws the labels and values.
     ///
     /// This is called to draw the full properties window.
     #[inline]
-    fn draw_inspect(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+    fn draw_inspect(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
         self.draw_value(ui, cfg)
     }
 
     /// Draws only the value of the property.
     ///
     /// This is called on fields of structs.
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response;
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response>;
 }
 
 #[derive(Debug)]
@@ -78,7 +83,7 @@ pub struct BitFieldWrapper<T, F> {
 }
 
 impl<T: Inspect + Copy, F: FnMut(T)> Inspect for BitFieldWrapper<T, F> {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
         let response = self.value.draw_value(ui, cfg);
         (self.on_update)(self.value);
         response
@@ -86,33 +91,33 @@ impl<T: Inspect + Copy, F: FnMut(T)> Inspect for BitFieldWrapper<T, F> {
 }
 
 impl Inspect for bool {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
         let checkbox = egui::Checkbox::new(self, cfg.label);
-        ui.add(checkbox)
+        Some(ui.add(checkbox))
     }
 }
 
 impl Inspect for i32 {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
         let drag_value = egui::DragValue::new(self);
         let drag_value = if let Some(range) = &cfg.range {
             drag_value.range(range.clone())
         } else {
             drag_value
         };
-        ui.add_sized(DRAG_INPUT_SIZE, drag_value)
+        Some(ui.add_sized(DRAG_INPUT_SIZE, drag_value))
     }
 }
 
 impl Inspect for u32 {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
         let drag_value = egui::DragValue::new(self);
         let drag_value = if let Some(range) = &cfg.range {
             drag_value.range(range.clone())
         } else {
             drag_value
         };
-        ui.add_sized(DRAG_INPUT_SIZE, drag_value)
+        Some(ui.add_sized(DRAG_INPUT_SIZE, drag_value))
     }
 }
 
@@ -120,7 +125,7 @@ macro_rules! impl_vector {
     ($ty:ty, $($ident:ident),*) => {
         impl Inspect for $ty {
             #[inline]
-            fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+            fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
                 let mut response = None;
                 $(
                     let mut drag_value = egui::DragValue::new(&mut self.$ident).speed(0.1);
@@ -137,7 +142,7 @@ macro_rules! impl_vector {
                         None => response = Some(ui.add_sized(DRAG_INPUT_SIZE, drag_value))
                     }
                 )*
-                response.expect("vector response was empty")
+                Some(response.expect("vector response was empty"))
             }
         }
     }
@@ -149,36 +154,46 @@ impl_vector!(glam::Vec4, x, y, z, w);
 
 impl Inspect for f32 {
     #[inline]
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
         let drag_value = egui::DragValue::new(self);
         let drag_value = if let Some(range) = &cfg.range {
             drag_value.range(range.clone())
         } else {
             drag_value
         };
-        ui.add_sized(DRAG_INPUT_SIZE, drag_value)
+        Some(ui.add_sized(DRAG_INPUT_SIZE, drag_value))
     }
 }
 
 impl<T: Inspect> Inspect for Option<T> {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
         match self {
             Some(x) => x.draw_value(ui, cfg),
-            None => ui.label("None"),
+            None => Some(ui.label("None")),
         }
     }
 }
 
 impl<T: Inspect, const N: usize> Inspect for [T; N] {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
         self.iter_mut()
-            .fold(ui.response(), |acc, val| acc | val.draw_value(ui, cfg))
+            .fold(None, |acc, val| match (acc, val.draw_value(ui, cfg)) {
+                (Some(acc), Some(x)) => Some(acc | x),
+                (Some(acc), None) => Some(acc),
+                (None, Some(x)) => Some(x),
+                (None, None) => None,
+            })
     }
 }
 
 impl<T: Inspect> Inspect for Vec<T> {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Option<egui::Response> {
         self.iter_mut()
-            .fold(ui.response(), |acc, val| acc | val.draw_value(ui, cfg))
+            .fold(None, |acc, val| match (acc, val.draw_value(ui, cfg)) {
+                (Some(acc), Some(x)) => Some(acc | x),
+                (Some(acc), None) => Some(acc),
+                (None, Some(x)) => Some(x),
+                (None, None) => None,
+            })
     }
 }

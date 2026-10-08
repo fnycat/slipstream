@@ -27,8 +27,8 @@ use std::{
 pub struct IrNodeKey(NonZeroU64);
 
 impl Inspect for IrNodeKey {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
-        ui.label(format!("{self:?}"))
+    fn draw_value(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Option<egui::Response> {
+        Some(ui.label(format!("{self:?}")))
     }
 }
 
