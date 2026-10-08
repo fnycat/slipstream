@@ -30,7 +30,9 @@ impl Visitor for InspectorVisitor<'_> {
     }
 
     fn visit_bone_mut(&mut self, context: VisitorContextMut<'_, Bone>) -> ControlFlow<()> {
-        context.content.draw_value(self.ui, &FieldConfig::default());
+        context
+            .content
+            .draw_inspect(self.ui, &FieldConfig::default());
 
         ControlFlow::Continue(())
     }
