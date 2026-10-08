@@ -4,4 +4,5 @@ members = ["slipstream", "slipstream-derive", "slipstream-ir", "slipstream-share
 
 [workspace.dependencies]
 egui = { version = "0.36.2", features = ["rayon"] }
+egui_extras = "0.36.2"
 glam = { version = "0.34.1", features = ["bytemuck"] }

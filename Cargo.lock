@@ -3532,6 +3532,7 @@ dependencies = [
  "dashmap",
  "downcast-rs 2.0.2",
  "egui",
+ "egui_extras",
  "glam",
  "nohash-hasher",
  "parking_lot",

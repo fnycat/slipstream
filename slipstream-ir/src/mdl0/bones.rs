@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_derive::Inspect;
+use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::{
     cursor::{MutCursor, RefCursor},
     error::{CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult},
@@ -24,7 +24,7 @@ use crate::{
     visitor::{VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut},
 };
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct BoneFlags {
     pub use_identity: bool,
@@ -39,13 +39,7 @@ pub struct BoneFlags {
     pub is_display_matrix: bool,
     pub is_billboard_child: bool,
     #[bits(21)]
-    pub _unused: u32,
-}
-
-impl Inspect for BoneFlags {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
-        ui.label("bone flags")
-    }
+    _unused: u32,
 }
 
 /// Configures the way billboarding is used for this object.
@@ -228,7 +222,7 @@ pub struct Bone {
     pub billboard_setting: BillboardSetting,
     pub billboard_reference: Option<IrNodeKey>,
     pub translation: glam::Vec3,
-    #[inspect(degrees)]
+    #[inspect(suffix = " °", rename = "ROTATION")]
     pub rotation: glam::Vec3,
     pub scale: glam::Vec3,
     pub bounding_volume: Box3,
