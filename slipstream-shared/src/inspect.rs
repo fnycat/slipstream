@@ -1,8 +1,6 @@
 use std::ops::{Range, RangeBounds, RangeInclusive};
 
-use egui::emath;
-
-pub const DRAG_INPUT_SIZE: egui::Vec2 = egui::vec2(50.0, 20.0);
+pub const DRAG_INPUT_SIZE: egui::Vec2 = egui::vec2(70.0, 20.0);
 
 #[diagnostic::on_unimplemented(
     label = "non-numerical type",
@@ -30,11 +28,14 @@ pub trait Inspect {
 #[derive(Debug)]
 pub struct FieldConfig {
     pub label: &'static str,
+    /// The category to put the value in.
     pub category: Option<&'static str>,
+    /// Whether the value cannot be edited.
     pub read_only: bool,
+    /// The range of a slider.
     pub range: Option<RangeInclusive<f64>>,
-    /// Whether the value is in degrees.
-    pub degrees: bool,
+    /// The suffix to add to the drag values.
+    pub suffix: Option<&'static str>,
 }
 
 impl FieldConfig {
@@ -62,12 +63,25 @@ impl FieldConfig {
 impl Default for FieldConfig {
     fn default() -> Self {
         Self {
-            degrees: false,
+            suffix: None,
             label: "<unknown>",
             category: None,
             read_only: false,
             range: None,
         }
+    }
+}
+
+pub struct BitFieldWrapper<T, F> {
+    pub value: T,
+    pub on_update: F,
+}
+
+impl<T: Inspect + Copy, F: FnMut(T)> Inspect for BitFieldWrapper<T, F> {
+    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> egui::Response {
+        let response = self.value.draw_value(ui, cfg);
+        (self.on_update)(self.value);
+        response
     }
 }
 
@@ -114,8 +128,8 @@ macro_rules! impl_vector {
                         drag_value = drag_value.range(range.clone());
                     }
 
-                    if cfg.degrees {
-                        drag_value = drag_value.suffix(" °");
+                    if let Some(suffix) = cfg.suffix {
+                        drag_value = drag_value.suffix(suffix);
                     }
 
                     match &mut response {
