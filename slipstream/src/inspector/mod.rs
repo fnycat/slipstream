@@ -45,7 +45,10 @@ impl Visitor for InspectorVisitor<'_> {
     }
 
     fn visit_polygon_mut(&mut self, context: VisitorContextMut<'_, Polygon>) -> ControlFlow<()> {
-        self.ui.label(format!("{:#?}", context.content));
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
         ControlFlow::Continue(())
     }
 

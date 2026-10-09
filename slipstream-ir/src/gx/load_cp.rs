@@ -1,5 +1,6 @@
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::{
     cursor::{MutCursor, RefCursor, SizeEstimate},
     error::{CorruptionError, SlipstreamResult},
@@ -11,7 +12,7 @@ use crate::{
 };
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum VectorStorage {
     #[fallback]
@@ -22,8 +23,9 @@ pub enum VectorStorage {
 }
 
 /// Vertex control descriptor part 1/2.
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(rename = "Vertex Control Descriptor 1")]
 pub struct CpVcdLo {
     /// Whether the position/normal matrix index is stored in this vertex.
     ///
@@ -31,21 +33,34 @@ pub struct CpVcdLo {
     /// that should be used to transform this vertex.
     ///
     /// Also called: `GX_VA_PNMTXIDX`
+    #[inspect(rename = "Position/Normal Matrix Enabled")]
     pub pn_index_enabled: bool,
+    #[inspect(rename = "Texture Matrix 1 Enabled")]
     pub tm0: bool,
+    #[inspect(rename = "Texture Matrix 2 Enabled")]
     pub tm1: bool,
+    #[inspect(rename = "Texture Matrix 3 Enabled")]
     pub tm2: bool,
+    #[inspect(rename = "Texture Matrix 4 Enabled")]
     pub tm3: bool,
+    #[inspect(rename = "Texture Matrix 5 Enabled")]
     pub tm4: bool,
+    #[inspect(rename = "Texture Matrix 6 Enabled")]
     pub tm5: bool,
+    #[inspect(rename = "Texture Matrix 7 Enabled")]
     pub tm6: bool,
+    #[inspect(rename = "Texture Matrix 8 Enabled")]
     pub tm7: bool,
+    #[inspect(rename = "Position Storage")]
     #[bits(2)]
     pub pos_storage: VectorStorage,
+    #[inspect(rename = "Normal Storage")]
     #[bits(2)]
     pub norm_storage: VectorStorage,
+    #[inspect(rename = "Color Layer 1 Storage")]
     #[bits(2)]
     pub col0_storage: VectorStorage,
+    #[inspect(rename = "Color Layer 2 Storage")]
     #[bits(2)]
     pub col1_storage: VectorStorage,
     #[bits(15)]
@@ -53,23 +68,32 @@ pub struct CpVcdLo {
 }
 
 /// Vertex control descriptor part 2/2.
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(rename = "Vertex Control Descriptor 2")]
 pub struct CpVcdHi {
+    #[inspect(rename = "Texture Coordinate 1 Storage")]
     #[bits(2)]
     pub uv0_storage: VectorStorage,
+    #[inspect(rename = "Texture Coordinate 2 Storage")]
     #[bits(2)]
     pub uv1_storage: VectorStorage,
+    #[inspect(rename = "Texture Coordinate 3 Storage")]
     #[bits(2)]
     pub uv2_storage: VectorStorage,
+    #[inspect(rename = "Texture Coordinate 4 Storage")]
     #[bits(2)]
     pub uv3_storage: VectorStorage,
+    #[inspect(rename = "Texture Coordinate 5 Storage")]
     #[bits(2)]
     pub uv4_storage: VectorStorage,
+    #[inspect(rename = "Texture Coordinate 6 Storage")]
     #[bits(2)]
     pub uv5_storage: VectorStorage,
+    #[inspect(rename = "Texture Coordinate 7 Storage")]
     #[bits(2)]
     pub uv6_storage: VectorStorage,
+    #[inspect(rename = "Texture Coordinate 8 Storage")]
     #[bits(2)]
     pub uv7_storage: VectorStorage,
     #[bits(16)]
@@ -77,38 +101,49 @@ pub struct CpVcdHi {
 }
 
 /// Vertex attribute table, part 1/3.
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(rename = "Vertex Attribute Table 1")]
 pub struct CpVatA {
+    #[inspect(rename = "3D Position")]
     pub pos_extended: bool,
+    #[inspect(rename = "Position Format")]
     #[bits(3)]
     pub pos_format: VertexFormat,
+    #[inspect(rename = "Position Format Divisor")]
     #[bits(5)]
     pub pos_divisor: u8,
     pub norm_extended: bool,
+    #[inspect(rename = "Normal Format")]
     #[bits(3)]
     pub norm_format: NormalFormat,
     pub col0_extended: bool,
+    #[inspect(rename = "Color Layer 1 Format")]
     #[bits(3)]
     pub col0_format: ColorFormat,
     pub col1_extended: bool,
+    #[inspect(rename = "Color Layer 2 Format")]
     #[bits(3)]
     pub col1_format: ColorFormat,
     pub uv0_extended: bool,
+    #[inspect(rename = "Texture Coordinate 0 Format")]
     #[bits(3)]
     pub uv0_format: VertexFormat,
+    #[inspect(rename = "Texture Coordinate 1 Divisor")]
     #[bits(5)]
     pub uv0_divisor: u8,
     pub dequant: bool,
     /// If this flag is set and [`norm_extended`] is also set, then normals are indexed using
     /// 3 separate indices. If not set and [`norm_extended`] is set, then the normals will be read
     /// as 9 consecutive floats.
+    #[inspect(rename = "Additional Normals")]
     pub norm_i3: bool,
 }
 
 /// Vertex attribute table, part 2/3.
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(rename = "Vertex Attribute Table 2")]
 pub struct CpVatB {
     pub uv1_extended: bool,
     #[bits(3)]
@@ -133,8 +168,9 @@ pub struct CpVatB {
 }
 
 /// Vertex attribute table, part 3/3.
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(rename = "Vertex Attribute Table 3")]
 pub struct CpVatC {
     #[bits(5)]
     pub uv4_divisor: u8,

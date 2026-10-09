@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 
 use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::{
     cursor::{MutCursor, RefCursor},
     error::{CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult},
@@ -60,7 +61,7 @@ impl ColorComponents {
 
 /// Describes the format of the color.
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum ColorFormat {
     /// 16 total bits.
@@ -105,6 +106,8 @@ pub enum ColorFormat {
     /// Blue: 8 bits;
     /// Alpha: 8 bits
     Rgba32 = 0x05,
+    /// This is a fallback for `bitenum`, it should never be used and is not visible to users.
+    #[inspect(ignore)]
     #[fallback]
     Invalid,
 }

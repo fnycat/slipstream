@@ -1,5 +1,7 @@
 use std::ops::{BitOr, BitOrAssign, Range, RangeBounds, RangeInclusive};
 
+use egui::emath;
+
 pub const DRAG_INPUT_SIZE: egui::Vec2 = egui::vec2(70.0, 20.0);
 
 #[diagnostic::on_unimplemented(
@@ -151,6 +153,30 @@ impl Inspect for bool {
     fn draw_inner(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
         let checkbox = egui::Checkbox::new(self, "");
         ui.add(checkbox).into()
+    }
+}
+
+impl Inspect for u8 {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        let drag_value = egui::DragValue::new(self);
+        let drag_value = if let Some(range) = &cfg.range {
+            drag_value.range(range.clone())
+        } else {
+            drag_value
+        };
+        ui.add_sized(DRAG_INPUT_SIZE, drag_value).into()
+    }
+}
+
+impl Inspect for u16 {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        let drag_value = egui::DragValue::new(self);
+        let drag_value = if let Some(range) = &cfg.range {
+            drag_value.range(range.clone())
+        } else {
+            drag_value
+        };
+        ui.add_sized(DRAG_INPUT_SIZE, drag_value).into()
     }
 }
 
