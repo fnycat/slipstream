@@ -92,6 +92,8 @@ impl OutlinerPane {
                     closed: node.ty.closed_icon(),
                 }),
                 HeaderAlignment::Left,
+                false,
+                true,
                 |ui| {
                     // Render the children of this node.
                     for &child in node.children_keys() {
