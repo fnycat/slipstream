@@ -71,7 +71,7 @@ pub trait Inspect {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes;
 
     /// Draws one grid row per field into the grid of the given `ui`.
-    fn draw_rows(&mut self, ui: &mut egui::Ui, depth: usize, id: egui::Id) -> Changes {
+    fn draw_rows(&mut self, ui: &mut egui::Ui, id: egui::Id) -> Changes {
         Changes::default()
     }
 
