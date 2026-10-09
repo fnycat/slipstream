@@ -78,7 +78,7 @@ where
 }
 
 /// Draws the icon of files and folders in the outliner.
-pub fn draw_header_icon<'a, 'r>(
+fn draw_header_icon<'a, 'r>(
     ui: &'a mut egui::Ui,
     icon: egui::RichText,
     response: &'r egui::Response,
