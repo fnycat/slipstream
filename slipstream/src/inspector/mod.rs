@@ -92,6 +92,11 @@ impl InspectorPane {
     }
 
     fn draw_properties(&mut self, ui: &mut egui::Ui) -> SlipstreamResult<()> {
+        let avail_size = ui.available_size();
+        ui.set_min_size(avail_size);
+
+        ui.spacing_mut().item_spacing.y = 7.5;
+
         self.arena
             .update(self.inspected, |node| {
                 let context = VisitorContextNodeMut {
@@ -103,10 +108,7 @@ impl InspectorPane {
 
                 // Evaluate contents if lazy
                 let contents = node.contents.get_or_try_init_mut()?.unwrap();
-                egui::ScrollArea::both().show(ui, |ui| {
-                    // Take up the whole pane.
-                    ui.set_min_size(ui.available_size());
-
+                egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
                     let mut visitor = InspectorVisitor { ui };
                     let _ = contents.accept_mut(context, &mut visitor); // ignore the control flow as we're not continuing anyways.
                 });
@@ -131,7 +133,7 @@ impl Pane for InspectorPane {
     fn draw_content(
         &mut self,
         ui: &mut egui::Ui,
-        tile_id: egui_tiles::TileId,
+        _tile_id: egui_tiles::TileId,
     ) -> egui_tiles::UiResponse {
         self.draw_properties(ui).unwrap();
 
