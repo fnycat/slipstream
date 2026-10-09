@@ -5,16 +5,16 @@ pub struct HeaderIcons {
     pub closed: egui::RichText,
 }
 
-pub enum HeaderAlignment {
-    Left,
-    Right,
+pub enum DropdownType {
+    Regular,
+    MenuButton,
 }
 
 pub struct CollapseDescriptor<B, C> {
     state_id: egui::Id,
     icons: Option<HeaderIcons>,
     label: egui::RichText,
-    header_alignment: HeaderAlignment,
+    header_alignment: DropdownType,
     default_open: bool,
     indent: bool,
 
@@ -31,7 +31,7 @@ where
         state_id: egui::Id,
         label: egui::RichText,
         icons: Option<HeaderIcons>,
-        header_alignment: HeaderAlignment,
+        header_alignment: DropdownType,
         default_open: bool,
         indent: bool,
         on_body: B,
@@ -58,7 +58,7 @@ where
         state_id: egui::Id,
         label: egui::RichText,
         icons: Option<HeaderIcons>,
-        header_alignment: HeaderAlignment,
+        header_alignment: DropdownType,
         default_open: bool,
         indent: bool,
         on_body: B,
@@ -159,8 +159,8 @@ where
 
         let header_label = egui::Label::new(desc.label).selectable(false);
         let label_response = match desc.header_alignment {
-            HeaderAlignment::Left => ui.add(header_label),
-            HeaderAlignment::Right => {
+            DropdownType::Regular => ui.add(header_label),
+            DropdownType::MenuButton => {
                 ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                     ui.add(header_label)
                 })

@@ -31,7 +31,7 @@ use std::{
 pub struct IrNodeKey(NonZeroU64);
 
 impl Inspect for IrNodeKey {
-    fn draw_value(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
         ui.label(format!("{self:?}")).into()
     }
 }

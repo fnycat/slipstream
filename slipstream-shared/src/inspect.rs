@@ -61,14 +61,30 @@ pub trait Inspect {
     ///
     /// This is called to draw the full properties window.
     #[inline]
-    fn draw_inspect(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
-        self.draw_value(ui, cfg)
+    fn draw_properties(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        self.draw_inner(ui, cfg)
     }
 
     /// Draws only the value of the property.
     ///
     /// This is called on fields of structs.
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes;
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes;
+
+    /// Draws one grid row per field into the grid of the given `ui`.
+    fn draw_rows(&mut self, ui: &mut egui::Ui, depth: usize, id: egui::Id) -> Changes {
+        Changes::default()
+    }
+
+    fn is_nested(&self) -> bool {
+        false
+    }
+
+    /// Generates a summary of the nested struct's content.
+    ///
+    /// This is for example used for bounding volumes that have been collapsed.
+    fn summary(&self) -> Option<String> {
+        None
+    }
 }
 
 #[derive(Debug)]
@@ -124,22 +140,22 @@ pub struct BitFieldWrapper<T, F> {
 }
 
 impl<T: Inspect + Copy, F: FnMut(T)> Inspect for BitFieldWrapper<T, F> {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
-        let response = self.value.draw_value(ui, cfg).into();
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        let response = self.value.draw_inner(ui, cfg).into();
         (self.on_update)(self.value);
         response
     }
 }
 
 impl Inspect for bool {
-    fn draw_value(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
         let checkbox = egui::Checkbox::new(self, "");
         ui.add(checkbox).into()
     }
 }
 
 impl Inspect for i32 {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         let drag_value = egui::DragValue::new(self);
         let drag_value = if let Some(range) = &cfg.range {
             drag_value.range(range.clone())
@@ -151,7 +167,7 @@ impl Inspect for i32 {
 }
 
 impl Inspect for u32 {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         let drag_value = egui::DragValue::new(self);
         let drag_value = if let Some(range) = &cfg.range {
             drag_value.range(range.clone())
@@ -166,7 +182,7 @@ macro_rules! impl_vector {
     ($ty:ty, $($ident:ident),*) => {
         impl Inspect for $ty {
             #[inline]
-            fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+            fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
                 let mut response = Changes::default();
                 $(
                     let mut drag_value = egui::DragValue::new(&mut self.$ident).speed(0.1);
@@ -192,7 +208,7 @@ impl_vector!(glam::Vec4, x, y, z, w);
 
 impl Inspect for f32 {
     #[inline]
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         let drag_value = egui::DragValue::new(self);
         let drag_value = if let Some(range) = &cfg.range {
             drag_value.range(range.clone())
@@ -204,26 +220,26 @@ impl Inspect for f32 {
 }
 
 impl<T: Inspect> Inspect for Option<T> {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         match self {
-            Some(x) => x.draw_value(ui, cfg).into(),
+            Some(x) => x.draw_inner(ui, cfg).into(),
             None => ui.label("None").into(),
         }
     }
 }
 
 impl<T: Inspect, const N: usize> Inspect for [T; N] {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         self.iter_mut().fold(Changes::default(), |acc, val| {
-            acc | val.draw_value(ui, cfg).into()
+            acc | val.draw_inner(ui, cfg).into()
         })
     }
 }
 
 impl<T: Inspect> Inspect for Vec<T> {
-    fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         self.iter_mut().fold(Changes::default(), |acc, val| {
-            acc | val.draw_value(ui, cfg).into()
+            acc | val.draw_inner(ui, cfg).into()
         })
     }
 }
