@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 
 use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 use slipstream_shared::verify;
@@ -25,7 +26,7 @@ const COMPONENTS_ANY: u32 = 0x2;
 ///
 /// [`VertexFormat`]: slipstream_ir::mdl0::VertexFormat
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum NormalFormat {
     /// A signed byte (`i8`).
@@ -35,6 +36,7 @@ pub enum NormalFormat {
     /// A regular float (`f32`).
     Float32 = 4,
     /// Fallback value for `bitenum`, this variant should never be used.
+    #[inspect(ignore)]
     #[fallback]
     Invalid,
 }

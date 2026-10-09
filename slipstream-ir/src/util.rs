@@ -47,7 +47,7 @@ impl fmt::Display for Box3 {
 ///
 /// [`NormalFormat`]: crate::format::mdl0::normals::NormalFormat
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 #[repr(u8)]
 pub enum VertexFormat {
     Uint8 = 0,
@@ -56,6 +56,7 @@ pub enum VertexFormat {
     Int16 = 3,
     Float32 = 4,
     /// Fallback value for `bitenum`, this variant should never be used.
+    #[inspect(ignore)]
     #[fallback]
     Invalid = 5,
 }

@@ -1,4 +1,5 @@
 use byteorder::ReadBytesExt;
+use slipstream_derive::Inspect;
 use slipstream_shared::{
     cursor::RefCursor,
     error::{CorruptionError, SlipstreamError, SlipstreamResult},

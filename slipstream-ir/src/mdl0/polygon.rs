@@ -119,18 +119,25 @@ pub enum BoneBind {
 /// Setup bytecode for a shape.
 ///
 /// This describes the formats of all the buffers.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
+#[inspect(rename = "GX Vertex Declaration")]
 pub struct GxVertexDeclaration {
     /// The low vertex control descriptor.
+    #[inspect(rename = "Control Descriptor 1")]
     pub vcd_lo: CpVcdLo,
     /// The high vertex control descriptor.
+    #[inspect(rename = "Control Descriptor 2")]
     pub vcd_hi: CpVcdHi,
     /// The first vertex attribute table.
+    #[inspect(rename = "Attribute Table 1")]
     pub vat_a: CpVatA,
     /// The second vertex attribute table.
+    #[inspect(rename = "Attribute Table 2")]
     pub vat_b: CpVatB,
     /// The third vertex attribute table.
+    #[inspect(rename = "Attribute Table 3")]
     pub vat_c: CpVatC,
+    #[inspect(ignore)]
     pub xf: Vec<LoadXfPayload>,
 }
 
@@ -201,9 +208,10 @@ impl TryFrom<GxBytecode> for GxVertexDeclaration {
 /// A shape/object/polygon describes how the model should be rendered.
 ///
 /// It contains the actual draw commands for the Broadway GPU to execute.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Inspect)]
 pub struct Polygon {
     pub array_flags: u32,
+    #[inspect(ignore)]
     pub modifier: PolygonModifier,
     /// This shape's index in the Polygons` section.
     pub index: u32,
@@ -213,26 +221,33 @@ pub struct Polygon {
     /// The vertex buffer to use for indexed draws.
     ///
     /// This is an index into the `Vertices` section of the model.
+    #[inspect(rename = "Vertex Array ID")]
     pub vertex_array_id: u16,
     /// The normal buffer to use for indexed draws.
     ///
     /// This is an index into the `Normals` section of the model.
+    #[inspect(rename = "Normal Array ID")]
     pub normal_array_id: u16,
     /// The color buffer to use for indexed draws.
     ///
     /// This is an index into the `Colors` section of the model.
+    #[inspect(rename = "Normal Array IDs")]
     pub color_array_ids: [u16; 2],
     /// The UV buffer to use for indexed draws.
     ///
     /// This is an index into the `UVs` section of the model.
+    #[inspect(rename = "UV Array IDs")]
     pub uv_array_ids: [u16; 8],
     /// Determines how this shape is bound to a bone for rigging.
+    #[inspect(ignore)]
     pub bone_bind: BoneBind,
     /// Setup bytecode for the buffer formats.
     ///
     /// See [`GxVertexDeclaration`] for more info.
+    #[inspect(rename = "Vertex Declaration")]
     pub vertex_decl: GxVertexDeclaration,
     /// Bytecode containing this shape's draw calls.
+    #[inspect(ignore)]
     pub vertex_data_gx: GxBytecode,
 }
 
