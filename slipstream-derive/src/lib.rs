@@ -312,11 +312,25 @@ impl Input {
 
                     let mut changes = slipstream_shared::inspect::Changes::default();
                     ui.vertical(|ui| {
-                        egui::Grid::new(concat!("GridNested_", #name))
-                            .num_columns(2)
-                            .show(ui, |ui| {
-                                #fields
-                            });
+                        let desc = widgets::CollapseDescriptor::new(
+                            ui.id().with(concat!("NestedCollapsingHeader_", #name)),
+                            #name.into(),
+                            None,
+                            widgets::HeaderAlignment::Left,
+                            false,
+                            false,
+                            |ui| {
+                                egui::Grid::new(concat!("GridNested_", #name))
+                                    .num_columns(2)
+                                    .show(ui, |ui| {
+                                        #fields
+                                    });
+
+                                Ok(())
+                            }
+                        );
+
+                        widgets::draw_collapsing_state(desc, ui).expect("failed to draw collapsing state in inspector");
                     });
 
                     changes
