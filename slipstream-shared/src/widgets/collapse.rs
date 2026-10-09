@@ -107,7 +107,7 @@ where
     let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
         desc.state_id,
-        false,
+        desc.default_open,
     );
 
     // Determines the rect that should be coloured when the node is hovered over.
@@ -117,7 +117,8 @@ where
     let row_height = ui.spacing().interact_size.y;
 
     let header_rect = egui::Rect::from_min_size(
-        ui.cursor().min.max(egui::Pos2::ZERO), egui::vec2(row_width, row_height)
+        ui.cursor().min.max(egui::Pos2::ZERO),
+        egui::vec2(row_width, row_height),
     );
 
     assert!(
@@ -160,16 +161,10 @@ where
         let label_response = match desc.header_alignment {
             HeaderAlignment::Left => ui.add(header_label),
             HeaderAlignment::Right => {
-                // ui.scope_builder(
-                //     egui::UiBuilder::new()
-                //         .max_rect(row_rect)
-                //         .layout(egui::Layout::top_down(egui::Align::Center)),
-                //     |ui| ui.label(desc.label),
-                // )
-                // .response
-                //
-
-                ui.add(header_label)
+                ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                    ui.add(header_label)
+                })
+                .response
             }
         };
 
