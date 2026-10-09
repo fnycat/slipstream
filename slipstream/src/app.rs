@@ -134,10 +134,11 @@ impl eframe::App for App {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
-            self.draw_ui(ui);
-        })) {
-            self.panic_info = Some(err);
-        }
+        // if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        //     self.draw_ui(ui);
+        // })) {
+        //     self.panic_info = Some(err);
+        // }
+        self.draw_ui(ui);
     }
 }

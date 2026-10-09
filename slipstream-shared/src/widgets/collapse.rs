@@ -1,4 +1,4 @@
-use crate::SlipstreamResult;
+use crate::{SlipstreamResult, error::AssertFailed, verify};
 
 pub struct HeaderIcons {
     pub open: egui::RichText,
@@ -111,83 +111,92 @@ where
     );
 
     // Determines the rect that should be coloured when the node is hovered over.
+    let clip_rect = ui.clip_rect();
+    // Need to slightly decrease the width due to possible file tree indentation.
+    let row_width = clip_rect.width() - ui.cursor().min.x;
     let row_height = ui.spacing().interact_size.y;
-    let row_rect = egui::Rect::from_min_size(
-        ui.cursor().min,
-        egui::vec2(ui.available_width(), row_height),
+
+    let header_rect = egui::Rect::from_min_size(
+        ui.cursor().min.max(egui::Pos2::ZERO), egui::vec2(row_width, row_height)
+    );
+
+    assert!(
+        !header_rect.any_nan(),
+        "Collapsing header row rect had NaN entries: {header_rect:?}"
     );
 
     let row_response = ui.interact(
-        row_rect,
+        header_rect,
         desc.state_id.with("interact"),
         egui::Sense::click(),
     );
 
     // If the cursor hovers over the node, fill the background with a different colour.
-    if ui.rect_contains_pointer(row_rect) {
+    if ui.rect_contains_pointer(header_rect) {
         ui.painter().rect_filled(
-            row_rect,
+            header_rect,
             ui.visuals().widgets.hovered.corner_radius,
             ui.visuals().widgets.hovered.bg_fill,
         );
     }
 
+    // Draw the folder icon and label.
     ui.horizontal(|ui| {
-        // Draw the folder icon and label.
-        //
-        // This block also handles responses.
-        ui.allocate_ui(egui::vec2(row_height, row_height), |ui| {
-            let icon_response = if let Some(icon) = desc.icons {
-                state.show_toggle_button(ui, move |ui, openness, response| {
-                    if openness > 0.5 {
-                        draw_header_icon(ui, icon.open, response)
-                    } else {
-                        draw_header_icon(ui, icon.closed, response)
-                    }
-                })
-            } else {
-                state.show_toggle_button(ui, move |ui, openness, response| {
-                    egui::collapsing_header::paint_default_icon(ui, openness, response)
-                })
-            };
-
-            let label_response = match desc.header_alignment {
-                HeaderAlignment::Left => ui.label(desc.label),
-                HeaderAlignment::Right => {
-                    // ui.scope_builder(
-                    //     egui::UiBuilder::new()
-                    //         .max_rect(row_rect)
-                    //         .layout(egui::Layout::top_down(egui::Align::Center)),
-                    //     |ui| ui.label(desc.label),
-                    // )
-                    // .response
-                    //
-                    ui.label(desc.label)
+        let icon_response = if let Some(icon) = desc.icons {
+            state.show_toggle_button(ui, move |ui, openness, response| {
+                if openness > 0.5 {
+                    draw_header_icon(ui, icon.open, response)
+                } else {
+                    draw_header_icon(ui, icon.closed, response)
                 }
-            };
+            })
+        } else {
+            state.show_toggle_button(ui, move |ui, openness, response| {
+                egui::collapsing_header::paint_default_icon(ui, openness, response)
+            })
+        };
 
-            // This is a hack, but the collapsing states responses kind of suck.
-            //
-            // We generate our own responses on the outliner row and label of the file, as the collapsing header does
-            // not respond to these by default.
-            // We also need to ensure the icon is not below the cursor, as the icon lies within the outliner row. Otherwise
-            // the collapsing state itself will also respond and we will attempt to toggle the node twice.
-            if (row_response.clicked() || label_response.clicked()) && !icon_response.hovered() {
-                state.toggle(ui);
+        let header_label = egui::Label::new(desc.label).selectable(false);
+        let label_response = match desc.header_alignment {
+            HeaderAlignment::Left => ui.add(header_label),
+            HeaderAlignment::Right => {
+                // ui.scope_builder(
+                //     egui::UiBuilder::new()
+                //         .max_rect(row_rect)
+                //         .layout(egui::Layout::top_down(egui::Align::Center)),
+                //     |ui| ui.label(desc.label),
+                // )
+                // .response
+                //
+
+                ui.add(header_label)
             }
+        };
 
-            // We also need separate context menus for the row and label responses, although they both display the same content.
-            if let Some(ctx_fn) = &mut desc.on_ctx_menu {
-                row_response.context_menu(|ui| ctx_fn(ui));
-                label_response.context_menu(|ui| ctx_fn(ui));
-            }
-        });
+        // This is a hack, but the collapsing states responses kind of suck.
+        //
+        // We generate our own responses on the outliner row and label of the file, as the collapsing header does
+        // not respond to these by default.
+        // We also need to ensure the icon is not below the cursor, as the icon lies within the outliner row. Otherwise
+        // the collapsing state itself will also respond and we will attempt to toggle the node twice.
+        if (row_response.clicked() || label_response.clicked()) && !icon_response.hovered() {
+            state.toggle(ui);
+        }
 
-        if ui.rect_contains_pointer(row_rect) {
-            // Set a custom cursor to make the outliner feel more responsive.
-            ui.set_cursor_icon(egui::CursorIcon::PointingHand);
+        // We also need separate context menus for the row and label responses, although they both display the same content.
+        if let Some(ctx_fn) = &mut desc.on_ctx_menu {
+            row_response.context_menu(|ui| ctx_fn(ui));
+            label_response.context_menu(|ui| ctx_fn(ui));
+            icon_response.context_menu(|ui| ctx_fn(ui));
         }
     });
+
+    if ui.rect_contains_pointer(header_rect) {
+        // Set a custom cursor to make the outliner feel more responsive.
+        //
+        // This is done after drawing to override the select cursor for the label.
+        ui.set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
 
     let body_response = if desc.indent {
         state.show_body_indented(&row_response, ui, |ui| (desc.on_body)(ui))
