@@ -10,7 +10,7 @@ use slipstream_shared::{
 };
 
 use crate::panes::{ContentSignature, Pane, PaneAction, PaneId, RequestNewPane};
-use slipstream_shared::widgets::{self, CollapseDescriptor, HeaderAlignment, HeaderIcons};
+use slipstream_shared::widgets::{self, CollapseDescriptor, DropdownType, HeaderIcons};
 
 /// The outliner displays a file tree.
 ///
@@ -91,7 +91,7 @@ impl OutlinerPane {
                     open: node.ty.open_icon(),
                     closed: node.ty.closed_icon(),
                 }),
-                HeaderAlignment::Left,
+                DropdownType::Regular,
                 false,
                 true,
                 |ui| {
