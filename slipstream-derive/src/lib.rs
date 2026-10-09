@@ -587,9 +587,9 @@ struct FieldOpt {
     pub rename: Option<String>,
     #[darling(default)]
     pub with: Option<syn::Path>,
-    /// Nested structs start out expanded: `#[inspect(open)]`.
+    /// Nested structs start out expanded: `#[inspect(opened)]`.
     #[darling(default)]
-    pub open: bool,
+    pub opened: bool,
 }
 
 impl FieldOpt {
@@ -741,7 +741,7 @@ impl FieldOpt {
             let name = field.name();
             let accessor = field.accessor(is_bitfield);
             let config = field.config();
-            let default_open = field.open;
+            let default_open = field.opened;
 
             // Each field gets its own block so the borrows of `self` don't overlap.
             tokens.append_all(quote! {
@@ -1053,18 +1053,37 @@ impl Parse for BitFieldType {
     }
 }
 
+fn is_inspect_attr(attr: &Attribute) -> bool {
+    attr.path().is_ident("inspect")
+}
+
 #[proc_macro_attribute]
-pub fn inspect_bitfield(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn inspect_bitfield(args: TokenStream, mut input: TokenStream) -> TokenStream {
     let bitfield_ty = syn::parse_macro_input!(args as BitFieldType).ty;
 
-    // Need to convert proc_macro2 to proc_macro because `syn::parse_macro_input` requires it.
-    // But then `quote` requires proc_macro2 so we need to convert back again.
-    let inspect_derived = proc_macro2::TokenStream::from(derive_inspect_inner(input.clone(), true));
-    let input = proc_macro2::TokenStream::from(input);
+    let mut item = {
+        let input = input.clone();
+        syn::parse_macro_input!(input as syn::DeriveInput)
+    };
+
+    // Read the `#[inspect(..)]` attributes first, while they are still there.
+    let inspect_derived = proc_macro2::TokenStream::from(match Input::from_derive_input(&item) {
+        Ok(parsed) => parsed.into_token_stream(true),
+        Err(err) => return TokenStream::from(err.write_errors()),
+    });
+
+    // Strip them from the struct and its fields, so the compiler and `#[bitfield]`
+    // never see an attribute nobody has declared.
+    item.attrs.retain(|attr| !is_inspect_attr(attr));
+    if let syn::Data::Struct(data) = &mut item.data {
+        for field in data.fields.iter_mut() {
+            field.attrs.retain(|attr| !is_inspect_attr(attr));
+        }
+    }
 
     let expanded = quote! {
         #[bitfield(#bitfield_ty)]
-        #input
+        #item
         #inspect_derived
     };
 

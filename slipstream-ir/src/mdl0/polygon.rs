@@ -294,8 +294,6 @@ impl DeserializeContents for Polygon {
             None => BoneBind::Mixed(BoneTable::deserialize(reader)?),
         };
 
-        dbg!(&bone_bind);
-
         // The definitions and vertices offsets are relative to their fields, not the the file start.
         const VERTEX_DECL_INTERNAL_OFFSET: u64 = 0x20;
         const VERTEX_DATA_INTERNAL_OFFSET: u64 = 0x24;

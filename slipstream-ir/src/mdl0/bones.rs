@@ -26,6 +26,7 @@ use crate::{
 
 #[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(summary = "BoneFlags::summary")]
 pub struct BoneFlags {
     pub use_identity: bool,
     pub translation_isotropic: bool,
@@ -40,6 +41,13 @@ pub struct BoneFlags {
     pub is_billboard_child: bool,
     #[bits(21)]
     _unused: u32,
+}
+
+impl BoneFlags {
+    #[inline]
+    pub fn summary(&self) -> String {
+        format!("{:#08x}", self.0)
+    }
 }
 
 /// Configures the way billboarding is used for this object.
@@ -213,10 +221,11 @@ pub struct Bone {
     /// The ID stored inside the bone.
     pub id: u32,
     pub flags: BoneFlags,
+    #[inspect(opened)]
     pub billboard_setting: BillboardSetting,
     pub billboard_reference: Option<IrNodeKey>,
     pub translation: glam::Vec3,
-    #[inspect(suffix = " °", rename = "ROTATION")]
+    #[inspect(suffix = " °")]
     pub rotation: glam::Vec3,
     pub scale: glam::Vec3,
     pub bounding_volume: Box3,
