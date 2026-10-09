@@ -15,6 +15,8 @@ pub struct CollapseDescriptor<B, C> {
     icons: Option<HeaderIcons>,
     label: egui::RichText,
     header_alignment: HeaderAlignment,
+    default_open: bool,
+    indent: bool,
 
     on_body: B,
     on_ctx_menu: Option<C>,
@@ -30,6 +32,8 @@ where
         label: egui::RichText,
         icons: Option<HeaderIcons>,
         header_alignment: HeaderAlignment,
+        default_open: bool,
+        indent: bool,
         on_body: B,
     ) -> Self {
         Self {
@@ -37,6 +41,8 @@ where
             label,
             icons,
             header_alignment,
+            default_open,
+            indent,
             on_body,
             on_ctx_menu: None,
         }
@@ -53,6 +59,8 @@ where
         label: egui::RichText,
         icons: Option<HeaderIcons>,
         header_alignment: HeaderAlignment,
+        default_open: bool,
+        indent: bool,
         on_body: B,
         on_ctx_menu: C,
     ) -> Self {
@@ -61,6 +69,8 @@ where
             label,
             icons,
             header_alignment,
+            default_open,
+            indent,
             on_body,
             on_ctx_menu: Some(on_ctx_menu),
         }
@@ -142,12 +152,17 @@ where
             };
 
             let label_response = match desc.header_alignment {
-                HeaderAlignment::Left => ui.label(desc.label.strong()),
+                HeaderAlignment::Left => ui.label(desc.label),
                 HeaderAlignment::Right => {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(desc.label.strong())
-                    })
-                    .response
+                    // ui.scope_builder(
+                    //     egui::UiBuilder::new()
+                    //         .max_rect(row_rect)
+                    //         .layout(egui::Layout::top_down(egui::Align::Center)),
+                    //     |ui| ui.label(desc.label),
+                    // )
+                    // .response
+                    //
+                    ui.label(desc.label)
                 }
             };
 
@@ -174,7 +189,11 @@ where
         }
     });
 
-    let body_response = state.show_body_indented(&row_response, ui, |ui| (desc.on_body)(ui));
+    let body_response = if desc.indent {
+        state.show_body_indented(&row_response, ui, |ui| (desc.on_body)(ui))
+    } else {
+        state.show_body_unindented(ui, |ui| (desc.on_body)(ui))
+    };
 
     if let Some(egui::InnerResponse { inner, .. }) = body_response {
         inner?;

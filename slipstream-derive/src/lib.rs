@@ -289,10 +289,12 @@ impl Input {
                     let mut changes = slipstream_shared::inspect::Changes::default();
                     widgets::draw_collapsing_state(
                         widgets::CollapseDescriptor::new(
-                            ui.id().with("CollapsingState"),
-                            "header".into(),
+                            ui.id().with(concat!("CollapsingState_", #name)),
+                            #name.into(),
                             None,
                             widgets::HeaderAlignment::Right,
+                            true,
+                            false,
                             |ui| {
                                 #fields
 
@@ -305,14 +307,29 @@ impl Input {
                 }
 
                 fn draw_value(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
-                    let egui::CollapsingResponse { body_returned, .. } =egui::CollapsingHeader::new(#name).show(ui, |ui| {
-                        let mut changes = slipstream_shared::inspect::Changes::default();
-                        ui.vertical(|ui| {
-                            #fields
-                        });
-                        changes
+                    use slipstream_shared::widgets;
+
+                    let mut changes = slipstream_shared::inspect::Changes::default();
+
+                    // Set layout back to vertical to properly display the collapsing drop down.
+                    ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
+                        widgets::draw_collapsing_state(
+                            widgets::CollapseDescriptor::new(
+                                ui.id().with(concat!("CollapsingState_", #name)),
+                                #name.into(),
+                                None,
+                                widgets::HeaderAlignment::Right,
+                                false,
+                                false,
+                                |ui| {
+                                    #fields
+                                    Ok(())
+                                }
+                            ),
+                            ui
+                        );
                     });
-                    body_returned.unwrap_or_default()
+                    changes
                 }
             }
         });
