@@ -1,29 +1,42 @@
+use std::ops::{Deref, DerefMut};
+
+use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt};
-use slipstream_shared::{RefCursor, SlipstreamResult};
+use slipstream_derive::inspect_bitfield;
+use slipstream_shared::{
+    RefCursor, SlipstreamResult,
+    inspect::{FieldConfig, Inspect},
+    verify, widgets,
+};
 
 /// A 4-byte animation frame.
 #[derive(Debug, Clone, PartialEq)]
 pub struct I4Frame {
     /// The index of this frame in the animation.
     pub index: u8,
-    pub step: u8,
+    pub step: f32,
     /// The tangent line to the interpolation slope of the animation.
     pub tangent: f32,
 }
 
-impl I4Frame {
-    pub const INDEX_MASK: u32 = 0xff000000; // Top 8 bits
-    pub const STEP_MASK: u32 = 0x00fff000; // Middle 12 bits
-    pub const TANGENT_MASK: u32 = 0x00000fff; // Bottom 12 bits
+#[bitfield(u32)]
+struct I4FrameBits {
+    #[bits(8)]
+    pub index: u8,
+    #[bits(12)]
+    pub step: u16,
+    #[bits(12)]
+    pub tangent: u16,
 }
 
 impl I4Frame {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
+        let bitfield = I4FrameBits::from_bits(word);
 
-        let index = ((word & Self::INDEX_MASK) >> 24) as u8;
-        let step = ((word & Self::STEP_MASK) >> 12) as u8;
-        let tangent = (word >> 20) as f32 / 32.0;
+        let index = bitfield.index();
+        let step = bitfield.step() as f32;
+        let tangent = bitfield.tangent() as f32 / 32.0;
 
         Ok(Self {
             index,
@@ -42,9 +55,9 @@ pub struct I6Frame {
 
 impl I6Frame {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        let index = (reader.read_u16::<BigEndian>()? as f32) / 32.0f32;
+        let index = (reader.read_u16::<BigEndian>()? as f32) / 32.0;
         let step = reader.read_u16::<BigEndian>()? as f32;
-        let tangent = (reader.read_u16::<BigEndian>()? as f32) / 256.0f32;
+        let tangent = (reader.read_u16::<BigEndian>()? as f32) / 256.0;
 
         Ok(Self {
             index,
@@ -84,8 +97,16 @@ pub struct I4Animation {
 }
 
 impl I4Animation {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+    pub fn deserialize(
+        reader: &mut RefCursor<[u8]>,
+        header_frame_count: u16,
+    ) -> SlipstreamResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
+        verify!(
+            frame_count <= header_frame_count,
+            "animation has more frames than header specifies ({frame_count} vs. {header_frame_count})"
+        );
+
         tracing::trace!(
             "Reading {frame_count} I4 frames at location {}",
             reader.position()
@@ -119,8 +140,16 @@ pub struct I6Animation {
 }
 
 impl I6Animation {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+    pub fn deserialize(
+        reader: &mut RefCursor<[u8]>,
+        header_frame_count: u16,
+    ) -> SlipstreamResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
+        verify!(
+            frame_count <= header_frame_count,
+            "animation has more frames than header specifies ({frame_count} vs. {header_frame_count})"
+        );
+
         tracing::trace!(
             "Reading {frame_count} I6 frames at location {}",
             reader.position()
@@ -152,8 +181,16 @@ pub struct I12Animation {
 }
 
 impl I12Animation {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+    pub fn deserialize(
+        reader: &mut RefCursor<[u8]>,
+        header_frame_count: u16,
+    ) -> SlipstreamResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
+        verify!(
+            frame_count <= header_frame_count,
+            "animation has more frames than header specifies ({frame_count} vs. {header_frame_count})"
+        );
+
         tracing::trace!(
             "Reading {frame_count} I12 frames at location {}",
             reader.position()

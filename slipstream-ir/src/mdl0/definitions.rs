@@ -16,6 +16,7 @@ use crate::visitor::{
 pub const NODE_TREE_NAME: &str = "NodeTree";
 pub const NODE_MIX_NAME: &str = "NodeMix";
 pub const DRAW_OPA_NAME: &str = "DrawOpa";
+pub const DRAW_XLU_NAME: &str = "DrawXlu";
 
 /// Simple newtype that makes types with many IDs a lot clearer.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable)]
