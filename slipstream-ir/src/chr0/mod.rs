@@ -93,37 +93,140 @@ impl ScalingRule {
     }
 }
 
-/// The format used to store the animation.
+/// The format used to store the animation. This is used for translation and scale animations.
+/// Rotations used [`AnimationFormat3`] instead.
 ///
 /// This affects the quality and behavior of the animation.
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 #[repr(u8)]
-pub enum AnimationFormat {
+pub enum AnimationFormat2 {
     /// The bone is kept in a fixed place. Fixed animations are simply a single value indicating where to
     /// put the bone.
+    #[inspect(
+        tooltip = "The bone is not animated. It is kept fixed in place and this animation only specifies that position."
+    )]
     Fixed = 0b000,
     /// A 4-byte format where the animation is evaluated by smoothly interpolating between
     /// a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create
     /// smooth curves between frames.
+    #[inspect(
+        tooltip = "The animation is evaluated by smoothly interpolating between \
+        a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create \
+        smooth curves between frames. \
+        \
+        Each explicitly set keyframe is 4 bytes in size."
+    )]
     Interpolated4 = 0b001,
     /// A 6-byte format where the animation is evaluated by smoothly interpolating between
     /// a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create
     /// smooth curves between frames.
+    #[inspect(
+        tooltip = "The animation is evaluated by smoothly interpolating between \
+        a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create \
+        smooth curves between frames. \
+        \
+        Each explicitly set keyframe is 6 bytes in size."
+    )]
     Interpolated6 = 0b010,
     /// A 12-byte format where the animation is evaluated by smoothly interpolating between
     /// a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create
     /// smooth curves between frames.
+    #[inspect(
+        tooltip = "The animation is evaluated by smoothly interpolating between \
+        a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create \
+        smooth curves between frames. \
+        \
+        Each explicitly set keyframe is 12 bytes in size."
+    )]
+    Interpolated12 = 0b011,
+    /// A fallback for [`bitenum`], this variant should never be used.
+    #[inspect(ignore)]
+    #[fallback]
+    Invalid,
+}
+
+impl AnimationFormat2 {
+    /// Converts this format to an extended 3-bit format.
+    pub fn extend(self) -> AnimationFormat3 {
+        match self {
+            Self::Fixed => AnimationFormat3::Fixed,
+            Self::Interpolated4 => AnimationFormat3::Interpolated4,
+            Self::Interpolated6 => AnimationFormat3::Interpolated6,
+            Self::Interpolated12 => AnimationFormat3::Interpolated12,
+            Self::Invalid => AnimationFormat3::Invalid,
+        }
+    }
+}
+
+/// The format used to store the animation. This is an extended version for the rotation format.
+/// As rotations support two more formats.
+///
+/// This affects the quality and behavior of the animation.
+#[bitenum]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
+#[repr(u8)]
+pub enum AnimationFormat3 {
+    /// The bone is kept in a fixed place. Fixed animations are simply a single value indicating where to
+    /// put the bone.
+    #[inspect(
+        tooltip = "The bone is not animated. It is kept fixed in place and this animation only specifies that position."
+    )]
+    Fixed = 0b000,
+    /// A 4-byte format where the animation is evaluated by smoothly interpolating between
+    /// a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create
+    /// smooth curves between frames.
+    #[inspect(
+        tooltip = "The animation is evaluated by smoothly interpolating between \
+        a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create \
+        smooth curves between frames. \
+        \
+        Each explicitly set keyframe is 4 bytes in size."
+    )]
+    Interpolated4 = 0b001,
+    /// A 6-byte format where the animation is evaluated by smoothly interpolating between
+    /// a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create
+    /// smooth curves between frames.
+    #[inspect(
+        tooltip = "The animation is evaluated by smoothly interpolating between \
+        a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create \
+        smooth curves between frames. \
+        \
+        Each explicitly set keyframe is 6 bytes in size."
+    )]
+    Interpolated6 = 0b010,
+    /// A 12-byte format where the animation is evaluated by smoothly interpolating between
+    /// a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create
+    /// smooth curves between frames.
+    #[inspect(
+        tooltip = "The animation is evaluated by smoothly interpolating between \
+        a few explicitly defined keyframes. Each defined keyframe specifies its tangent to create \
+        smooth curves between frames. \
+        \
+        Each explicitly set keyframe is 12 bytes in size."
+    )]
     Interpolated12 = 0b011,
     /// Specifies every single keyframe explicitly, but allows for more erratic information instead of the smoothly
     /// interpolated animations of interpolation formats.
     ///
-    /// The frame are 1 byte in size.
+    /// The frames are 1 byte in size.
+    #[inspect(
+        tooltip = "Specifies every single keyframe explicitly, but allows for more erratic information instead of the smoothly \
+        interpolated animations of interpolation formats. \
+        \
+        The keyframes are 1 byte in size."
+    )]
     Linear1 = 0b100,
     /// Specifies every single keyframe explicitly, but allows for more erratic information instead of the smoothly
     /// interpolated animations of interpolation formats.
     ///
-    /// The frame are 4 bytes in size.
+    /// The frames are 4 bytes in size.
+    #[inspect(
+        tooltip = "Specifies every single keyframe explicitly, but allows for more erratic information instead of the smoothly \
+        interpolated animations of interpolation formats. \
+        \
+        The keyframes are 4 bytes in size."
+    )]
     Linear4 = 0b110,
     /// A fallback for [`bitenum`], this variant should never be used.
     #[inspect(ignore)]
@@ -131,7 +234,7 @@ pub enum AnimationFormat {
     Invalid,
 }
 
-impl AnimationFormat {
+impl AnimationFormat3 {
     /// Whether this format is a linear format.
     pub fn is_linear(&self) -> bool {
         const LINEAR_MASK: u8 = 0b100;
@@ -170,11 +273,11 @@ pub struct AnimationCode {
     pub has_rotation: bool,
     pub has_translation: bool,
     #[bits(2)]
-    pub scale_format: AnimationFormat,
+    pub scale_format: AnimationFormat2,
     #[bits(3)]
-    pub rotation_format: AnimationFormat,
+    pub rotation_format: AnimationFormat3,
     #[bits(2)]
-    pub translation_format: AnimationFormat,
+    pub translation_format: AnimationFormat2,
 }
 
 impl AnimationCode {
@@ -230,7 +333,7 @@ impl AnimationData {
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u64,
         header_frame_count: u16,
-        format: AnimationFormat,
+        format: AnimationFormat3,
     ) -> SlipstreamResult<AnimationType> {
         let orig_position = reader.position();
 
@@ -239,16 +342,16 @@ impl AnimationData {
         reader.set_position(frame_start as u64);
 
         let frames = match format {
-            AnimationFormat::Interpolated4 => {
+            AnimationFormat3::Interpolated4 => {
                 AnimationType::Interpolated4(I4Animation::deserialize(reader)?)
             }
-            AnimationFormat::Interpolated6 => {
+            AnimationFormat3::Interpolated6 => {
                 AnimationType::Interpolated6(I6Animation::deserialize(reader)?)
             }
-            AnimationFormat::Interpolated12 => {
+            AnimationFormat3::Interpolated12 => {
                 AnimationType::Interpolated12(I12Animation::deserialize(reader)?)
             }
-            AnimationFormat::Linear1 => {
+            AnimationFormat3::Linear1 => {
                 // Does Brawlcrate simply just display them differently?
                 tracing::error!("FIXME: LINEAR1 ANIMATIONS DO NOT WORK PROPERLY RIGHT NOW");
                 AnimationType::Linear1(L1Animation::deserialize(reader, header_frame_count)?)
@@ -286,7 +389,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_ty_code.scale_format(),
+                    anim_ty_code.scale_format().extend(),
                 )?;
                 iso_scale = ComponentType::Animated(frame);
             }
@@ -305,7 +408,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_ty_code.scale_format(),
+                    anim_ty_code.scale_format().extend(),
                 )?;
                 x_scale = ComponentType::Animated(frame);
             }
@@ -318,7 +421,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_ty_code.scale_format(),
+                    anim_ty_code.scale_format().extend(),
                 )?;
                 y_scale = ComponentType::Animated(frame);
             }
@@ -331,7 +434,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_ty_code.scale_format(),
+                    anim_ty_code.scale_format().extend(),
                 )?;
                 z_scale = ComponentType::Animated(frame);
             }
@@ -445,7 +548,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.translation_format(),
+                    anim_code.translation_format().extend(),
                 )?)
             };
 
@@ -462,7 +565,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.translation_format(),
+                    anim_code.translation_format().extend(),
                 )?)
             };
 
@@ -473,7 +576,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.translation_format(),
+                    anim_code.translation_format().extend(),
                 )?)
             };
 
@@ -484,7 +587,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     header_frame_count,
-                    anim_code.translation_format(),
+                    anim_code.translation_format().extend(),
                 )?)
             };
 

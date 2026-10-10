@@ -7,7 +7,7 @@ pub enum DebugPane {
     Textures,
     Loaders,
     Memory,
-    Style
+    Style,
 }
 
 impl Pane for DebugPane {
@@ -18,7 +18,7 @@ impl Pane for DebugPane {
             Self::Textures => "Texture Statistics",
             Self::Loaders => "Image Loader Statistics",
             Self::Memory => "Memory Statistics",
-            Self::Style => "Style Settings"
+            Self::Style => "Style Settings",
         }
     }
 
@@ -31,8 +31,7 @@ impl Pane for DebugPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-    ) -> egui_tiles::UiResponse
-    {
+    ) -> egui_tiles::UiResponse {
         let ctx = ui.ctx().clone();
         match self {
             Self::General => ctx.settings_ui(ui),
@@ -40,7 +39,7 @@ impl Pane for DebugPane {
             Self::Textures => ctx.texture_ui(ui),
             Self::Loaders => ctx.loaders_ui(ui),
             Self::Memory => ctx.memory_ui(ui),
-            Self::Style => ctx.style_ui(ui, ui.theme())
+            Self::Style => ctx.style_ui(ui, ui.theme()),
         }
 
         egui_tiles::UiResponse::None
