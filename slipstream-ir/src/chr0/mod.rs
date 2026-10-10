@@ -249,9 +249,9 @@ pub struct AnimationCode {
     #[bits(1)]
     _unused: bool,
     pub use_identity: bool,
-    pub rotation_translation_isotropic: bool,
-    pub scale_isotropic: bool,
+    pub rotation_translation_zero: bool,
     pub scale_uniform: bool,
+    pub scale_isotropic: bool,
     pub rotation_isotropic: bool,
     pub translation_isotropic: bool,
     pub use_model_scale: bool,
