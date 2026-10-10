@@ -1,3 +1,5 @@
+use crate::inspect::{Changes, FieldConfig};
+
 /// Right aligned value area that fills the rest of the row. The height is bounded, so vertical
 /// centering can never make the row grow inside a `ScrollArea`. `id` gives the cell a unique
 /// `ui.id()`, which widgets like `ComboBox` derive their own ids from.
@@ -72,7 +74,11 @@ pub fn nested<R>(
 
         // A weak summary instead of a second arrow, so it reads as a hint, not a button.
         value_cell(ui, id.with("summary"), |ui| {
-            ui.add(egui::Label::new(egui::RichText::new(summary).weak()).selectable(false));
+            ui.add(
+                egui::Label::new(egui::RichText::new(summary).weak())
+                    .selectable(false)
+                    .wrap_mode(egui::TextWrapMode::Truncate),
+            );
         });
     });
 
@@ -101,4 +107,52 @@ pub fn nested<R>(
     state
         .show_body_indented(&header_resp, ui, body)
         .map(|response| response.inner)
+}
+
+/// Draws the array by wrapping every `per_row` entries.
+///
+/// This is used to for example draw the polygon UV Array IDs in two 4-entry rows instead of a
+/// large one of 8 entries.
+pub fn wrapped<T>(
+    ui: &mut egui::Ui,
+    id: egui::Id,
+    items: &mut [T],
+    per_row: usize,
+    mut add: impl FnMut(&mut egui::Ui, &mut T),
+) {
+    ui.vertical(|ui| {
+        for (row, chunk) in items.chunks_mut(per_row.max(1)).enumerate() {
+            value_cell(ui, id.with(row), |ui| {
+                for item in chunk.iter_mut().rev() {
+                    add(ui, item);
+                }
+            })
+        }
+    });
+}
+
+pub const DRAG_INPUT_SIZE: egui::Vec2 = egui::vec2(70.0, 20.0);
+
+pub fn drag_value(
+    mut drag_value: egui::DragValue<'_>,
+    cfg: &FieldConfig,
+    ui: &mut egui::Ui,
+) -> Changes {
+    if let Some(range) = &cfg.range {
+        drag_value = drag_value.range(range.clone());
+    }
+
+    if let Some(prefix) = cfg.prefix {
+        drag_value = drag_value.prefix(prefix);
+    }
+
+    if let Some(suffix) = cfg.suffix {
+        drag_value = drag_value.suffix(suffix);
+    }
+
+    let mut response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
+    if let Some(tooltip) = cfg.tooltip {
+        response = response.on_hover_text(tooltip);
+    }
+    response.into()
 }
