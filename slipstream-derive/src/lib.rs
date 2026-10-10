@@ -15,12 +15,26 @@ use syn::spanned::Spanned;
 use syn::{Attribute, Expr, ExprLit, Ident, Lit, LitStr, Meta, Token, Type, Visibility};
 use syn::{PathSegment, Result};
 
+trait StringAttrExt {
+    fn to_tokens_opt(&self) -> proc_macro2::TokenStream;
+}
+
+impl StringAttrExt for Option<StringAttr> {
+    fn to_tokens_opt(&self) -> proc_macro2::TokenStream {
+        if let Some(attr) = self {
+            quote! { Some(#attr) }
+        } else {
+            quote! { None  }
+        }
+    }
+}
+
 #[derive(Debug)]
-struct Tooltip {
+struct StringAttr {
     expr: Expr,
 }
 
-impl FromMeta for Tooltip {
+impl FromMeta for StringAttr {
     fn from_value(value: &syn::Lit) -> darling::Result<Self> {
         match value {
             syn::Lit::Str(s) => Ok(Self {
@@ -47,11 +61,16 @@ impl FromMeta for Tooltip {
     }
 }
 
-impl ToTokens for Tooltip {
+impl ToTokens for StringAttr {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let content = &self.expr;
         tokens.append_all(quote! { #content });
     }
+}
+
+#[inline]
+const fn default_opened() -> bool {
+    true
 }
 
 #[derive(Debug, darling::FromField)]
@@ -61,9 +80,11 @@ struct FieldOpt {
     pub ty: Type,
 
     #[darling(default)]
-    pub tooltip: Option<Tooltip>,
+    pub tooltip: Option<StringAttr>,
     #[darling(default)]
-    pub suffix: Option<String>,
+    pub prefix: Option<StringAttr>,
+    #[darling(default)]
+    pub suffix: Option<StringAttr>,
     #[darling(default)]
     pub min: Option<syn::Expr>,
     #[darling(default)]
@@ -71,15 +92,13 @@ struct FieldOpt {
     #[darling(default)]
     pub read_only: bool,
     #[darling(default)]
-    pub category: Option<String>,
+    pub category: Option<StringAttr>,
     #[darling(default)]
     pub ignore: bool,
     #[darling(default)]
     pub rename: Option<String>,
-    #[darling(default)]
-    pub with: Option<syn::Path>,
     /// Nested structs start out expanded: `#[inspect(opened)]`.
-    #[darling(default)]
+    #[darling(default = "default_opened")]
     pub opened: bool,
 }
 
@@ -178,35 +197,10 @@ impl FieldOpt {
             }
         };
 
-        let category = if let Some(category) = &self.category {
-            quote! {
-                Some(#category)
-            }
-        } else {
-            quote! {
-                None
-            }
-        };
-
-        let suffix = if let Some(suffix) = &self.suffix {
-            quote! {
-                Some(#suffix)
-            }
-        } else {
-            quote! {
-                None
-            }
-        };
-
-        let tooltip = if let Some(tooltip) = &self.tooltip {
-            quote! {
-                Some(#tooltip)
-            }
-        } else {
-            quote! {
-                None
-            }
-        };
+        let category = self.category.to_tokens_opt();
+        let prefix = self.prefix.to_tokens_opt();
+        let suffix = self.suffix.to_tokens_opt();
+        let tooltip = self.tooltip.to_tokens_opt();
 
         quote! {
             slipstream_shared::inspect::FieldConfig {
@@ -215,6 +209,7 @@ impl FieldOpt {
                 category: #category,
                 read_only: #read_only,
                 range: #range,
+                prefix: #prefix,
                 suffix: #suffix
             }
         }
@@ -517,11 +512,15 @@ impl Input {
                     let curr_label = slipstream_shared::inspect::AsEnumLabel::as_label(self);
 
                     let mut changes = slipstream_shared::inspect::Changes::default();
-                    egui::ComboBox::new(ui.id().with("ComboBox"), "")
+                    let response = egui::ComboBox::new(ui.id().with("ComboBox"), "")
                         .selected_text(curr_label)
                         .show_ui(ui, |ui| {
                             #fields
-                        });
+                        }).response;
+
+                    if let Some(tooltip) = cfg.tooltip {
+                        response.on_hover_text(tooltip);
+                    }
 
                     changes
                 }

@@ -64,7 +64,7 @@ impl BoneTable {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum PolygonModifier {
     None,
     ChangeCurrentMatrix,
@@ -211,7 +211,6 @@ impl TryFrom<GxBytecode> for GxVertexDeclaration {
 #[derive(Debug, Clone, Inspect)]
 pub struct Polygon {
     pub array_flags: u32,
-    #[inspect(ignore)]
     pub modifier: PolygonModifier,
     /// This shape's index in the Polygons` section.
     pub index: u32,
@@ -222,22 +221,30 @@ pub struct Polygon {
     ///
     /// This is an index into the `Vertices` section of the model.
     #[inspect(rename = "Vertex Array ID")]
-    pub vertex_array_id: u16,
+    #[inspect(tooltip = "Which vertex buffer should the polygon load its indexed entries from?")]
+    pub vertex_array_id: i16,
     /// The normal buffer to use for indexed draws.
     ///
     /// This is an index into the `Normals` section of the model.
     #[inspect(rename = "Normal Array ID")]
-    pub normal_array_id: u16,
+    #[inspect(tooltip = "Which normal buffer should the polygon load its indexed entries from?")]
+    pub normal_array_id: i16,
     /// The color buffer to use for indexed draws.
     ///
     /// This is an index into the `Colors` section of the model.
     #[inspect(rename = "Color Array IDs")]
-    pub color_array_ids: [u16; 2],
+    #[inspect(
+        tooltip = "Which color buffers should the polygon load its indexed entries from? -1 indicates the buffer is not enabled."
+    )]
+    pub color_array_ids: [i16; 2],
     /// The UV buffer to use for indexed draws.
     ///
     /// This is an index into the `UVs` section of the model.
     #[inspect(rename = "UV Array IDs")]
-    pub uv_array_ids: [u16; 8],
+    #[inspect(
+        tooltip = "Which UV buffers should the polygon load its indexed entries from? -1 indicates the buffer is not enabled."
+    )]
+    pub uv_array_ids: [i16; 8],
     /// Determines how this shape is bound to a bone for rigging.
     #[inspect(ignore)]
     pub bone_bind: BoneBind,
@@ -295,10 +302,10 @@ impl DeserializeContents for Polygon {
         let index = reader.read_u32::<BigEndian>()?;
         let vertex_count = reader.read_u32::<BigEndian>()?;
         let face_count = reader.read_u32::<BigEndian>()?;
-        let vertex_array_id = reader.read_u16::<BigEndian>()?;
-        let normal_array_id = reader.read_u16::<BigEndian>()?;
-        let color_array_ids = reader.read_u16_array::<2, BigEndian>()?;
-        let uv_array_ids = reader.read_u16_array::<8, BigEndian>()?;
+        let vertex_array_id = reader.read_i16::<BigEndian>()?;
+        let normal_array_id = reader.read_i16::<BigEndian>()?;
+        let color_array_ids = reader.read_i16_array::<2, BigEndian>()?;
+        let uv_array_ids = reader.read_i16_array::<8, BigEndian>()?;
         let _unknown = reader.read_u32::<BigEndian>()?;
         let bone_table_offset = reader.read_u32::<BigEndian>()?;
 

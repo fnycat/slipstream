@@ -2,7 +2,12 @@ use std::ops::{BitOr, BitOrAssign, Range, RangeBounds, RangeInclusive};
 
 use egui::emath;
 
-pub const DRAG_INPUT_SIZE: egui::Vec2 = egui::vec2(70.0, 20.0);
+use crate::widgets::{self, drag_value};
+
+/// The maximum amount of input entries that will be allowed on a single line.
+/// This is used for large arrays such as the UV array IDs, which would otherwise display
+/// 8 input fields next to each other.
+pub const MAX_HORIZONTAL_INPUT_COUNT: usize = 4;
 
 #[diagnostic::on_unimplemented(
     label = "non-numerical type",
@@ -100,6 +105,7 @@ pub struct FieldConfig {
     pub read_only: bool,
     /// The range of a slider.
     pub range: Option<RangeInclusive<f64>>,
+    pub prefix: Option<&'static str>,
     /// The suffix to add to the drag values.
     pub suffix: Option<&'static str>,
 }
@@ -129,6 +135,7 @@ impl FieldConfig {
 impl Default for FieldConfig {
     fn default() -> Self {
         Self {
+            prefix: None,
             suffix: None,
             tooltip: None,
             label: "<unknown>",
@@ -167,73 +174,36 @@ impl Inspect for bool {
 
 impl Inspect for u8 {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
-        let drag_value = egui::DragValue::new(self);
-        let drag_value = if let Some(range) = &cfg.range {
-            drag_value.range(range.clone())
-        } else {
-            drag_value
-        };
-        let response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
-        if let Some(tooltip) = cfg.tooltip {
-            response.on_hover_text(tooltip)
-        } else {
-            response
-        }
-        .into()
+        let val = egui::DragValue::new(self);
+        drag_value(val, cfg, ui)
+    }
+}
+
+impl Inspect for i16 {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        let val = egui::DragValue::new(self);
+        drag_value(val, cfg, ui)
     }
 }
 
 impl Inspect for u16 {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
-        let drag_value = egui::DragValue::new(self);
-        let drag_value = if let Some(range) = &cfg.range {
-            drag_value.range(range.clone())
-        } else {
-            drag_value
-        };
-        let response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
-        if let Some(tooltip) = cfg.tooltip {
-            response.on_hover_text(tooltip)
-        } else {
-            response
-        }
-        .into()
+        let val = egui::DragValue::new(self);
+        drag_value(val, cfg, ui)
     }
 }
 
 impl Inspect for i32 {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
-        let drag_value = egui::DragValue::new(self);
-        let drag_value = if let Some(range) = &cfg.range {
-            drag_value.range(range.clone())
-        } else {
-            drag_value
-        };
-        let response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
-        if let Some(tooltip) = cfg.tooltip {
-            response.on_hover_text(tooltip)
-        } else {
-            response
-        }
-        .into()
+        let val = egui::DragValue::new(self);
+        drag_value(val, cfg, ui)
     }
 }
 
 impl Inspect for u32 {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
-        let drag_value = egui::DragValue::new(self);
-        let drag_value = if let Some(range) = &cfg.range {
-            drag_value.range(range.clone())
-        } else {
-            drag_value
-        };
-        let response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
-        if let Some(tooltip) = cfg.tooltip {
-            response.on_hover_text(tooltip)
-        } else {
-            response
-        }
-        .into()
+        let val = egui::DragValue::new(self);
+        drag_value(val, cfg, ui)
     }
 }
 
@@ -244,21 +214,8 @@ macro_rules! impl_vector {
             fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
                 let mut response = Changes::default();
                 $(
-                    let mut drag_value = egui::DragValue::new(&mut self.$ident).speed(0.1);
-                    if let Some(range) = &cfg.range {
-                        drag_value = drag_value.range(range.clone());
-                    }
-
-                    if let Some(suffix) = cfg.suffix {
-                        drag_value = drag_value.suffix(suffix);
-                    }
-
-                    let inner = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
-                    response |= if let Some(tooltip) = cfg.tooltip {
-                        inner.on_hover_text(tooltip)
-                    } else {
-                        inner
-                    }.into();
+                    let val = egui::DragValue::new(&mut self.$ident).speed(0.1);
+                    response |= drag_value(val, cfg, ui);
                 )*
                 response
             }
@@ -273,19 +230,8 @@ impl_vector!(glam::Vec4, x, y, z, w);
 impl Inspect for f32 {
     #[inline]
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
-        let drag_value = egui::DragValue::new(self);
-        let drag_value = if let Some(range) = &cfg.range {
-            drag_value.range(range.clone())
-        } else {
-            drag_value
-        };
-        let response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
-        if let Some(tooltip) = cfg.tooltip {
-            response.on_hover_text(tooltip)
-        } else {
-            response
-        }
-        .into()
+        let val = egui::DragValue::new(self);
+        drag_value(val, cfg, ui)
     }
 }
 
@@ -300,16 +246,26 @@ impl<T: Inspect> Inspect for Option<T> {
 
 impl<T: Inspect, const N: usize> Inspect for [T; N] {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
-        self.iter_mut().fold(Changes::default(), |acc, val| {
-            acc | val.draw_inner(ui, cfg).into()
-        })
+        let mut changes = Changes::default();
+        let id = ui.id().with("Array");
+
+        widgets::wrapped(ui, id, self, MAX_HORIZONTAL_INPUT_COUNT, |ui, item| {
+            changes |= item.draw_inner(ui, cfg);
+        });
+
+        changes
     }
 }
 
 impl<T: Inspect> Inspect for Vec<T> {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
-        self.iter_mut().fold(Changes::default(), |acc, val| {
-            acc | val.draw_inner(ui, cfg).into()
-        })
+        let mut changes = Changes::default();
+        let id = ui.id().with("Array");
+
+        widgets::wrapped(ui, id, self, MAX_HORIZONTAL_INPUT_COUNT, |ui, item| {
+            changes |= item.draw_inner(ui, cfg);
+        });
+
+        changes
     }
 }
