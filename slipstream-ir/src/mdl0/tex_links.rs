@@ -15,7 +15,7 @@ use crate::{
     visitor::{Visitable, Visitor},
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureLink {
     pub offset1: u32,
     pub offset2: u32,
@@ -37,7 +37,7 @@ impl TextureLink {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureLinks {
     pub links: Vec<TextureLink>,
 }

@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::cursor::{MutCursor, SizeEstimate};
 use slipstream_shared::{cursor::RefCursor, error::SlipstreamResult};
 
@@ -14,7 +15,7 @@ use crate::{
     visitor::{Visitable, Visitor},
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PaletteLink {
     pub offset1: u32,
     pub offset2: u32,
@@ -35,7 +36,7 @@ impl PaletteLink {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PaletteLinks {
     pub links: Vec<PaletteLink>,
 }

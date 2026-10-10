@@ -31,7 +31,7 @@ pub fn deserialize_color(
             let short = reader.read_u16::<BigEndian>()?;
             to_rgb565(short)
         }
-        ColorFormat::Rgb24 => {
+        ColorFormat::Rgb8 => {
             let triad = reader.read_u24::<BigEndian>()?;
             let r = ((triad & 0xff_00_00) >> 16) as u8;
             let g = ((triad & 0x00_ff_00) >> 8) as u8;
@@ -50,7 +50,7 @@ pub fn deserialize_color(
 
             glam::u8vec4(r, g, b, 255)
         }
-        ColorFormat::Rgba16 => {
+        ColorFormat::Rgba4 => {
             let short = reader.read_u16::<BigEndian>()?;
             let r = ((short & 0xf0_00) >> 12) as u8;
             let g = ((short & 0x0f_00) >> 8) as u8;
@@ -65,7 +65,7 @@ pub fn deserialize_color(
 
             glam::u8vec4(r, g, b, a)
         }
-        ColorFormat::Rgba24 => {
+        ColorFormat::Rgba6 => {
             let triad = reader.read_u24::<BigEndian>()?;
             let r = ((triad & 0xfc_00_00) >> 18) as u8;
             let g = ((triad & 0x03_f0_00) >> 12) as u8;
@@ -79,7 +79,7 @@ pub fn deserialize_color(
 
             glam::u8vec4(r, g, b, a)
         }
-        ColorFormat::Rgba32 => {
+        ColorFormat::Rgba8 => {
             let comps = reader.read_u8_array::<4>()?;
             glam::U8Vec4::from_array(comps)
         }
