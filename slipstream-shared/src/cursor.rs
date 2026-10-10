@@ -107,6 +107,11 @@ impl<T: AsRef<[u8]> + ?Sized> RefCursor<T> {
     ///
     /// If the cursor is past the end of the buffer, the remaining buffer will be empty.
     pub fn remaining(&self) -> &[u8] {
+        // If the position is past the end of the buffer, return an empty slice
+        if self.pos >= self.remaining_len() as u64 {
+            return &[];
+        }
+
         &self.inner.as_ref().as_ref()[self.pos as usize..]
     }
 
