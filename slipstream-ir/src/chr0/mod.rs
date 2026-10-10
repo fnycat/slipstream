@@ -61,7 +61,9 @@ impl AnimationPolicy {
 #[repr(u32)]
 pub enum ScalingRule {
     Standard,
+    #[inspect(rename = "Autodesk Softimage")]
     Softimage,
+    #[inspect(rename = "Autodesk Maya")]
     Maya,
 }
 
@@ -88,32 +90,6 @@ impl ScalingRule {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let rule = reader.read_u32::<BigEndian>()?;
         Self::try_from(rule)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
-pub struct Chr0Header {
-    /// The amount of animation frames stored in this file.
-    pub frame_count: u16,
-    pub anim_data_count: u16,
-    /// Whether the animation loops or is a one time animation.
-    pub anim_policy: AnimationPolicy,
-    pub scaling_rule: ScalingRule,
-}
-
-impl Chr0Header {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        let frame_count = reader.read_u16::<BigEndian>()?;
-        let anim_data_count = reader.read_u16::<BigEndian>()?;
-        let anim_policy = AnimationPolicy::deserialize(reader)?;
-        let scaling_rule = ScalingRule::deserialize(reader)?;
-
-        Ok(Self {
-            frame_count,
-            anim_data_count,
-            anim_policy,
-            scaling_rule,
-        })
     }
 }
 
@@ -165,6 +141,7 @@ impl AnimationFormat {
 
 #[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(summary = "AnimationCode::summary")]
 pub struct AnimationCode {
     #[bits(1)]
     _unused: bool,
@@ -201,7 +178,12 @@ pub struct AnimationCode {
 }
 
 impl AnimationCode {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+    #[inline]
+    pub fn summary(&self) -> String {
+        format!("{:#08x}", self.into_bits())
+    }
+
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Ok(Self::from_bits(word))
     }
@@ -631,9 +613,32 @@ impl TryFrom<usize> for SectionType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Inspect)]
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub struct Chr0Root {
-    pub header: Chr0Header,
+    /// The amount of animation frames stored in this file.
+    pub frame_count: u16,
+    #[inspect(rename = "Keyframe Count")]
+    pub anim_data_count: u16,
+    /// Whether the animation loops or is a one time animation.
+    #[inspect(rename = "Animation Policy")]
+    pub anim_policy: AnimationPolicy,
+    pub scaling_rule: ScalingRule,
+}
+
+impl Chr0Root {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let frame_count = reader.read_u16::<BigEndian>()?;
+        let anim_data_count = reader.read_u16::<BigEndian>()?;
+        let anim_policy = AnimationPolicy::deserialize(reader)?;
+        let scaling_rule = ScalingRule::deserialize(reader)?;
+
+        Ok(Self {
+            frame_count,
+            anim_data_count,
+            anim_policy,
+            scaling_rule,
+        })
+    }
 }
 
 impl Visitable for Chr0Root {
@@ -670,7 +675,7 @@ pub fn deserialize(
         subfile_header.offsets.len()
     );
 
-    let chr0_header = Chr0Header::deserialize(reader)?;
+    let chr0_header = Chr0Root::deserialize(reader)?;
 
     let chr0_root_key = arena.reserve_key();
 
@@ -718,9 +723,7 @@ pub fn deserialize(
             ty: IrNodeType::Chr0Root,
             parent: Some(parent_id),
             children: files,
-            contents: ContentSlot::eager(Box::new(Chr0Root {
-                header: chr0_header,
-            })),
+            contents: ContentSlot::eager(Box::new(chr0_header)),
         },
     );
 

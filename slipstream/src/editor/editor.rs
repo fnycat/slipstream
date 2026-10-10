@@ -5,6 +5,7 @@ use std::{path::PathBuf, sync::Arc};
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::encoding::serialize_node;
 use slipstream_ir::node::root;
+use slipstream_shared::SlipstreamError;
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{AssertFailed, SlipstreamResult};
 
@@ -13,6 +14,7 @@ use crate::decorations::{self, WindowState};
 use crate::inspector::InspectorPane;
 use crate::pages::RoutablePage;
 use crate::pages::intro::IntroPage;
+use crate::panes::debug::DebugPane;
 use crate::panes::log::LogPane;
 use crate::panes::outliner::OutlinerPane;
 use crate::panes::{Pane, PaneAction, PaneBehavior, RequestNewPane};
@@ -66,8 +68,6 @@ pub struct Editor {
     pub file_base_node: IrNodeKey,
     pub arena: Arc<IrArena>,
 
-    pub show_theme_editor: bool,
-    pub theme_editor_state: egui_thematic::ThemeEditorState,
     pub pane_behavior: PaneBehavior,
     pub pane_tree: egui_tiles::Tree<Box<dyn Pane>>,
 }
@@ -118,8 +118,6 @@ impl Editor {
             cmd: cmd_channel,
             render_state: render_state.clone(),
 
-            show_theme_editor: false,
-            theme_editor_state: egui_thematic::ThemeEditorState::default(),
             arena,
             file_info,
             file_base_node: root_node,
@@ -186,6 +184,7 @@ impl Editor {
                 self.render_state.clone(),
             )?,
             RequestNewPane::Log => LogPane::new(self.pane_behavior.sender.clone()),
+            RequestNewPane::Debug { ty } => Box::new(ty)
         };
 
         Ok(if let Some(existing_tile) = existing_tile {
@@ -261,10 +260,10 @@ impl Editor {
     /// Draws the editor's upper toolbar.
     ///
     /// These are the `File`, `Edit`, buttons you often see in application .
-    fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui) {
+    fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui) -> SlipstreamResult<()> {
         let decorations_id = egui::Id::new("title_panel");
 
-        egui::Panel::top(decorations_id)
+        let egui::InnerResponse { inner, .. } = egui::Panel::top(decorations_id)
             .frame(
                 egui::Frame::new()
                     .fill(ui.visuals().window_fill)
@@ -293,9 +292,9 @@ impl Editor {
                     ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
                 }
 
-                ui.horizontal_centered(|ui| {
-                    egui::MenuBar::new().ui(ui, |ui| {
-                        ui.menu_button("File", |ui| {
+                let egui::InnerResponse { inner, .. } = ui.horizontal_centered(|ui| {
+                    let egui::InnerResponse { inner, .. } = egui::MenuBar::new().ui(ui, |ui| {
+                        let egui::InnerResponse { inner, .. } = ui.menu_button("File", |ui| {
                             if ui.button("Save").clicked() {
                                 todo!("save file");
                             }
@@ -304,7 +303,7 @@ impl Editor {
                                 #[cfg(not(target_arch = "wasm32"))]
                                 {
                                     if let Some(path) = rfd::FileDialog::new().save_file() {
-                                        self.save_file(&path).expect("failed to save file");
+                                        self.save_file(&path)?;
                                     }
                                 }
 
@@ -326,23 +325,63 @@ impl Editor {
                             if ui.button("Quit").clicked() {
                                 ui.send_viewport_cmd(egui::ViewportCommand::Close);
                             }
+
+                            Ok::<_, SlipstreamError>(())
                         });
 
-                        if ui.button("Logs").clicked() {
-                            self.on_new_pane_request(RequestNewPane::Log)
-                                .expect("failed to open logs");
+                        if let Some(inner) = inner {
+                            inner?;
                         }
 
-                        ui.menu_button("Settings", |ui| {
-                            if ui.button("Edit theme").clicked() {
-                                self.show_theme_editor = true;
+                        if ui.button("Logs").clicked() {
+                            self.on_new_pane_request(RequestNewPane::Log)?;
+                        }
+
+                        let egui::InnerResponse { inner, .. } = ui.menu_button("Debug", |ui| {
+                            if ui.button("Widget Inspector").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::Inspection })?;
                             }
+
+                            if ui.button("GUI Settings").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::General })?;
+                            }
+
+                            if ui.button("Style Settings").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::Style })?;
+                            }
+
+                            if ui.button("Image Loader Statistics").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::Loaders })?;
+                            }
+
+                            if ui.button("Memory Statistics").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::Memory })?;
+                            }
+
+                            if ui.button("Texture Statistics").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::Textures })?;
+                            }
+
+                            Ok::<_, SlipstreamError>(())
                         });
+                        
+                        if let Some(inner) = inner {
+                            inner?;
+                        }
+
+                        Ok::<_, SlipstreamError>(())
                     });
+                    inner?;
 
                     decorations::draw_title_buttons(ui);
+
+                    Ok::<_, SlipstreamError>(())
                 });
+
+                inner
             });
+
+        inner
     }
 
     fn save_file(&self, path: &Path) -> SlipstreamResult<()> {
@@ -389,14 +428,8 @@ impl RoutablePage for Editor {
     }
 
     fn draw(&mut self, ui: &mut egui::Ui) -> SlipstreamResult<()> {
-        self.draw_upper_toolbar(ui);
+        self.draw_upper_toolbar(ui)?;
         self.pane_tree.ui(&mut self.pane_behavior, ui);
-
-        egui_thematic::render_theme_panel(
-            ui.ctx(),
-            &mut self.theme_editor_state,
-            &mut self.show_theme_editor,
-        );
 
         Ok(())
     }

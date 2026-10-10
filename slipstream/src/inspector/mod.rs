@@ -1,5 +1,5 @@
 use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
-use slipstream_ir::chr0::SkeletalAnimation;
+use slipstream_ir::chr0::{self, SkeletalAnimation};
 use slipstream_ir::mdl0::{
     Bone, Definitions, MaterialBuffer, Mdl0Root, Polygon, TextureLinks, VertexBuffer,
 };
@@ -71,6 +71,17 @@ impl Visitor for InspectorVisitor<'_> {
         context: VisitorContextMut<'_, TextureLinks>,
     ) -> ControlFlow<()> {
         self.ui.label(format!("{:#?}", context.content));
+        ControlFlow::Continue(())
+    }
+
+    fn visit_chr0_mut(
+        &mut self,
+        context: VisitorContextMut<'_, chr0::Chr0Root>,
+    ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
         ControlFlow::Continue(())
     }
 

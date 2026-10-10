@@ -114,7 +114,7 @@ impl App {
             AppCommand::CenterWindow => self.center_window(),
             AppCommand::Route(route) => {
                 tracing::debug!("Routed to page `{}`", route.name());
-                self.page_state = route
+                self.page_state = route;
             }
         }
     }

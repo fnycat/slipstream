@@ -6,8 +6,11 @@ use std::{
 use egui_phosphor::thin::X;
 use slipstream_ir::node::arena::IrNodeKey;
 
+use crate::panes::debug::DebugPane;
+
 pub mod log;
 pub mod outliner;
+pub mod debug;
 
 /// Unlike the `egui_tiles`'s [`TileId`], this ID is created based on the content of the pane.
 ///
@@ -113,6 +116,7 @@ pub enum PaneId {
     Inspector,
     Viewer,
     Logs,
+    Debug
 }
 
 /// Requests to the tile manager to open a new pane.
@@ -136,6 +140,9 @@ pub enum RequestNewPane {
         viewed: Option<IrNodeKey>,
     },
     Log,
+    Debug {
+        ty: DebugPane
+    }
 }
 
 impl RequestNewPane {
@@ -145,6 +152,7 @@ impl RequestNewPane {
             Self::Inspector { .. } => PaneId::Inspector,
             Self::Viewer { .. } => PaneId::Viewer,
             Self::Log => PaneId::Logs,
+            Self::Debug { .. } => PaneId::Debug
         }
     }
 
@@ -167,7 +175,8 @@ impl RequestNewPane {
             RequestNewPane::Viewer { viewed } => {
                 viewed.hash(&mut hasher);
             }
-            RequestNewPane::Log => {}
+            RequestNewPane::Log => {},
+            RequestNewPane::Debug { ty } => ty.hash(&mut hasher)
         }
 
         ContentSignature::from(hasher.finish())

@@ -51,7 +51,6 @@ parking_lot = { version = "0.12.5", features = ["arc_lock"] }
 egui_tiles = "0.17.1"
 bitfield-struct = "0.13.0"
 strum = { version = "0.28.0", features = ["derive"] }
-egui-thematic = { git = "https://github.com/fnycat/egui-thematic" }
 
 [build-dependencies]
 vergen-gitcl = { version = "10.0.3", features = ["build", "cargo", "rustc", "si"] }
