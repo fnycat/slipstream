@@ -1,17 +1,28 @@
-mod anim;
+mod frame;
 
-pub use anim::*;
+use std::ops::ControlFlow;
+
+pub use frame::*;
 
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{
     cursor::RefCursor,
     error::{CorruptionError, SlipstreamError, SlipstreamResult},
+    verify,
 };
 
 use crate::{
-    brres::{BFile, BFileHeader, BFileType},
+    brres::{self, BFile, BFileHeader, BFileType},
     index::IndexGroup,
+    node::{
+        arena::{IrArena, IrNodeDescriptor, IrNodeKey},
+        node::{ContentSlot, IrNodeType},
+    },
+    visitor::{
+        Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
+        VisitorContextNodeMut,
+    },
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -549,29 +560,23 @@ impl AnimationData {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnimatedBone {
-    /// Name of the bone that this animates.
-    pub name: String,
     pub anim_code: AnimationCode,
     pub anim_data: AnimationData,
 }
 
 impl AnimatedBone {
-    #[tracing::instrument(skip(reader, bone_data_start, header_frame_count))]
-    pub fn deserialize(
-        reader: &mut RefCursor<[u8]>,
-        bone_data_start: u64,
-        header_frame_count: u16,
-        name: String,
-    ) -> SlipstreamResult<Self> {
+    #[tracing::instrument(skip(reader, frame_count))]
+    pub fn deserialize(reader: &mut RefCursor<[u8]>, frame_count: u16) -> SlipstreamResult<Self> {
+        let anim_data_start = reader.position();
+
         // Points to the same string as the file name in the index group entry,
         // so we don't need it.
         let _bone_name_offset = reader.read_u32::<BigEndian>()?;
         let anim_code = AnimationCode::deserialize(reader)?;
         let anim_data =
-            AnimationData::deserialize(reader, bone_data_start, header_frame_count, &anim_code)?;
+            AnimationData::deserialize(reader, anim_data_start, frame_count, &anim_code)?;
 
         Ok(Self {
-            name: name.to_owned(),
             anim_code,
             // anim_flags,
             anim_data,
@@ -579,57 +584,138 @@ impl AnimatedBone {
     }
 }
 
-/// A CHR0 subfile stores character model animations.
-///
-/// These animations are based on the bones of the character.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Chr0Subfile {
-    /// General header for BRRES subfiles.
-    pub subfile_header: BFileHeader,
-    /// CHR0-specific header data.
-    pub chr0_header: Chr0Header,
-    /// Per-bone animation data.
-    pub bones: Vec<AnimatedBone>,
-    /// This index group lists all the individual bones in the CHR0 file.
-    pub bones_group: IndexGroup,
+impl Visitable for AnimatedBone {
+    fn accept(&self, node: VisitorContextNode, visitor: &mut dyn Visitor) -> ControlFlow<()> {
+        visitor.visit_skeletal_animation(VisitorContext::new(node, self))
+    }
+
+    fn accept_mut(
+        &mut self,
+        node: VisitorContextNodeMut,
+        visitor: &mut dyn Visitor,
+    ) -> ControlFlow<()> {
+        visitor.visit_skeletal_animation_mut(VisitorContextMut::new(node, self))
+    }
 }
 
-impl Chr0Subfile {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        let subfile_header = BFileHeader::deserialize(reader, BFileType::Chr0)?;
+pub const CHR0_MAGIC: [u8; 4] = [0x43, 0x48, 0x52, 0x30];
 
-        reader.set_position(reader.position() + 4); // there are 4 bytes of padding between the headers
-        let chr0_header = Chr0Header::deserialize(reader)?;
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum SectionType {
+    Animations = 0,
+    UserData = 1,
+}
 
-        // This subgroup references all the bones in the animation file.
-        let bones_group = IndexGroup::deserialize(reader)?;
-        let mut bones = Vec::with_capacity(bones_group.entries.len());
+impl TryFrom<usize> for SectionType {
+    type Error = SlipstreamError;
 
-        for entry in &bones_group.entries[1..] {
-            let name = bones_group.get_entry_name(reader, entry)?.to_owned();
-
-            let data_start = bones_group.get_entry_data_start(entry);
-            reader.set_position(data_start as u64);
-
-            tracing::trace!("Reading CHR0 animations for bone `{name}` at location {data_start}");
-            bones.push(AnimatedBone::deserialize(
-                reader,
-                data_start,
-                chr0_header.frame_count,
-                name,
-            )?);
-        }
-
-        Ok(Self {
-            subfile_header,
-            chr0_header,
-            bones_group,
-            bones,
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        Ok(match value {
+            0 => Self::Animations,
+            1 => Self::UserData,
+            _ => {
+                return Err(CorruptionError {
+                    reason: format!("invalid CHR0 section type: {value} (expected 0 or 1)"),
+                    ..Default::default()
+                }
+                .into());
+            }
         })
     }
 }
 
-impl BFile for Chr0Subfile {
-    /// The first 4 bytes of a CHR0 file: "CHR0"
-    const MAGIC: [u8; 4] = [0x43, 0x48, 0x52, 0x30];
+#[derive(Debug, Clone, PartialEq)]
+pub struct Chr0Root {
+    pub header: Chr0Header,
+}
+
+impl Visitable for Chr0Root {
+    fn accept(&self, node: VisitorContextNode, visitor: &mut dyn Visitor) -> ControlFlow<()> {
+        visitor.visit_chr0(VisitorContext::new(node, self))
+    }
+
+    fn accept_mut(
+        &mut self,
+        node: VisitorContextNodeMut,
+        visitor: &mut dyn Visitor,
+    ) -> ControlFlow<()> {
+        visitor.visit_chr0_mut(VisitorContextMut::new(node, self))
+    }
+}
+
+#[tracing::instrument(skip_all, fields(name, parent_id))]
+pub fn deserialize(
+    reader: &mut RefCursor<[u8]>,
+    parent_id: IrNodeKey,
+    arena: &IrArena,
+    name: String,
+) -> SlipstreamResult<IrNodeKey> {
+    let subfile_header = BFileHeader::deserialize(reader, BFileType::Chr0)?;
+    reader.set_position(reader.position() + 4); // there are 4 bytes of padding between the headers
+
+    // CHR0 v3 has a single section. Only the animation data appears here.
+    // CHR0 v5 instead has two where presumably the second section is user data.
+
+    let expected_sections = brres::get_section_count(BFileType::Chr0, subfile_header.version)?;
+    verify!(
+        subfile_header.offsets.len() == expected_sections,
+        "CHR0 section count ({}) did not match expected section count ({expected_sections})",
+        subfile_header.offsets.len()
+    );
+
+    let chr0_header = Chr0Header::deserialize(reader)?;
+
+    let chr0_root_key = arena.reserve_key();
+
+    let mut files = Vec::new();
+    for (i, &section_offset) in subfile_header.offsets.iter().enumerate() {
+        if section_offset == 0 {
+            // Section does not exist.
+            continue;
+        }
+
+        let section_ty = SectionType::try_from(i)?;
+        match section_ty {
+            SectionType::Animations => {
+                // Instead of creating subfolders for the different sections, like in MDL0,
+                // we instead just append it the root. This is because there are only two possible sections,
+                // of which user data usually doesn't exist.
+
+                let index = IndexGroup::deserialize(reader)?;
+                for entry in &index.entries[1..] {
+                    let name = index.get_entry_name(reader, entry)?;
+                    let data_start = index.get_entry_data_start(entry);
+
+                    reader.set_position(data_start);
+
+                    let anim = AnimatedBone::deserialize(reader, chr0_header.frame_count)?;
+
+                    let anim_file = arena.insert(IrNodeDescriptor {
+                        label: name,
+                        ty: IrNodeType::SkeletalAnimation,
+                        parent: Some(chr0_root_key),
+                        children: Vec::new(),
+                        contents: ContentSlot::eager(Box::new(anim)),
+                    });
+                    files.push(anim_file);
+                }
+            }
+            SectionType::UserData => todo!("CHR0 user data"),
+        };
+    }
+
+    arena.insert_at(
+        chr0_root_key,
+        IrNodeDescriptor {
+            label: name,
+            ty: IrNodeType::Chr0Root,
+            parent: Some(parent_id),
+            children: files,
+            contents: ContentSlot::eager(Box::new(Chr0Root {
+                header: chr0_header,
+            })),
+        },
+    );
+
+    Ok(chr0_root_key)
 }

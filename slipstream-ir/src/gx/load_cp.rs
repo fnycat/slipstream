@@ -15,10 +15,21 @@ use crate::{
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum VectorStorage {
+    #[inspect(tooltip = "Do not store any data for this object.")]
     #[fallback]
     NotPresent = 0b00,
-    Direct = 0b01,
+    #[inspect(tooltip = "Store the data directly in the draw command itself.\
+        You should probably use indexing instead, for better performance.")]
+    Inline = 0b01,
+    #[inspect(tooltip = "Store an 8-bit index to an entry in a separate buffer.\
+        The GPU will use this index to load the data from the buffer given by the corresponding `Array ID`\
+        entry in this polygon.
+        Keep in mind that this index only supports referencing entries in the range 0-255.\
+        Use 16-bit indexing if you need more.")]
     Index8 = 0b10,
+    #[inspect(tooltip = "Store a 16-bit index to an entry in a separate buffer.\
+        The GPU wull use this index to load the data from the buffer given by the corresponding `Array ID`\
+        entry in this polygon.")]
     Index16 = 0b11,
 }
 

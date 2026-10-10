@@ -229,7 +229,7 @@ impl NodeIconsExt for IrNodeType {
             Self::ArcDirectory { empty: true, .. } => reg_icon!(FOLDER_DASHED),
             Self::BrresFile => reg_icon!(FOLDER),
 
-            Self::Mdl0Root => reg_icon!(PERSON),
+            Self::Mdl0Root => reg_icon!(PERSON_SIMPLE),
             Self::Definitions => reg_icon!(FILE_CODE),
             Self::Bone { end: false } => reg_icon!(BONE),
             Self::Bone { end: true } => fill_icon!(BONE),
@@ -242,6 +242,9 @@ impl NodeIconsExt for IrNodeType {
             Self::Polygon => reg_icon!(CUBE),
             Self::TextureLinks => reg_icon!(LINK),
             Self::PaletteLinks => reg_icon!(LINK),
+
+            Self::Chr0Root => reg_icon!(FILM_SLATE),
+            Self::SkeletalAnimation => reg_icon!(BONE),
 
             Self::Texture => reg_icon!(IMAGES),
 

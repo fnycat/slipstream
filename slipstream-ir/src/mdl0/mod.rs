@@ -19,6 +19,7 @@ pub use normals::*;
 pub use pal_links::*;
 pub use polygon::*;
 pub use section::*;
+use slipstream_shared::verify;
 pub use tevs::*;
 pub use tex_links::*;
 pub use uvs::*;
@@ -235,7 +236,7 @@ pub trait SectionDeserialize: Sized {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ModelHeader {
+pub struct Mdl0Header {
     pub mdl0_offset: i32,
     pub scaling_mode: ScalingMode,
     pub texture_matrix_mode: TextureMatrixMode,
@@ -251,7 +252,7 @@ pub struct ModelHeader {
     pub matrix_table: MatrixTable,
 }
 
-impl ModelHeader {
+impl Mdl0Header {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let start = reader.position();
 
@@ -351,12 +352,12 @@ impl BoneLinkTable {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Model {
-    pub header: ModelHeader,
+pub struct Mdl0Root {
+    pub header: Mdl0Header,
     pub bone_link_table: BoneLinkTable,
 }
 
-impl Visitable for Model {
+impl Visitable for Mdl0Root {
     fn accept(&self, node: VisitorContextNode<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
         visitor.visit_mdl0(VisitorContext::new(node, self))
     }
@@ -380,38 +381,31 @@ pub fn deserialize(
     tracing::trace!("Opening {name}");
 
     let subfile_header = BFileHeader::deserialize(reader, BFileType::Mdl0)?;
-    if subfile_header.subfile_version != 11 {
+    if subfile_header.version != 11 {
         return Err(UnsupportedError {
             reason: format!(
                 "MDL0 version {} is not supported, only version 11 is",
-                subfile_header.subfile_version
+                subfile_header.version
             ),
             location: Some(reader.position()),
         }
         .into());
     }
 
-    let expected_sections =
-        brres::get_section_count(BFileType::Mdl0, subfile_header.subfile_version)?;
+    let expected_sections = brres::get_section_count(BFileType::Mdl0, subfile_header.version)?;
+    verify!(
+        subfile_header.offsets.len() == expected_sections,
+        "MDL0 section count ({}) did not match expected section count ({expected_sections})",
+        subfile_header.offsets.len()
+    );
 
-    if subfile_header.offsets.len() != expected_sections {
-        return Err(CorruptionError {
-            reason: format!(
-                "invalid section count, expected {}, got {}",
-                expected_sections,
-                subfile_header.offsets.len()
-            ),
-            location: Some(reader.position()),
-        }
-        .into());
-    }
-
-    let mdl0_header = ModelHeader::deserialize(reader)?;
+    let mdl0_header = Mdl0Header::deserialize(reader)?;
 
     let bone_link_table = BoneLinkTable::deserialize(reader)?;
     let mdl_root_key = arena.reserve_key();
 
-    let mut files = Vec::with_capacity(subfile_header.offsets.len());
+    let file_count = subfile_header.offsets.iter().filter(|&o| *o != 0).count();
+    let mut files = Vec::with_capacity(file_count);
     for (i, &section_offset) in subfile_header.offsets.iter().enumerate() {
         // Loops over sections like `Bones`, `Vertices`, `Normals`...
 
@@ -426,8 +420,6 @@ pub fn deserialize(
 
         let section_start = subfile_header.header_start as i64 + section_offset as i64;
         reader.set_position(section_start as u64);
-
-        tracing::debug!("Parsing {section_ty:?}");
 
         let section_key = match section_ty {
             SectionType::DrawLists => deserialize_leaf_section::<Definitions>(
@@ -491,7 +483,9 @@ pub fn deserialize(
                 parent_id,
                 arena,
             ),
-            _ => todo!(),
+            SectionType::FurLayers => todo!("MDL0 fur layers"),
+            SectionType::FurVectors => todo!("MDL0 fur vectors"),
+            SectionType::UserData => todo!("MDL0 user data"),
         }?;
 
         files.push(section_key);
@@ -504,7 +498,7 @@ pub fn deserialize(
             ty: IrNodeType::Mdl0Root,
             parent: Some(parent_id),
             children: files,
-            contents: ContentSlot::eager(Box::new(Model {
+            contents: ContentSlot::eager(Box::new(Mdl0Root {
                 header: mdl0_header,
                 bone_link_table,
             })),

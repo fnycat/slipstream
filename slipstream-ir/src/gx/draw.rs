@@ -75,7 +75,7 @@ impl PositionData {
             VectorStorage::NotPresent => PositionData::NotPresent,
             VectorStorage::Index8 => PositionData::Index8(reader.read_u8()?),
             VectorStorage::Index16 => PositionData::Index16(reader.read_u16::<BigEndian>()?),
-            VectorStorage::Direct => {
+            VectorStorage::Inline => {
                 PositionData::Direct(InlinePosition::deserialize(reader, decl)?)
             }
         })
@@ -174,7 +174,7 @@ impl NormalData {
 
                 NormalData::Index16(index)
             }
-            VectorStorage::Direct => NormalData::Direct(InlineNormal::deserialize(reader, decl)?),
+            VectorStorage::Inline => NormalData::Direct(InlineNormal::deserialize(reader, decl)?),
         })
     }
 }
@@ -235,7 +235,7 @@ impl ColorData {
             VectorStorage::NotPresent => Self::NotPresent,
             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
             VectorStorage::Index16 => Self::Index16(reader.read_u16::<BigEndian>()?),
-            VectorStorage::Direct => Self::Direct(DirectColor::deserialize_col0(reader, decl)?),
+            VectorStorage::Inline => Self::Direct(DirectColor::deserialize_col0(reader, decl)?),
         })
     }
 
@@ -248,7 +248,7 @@ impl ColorData {
             VectorStorage::NotPresent => Self::NotPresent,
             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
             VectorStorage::Index16 => Self::Index16(reader.read_u16::<BigEndian>()?),
-            VectorStorage::Direct => Self::Direct(DirectColor::deserialize_col1(reader, decl)?),
+            VectorStorage::Inline => Self::Direct(DirectColor::deserialize_col1(reader, decl)?),
         })
     }
 }
@@ -312,7 +312,7 @@ macro_rules! impl_uv_de {
                             VectorStorage::NotPresent => Self::NotPresent,
                             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
                             VectorStorage::Index16 => Self::Index16(reader.read_u16::<BigEndian>()?),
-                            VectorStorage::Direct => Self::Direct(DirectUv::[< deserialize_uv $id >](reader, decl)?)
+                            VectorStorage::Inline => Self::Direct(DirectUv::[< deserialize_uv $id >](reader, decl)?)
                         })
                     }
                 )*

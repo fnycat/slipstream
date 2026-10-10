@@ -813,9 +813,19 @@ impl FieldVariant {
             let name = &names[i];
             let ident = &variant.ident;
 
+            let tooltip = match &variant.tooltip {
+                Some(tooltip) => quote! { Some(#tooltip) },
+                // we have to set the type explicitly here because the compiler is unable to infer it.
+                None => quote! { None::<&'static str> },
+            };
+
             tokens.append_all(quote! {
                 let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(self) == #i;
-                let response = ui.selectable_label(is_selected, #name);
+                let mut response = ui.selectable_label(is_selected, #name);
+
+                if let Some(tooltip) = #tooltip {
+                    response = response.on_hover_text(tooltip);
+                }
 
                 if response.clicked() {
                     *self = Self::#ident;
@@ -997,7 +1007,7 @@ impl Input {
             // `is_nested`, `summary` or `draw_rows`.
             impl slipstream_shared::inspect::Inspect for #ident {
                 fn draw_properties(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
-                    todo!();
+                    todo!("draw enum as root (should be added in `Inspect` proc macro)");
                 }
 
                 fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {

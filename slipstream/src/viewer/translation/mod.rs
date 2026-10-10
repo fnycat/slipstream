@@ -3,7 +3,7 @@ mod vertex;
 
 pub use skeleton::*;
 use slipstream_ir::mdl0::{
-    Bone, ColorBuffer, DRAW_OPA_NAME, Definitions, MatrixId, Model, ModelHeader, NODE_MIX_NAME,
+    Bone, ColorBuffer, DRAW_OPA_NAME, Definitions, MatrixId, Mdl0Header, Mdl0Root, NODE_MIX_NAME,
     NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer,
 };
 use slipstream_ir::util::Box3;
@@ -225,7 +225,7 @@ impl<'a> ModelContents<'a> {
 }
 
 impl Visitor for ModelContents<'_> {
-    fn visit_mdl0(&mut self, model: VisitorContext<'_, Model>) -> ControlFlow<()> {
+    fn visit_mdl0(&mut self, model: VisitorContext<'_, Mdl0Root>) -> ControlFlow<()> {
         self.bounding_volume = model.header.bounding_volume;
 
         ControlFlow::Continue(())
