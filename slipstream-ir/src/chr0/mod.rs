@@ -352,11 +352,12 @@ impl AnimationData {
                 I12Animation::deserialize(reader, header_frame_count)?,
             ),
             AnimationFormat3::Linear1 => {
-                // Does Brawlcrate simply just display them differently?
-                tracing::error!("FIXME: LINEAR1 ANIMATIONS DO NOT WORK PROPERLY RIGHT NOW");
                 AnimationType::Linear1(L1Animation::deserialize(reader, header_frame_count)?)
             }
-            _ => todo!("animation frame format {format:?}"),
+            AnimationFormat3::Linear4 => {
+                AnimationType::Linear4(L4Animation::deserialize(reader, header_frame_count)?)
+            }
+            _ => unreachable!("cannot call `deserialize_keyframe` on `{format:?}`"),
         };
 
         reader.set_position(orig_position + 4);

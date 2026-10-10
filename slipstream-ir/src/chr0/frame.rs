@@ -246,3 +246,22 @@ impl L1Animation {
 pub struct L4Animation {
     pub frames: Vec<f32>,
 }
+
+impl L4Animation {
+    pub fn deserialize(
+        reader: &mut RefCursor<[u8]>,
+        header_frame_count: u16,
+    ) -> SlipstreamResult<Self> {
+        tracing::trace!(
+            "Reading {header_frame_count} L4 frames at location {}",
+            reader.position()
+        );
+
+        let mut frames = Vec::with_capacity(header_frame_count as usize);
+        for _ in 0..header_frame_count {
+            frames.push(reader.read_f32::<BigEndian>()?);
+        }
+
+        Ok(Self { frames })
+    }
+}
