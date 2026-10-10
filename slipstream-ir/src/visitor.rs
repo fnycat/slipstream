@@ -146,7 +146,7 @@ pub trait Visitor {
 
     fn visit_skeletal_animation(
         &mut self,
-        animation: VisitorContext<'_, chr0::AnimatedBone>,
+        animation: VisitorContext<'_, chr0::SkeletalAnimation>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -168,7 +168,7 @@ pub trait Visitor {
 
     fn visit_skeletal_animation_mut(
         &mut self,
-        animation: VisitorContextMut<'_, chr0::AnimatedBone>,
+        animation: VisitorContextMut<'_, chr0::SkeletalAnimation>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())

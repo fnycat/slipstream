@@ -6,6 +6,7 @@ pub use frame::*;
 
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt};
+use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::{
     cursor::RefCursor,
     error::{CorruptionError, SlipstreamError, SlipstreamResult},
@@ -25,7 +26,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 pub enum AnimationPolicy {
     OneTime,
     Loop,
@@ -56,7 +57,7 @@ impl AnimationPolicy {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 #[repr(u32)]
 pub enum ScalingRule {
     Standard,
@@ -90,7 +91,7 @@ impl ScalingRule {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub struct Chr0Header {
     /// The amount of animation frames stored in this file.
     pub frame_count: u16,
@@ -120,7 +121,7 @@ impl Chr0Header {
 ///
 /// This affects the quality and behavior of the animation.
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 #[repr(u8)]
 pub enum AnimationFormat {
     /// The bone is kept in a fixed place. Fixed animations are simply a single value indicating where to
@@ -149,6 +150,7 @@ pub enum AnimationFormat {
     /// The frame are 4 bytes in size.
     Linear4 = 0b110,
     /// A fallback for [`bitenum`], this variant should never be used.
+    #[inspect(ignore)]
     #[fallback]
     Invalid,
 }
@@ -161,7 +163,7 @@ impl AnimationFormat {
     }
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct AnimationCode {
     #[bits(1)]
@@ -223,18 +225,21 @@ pub enum AnimationType {
     Linear4(L4Animation),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct ComponentData {
+    #[inspect(ignore)]
     pub x: ComponentType,
+    #[inspect(ignore)]
     pub y: ComponentType,
+    #[inspect(ignore)]
     pub z: ComponentType,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct AnimationData {
-    pub scale: Option<ComponentData>,
-    pub rotation: Option<ComponentData>,
     pub translation: Option<ComponentData>,
+    pub rotation: Option<ComponentData>,
+    pub scale: Option<ComponentData>,
 }
 
 impl AnimationData {
@@ -558,13 +563,15 @@ impl AnimationData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct AnimatedBone {
+#[derive(Debug, Clone, PartialEq, Inspect)]
+pub struct SkeletalAnimation {
+    #[inspect(rename = "Animation Settings")]
     pub anim_code: AnimationCode,
+    #[inspect(rename = "Animation Data")]
     pub anim_data: AnimationData,
 }
 
-impl AnimatedBone {
+impl SkeletalAnimation {
     #[tracing::instrument(skip(reader, frame_count))]
     pub fn deserialize(reader: &mut RefCursor<[u8]>, frame_count: u16) -> SlipstreamResult<Self> {
         let anim_data_start = reader.position();
@@ -584,7 +591,7 @@ impl AnimatedBone {
     }
 }
 
-impl Visitable for AnimatedBone {
+impl Visitable for SkeletalAnimation {
     fn accept(&self, node: VisitorContextNode, visitor: &mut dyn Visitor) -> ControlFlow<()> {
         visitor.visit_skeletal_animation(VisitorContext::new(node, self))
     }
@@ -624,7 +631,7 @@ impl TryFrom<usize> for SectionType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Chr0Root {
     pub header: Chr0Header,
 }
@@ -688,7 +695,7 @@ pub fn deserialize(
 
                     reader.set_position(data_start);
 
-                    let anim = AnimatedBone::deserialize(reader, chr0_header.frame_count)?;
+                    let anim = SkeletalAnimation::deserialize(reader, chr0_header.frame_count)?;
 
                     let anim_file = arena.insert(IrNodeDescriptor {
                         label: name,
