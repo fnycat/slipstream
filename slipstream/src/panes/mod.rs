@@ -8,9 +8,9 @@ use slipstream_ir::node::arena::IrNodeKey;
 
 use crate::panes::debug::DebugPane;
 
+pub mod debug;
 pub mod log;
 pub mod outliner;
-pub mod debug;
 
 /// Unlike the `egui_tiles`'s [`TileId`], this ID is created based on the content of the pane.
 ///
@@ -116,7 +116,7 @@ pub enum PaneId {
     Inspector,
     Viewer,
     Logs,
-    Debug
+    Debug,
 }
 
 /// Requests to the tile manager to open a new pane.
@@ -141,8 +141,8 @@ pub enum RequestNewPane {
     },
     Log,
     Debug {
-        ty: DebugPane
-    }
+        ty: DebugPane,
+    },
 }
 
 impl RequestNewPane {
@@ -152,7 +152,7 @@ impl RequestNewPane {
             Self::Inspector { .. } => PaneId::Inspector,
             Self::Viewer { .. } => PaneId::Viewer,
             Self::Log => PaneId::Logs,
-            Self::Debug { .. } => PaneId::Debug
+            Self::Debug { .. } => PaneId::Debug,
         }
     }
 
@@ -175,8 +175,8 @@ impl RequestNewPane {
             RequestNewPane::Viewer { viewed } => {
                 viewed.hash(&mut hasher);
             }
-            RequestNewPane::Log => {},
-            RequestNewPane::Debug { ty } => ty.hash(&mut hasher)
+            RequestNewPane::Log => {}
+            RequestNewPane::Debug { ty } => ty.hash(&mut hasher),
         }
 
         ContentSignature::from(hasher.finish())

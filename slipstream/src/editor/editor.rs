@@ -184,7 +184,7 @@ impl Editor {
                 self.render_state.clone(),
             )?,
             RequestNewPane::Log => LogPane::new(self.pane_behavior.sender.clone()),
-            RequestNewPane::Debug { ty } => Box::new(ty)
+            RequestNewPane::Debug { ty } => Box::new(ty),
         };
 
         Ok(if let Some(existing_tile) = existing_tile {
@@ -339,32 +339,44 @@ impl Editor {
 
                         let egui::InnerResponse { inner, .. } = ui.menu_button("Debug", |ui| {
                             if ui.button("Widget Inspector").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::Inspection })?;
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::Inspection,
+                                })?;
                             }
 
                             if ui.button("GUI Settings").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::General })?;
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::General,
+                                })?;
                             }
 
                             if ui.button("Style Settings").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::Style })?;
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::Style,
+                                })?;
                             }
 
                             if ui.button("Image Loader Statistics").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::Loaders })?;
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::Loaders,
+                                })?;
                             }
 
                             if ui.button("Memory Statistics").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::Memory })?;
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::Memory,
+                                })?;
                             }
 
                             if ui.button("Texture Statistics").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug { ty: DebugPane::Textures })?;
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::Textures,
+                                })?;
                             }
 
                             Ok::<_, SlipstreamError>(())
                         });
-                        
+
                         if let Some(inner) = inner {
                             inner?;
                         }
