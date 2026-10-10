@@ -19,6 +19,7 @@ pub use normals::*;
 pub use pal_links::*;
 pub use polygon::*;
 pub use section::*;
+use slipstream_derive::Inspect;
 use slipstream_shared::verify;
 pub use tevs::*;
 pub use tex_links::*;
@@ -44,10 +45,12 @@ use slipstream_shared::error::{
 
 pub const MDL0_MAGIC: [u8; 4] = [0x4d, 0x44, 0x4c, 0x30]; // "MDL0"
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 pub enum ScalingMode {
     Standard,
+    #[inspect(rename = "Autodesk Softimage")]
     Softimage,
+    #[inspect(rename = "Autodesk Maya")]
     Maya,
 }
 
@@ -77,10 +80,13 @@ impl ScalingMode {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 pub enum TextureMatrixMode {
+    #[inspect(rename = "Autodesk Maya")]
     Maya,
-    Xsi,
+    #[inspect(rename = "Autodesk Softimage")]
+    Softimage,
+    #[inspect(rename = "3DS Max")]
     ThreeDsMax,
 }
 
@@ -90,7 +96,7 @@ impl TryFrom<u32> for TextureMatrixMode {
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         Ok(match value {
             0 => Self::Maya,
-            1 => Self::Xsi,
+            1 => Self::Softimage,
             2 => Self::ThreeDsMax,
             v => {
                 return Err(CorruptionError {
@@ -176,7 +182,7 @@ impl TryFrom<u32> for SectionType {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum EnvelopeMatrixMode {
     Normal = 0,
@@ -210,7 +216,7 @@ impl Deserialize for EnvelopeMatrixMode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct MatrixTable {
     pub entries: Vec<i32>,
 }
@@ -235,7 +241,7 @@ pub trait SectionDeserialize: Sized {
     ) -> SlipstreamResult<Self>;
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Mdl0Header {
     pub mdl0_offset: i32,
     pub scaling_mode: ScalingMode,
@@ -249,6 +255,7 @@ pub struct Mdl0Header {
     pub enable_bounding_volumes: bool,
     pub envelope_matrix_mode: EnvelopeMatrixMode,
     pub bounding_volume: Box3,
+    #[inspect(opened = false)]
     pub matrix_table: MatrixTable,
 }
 
@@ -511,21 +518,28 @@ pub fn deserialize(
 /// General section header that fits most MDL0 sections.
 ///
 /// Some exceptions to this are `Bones` (no data offset).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct SectionHeader {
     /// Cursor position pointing to the start of this section file.
+    #[inspect(tooltip = "Cursor position where this header starts in the buffer.")]
     pub section_start: u64,
     /// Length of this section file in bytes.
+    #[inspect(tooltip = "Length of this section in bytes.")]
     pub length: u32,
     /// Offset to the start of the MDL0 file. This is relative to `section_start`.
     /// The offset is generally negative.
+    #[inspect(rename = "MDL0 Start Offset")]
+    #[inspect(tooltip = "Offset back to the start of the MDL0 file.")]
     pub mdl0_offset: i32,
     /// Offset to the data of this section file. Not all sections use this offset, but
     /// for example the [`VertexBuffer`] section stores its raw vertex data at this offset.
+    #[inspect(tooltip = "Offset to the start of the data section of this file.")]
     pub data_offset: i32,
     /// Offset to the name of this section file.
+    #[inspect(tooltip = "Offset to the name of this file.")]
     pub name_offset: i32,
     /// Index of this section file. This is generally just based on the location within the parent folder.
+    #[inspect(tooltip = "Index within the MDL0 subfolder.")]
     pub index: u32,
 }
 

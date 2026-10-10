@@ -1,7 +1,8 @@
 use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
 use slipstream_ir::chr0::{self, SkeletalAnimation};
 use slipstream_ir::mdl0::{
-    Bone, Definitions, MaterialBuffer, Mdl0Root, Polygon, TextureLinks, VertexBuffer,
+    Bone, ColorBuffer, Definitions, MaterialBuffer, Mdl0Root, NormalBuffer, PaletteLinks, Polygon,
+    TextureLinks, UvBuffer, VertexBuffer,
 };
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::tex0::Texture;
@@ -39,13 +40,35 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_vertices_mut(
         &mut self,
-        mut context: VisitorContextMut<'_, VertexBuffer>,
+        context: VisitorContextMut<'_, VertexBuffer>,
     ) -> ControlFlow<()> {
-        self.ui.label(format!("{:#?}", context.content));
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
         ControlFlow::Continue(())
     }
 
-    fn visit_polygon_mut(&mut self, context: VisitorContextMut<'_, Polygon>) -> ControlFlow<()> {
+    fn visit_normals_mut(
+        &mut self,
+        context: VisitorContextMut<'_, NormalBuffer>,
+    ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_colors_mut(&mut self, context: VisitorContextMut<'_, ColorBuffer>) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_uvs_mut(&mut self, context: VisitorContextMut<'_, UvBuffer>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -61,8 +84,11 @@ impl Visitor for InspectorVisitor<'_> {
         ControlFlow::Continue(())
     }
 
-    fn visit_tex0_mut(&mut self, context: VisitorContextMut<'_, Texture>) -> ControlFlow<()> {
-        self.ui.label(format!("{:#?}", context.content));
+    fn visit_polygon_mut(&mut self, context: VisitorContextMut<'_, Polygon>) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
         ControlFlow::Continue(())
     }
 
@@ -70,6 +96,25 @@ impl Visitor for InspectorVisitor<'_> {
         &mut self,
         context: VisitorContextMut<'_, TextureLinks>,
     ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_palette_links_mut(
+        &mut self,
+        context: VisitorContextMut<'_, PaletteLinks>,
+    ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_tex0_mut(&mut self, context: VisitorContextMut<'_, Texture>) -> ControlFlow<()> {
         self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }

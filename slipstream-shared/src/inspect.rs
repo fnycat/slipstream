@@ -207,6 +207,13 @@ impl Inspect for u32 {
     }
 }
 
+impl Inspect for u64 {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        let val = egui::DragValue::new(self);
+        drag_value(val, cfg, ui)
+    }
+}
+
 macro_rules! impl_vector {
     ($ty:ty, $($ident:ident),*) => {
         impl Inspect for $ty {
@@ -226,6 +233,10 @@ macro_rules! impl_vector {
 impl_vector!(glam::Vec2, x, y);
 impl_vector!(glam::Vec3, x, y, z);
 impl_vector!(glam::Vec4, x, y, z, w);
+
+impl_vector!(glam::U8Vec2, x, y);
+impl_vector!(glam::U8Vec3, x, y, z);
+impl_vector!(glam::U8Vec4, x, y, z, w);
 
 impl Inspect for f32 {
     #[inline]

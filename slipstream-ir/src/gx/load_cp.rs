@@ -11,7 +11,7 @@ use crate::{
     util::VertexFormat,
 };
 
-const FORMAT_DIVISOR_TOOLTIP: &str = "Determines how to scale lower quality formats back up to floats. \
+pub const FORMAT_DIVISOR_TOOLTIP: &str = "Determines how to scale lower quality formats back up to floats. \
 A lower quality format is scaled up to a float by dividing it by `2^divisor`. \
 This is used to convert integer formats into fractional floats. \
 \

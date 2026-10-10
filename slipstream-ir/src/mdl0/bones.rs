@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use egui::accesskit::Role::SectionHeader;
 use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::{
     cursor::{MutCursor, RefCursor},
@@ -56,6 +57,7 @@ impl BoneFlags {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 pub enum BillboardSetting {
     /// No influence.
+    #[inspect(tooltip = "The bone does not use any billboard functionality.")]
     Disabled,
     /// Influenced by rotation of parent node. Z-axis is parallel to camera lens axis.
     Billboard,

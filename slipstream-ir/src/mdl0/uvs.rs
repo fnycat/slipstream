@@ -1,21 +1,26 @@
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::{
     cursor::RefCursor,
     error::{CorruptionError, SlipstreamResult},
 };
 
-use crate::mdl0::{SectionHeader, section::DeserializeContents};
-use crate::node::node::IrNode;
-use crate::visitor::{
-    VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut,
-};
 use crate::{
     encoding::ReadArrayExt,
     node::node::IrNodeType,
     util::{VectorDivisor, VertexFormat, deserialize_scalar_data, deserialize_vector_data},
     visitor::{Visitable, Visitor},
+};
+use crate::{gx::load_cp::FORMAT_DIVISOR_TOOLTIP, node::node::IrNode};
+use crate::{
+    mdl0::{SectionHeader, section::DeserializeContents},
+    util::Box3,
+};
+use crate::{
+    util::Box2,
+    visitor::{VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut},
 };
 
 const COMPONENTS_S: u32 = 0x00;
@@ -43,13 +48,14 @@ impl UvBufData {
 }
 
 /// Stores UVs (texture coordinates).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct UvBuffer {
     pub header: SectionHeader,
     /// The format of a single component in the buffer.
     ///
     /// The deserializer always converts the data to floats, but the original
     /// format is kept for reference.
+    #[inspect(tooltip = "The format used for each component in a texture coordinate.")]
     pub format: VertexFormat,
     /// The divisor is used to scale vectors at lower quality formats.
     ///
@@ -63,15 +69,12 @@ pub struct UvBuffer {
     ///
     /// The deserializer always converts the data to floats, but the original
     /// format is kept for reference.
+    #[inspect(tooltip = FORMAT_DIVISOR_TOOLTIP)]
     pub divisor: u8,
-    /// The amount of bytes between successive entries in the buffer.
-    pub stride: u8,
     /// The raw UV data.
+    #[inspect(ignore)]
     pub uvs: UvBufData,
-    /// First corner of the UV buffer's AABB.
-    pub bounding_volume_min: glam::Vec2,
-    /// Second corner of the UV buffer's AABB.
-    pub bounding_volume_max: glam::Vec2,
+    pub bounding_volume: Box2,
 }
 
 impl UvBuffer {
@@ -107,11 +110,11 @@ impl DeserializeContents for UvBuffer {
         let component_count = reader.read_u32::<BigEndian>()?;
         let format = VertexFormat::deserialize(reader)?;
         let divisor = reader.read_u8()?;
-        let stride = reader.read_u8()?;
+        // Can be recomputed.
+        let _stride = reader.read_u8()?;
 
         let uv_count = reader.read_u16::<BigEndian>()?;
-        let bounding_volume_min = glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?);
-        let bounding_volume_max = glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?);
+        let bounding_volume = Box2::deserialize(reader)?;
 
         reader.set_position(header.get_data_start());
 
@@ -140,11 +143,9 @@ impl DeserializeContents for UvBuffer {
         Ok(Self {
             header,
             format,
-            stride,
             divisor,
             uvs,
-            bounding_volume_min,
-            bounding_volume_max,
+            bounding_volume,
         })
     }
 }

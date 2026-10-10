@@ -11,16 +11,41 @@ use slipstream_shared::{
 use crate::{encoding::ReadArrayExt, mdl0::NormalFormat};
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Inspect)]
+#[inspect(summary = "Box2::summary")]
+pub struct Box2 {
+    #[inspect(tooltip = "The minimum corner of the axis-aligned bounding box.")]
+    pub min: glam::Vec2,
+    #[inspect(tooltip = "The maximum corner of the axis-aligned bounding box.")]
+    pub max: glam::Vec2,
+}
+
+impl Box2 {
+    #[inline]
+    pub fn summary(&self) -> String {
+        format!("Box2 {{ min: {}, max: {} }}", self.min, self.max)
+    }
+
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        Ok(Self {
+            min: glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?),
+            max: glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?),
+        })
+    }
+}
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Inspect)]
 #[inspect(summary = "Box3::summary")]
 pub struct Box3 {
+    #[inspect(tooltip = "The minimum corner of the axis-aligned bounding box.")]
     pub min: glam::Vec3,
+    #[inspect(tooltip = "The maximum corner of the axis-aligned bounding box.")]
     pub max: glam::Vec3,
 }
 
 impl Box3 {
     #[inline]
     pub fn summary(&self) -> String {
-        self.to_string()
+        format!("Box3 {{ min: {}, max: {} }}", self.min, self.max)
     }
 
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
@@ -28,12 +53,6 @@ impl Box3 {
             min: glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?),
             max: glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?),
         })
-    }
-}
-
-impl fmt::Display for Box3 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Box3 {{ min: {}, max: {} }}", self.min, self.max)
     }
 }
 

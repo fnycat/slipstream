@@ -1,14 +1,16 @@
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
 use crate::encoding::ReadArrayExt;
+use crate::gx::load_cp::FORMAT_DIVISOR_TOOLTIP;
 use crate::mdl0::SectionHeader;
 use crate::mdl0::section::DeserializeContents;
 use crate::node::node::{IrNode, IrNodeType};
-use crate::util::{VectorDivisor, VertexFormat, deserialize_vector_data};
+use crate::util::{Box3, VectorDivisor, VertexFormat, deserialize_vector_data};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
     VisitorContextNodeMut,
@@ -79,11 +81,12 @@ impl VertexBufData {
 /// draw calls that use indices into these buffers.
 ///
 /// [`Polygon`]: crate::format::mdl0::polygon::Polygon
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct VertexBuffer {
     /// The MDL0 section file header.
     pub header: SectionHeader,
     /// The format of the vertices in this buffer.
+    #[inspect(tooltip = "The format used to store each component of a position vector.")]
     pub format: VertexFormat,
     /// The divisor is used to scale vectors at lower quality formats.
     ///
@@ -94,14 +97,11 @@ pub struct VertexBuffer {
     /// I.e `float = uint8 / 2^divisor`.
     ///
     /// [`Uint8`]: VertexFormat::Uint8
+    #[inspect(tooltip = FORMAT_DIVISOR_TOOLTIP)]
     pub divisor: u8,
-    /// The size in bytes of each position.
-    pub stride: u8,
-    /// First corner of the vertex buffer's AABB.
-    pub bounding_volume_min: glam::Vec3,
-    /// Second corner of the vertex buffer's AABB.
-    pub bounding_volume_max: glam::Vec3,
+    pub bounding_volume: Box3,
     /// The vertex data.
+    #[inspect(ignore)]
     pub vertices: VertexBufData,
 }
 
@@ -142,10 +142,10 @@ impl DeserializeContents for VertexBuffer {
         let component_count = reader.read_u32::<BigEndian>()?;
         let format = VertexFormat::deserialize(reader)?;
         let divisor = reader.read_u8()?;
-        let stride = reader.read_u8()?;
+        // Can be recomputed.
+        let _stride = reader.read_u8()?;
         let vertex_count = reader.read_u16::<BigEndian>()?;
-        let bounding_volume_min = glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?);
-        let bounding_volume_max = glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?);
+        let bounding_volume = Box3::deserialize(reader)?;
 
         tracing::trace!("Reading {vertex_count} vertices");
 
@@ -178,9 +178,7 @@ impl DeserializeContents for VertexBuffer {
             vertices,
             format,
             divisor,
-            stride,
-            bounding_volume_min,
-            bounding_volume_max,
+            bounding_volume,
         })
     }
 }

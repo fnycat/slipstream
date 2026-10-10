@@ -14,18 +14,19 @@ use crate::visitor::{
     VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut,
 };
 use crate::{
-    encoding::ReadArrayExt,
-    node::node::IrNodeType,
-    visitor::{Visitable, Visitor},
-};
-use crate::{
     img::deserialize_color,
     mdl0::{SectionHeader, section::DeserializeContents},
 };
+use crate::{
+    node::node::IrNodeType,
+    visitor::{Visitable, Visitor},
+};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum ColorComponents {
+    #[inspect(rename = "RGB")]
     Rgb = 0x00,
+    #[inspect(rename = "RGBA")]
     Rgba = 0x01,
 }
 
@@ -70,6 +71,10 @@ pub enum ColorFormat {
     /// Green: 6 bits;
     /// Blue: 5 bits;
     /// Alpha: N/A
+    #[inspect(rename = "RGB565")]
+    #[inspect(
+        tooltip = "Stores a color in 16 bits. 5 bits are used for the red and blue channels, while the green channel uses 6 bits. The alpha channel is not supported."
+    )]
     Rgb565 = 0x00,
     /// 24 total bits.
     ///
@@ -77,13 +82,21 @@ pub enum ColorFormat {
     /// Green: 8 bits;
     /// Blue: 8 bits;
     /// Alpha: N/A
-    Rgb24 = 0x01,
+    #[inspect(rename = "RGB8")]
+    #[inspect(
+        tooltip = "Stores a color in 24 bits. All color channels use 8 bits. The alpha channel is not supported."
+    )]
+    Rgb8 = 0x01,
     /// 32 total bits.
     ///
     /// Red: 8 bits;
     /// Green: 8 bits;
     /// Blue: 8 bits;
     /// Alpha: 8 bits (discarded)
+    #[inspect(rename = "RGBX8")]
+    #[inspect(
+        tooltip = "Stores a color in 32 bits. All color channels use 8 bits. The alpha channel is discarded."
+    )]
     Rgbx32 = 0x02,
     /// 16 total bits.
     ///
@@ -91,21 +104,27 @@ pub enum ColorFormat {
     /// Green: 4 bits;
     /// Blue: 4 bits;
     /// Alpha: 4 bits
-    Rgba16 = 0x03,
+    #[inspect(rename = "RGBA4")]
+    #[inspect(tooltip = "Stores a color in 16 bits. Each channel uses 4 bits.")]
+    Rgba4 = 0x03,
     /// 24 total bits.
     ///
     /// Red: 6 bits;
     /// Green: 6 bits;
     /// Blue: 6 bits;
     /// Alpha: 6 bits
-    Rgba24 = 0x04,
+    #[inspect(rename = "RGBA6")]
+    #[inspect(tooltip = "Stores a color in 24 bits. Each channel uses 6 bits.")]
+    Rgba6 = 0x04,
     /// 32 total bits.
     ///
     /// Red: 8 bits;
     /// Green: 8 bits;
     /// Blue: 8 bits;
     /// Alpha: 8 bits
-    Rgba32 = 0x05,
+    #[inspect(rename = "RGBA8")]
+    #[inspect(tooltip = "Stores a color in 32-bits. Each channels has 8 bits.")]
+    Rgba8 = 0x05,
     /// This is a fallback for `bitenum`, it should never be used and is not visible to users.
     #[inspect(ignore)]
     #[fallback]
@@ -118,11 +137,11 @@ impl ColorFormat {
     pub const fn stride(&self) -> u32 {
         match self {
             Self::Rgb565 => 2,
-            Self::Rgb24 => 3,
+            Self::Rgb8 => 3,
             Self::Rgbx32 => 4,
-            Self::Rgba16 => 2,
-            Self::Rgba24 => 3,
-            Self::Rgba32 => 4,
+            Self::Rgba4 => 2,
+            Self::Rgba6 => 3,
+            Self::Rgba8 => 4,
             Self::Invalid => 0,
         }
     }
@@ -134,11 +153,11 @@ impl TryFrom<u32> for ColorFormat {
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         Ok(match value {
             0x00 => Self::Rgb565,
-            0x01 => Self::Rgb24,
+            0x01 => Self::Rgb8,
             0x02 => Self::Rgbx32,
-            0x03 => Self::Rgba16,
-            0x04 => Self::Rgba24,
-            0x05 => Self::Rgba32,
+            0x03 => Self::Rgba4,
+            0x04 => Self::Rgba6,
+            0x05 => Self::Rgba8,
             _ => {
                 return Err(CorruptionError {
                     reason: format!("invalid color format: {value} (expected 0-5)"),
@@ -170,12 +189,18 @@ impl ColorFormat {
 /// A buffer of vertex colors.
 ///
 /// This data cannot be used on its own. It is indexed into by the indices in the shape draw commands.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Inspect)]
 pub struct ColorBuffer {
+    #[inspect(opened = false)]
     header: SectionHeader,
+    #[inspect(rename = "Enabled Components")]
+    #[inspect(tooltip = "Whether to use only the color channels or also include alpha.")]
     components: ColorComponents,
+    #[inspect(
+        tooltip = "The color format used to store the color data. Smaller formats use less data but might result in lower quality."
+    )]
     format: ColorFormat,
-    stride: u8,
+    #[inspect(opened = false)]
     colors: Vec<glam::U8Vec4>,
 }
 
@@ -209,7 +234,8 @@ impl DeserializeContents for ColorBuffer {
         let header = SectionHeader::deserialize(reader)?;
         let components = ColorComponents::deserialize(reader)?;
         let format = ColorFormat::deserialize(reader)?;
-        let stride = reader.read_u8()?;
+        // Stride can be determined from `format`.
+        let _stride = reader.read_u8()?;
         let _padding = reader.read_u8()?;
         let color_count = reader.read_u16::<BigEndian>()?;
 
@@ -225,7 +251,6 @@ impl DeserializeContents for ColorBuffer {
             header,
             components,
             format,
-            stride,
             colors,
         })
     }

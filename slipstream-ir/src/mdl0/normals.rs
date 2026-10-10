@@ -8,6 +8,7 @@ use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResul
 use slipstream_shared::verify;
 
 use crate::encoding::ReadArrayExt;
+use crate::gx::load_cp::FORMAT_DIVISOR_TOOLTIP;
 use crate::mdl0::SectionHeader;
 use crate::mdl0::section::DeserializeContents;
 use crate::node::node::{IrNode, IrNodeType};
@@ -123,10 +124,11 @@ impl NormalBufData {
 ///
 /// The original file might store this data in a lower quality format, but the parser will always convert everything
 /// to floats.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct NormalBuffer {
     pub header: SectionHeader,
     /// Scalar data type to use for the normal vectors.
+    #[inspect(tooltip = "The format of the components of the normal vectors.")]
     pub format: NormalFormat,
     /// The divisor is used to scale vectors at lower quality formats.
     ///
@@ -137,10 +139,12 @@ pub struct NormalBuffer {
     /// I.e `float = int16 / 2^divisor`.
     ///
     /// [`Int16`]: NormalFormat::Int16
+    #[inspect(tooltip = FORMAT_DIVISOR_TOOLTIP)]
     pub divisor: u8,
-    /// The size in bytes of each entry.
-    pub stride: u8,
+    // /// The size in bytes of each entry.
+    // pub stride: u8,
     /// The normal data.
+    #[inspect(ignore)]
     pub normals: NormalBufData,
 }
 
@@ -177,7 +181,8 @@ impl DeserializeContents for NormalBuffer {
         let component_count = reader.read_u32::<BigEndian>()?;
         let format = NormalFormat::deserialize(reader)?;
         let divisor = reader.read_u8()?;
-        let stride = reader.read_u8()?;
+        // can be calculated from the `format` and `component_count`.
+        let _stride = reader.read_u8()?;
         let normal_count = reader.read_u16::<BigEndian>()?;
 
         reader.set_position(header.get_data_start());
@@ -227,7 +232,6 @@ impl DeserializeContents for NormalBuffer {
             header,
             format,
             divisor,
-            stride,
             normals,
         })
     }
