@@ -230,13 +230,15 @@ macro_rules! impl_vector {
     }
 }
 
-impl_vector!(glam::Vec2, x, y);
-impl_vector!(glam::Vec3, x, y, z);
-impl_vector!(glam::Vec4, x, y, z, w);
+// Components need to be loaded in reverse due to the right to left layout.
 
-impl_vector!(glam::U8Vec2, x, y);
-impl_vector!(glam::U8Vec3, x, y, z);
-impl_vector!(glam::U8Vec4, x, y, z, w);
+impl_vector!(glam::Vec2, y, x);
+impl_vector!(glam::Vec3, z, y, x);
+impl_vector!(glam::Vec4, w, z, y, x);
+
+impl_vector!(glam::U8Vec2, y, x);
+impl_vector!(glam::U8Vec3, z, y, x);
+impl_vector!(glam::U8Vec4, w, z, y, x);
 
 impl Inspect for f32 {
     #[inline]
