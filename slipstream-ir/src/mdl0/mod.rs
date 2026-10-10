@@ -242,7 +242,10 @@ pub trait SectionDeserialize: Sized {
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
+#[inspect(rename = "MDL0 Header")]
 pub struct Mdl0Header {
+    #[inspect(rename = "MDL0 Start Offset")]
+    #[inspect(tooltip = "Offset in bytes to the start of the MDL0 file.")]
     pub mdl0_offset: i32,
     pub scaling_mode: ScalingMode,
     pub texture_matrix_mode: TextureMatrixMode,
@@ -310,7 +313,7 @@ impl Mdl0Header {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct BoneLinkTable {
     /// Maps a matrix index to the singular bone index driving it.
     pub rigid_bones: Vec<u32>,
@@ -350,6 +353,13 @@ impl BoneLinkTable {
             }
         }
 
+        if !mixed.is_empty() || !unconnected.is_empty() {
+            // Seems like the mixed entries are extra matrices for the transform storage buffer
+            // on the GPU. The Boo model from 17.szs references bone 9, which is not an existing bone.
+            // It is however in both the mixed bone link table list and the nodemix weights.
+            todo!("bone link table has mixed or unconnected entries");
+        }
+
         Ok(Self {
             rigid_bones: rigid,
             mixed_bones: mixed,
@@ -358,7 +368,8 @@ impl BoneLinkTable {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
+#[inspect(rename = "MDL0 Root")]
 pub struct Mdl0Root {
     pub header: Mdl0Header,
     pub bone_link_table: BoneLinkTable,

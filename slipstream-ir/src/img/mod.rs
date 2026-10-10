@@ -1,4 +1,5 @@
 mod cmpr;
+mod tpl;
 
 use byteorder::{BigEndian, ReadBytesExt};
 pub use cmpr::*;

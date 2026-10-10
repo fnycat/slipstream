@@ -18,7 +18,10 @@ struct InspectorVisitor<'ui> {
 
 impl Visitor for InspectorVisitor<'_> {
     fn visit_mdl0_mut(&mut self, context: VisitorContextMut<'_, Mdl0Root>) -> ControlFlow<()> {
-        self.ui.label(format!("{:#?}", context.content));
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
         ControlFlow::Continue(())
     }
 
@@ -205,7 +208,7 @@ impl Pane for InspectorPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        is_focused: bool,
+        _is_focused: bool,
     ) -> egui_tiles::UiResponse {
         self.draw_properties(ui).unwrap();
 

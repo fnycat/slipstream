@@ -23,33 +23,35 @@ impl WgpuModel {
         camera_state: &CameraState,
         ir: IntermediateModel,
     ) -> SlipstreamResult<Self> {
-        let bind_pose_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("bind pose storage buffer"),
-            contents: bytemuck::cast_slice(&ir.bone_translations),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let transform_matrix_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("transform matrix storage buffer"),
+                contents: bytemuck::cast_slice(&ir.bone_translations),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
 
-        let bind_pose_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("bind pose bind group layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    min_binding_size: None,
-                    has_dynamic_offset: false,
-                },
-                count: None,
-            }],
-        });
+        let transform_matrix_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("transform matrix buffer group layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        min_binding_size: None,
+                        has_dynamic_offset: false,
+                    },
+                    count: None,
+                }],
+            });
 
-        let bind_pose_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("bind pose bind group"),
-            layout: &bind_pose_layout,
+        let transform_matrix_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("transform matrix buffer bind group"),
+            layout: &transform_matrix_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                    buffer: &bind_pose_buffer,
+                    buffer: &transform_matrix_buffer,
                     offset: 0,
                     size: None,
                 }),
@@ -62,7 +64,7 @@ impl WgpuModel {
         for polygon in ir.polygons {
             polygons.push(WgpuPolygon::from_intermediate(
                 device,
-                &bind_pose_layout,
+                &transform_matrix_layout,
                 &camera_state.bind_group_layout,
                 &mut pipelines,
                 polygon,
@@ -71,7 +73,7 @@ impl WgpuModel {
 
         Ok(Self {
             camera_bind_group: camera_state.bind_group.clone(),
-            bind_pose_group,
+            bind_pose_group: transform_matrix_group,
             pipelines,
             polygons,
         })

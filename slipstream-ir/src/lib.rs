@@ -6,6 +6,7 @@ pub mod encoding;
 pub mod gx;
 pub mod img;
 pub mod index;
+pub mod layout;
 pub mod mdl0;
 pub mod node;
 pub mod pat0;
