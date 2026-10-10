@@ -3,8 +3,7 @@ mod vertex;
 
 pub use skeleton::*;
 use slipstream_ir::mdl0::{
-    Bone, ColorBuffer, DRAW_OPA_NAME, Definitions, MatrixId, Mdl0Header, Mdl0Root, NODE_MIX_NAME,
-    NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer,
+    Bone, ColorBuffer, DRAW_OPA_NAME, DRAW_XLU_NAME, Definitions, MatrixId, Mdl0Header, Mdl0Root, NODE_MIX_NAME, NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer,
 };
 use slipstream_ir::util::Box3;
 pub use vertex::*;

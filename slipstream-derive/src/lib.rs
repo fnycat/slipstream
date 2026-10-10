@@ -579,10 +579,10 @@ pub fn inspect_bitfield(args: TokenStream, mut input: TokenStream) -> TokenStrea
     };
 
     // Read the `#[inspect(..)]` attributes first, while they are still there.
-    let inspect_derived = proc_macro2::TokenStream::from(match Input::from_derive_input(&item) {
+    let inspect_derived = match Input::from_derive_input(&item) {
         Ok(parsed) => parsed.into_token_stream(true),
         Err(err) => return TokenStream::from(err.write_errors()),
-    });
+    };
 
     // Strip them from the struct and its fields, so the compiler and `#[bitfield]`
     // never see an attribute nobody has declared.
@@ -594,7 +594,7 @@ pub fn inspect_bitfield(args: TokenStream, mut input: TokenStream) -> TokenStrea
     }
 
     let expanded = quote! {
-        #[bitfield(#bitfield_ty)]
+        #[bitfield_struct::bitfield(#bitfield_ty)]
         #item
         #inspect_derived
     };
