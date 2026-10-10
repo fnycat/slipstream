@@ -108,11 +108,11 @@ impl<T: AsRef<[u8]> + ?Sized> RefCursor<T> {
     /// If the cursor is past the end of the buffer, the remaining buffer will be empty.
     pub fn remaining(&self) -> &[u8] {
         // If the position is past the end of the buffer, return an empty slice
-        if self.pos >= self.remaining_len() as u64 {
-            return &[];
+        if self.remaining_len() > 0 {
+            &self.inner.as_ref().as_ref()[self.pos as usize..]
+        } else {
+            &[]
         }
-
-        &self.inner.as_ref().as_ref()[self.pos as usize..]
     }
 
     /// Returns the length of the entire underlying buffer that this cursor has a view into.
@@ -121,8 +121,9 @@ impl<T: AsRef<[u8]> + ?Sized> RefCursor<T> {
     }
 
     /// The length of the remaining buffer.
+    #[inline]
     pub fn remaining_len(&self) -> usize {
-        self.remaining().len()
+        (self.full_len() as u64).saturating_sub(self.pos) as usize
     }
 
     /// Dumps all contents to the given file in binary format.
