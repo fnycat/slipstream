@@ -21,7 +21,7 @@ const UV_EXTENDED_TOOLTIP: &str = "Whether the texture coordinate uses one or tw
 If set to `true`, the coordinate will have both an S and a T component. While `false` will only use the S component.";
 
 const UV_FORMAT_TOOLTIP: &str = "The format that texture coordinates are stored in. In comparison to `Float32`, \
-lower qualify formats such as `Int16` can significantly reduce model size at the cost of precision.";
+lower quality formats such as `Int16` can significantly reduce model size at the cost of precision.";
 
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
@@ -184,7 +184,7 @@ pub struct CpVatA {
     #[inspect(rename = "Position Format")]
     #[inspect(
         tooltip = "The format that positions are stored in. In comparison to `Float32`, \
-        lower qualify formats such as `Int16` can significantly reduce model size at the cost of precision."
+        lower quality formats such as `Int16` can significantly reduce model size at the cost of precision."
     )]
     #[bits(3)]
     pub pos_format: VertexFormat,

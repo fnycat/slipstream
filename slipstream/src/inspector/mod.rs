@@ -205,6 +205,7 @@ impl Pane for InspectorPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
+        is_focused: bool,
     ) -> egui_tiles::UiResponse {
         self.draw_properties(ui).unwrap();
 

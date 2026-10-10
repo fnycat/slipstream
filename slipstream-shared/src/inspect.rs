@@ -7,7 +7,7 @@ use crate::widgets::{self, drag_value};
 /// The maximum amount of input entries that will be allowed on a single line.
 /// This is used for large arrays such as the UV array IDs, which would otherwise display
 /// 8 input fields next to each other.
-pub const MAX_HORIZONTAL_INPUT_COUNT: usize = 4;
+pub const MAX_HORIZONTAL_INPUT_COUNT: usize = 3;
 
 #[diagnostic::on_unimplemented(
     label = "non-numerical type",

@@ -88,9 +88,10 @@ impl Pane for ViewerPane {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
+        is_focused: bool,
     ) -> egui_tiles::UiResponse {
-        let response = self.draw_pane_header(ui);
-        let _ = self.draw_content(ui, tile_id);
+        let response = self.draw_pane_header(ui, is_focused);
+        let _ = self.draw_content(ui, tile_id, is_focused);
         response
     }
 
@@ -98,6 +99,7 @@ impl Pane for ViewerPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
+        is_focused: bool,
     ) -> egui_tiles::UiResponse {
         egui::Frame::canvas(ui.style()).show(ui, |ui| {
             let target_size = ui.available_size();
@@ -170,57 +172,60 @@ impl Pane for ViewerPane {
                     camera_updated = true;
                 }
 
-                ui.input(|i| {
-                    if i.zoom_delta() != 1.0 {
-                        // Support zooming using a touchpad for laptops
-                        // without a scroll wheel (or for the maniacs trying
-                        // to use this editor on a mobile device)
-                        let delta = 20.0 * (i.zoom_delta() - 1.0);
+                // Only process inputs if this viewer window is also active.
+                if is_focused {
+                    ui.input(|i| {
+                        if i.zoom_delta() != 1.0 {
+                            // Support zooming using a touchpad for laptops
+                            // without a scroll wheel (or for the maniacs trying
+                            // to use this editor on a mobile device)
+                            let delta = 20.0 * (i.zoom_delta() - 1.0);
 
-                        pipeline.camera_state.camera.on_scroll(delta);
+                            pipeline.camera_state.camera.on_scroll(delta);
 
-                        camera_updated = true;
-                    }
+                            camera_updated = true;
+                        }
 
-                    if i.is_scrolling() && response.contains_pointer() {
-                        let scroll_delta = i.smooth_scroll_delta();
+                        if i.is_scrolling() && response.contains_pointer() {
+                            let scroll_delta = i.smooth_scroll_delta();
 
-                        pipeline.camera_state.camera.on_scroll(scroll_delta.y);
+                            pipeline.camera_state.camera.on_scroll(scroll_delta.y);
 
-                        camera_updated = true;
-                    }
+                            camera_updated = true;
+                        }
 
-                    let mut move_delta = glam::Vec3::ZERO;
+                        let mut move_delta = glam::Vec3::ZERO;
 
-                    if i.key_down(egui::Key::W) {
-                        move_delta.z += 1.0;
-                    }
+                        if i.key_down(egui::Key::W) {
+                            move_delta.z += 1.0;
+                        }
 
-                    if i.key_down(egui::Key::S) {
-                        move_delta.z -= 1.0;
-                    }
+                        if i.key_down(egui::Key::S) {
+                            move_delta.z -= 1.0;
+                        }
 
-                    if i.key_down(egui::Key::A) {
-                        move_delta.x -= 1.0;
-                    }
+                        if i.key_down(egui::Key::A) {
+                            move_delta.x -= 1.0;
+                        }
 
-                    if i.key_down(egui::Key::D) {
-                        move_delta.x += 1.0;
-                    }
+                        if i.key_down(egui::Key::D) {
+                            move_delta.x += 1.0;
+                        }
 
-                    if i.key_down(egui::Key::Space) {
-                        move_delta.y += 1.0;
-                    }
+                        if i.key_down(egui::Key::Space) {
+                            move_delta.y += 1.0;
+                        }
 
-                    if i.key_down(egui::Key::ControlLeft) {
-                        move_delta.y -= 1.0;
-                    }
+                        if i.key_down(egui::Key::ControlLeft) {
+                            move_delta.y -= 1.0;
+                        }
 
-                    if move_delta != glam::Vec3::ZERO {
-                        pipeline.camera_state.camera.on_move(move_delta);
-                        camera_updated = true;
-                    }
-                });
+                        if move_delta != glam::Vec3::ZERO {
+                            pipeline.camera_state.camera.on_move(move_delta);
+                            camera_updated = true;
+                        }
+                    });
+                }
 
                 if camera_updated {
                     pipeline.camera_state.update(&self.render_state);

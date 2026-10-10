@@ -108,7 +108,7 @@ impl Editor {
         let pane_behavior = PaneBehavior {
             receiver: rx,
             sender: tx,
-            focused_tile: None,
+            focused_pane: None,
         };
 
         let pane_tree =
@@ -128,7 +128,7 @@ impl Editor {
     }
 
     pub fn get_active_pane(&self) -> Option<egui_tiles::TileId> {
-        self.pane_behavior.focused_tile
+        self.pane_behavior.focused_pane
     }
 
     /// Returns the tile ID of the currently active container.

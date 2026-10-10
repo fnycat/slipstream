@@ -165,6 +165,7 @@ impl Pane for OutlinerPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
+        is_focused: bool,
     ) -> egui_tiles::UiResponse {
         ui.set_min_size(ui.available_size());
 
