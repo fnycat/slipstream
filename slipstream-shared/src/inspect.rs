@@ -92,6 +92,8 @@ pub trait Inspect {
 #[derive(Debug)]
 pub struct FieldConfig {
     pub label: &'static str,
+    /// Shows a tooltip when hovering over a value.
+    pub tooltip: Option<&'static str>,
     /// The category to put the value in.
     pub category: Option<&'static str>,
     /// Whether the value cannot be edited.
@@ -128,6 +130,7 @@ impl Default for FieldConfig {
     fn default() -> Self {
         Self {
             suffix: None,
+            tooltip: None,
             label: "<unknown>",
             category: None,
             read_only: false,
@@ -150,9 +153,15 @@ impl<T: Inspect + Copy, F: FnMut(T)> Inspect for BitFieldWrapper<T, F> {
 }
 
 impl Inspect for bool {
-    fn draw_inner(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         let checkbox = egui::Checkbox::new(self, "");
-        ui.add(checkbox).into()
+        let response = ui.add(checkbox);
+        if let Some(tooltip) = cfg.tooltip {
+            response.on_hover_text(tooltip)
+        } else {
+            response
+        }
+        .into()
     }
 }
 
@@ -164,7 +173,13 @@ impl Inspect for u8 {
         } else {
             drag_value
         };
-        ui.add_sized(DRAG_INPUT_SIZE, drag_value).into()
+        let response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
+        if let Some(tooltip) = cfg.tooltip {
+            response.on_hover_text(tooltip)
+        } else {
+            response
+        }
+        .into()
     }
 }
 
@@ -176,7 +191,13 @@ impl Inspect for u16 {
         } else {
             drag_value
         };
-        ui.add_sized(DRAG_INPUT_SIZE, drag_value).into()
+        let response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
+        if let Some(tooltip) = cfg.tooltip {
+            response.on_hover_text(tooltip)
+        } else {
+            response
+        }
+        .into()
     }
 }
 
@@ -188,7 +209,13 @@ impl Inspect for i32 {
         } else {
             drag_value
         };
-        ui.add_sized(DRAG_INPUT_SIZE, drag_value).into()
+        let response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
+        if let Some(tooltip) = cfg.tooltip {
+            response.on_hover_text(tooltip)
+        } else {
+            response
+        }
+        .into()
     }
 }
 
@@ -200,7 +227,13 @@ impl Inspect for u32 {
         } else {
             drag_value
         };
-        ui.add_sized(DRAG_INPUT_SIZE, drag_value).into()
+        let response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
+        if let Some(tooltip) = cfg.tooltip {
+            response.on_hover_text(tooltip)
+        } else {
+            response
+        }
+        .into()
     }
 }
 
@@ -220,7 +253,12 @@ macro_rules! impl_vector {
                         drag_value = drag_value.suffix(suffix);
                     }
 
-                    response |= ui.add_sized(DRAG_INPUT_SIZE, drag_value).into();
+                    let inner = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
+                    response |= if let Some(tooltip) = cfg.tooltip {
+                        inner.on_hover_text(tooltip)
+                    } else {
+                        inner
+                    }.into();
                 )*
                 response
             }
@@ -241,7 +279,13 @@ impl Inspect for f32 {
         } else {
             drag_value
         };
-        ui.add_sized(DRAG_INPUT_SIZE, drag_value).into()
+        let response = ui.add_sized(DRAG_INPUT_SIZE, drag_value);
+        if let Some(tooltip) = cfg.tooltip {
+            response.on_hover_text(tooltip)
+        } else {
+            response
+        }
+        .into()
     }
 }
 

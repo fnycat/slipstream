@@ -5,15 +5,54 @@
 // logic. All code has been double checked by me. - fnycat.
 
 use darling::ast::{Data, Fields, Style};
-use darling::{FromDeriveInput, FromField};
+use darling::{FromDeriveInput, FromField, FromMeta};
 use heck::ToTitleCase;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{ToTokens, TokenStreamExt, format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
-use syn::{Attribute, Ident, Meta, Token, Type, Visibility};
+use syn::{Attribute, Expr, ExprLit, Ident, Lit, LitStr, Meta, Token, Type, Visibility};
 use syn::{PathSegment, Result};
+
+#[derive(Debug)]
+struct Tooltip {
+    expr: Expr,
+}
+
+impl FromMeta for Tooltip {
+    fn from_value(value: &syn::Lit) -> darling::Result<Self> {
+        match value {
+            syn::Lit::Str(s) => Ok(Self {
+                expr: Expr::Lit(ExprLit {
+                    attrs: Vec::new(),
+                    lit: Lit::Str(s.clone()),
+                }),
+            }),
+            _ => Err(darling::Error::unexpected_lit_type(value)),
+        }
+    }
+
+    fn from_string(value: &str) -> darling::Result<Self> {
+        Ok(Self {
+            expr: Expr::Lit(ExprLit {
+                attrs: Vec::new(),
+                lit: Lit::Str(LitStr::new(value, Span::call_site())),
+            }),
+        })
+    }
+
+    fn from_expr(expr: &Expr) -> darling::Result<Self> {
+        Ok(Self { expr: expr.clone() })
+    }
+}
+
+impl ToTokens for Tooltip {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let content = &self.expr;
+        tokens.append_all(quote! { #content });
+    }
+}
 
 #[derive(Debug, darling::FromField)]
 #[darling(attributes(inspect))]
@@ -22,9 +61,7 @@ struct FieldOpt {
     pub ty: Type,
 
     #[darling(default)]
-    pub tooltip: Option<String>,
-    #[darling(default)]
-    pub compact: bool,
+    pub tooltip: Option<Tooltip>,
     #[darling(default)]
     pub suffix: Option<String>,
     #[darling(default)]
@@ -78,6 +115,7 @@ impl FieldOpt {
             min,
             max,
             suffix,
+            tooltip,
             ..
         } = self;
 
@@ -160,9 +198,20 @@ impl FieldOpt {
             }
         };
 
+        let tooltip = if let Some(tooltip) = &self.tooltip {
+            quote! {
+                Some(#tooltip)
+            }
+        } else {
+            quote! {
+                None
+            }
+        };
+
         quote! {
             slipstream_shared::inspect::FieldConfig {
                 label: #label,
+                tooltip: #tooltip,
                 category: #category,
                 read_only: #read_only,
                 range: #range,

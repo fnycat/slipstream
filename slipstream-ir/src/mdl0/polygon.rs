@@ -231,7 +231,7 @@ pub struct Polygon {
     /// The color buffer to use for indexed draws.
     ///
     /// This is an index into the `Colors` section of the model.
-    #[inspect(rename = "Normal Array IDs")]
+    #[inspect(rename = "Color Array IDs")]
     pub color_array_ids: [u16; 2],
     /// The UV buffer to use for indexed draws.
     ///
