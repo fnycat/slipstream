@@ -8,6 +8,7 @@ use slipstream_shared::error::{
 };
 
 use crate::arc::UnknownFile;
+use crate::chr0::{self, CHR0_MAGIC};
 use crate::encoding::{ReadArrayExt, WriteArrayExt};
 use crate::index::IndexGroup;
 use crate::mdl0::{self, MDL0_MAGIC};
@@ -209,7 +210,7 @@ pub struct BFileHeader {
     /// Length of this subfile.
     pub subfile_length: u32,
     /// Version of ths subfile. For MDL0 this is either 8 or 11.
-    pub subfile_version: u32,
+    pub version: u32,
     /// The offset to the outer BRRES file.
     pub brres_offset: i32,
     /// Offsets within this BRRES file. The number of offsets is implied by the version.
@@ -242,7 +243,7 @@ impl BFileHeader {
         Ok(Self {
             header_start,
             subfile_length,
-            subfile_version,
+            version: subfile_version,
             brres_offset,
             offsets,
             name_offset,
@@ -251,7 +252,7 @@ impl BFileHeader {
 
     pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
         writer.write_u32::<BigEndian>(self.subfile_length)?;
-        writer.write_u32::<BigEndian>(self.subfile_version)?;
+        writer.write_u32::<BigEndian>(self.version)?;
         writer.write_i32::<BigEndian>(self.brres_offset)?; // needs to be substituted
 
         for offset in &self.offsets {
@@ -304,6 +305,7 @@ fn deserialize_bfile(
 
     match magic {
         MDL0_MAGIC => mdl0::deserialize(reader, parent_id, arena, name),
+        CHR0_MAGIC => chr0::deserialize(reader, parent_id, arena, name),
         TEX0_MAGIC => tex0::deserialize(reader, parent_id, arena, name),
         // Chr0Subfile::MAGIC => Chr0Subfile::deserialize_lazy(reader),
         _ => {
@@ -328,7 +330,7 @@ fn serialize_bfile(writer: &mut MutCursor, node: &IrNode) -> SlipstreamResult<()
     }
 
     impl Visitor for BFileVisitor<'_> {
-        fn visit_mdl0(&mut self, bfile: VisitorContext<'_, mdl0::Model>) -> ControlFlow<()> {
+        fn visit_mdl0(&mut self, bfile: VisitorContext<'_, mdl0::Mdl0Root>) -> ControlFlow<()> {
             todo!()
         }
 

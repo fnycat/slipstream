@@ -1,4 +1,5 @@
 use crate::arc::{ArcDirectory, UnknownFile};
+use crate::chr0;
 use crate::mdl0::{
     self, Bone, ColorBuffer, Definitions, MaterialBuffer, NormalBuffer, PaletteLinks, Polygon, Tev,
     TextureLinks, UvBuffer, VertexBuffer,
@@ -132,16 +133,61 @@ pub trait Visitor {
         }
     }
 
-    // MDL0 visitor methods
+    // CHR0 visitor methods
     // ==================================================================================================
 
-    fn visit_mdl0(&mut self, model: VisitorContext<'_, mdl0::Model>) -> ControlFlow<()> {
+    fn visit_chr0(&mut self, animations: VisitorContext<'_, chr0::Chr0Root>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())
         }
     }
+
+    fn visit_skeletal_animation(
+        &mut self,
+        animation: VisitorContext<'_, chr0::AnimatedBone>,
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_chr0_mut(
+        &mut self,
+        animation: VisitorContextMut<'_, chr0::Chr0Root>,
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_skeletal_animation_mut(
+        &mut self,
+        animation: VisitorContextMut<'_, chr0::AnimatedBone>,
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    // MDL0 visitor methods
+    // ==================================================================================================
+
+    fn visit_mdl0(&mut self, model: VisitorContext<'_, mdl0::Mdl0Root>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
     fn visit_definitions(
         &mut self,
         definitions: VisitorContext<'_, Definitions>,
@@ -233,13 +279,14 @@ pub trait Visitor {
     // Mutable MDL0 visitor methods
     // ==================================================================================================
 
-    fn visit_mdl0_mut(&mut self, model: VisitorContextMut<'_, mdl0::Model>) -> ControlFlow<()> {
+    fn visit_mdl0_mut(&mut self, model: VisitorContextMut<'_, mdl0::Mdl0Root>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())
         }
     }
+
     fn visit_definitions_mut(
         &mut self,
         definitions: VisitorContextMut<'_, Definitions>,

@@ -1,6 +1,6 @@
 use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
 use slipstream_ir::mdl0::{
-    Bone, Definitions, MaterialBuffer, Model, Polygon, TextureLinks, VertexBuffer,
+    Bone, Definitions, MaterialBuffer, Mdl0Root, Polygon, TextureLinks, VertexBuffer,
 };
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::tex0::Texture;
@@ -15,7 +15,7 @@ struct InspectorVisitor<'ui> {
 }
 
 impl Visitor for InspectorVisitor<'_> {
-    fn visit_mdl0_mut(&mut self, context: VisitorContextMut<'_, Model>) -> ControlFlow<()> {
+    fn visit_mdl0_mut(&mut self, context: VisitorContextMut<'_, Mdl0Root>) -> ControlFlow<()> {
         self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }

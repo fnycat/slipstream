@@ -162,8 +162,13 @@ pub enum IrNodeType {
     TextureLinks,
     PaletteLinks,
 
+    /// A CHR0 file
+    Chr0Root,
+    /// A CHR0 animation
+    SkeletalAnimation,
+
     /// A TEX0 texture
     Texture,
-
+    /// An unknown file format. The object simply stores the raw bytes of the file.
     Unknown,
 }
