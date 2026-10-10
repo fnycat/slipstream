@@ -36,11 +36,17 @@ pub trait Pane: Send + Sync {
     /// The title of the current pane.
     fn title(&self) -> &str;
 
-    fn draw_pane_header(&self, ui: &mut egui::Ui) -> egui_tiles::UiResponse {
+    fn draw_pane_header(&self, ui: &mut egui::Ui, is_focused: bool) -> egui_tiles::UiResponse {
         let mut drag_response = egui_tiles::UiResponse::None;
         egui::Frame::new()
             .inner_margin(PANE_MARGIN)
-            .fill(ui.visuals().faint_bg_color)
+            .fill(if is_focused {
+                ui.visuals()
+                    .faint_bg_color
+                    .lerp_to_gamma(egui::Color32::WHITE, 0.1)
+            } else {
+                ui.visuals().faint_bg_color
+            })
             .inner_margin(PANE_MARGIN)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
@@ -83,14 +89,16 @@ pub trait Pane: Send + Sync {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
+        is_focused: bool,
     ) -> egui_tiles::UiResponse {
-        let mut response = self.draw_pane_header(ui);
+        let mut response = self.draw_pane_header(ui, is_focused);
 
         egui::Frame::new()
             .fill(ui.visuals().panel_fill)
             .inner_margin(5.0)
             .show(ui, |ui| {
-                if self.draw_content(ui, tile_id) == egui_tiles::UiResponse::DragStarted {
+                if self.draw_content(ui, tile_id, is_focused) == egui_tiles::UiResponse::DragStarted
+                {
                     response = egui_tiles::UiResponse::DragStarted;
                 }
             });
@@ -103,6 +111,7 @@ pub trait Pane: Send + Sync {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
+        is_focused: bool,
     ) -> egui_tiles::UiResponse;
 
     fn highlight(&self, _painter: &mut egui::Painter) {
@@ -207,7 +216,7 @@ pub struct PaneBehavior {
     pub sender: mpsc::Sender<PaneAction>,
     pub receiver: mpsc::Receiver<PaneAction>,
 
-    pub focused_tile: Option<egui_tiles::TileId>,
+    pub focused_pane: Option<egui_tiles::TileId>,
 }
 
 impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
@@ -258,6 +267,20 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
         tile_id: egui_tiles::TileId,
         pane: &mut Box<dyn Pane>,
     ) -> egui_tiles::UiResponse {
-        pane.draw_window(ui, tile_id)
+        let pane_rect = ui.cursor();
+        let clicked = ui.input(|i| {
+            i.pointer.any_pressed()
+                && i.pointer
+                    .interact_pos()
+                    .is_some_and(|pos| pane_rect.contains(pos))
+        });
+
+        if clicked {
+            // User clicked in this pane.
+            self.focused_pane = Some(tile_id);
+        }
+
+        let is_focused = self.focused_pane == Some(tile_id);
+        pane.draw_window(ui, tile_id, is_focused)
     }
 }

@@ -41,7 +41,8 @@ impl Pane for LogPane {
     fn draw_content(
         &mut self,
         ui: &mut egui::Ui,
-        tile_id: egui_tiles::TileId,
+        _tile_id: egui_tiles::TileId,
+        is_focused: bool,
     ) -> egui_tiles::UiResponse {
         let row_height = 15.0;
         let logs = GLOBAL_MEM_LOGS.lock();
