@@ -35,6 +35,7 @@ pub struct ModelContents<'a> {
 
     node_tree: Option<IrNodeKey>,
     node_mix: Option<IrNodeKey>,
+    draw_xlu: Option<IrNodeKey>,
     draw_opaque: Option<IrNodeKey>,
 
     skeleton_root: Option<IrNodeKey>,
@@ -209,6 +210,7 @@ impl<'a> ModelContents<'a> {
             node_tree: None,
             node_mix: None,
             draw_opaque: None,
+            draw_xlu: None,
 
             skeleton_root: None,
 
@@ -237,6 +239,7 @@ impl Visitor for ModelContents<'_> {
     ) -> ControlFlow<()> {
         match definitions.meta.label {
             DRAW_OPA_NAME => self.draw_opaque = Some(definitions.meta.key),
+            DRAW_XLU_NAME => self.draw_xlu = Some(definitions.meta.key),
             NODE_TREE_NAME => self.node_tree = Some(definitions.meta.key),
             NODE_MIX_NAME => self.node_mix = Some(definitions.meta.key),
             _ => tracing::warn!("Unknown definitions file: `{}`", definitions.meta.label),

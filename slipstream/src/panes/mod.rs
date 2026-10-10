@@ -224,6 +224,11 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
         true
     }
 
+    #[inline]
+    fn tab_hover_cursor_icon(&self) -> egui::CursorIcon {
+        egui::CursorIcon::PointingHand
+    }
+
     fn paint_drag_preview(
         &self,
         visuals: &egui::Visuals,
