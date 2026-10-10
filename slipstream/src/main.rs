@@ -1,3 +1,7 @@
+//! This crate simply calls [`run`] in [`slipstream_core`].
+//! 
+//! [`run`]: slipstream_core::run
+
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use slipstream_shared::error::SlipstreamResult;
