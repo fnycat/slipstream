@@ -9,7 +9,7 @@ use slipstream_shared::{RefCursor, SlipstreamResult, try_unwrap};
 
 use crate::brres::{BFileHeader, BFileType};
 use crate::encoding::Deserialize;
-use crate::img::{CmprDescriptor, CmprImage};
+use crate::img::{CmprTexture, EncodedTexture, I4Texture, I8Texture, Rgba8UnormTexture};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::visitor::{
@@ -55,18 +55,41 @@ impl Deserialize for TextureFormat {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TextureData {
-    Cmpr(CmprImage),
+    I4(I4Texture),
+    I8(I8Texture),
+    Cmpr(CmprTexture),
 }
+
+macro_rules! impl_tex_data {
+    ($($ident:ident),*) => {
+        impl TextureData {
+            pub fn mipmaps(&self) -> u32 {
+                match &self {
+                    $(
+                        TextureData::$ident(x) => x.mipmaps(),
+                    )*
+                }
+            }
+
+            pub fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8UnormTexture> {
+                match &self {
+                    $(
+                        TextureData::$ident(x) => x.to_rgba8_unorm(),
+                    )*
+                }
+            }
+        }
+    }
+}
+
+impl_tex_data!(I4, I8, Cmpr);
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Texture {
     #[inspect(tooltip = "Width and height of the texture in pixels")]
     pub size: glam::U16Vec2,
-    pub format: TextureFormat,
-    pub mipmap_count: u32,
     #[inspect(ignore)]
     pub data: TextureData,
-
     #[inspect(ignore)]
     #[cfg(feature = "egui-impls")]
     pub egui_texture_id: Option<egui::TextureId>,
@@ -92,11 +115,10 @@ impl Texture {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         renderer: &mut egui_wgpu::Renderer,
-    ) -> egui::TextureId {
+    ) -> SlipstreamResult<egui::TextureId> {
         use wgpu::util::DeviceExt;
 
-        let rgba8_unorm = self.to_rgba8_unorm();
-
+        let rgba8_unorm = self.data.to_rgba8_unorm()?;
         let texture = device.create_texture_with_data(
             queue,
             &wgpu::TextureDescriptor {
@@ -106,7 +128,7 @@ impl Texture {
                     height: self.size.y as u32,
                     depth_or_array_layers: 1,
                 },
-                mip_level_count: self.mipmap_count,
+                mip_level_count: self.data.mipmaps(),
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: wgpu::TextureFormat::Rgba8Unorm,
@@ -114,7 +136,7 @@ impl Texture {
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             },
             wgpu::util::TextureDataOrder::LayerMajor,
-            bytemuck::cast_slice(&rgba8_unorm),
+            bytemuck::cast_slice(rgba8_unorm.pixels()),
         );
 
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor {
@@ -124,7 +146,7 @@ impl Texture {
             usage: Some(wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST),
             aspect: wgpu::TextureAspect::All,
             base_mip_level: 0,
-            mip_level_count: Some(self.mipmap_count),
+            mip_level_count: Some(self.data.mipmaps()),
             base_array_layer: 0,
             array_layer_count: None,
         });
@@ -132,7 +154,7 @@ impl Texture {
         // Use `Nearest` filtering so small textures won't look blurry.
         let id = renderer.register_native_texture(device, &texture_view, wgpu::FilterMode::Nearest);
         self.egui_texture_id = Some(id);
-        id
+        Ok(id)
     }
 }
 
@@ -170,19 +192,24 @@ pub fn deserialize(
 
     reader.set_position(subfile_header.get_section_start(0)?);
 
-    match format {
-        TextureFormat::Cmpr => {
-            let cmpr = CmprImage::deserialize(
-                reader,
-                CmprDescriptor {
-                    width: pixel_width,
-                    height: pixel_height,
-                    mipmap_count,
-                },
-            )?;
-        }
-        _ => {}
-    }
+    let data = match format {
+        TextureFormat::I4 => TextureData::I4(I4Texture::new(
+            reader,
+            glam::u16vec2(pixel_width, pixel_height),
+            mipmap_count,
+        )?),
+        TextureFormat::I8 => TextureData::I8(I8Texture::new(
+            reader,
+            glam::u16vec2(pixel_width, pixel_height),
+            mipmap_count,
+        )?),
+        TextureFormat::Cmpr => TextureData::Cmpr(CmprTexture::new(
+            reader,
+            glam::u16vec2(pixel_width, pixel_height),
+            mipmap_count,
+        )?),
+        _ => todo!("texture format {format:?}"),
+    };
 
     let key = arena.insert(IrNodeDescriptor {
         label: name,
@@ -191,8 +218,10 @@ pub fn deserialize(
         children: Vec::new(),
         contents: ContentSlot::eager(Box::new(Texture {
             size: glam::u16vec2(pixel_width, pixel_height),
-            format,
-            mipmap_count,
+            data,
+
+            #[cfg(feature = "egui-impls")]
+            egui_texture_id: None,
         })),
     });
 

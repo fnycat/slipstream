@@ -1,10 +1,10 @@
 #[derive(Clone, PartialEq, Eq)]
-pub struct Rgba8Image {
+pub struct Rgba8UnormTexture {
     size: glam::U16Vec2,
     pixels: Vec<glam::U8Vec4>,
 }
 
-impl Rgba8Image {
+impl Rgba8UnormTexture {
     pub fn new(size: glam::U16Vec2, pixels: Vec<glam::U8Vec4>) -> Self {
         Self { size, pixels }
     }

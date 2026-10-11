@@ -1,8 +1,20 @@
+mod c;
+mod c14x2;
 mod cmpr;
+mod i;
+mod ia;
+mod rgb565;
+mod rgb5a3;
 mod rgba8unorm;
 mod tpl;
 
+pub use c::*;
+pub use c14x2::*;
 pub use cmpr::*;
+pub use i::*;
+pub use ia::*;
+pub use rgb5a3::*;
+pub use rgb565::*;
 pub use rgba8unorm::*;
 pub use tpl::*;
 
@@ -12,6 +24,25 @@ use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::encoding::ReadArrayExt;
 use crate::mdl0::ColorFormat;
+use crate::tex0::TextureFormat;
+
+// We use methods instead of associated constants to ensure the trait stays dyn-compatible.
+pub trait EncodedTexture {
+    /// The format of this texture.
+    fn format(&self) -> TextureFormat;
+
+    /// The dimensions of the texture.
+    fn dimensions(&self) -> glam::U16Vec2;
+
+    /// The length in bytes of the image's texture.
+    fn data_len(&self) -> usize;
+
+    /// Converts this image to an `RGBA8Unorm` texture.
+    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8UnormTexture>;
+
+    /// The amount of mipmaps in this texture.
+    fn mipmaps(&self) -> u32;
+}
 
 /// Converts a 16-byte integer to an opaque RGB565 colour.
 ///

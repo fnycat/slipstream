@@ -4,11 +4,10 @@ members = ["slipstream", "slipstream-derive", "slipstream-ir", "slipstream-share
 
 [workspace.dependencies]
 egui = { version = "0.36.2", features = ["rayon"] }
-egui_extras = "0.36.2"
 glam = { version = "0.34.1", features = ["bytemuck"] }
 wgpu = { version = "30.0.1", features = ["webgl"] }
 eframe = "0.36.2"
-egui-extras = { version = "0.36.2", features = ["image"] }
+egui_extras = { version = "0.36.2", features = ["image"] }
 egui-phosphor = { version = "0.14.0", features = ["fill", "subset"] }
 tracing = "0.1.44"
 byteorder = "1.5.0"
