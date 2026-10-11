@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt};
+use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::error::UnsupportedError;
 use slipstream_shared::{RefCursor, SlipstreamResult, try_unwrap};
 
@@ -11,41 +12,51 @@ use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut
+    VisitorContextNodeMut,
 };
 
 pub const TEX0_MAGIC: [u8; 4] = [0x54, 0x45, 0x58, 0x30]; // "TEX0"
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::FromRepr)]
+#[try_from(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u32)]
 pub enum TextureFormat {
     I4 = 0x00,
     I8 = 0x01,
+    #[inspect(rename = "IA4")]
     Ia4 = 0x02,
+    #[inspect(rename = "IA8")]
     Ia8 = 0x03,
+    #[inspect(rename = "RGB565")]
     Rgb565 = 0x04,
+    #[inspect(rename = "RGB5A3")]
     Rgb5a3 = 0x05,
-    Rgba32 = 0x06,
+    #[inspect(rename = "RGBA8")]
+    Rgba8 = 0x06,
     // there is no 0x07 apparently
     C4 = 0x08,
     C8 = 0x09,
+    #[inspect(rename = "C14X2")]
     C14x2 = 0x0a,
     // also no 0x0b, 0x0c and 0x0d
-    Cmpr = 0x0e
+    #[inspect(rename = "CMPR")]
+    #[inspect(tooltip = "A compressed texture using DXT1 compression.")]
+    Cmpr = 0x0e,
 }
 
 impl Deserialize for TextureFormat {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
-        try_unwrap!(Self::from_repr(word), "invalid texture format: {word:#04x}")
+        Self::try_from(word)
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Texture {
+    #[inspect(tooltip = "Width and height of the texture in pixels")]
     pub size: glam::U16Vec2,
     pub format: TextureFormat,
-    pub mipmap_count: u32
+    pub mipmap_count: u32,
 }
 
 impl Visitable for Texture {
@@ -56,7 +67,7 @@ impl Visitable for Texture {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> std::ops::ControlFlow<()> {
         visitor.visit_tex0_mut(VisitorContextMut::new(node, self))
     }
@@ -67,7 +78,7 @@ pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
     parent_id: IrNodeKey,
     arena: &IrArena,
-    name: String
+    name: String,
 ) -> SlipstreamResult<IrNodeKey> {
     let subfile_header = BFileHeader::deserialize(reader, BFileType::Tex0)?;
 
@@ -89,8 +100,8 @@ pub fn deserialize(
                 CmprDescriptor {
                     width: pixel_width,
                     height: pixel_height,
-                    mipmap_count
-                }
+                    mipmap_count,
+                },
             )?;
         }
         _ => {}
@@ -104,8 +115,8 @@ pub fn deserialize(
         contents: ContentSlot::eager(Box::new(Texture {
             size: glam::u16vec2(pixel_width, pixel_height),
             format,
-            mipmap_count
-        }))
+            mipmap_count,
+        })),
     });
 
     Ok(key)

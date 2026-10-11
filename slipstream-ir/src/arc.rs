@@ -3,21 +3,22 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{
-    CorruptionError, IncorrectFormat, SlipstreamError, SlipstreamResult
+    CorruptionError, IncorrectFormat, SlipstreamError, SlipstreamResult,
 };
 
 use crate::brres::{self, BRRES_MAGIC};
 use crate::deferred_pass::{
-    DEFER_PLACEHOLDER, DEFER_PLACEHOLDER24, DeferredPass, DeferredString, StringPool
+    DEFER_PLACEHOLDER, DEFER_PLACEHOLDER24, DeferredPass, DeferredString, StringPool,
 };
 use crate::encoding::{ReadArrayExt, ReadStringExt, WriteArrayExt};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut
+    VisitorContextNodeMut,
 };
 
 /// Magic of an ARC file.
@@ -32,7 +33,7 @@ struct Header {
     /// Size of all nodes including the string table.
     pub size: i32,
     /// File offset of data.
-    pub file_offset: i32
+    pub file_offset: i32,
 }
 
 impl Header {
@@ -42,7 +43,7 @@ impl Header {
             return Err(IncorrectFormat {
                 expected_magic: ARC_MAGIC.to_vec(),
                 found_magic: magic.to_vec(),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         }
@@ -55,7 +56,7 @@ impl Header {
         Ok(Self {
             node_offset,
             size,
-            file_offset
+            file_offset,
         })
     }
 
@@ -74,7 +75,7 @@ impl Header {
 #[repr(u8)]
 enum NodeType {
     File,
-    Directory
+    Directory,
 }
 
 impl NodeType {
@@ -112,7 +113,7 @@ impl TryFrom<u8> for NodeType {
 #[derive(Debug, Clone, PartialEq)]
 pub enum NodeContent {
     File { data: RefCursor<[u8]> },
-    Directory { parent: u32, skip_node: u32 }
+    Directory { parent: u32, skip_node: u32 },
 }
 
 impl NodeContent {
@@ -124,13 +125,13 @@ impl NodeContent {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Node {
     pub name: String,
-    pub data: NodeContent
+    pub data: NodeContent,
 }
 
 impl Node {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        string_pool: &mut RefCursor<[u8]>
+        string_pool: &mut RefCursor<[u8]>,
     ) -> SlipstreamResult<Self> {
         let ty = NodeType::deserialize(reader)?;
         let name_offset = reader.read_u24::<BigEndian>()?;
@@ -148,7 +149,7 @@ impl Node {
         let data = match ty {
             NodeType::Directory => NodeContent::Directory {
                 parent: data1,
-                skip_node: data2
+                skip_node: data2,
             },
             NodeType::File => {
                 let data_start = data1;
@@ -165,7 +166,7 @@ impl Node {
 }
 
 pub struct UnknownFile {
-    pub reader: RefCursor<[u8]>
+    pub reader: RefCursor<[u8]>,
 }
 
 impl Visitable for UnknownFile {
@@ -176,7 +177,7 @@ impl Visitable for UnknownFile {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor.visit_unknown_mut(VisitorContextMut::new(node, self))
     }
@@ -187,7 +188,7 @@ fn parse_leaf_node(
     reader: &mut RefCursor<[u8]>,
     parent_id: IrNodeKey,
     arena: &IrArena,
-    label: String
+    label: String,
 ) -> SlipstreamResult<IrNodeKey> {
     let magic: [u8; 4] = reader.read_u8_array()?;
     reader.set_position(reader.position() - 4);
@@ -202,8 +203,8 @@ fn parse_leaf_node(
                 parent: Some(parent_id),
                 children: Vec::new(),
                 contents: ContentSlot::eager(Box::new(UnknownFile {
-                    reader: reader.clone()
-                }))
+                    reader: reader.clone(),
+                })),
             });
 
             Ok(key)
@@ -211,8 +212,10 @@ fn parse_leaf_node(
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct ArcDirectory {
-    pub uncompressed_size: i32
+    #[inspect(tooltip = "Size in bytes of this directory when it is uncompressed.")]
+    pub uncompressed_size: i32,
 }
 
 impl Visitable for ArcDirectory {
@@ -223,7 +226,7 @@ impl Visitable for ArcDirectory {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor.visit_arc_mut(VisitorContextMut::new(node, self))
     }
@@ -241,7 +244,7 @@ fn construct_directory_tree(
     label: String,
     is_root: bool,
     uncompressed_size: i32,
-    cursor: &mut usize
+    cursor: &mut usize,
 ) -> SlipstreamResult<IrNodeKey> {
     let &NodeContent::Directory { skip_node, .. } = &node_list[*cursor].data else {
         return Err(CorruptionError {
@@ -269,7 +272,7 @@ fn construct_directory_tree(
                     name,
                     false,
                     uncompressed_size,
-                    cursor
+                    cursor,
                 )?;
                 children.push(child);
             }
@@ -288,12 +291,12 @@ fn construct_directory_tree(
             label,
             ty: IrNodeType::ArcDirectory {
                 is_root,
-                empty: children.is_empty()
+                empty: children.is_empty(),
             },
             parent,
             children,
-            contents: ContentSlot::eager(Box::new(ArcDirectory { uncompressed_size }))
-        }
+            contents: ContentSlot::eager(Box::new(ArcDirectory { uncompressed_size })),
+        },
     );
 
     Ok(key)
@@ -303,7 +306,7 @@ pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
     parent_id: Option<IrNodeKey>,
     arena: &IrArena,
-    name: String
+    name: String,
 ) -> SlipstreamResult<IrNodeKey> {
     tracing::trace!("Parsing ARC file `{name}`");
 
@@ -339,8 +342,8 @@ pub fn deserialize(
         name: "<null>".to_owned(),
         data: NodeContent::Directory {
             parent: _data1,
-            skip_node: node_count
-        }
+            skip_node: node_count,
+        },
     });
 
     tracing::trace!("Reading {node_count} nodes");
@@ -359,7 +362,7 @@ pub fn deserialize(
         name,
         true,
         header.size,
-        &mut cursor
+        &mut cursor,
     )?;
     tracing::trace!("Constructed directory tree successfully");
     Ok(ret)
@@ -372,7 +375,7 @@ pub fn serialize_inner(
     string_pool: &mut StringPool,
     pass: &mut DeferredPass,
     id_counter: &mut u32,
-    parent: u32
+    parent: u32,
 ) -> SlipstreamResult<()> {
     arena
         .inspect(node, |node| {
@@ -414,7 +417,7 @@ pub fn serialize_inner(
                     string_pool,
                     pass,
                     id_counter,
-                    root_id
+                    root_id,
                 )?;
             }
 
@@ -429,7 +432,7 @@ pub fn serialize(
     arena: &IrArena,
     node: IrNodeKey,
     writer: &mut MutCursor,
-    pass: &mut DeferredPass
+    pass: &mut DeferredPass,
 ) -> SlipstreamResult<()> {
     tracing::trace!("Serializing ARC file");
 
@@ -443,7 +446,7 @@ pub fn serialize(
         &mut string_pool,
         pass,
         &mut node_count,
-        0
+        0,
     )?;
 
     let string_pool = string_pool.finish();
@@ -453,7 +456,7 @@ pub fn serialize(
     let header: Header = Header {
         node_offset: 0x20, // Header is 32 bytes long, first node starts directly after header.
         file_offset: (header_start + arc_size) as i32 + 1, // Files start directly after the string pool.
-        size: 0x20 + arc_size as i32 // node_offset + node_count * node_size + string_pool_size
+        size: 0x20 + arc_size as i32, // node_offset + node_count * node_size + string_pool_size
     };
     tracing::debug!("ARC header {header:?}");
     header.serialize(writer)?;

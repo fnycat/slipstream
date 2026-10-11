@@ -6,7 +6,7 @@ use egui::accesskit::Role::SectionHeader;
 use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{
-    CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult
+    CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult,
 };
 use slipstream_shared::inspect::{FieldConfig, Inspect};
 use slipstream_shared::try_unwrap;
@@ -18,7 +18,7 @@ use crate::node::node::{ContentSlot, IrNodeType};
 use crate::util::Box3;
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut
+    VisitorContextNodeMut,
 };
 
 #[inspect_bitfield(u32)]
@@ -37,7 +37,7 @@ pub struct BoneFlags {
     pub is_display_matrix: bool,
     pub is_billboard_child: bool,
     #[bits(21)]
-    _unused: u32
+    _unused: u32,
 }
 
 impl BoneFlags {
@@ -70,7 +70,7 @@ pub enum BillboardSetting {
     YBillboard,
     /// Influenced by rotation of parent node and rotates only around Y-axis.
     /// Z-axis points toward camera direction.
-    YPerspectiveBillboard
+    YPerspectiveBillboard,
 }
 
 impl BillboardSetting {
@@ -139,7 +139,7 @@ pub struct UnresolvedBone {
     pub previous_sibling_offset: i32,
     pub user_data_offset: i32,
     pub transform_matrix: glam::Mat4,
-    pub inverse_matrix: glam::Mat4
+    pub inverse_matrix: glam::Mat4,
 }
 
 impl UnresolvedBone {
@@ -171,7 +171,7 @@ impl UnresolvedBone {
             glam::vec4(m[0], m[4], m[8], 0.0),
             glam::vec4(m[1], m[5], m[9], 0.0),
             glam::vec4(m[2], m[6], m[10], 0.0),
-            glam::vec4(m[3], m[7], m[11], 1.0)
+            glam::vec4(m[3], m[7], m[11], 1.0),
         );
 
         let m = reader.read_f32_array::<12, BigEndian>()?;
@@ -179,7 +179,7 @@ impl UnresolvedBone {
             glam::vec4(m[0], m[4], m[8], 0.0),
             glam::vec4(m[1], m[5], m[9], 0.0),
             glam::vec4(m[2], m[6], m[10], 0.0),
-            glam::vec4(m[3], m[7], m[11], 1.0)
+            glam::vec4(m[3], m[7], m[11], 1.0),
         );
 
         Ok(Self {
@@ -199,7 +199,7 @@ impl UnresolvedBone {
             previous_sibling_offset,
             user_data_offset,
             transform_matrix,
-            inverse_matrix
+            inverse_matrix,
         })
     }
 }
@@ -208,7 +208,7 @@ impl UnresolvedBone {
 #[derive(Debug)]
 pub struct LabeledBone {
     pub label: String,
-    pub data: UnresolvedBone
+    pub data: UnresolvedBone,
 }
 
 #[derive(Debug, Inspect)]
@@ -234,7 +234,7 @@ pub struct Bone {
     #[inspect(ignore)]
     pub transform_matrix: glam::Mat4,
     #[inspect(ignore)]
-    pub inverse_matrix: glam::Mat4
+    pub inverse_matrix: glam::Mat4,
 }
 
 impl Bone {
@@ -243,7 +243,7 @@ impl Bone {
     pub fn from_unresolved(
         bone: &UnresolvedBone,
         billboard_id: Option<IrNodeKey>,
-        parent_id: Option<IrNodeKey>
+        parent_id: Option<IrNodeKey>,
     ) -> Self {
         Self {
             index: bone.index,
@@ -258,22 +258,28 @@ impl Bone {
             parent: parent_id,
             user_data_offset: bone.user_data_offset,
             transform_matrix: bone.transform_matrix,
-            inverse_matrix: bone.inverse_matrix
+            inverse_matrix: bone.inverse_matrix,
         }
     }
 }
 
 impl Visitable for Bone {
     fn accept(&self, node: VisitorContextNode<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
-        visitor.visit_bone(VisitorContext::new(node, self))
+        visitor
+            .as_mdl0()
+            .map(|vis| vis.visit_bone(VisitorContext::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
     }
 
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
-        visitor.visit_bone_mut(VisitorContextMut::new(node, self))
+        visitor
+            .as_mdl0()
+            .map(|vis| vis.visit_bone_mut(VisitorContextMut::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
     }
 }
 
@@ -282,7 +288,7 @@ fn build_skeleton_tree(
     reader: &mut RefCursor<[u8]>,
     _root_key: IrNodeKey,
     bones: Vec<LabeledBone>,
-    arena: &IrArena
+    arena: &IrArena,
 ) -> SlipstreamResult<IrNodeKey> {
     /// The offset between the start of the bone and the bone's index.
     const BONE_INDEX_OFFSET: u64 = 3 * 4;
@@ -353,7 +359,7 @@ fn build_skeleton_tree(
             curr_node.contents = ContentSlot::eager(Box::new(Bone::from_unresolved(
                 &bone.data,
                 None,
-                Some(parent_key)
+                Some(parent_key),
             )));
         });
     }
@@ -381,7 +387,7 @@ fn build_skeleton_tree(
 pub fn deserialize_skeleton(
     reader: &mut RefCursor<[u8]>,
     parent_id: IrNodeKey,
-    arena: &IrArena
+    arena: &IrArena,
 ) -> SlipstreamResult<IrNodeKey> {
     let section_index = IndexGroup::deserialize(reader)?;
     let mut bones = Vec::with_capacity(section_index.entries.len() - 1);

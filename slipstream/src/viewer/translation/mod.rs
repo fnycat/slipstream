@@ -4,7 +4,7 @@ mod vertex;
 pub use skeleton::*;
 use slipstream_ir::mdl0::{
     Bone, ColorBuffer, DRAW_OPA_NAME, DRAW_XLU_NAME, Definitions, MatrixId, Mdl0Header, Mdl0Root,
-    NODE_MIX_NAME, NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer
+    Mdl0Visitor, NODE_MIX_NAME, NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer,
 };
 use slipstream_ir::util::Box3;
 pub use vertex::*;
@@ -24,7 +24,7 @@ pub struct IntermediateModel {
     pub bounding_volume: Box3,
 
     pub bone_translations: Vec<glam::Mat4>,
-    pub polygons: Vec<IntermediatePolygon>
+    pub polygons: Vec<IntermediatePolygon>,
 }
 
 #[derive(Clone)]
@@ -44,7 +44,7 @@ pub struct ModelContents<'a> {
     normals: Vec<IrNodeKey>,
     colors: Vec<IrNodeKey>,
     uvs: Vec<IrNodeKey>,
-    polygons: Vec<IrNodeKey>
+    polygons: Vec<IrNodeKey>,
 }
 
 impl<'a> ModelContents<'a> {
@@ -53,11 +53,11 @@ impl<'a> ModelContents<'a> {
     pub(super) fn try_inspect_inner<F, T, U>(
         &self,
         key: IrNodeKey,
-        inspect_fn: F
+        inspect_fn: F,
     ) -> SlipstreamResult<T>
     where
         U: Visitable,
-        F: FnOnce(&U) -> SlipstreamResult<T>
+        F: FnOnce(&U) -> SlipstreamResult<T>,
     {
         let out = self
             .arena
@@ -80,16 +80,22 @@ impl<'a> ModelContents<'a> {
     fn translate_node_tree(
         &self,
         out: &mut IntermediateModel,
-        arena: &IrArena
+        arena: &IrArena,
     ) -> SlipstreamResult<()> {
         struct DefinitionVisitor {
-            result: SlipstreamResult<BoneMap>
+            result: SlipstreamResult<BoneMap>,
         }
 
         impl Visitor for DefinitionVisitor {
+            fn as_mdl0(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+                Some(self)
+            }
+        }
+
+        impl Mdl0Visitor for DefinitionVisitor {
             fn visit_definitions(
                 &mut self,
-                context: VisitorContext<'_, Definitions>
+                context: VisitorContext<'_, Definitions>,
             ) -> ControlFlow<()> {
                 tracing::trace!("Translating definition `{}`", context.meta.label);
                 self.result = BoneMap::from_definitions(context.content);
@@ -100,7 +106,7 @@ impl<'a> ModelContents<'a> {
 
         if let Some(node_tree) = self.node_tree {
             let mut visitor = DefinitionVisitor {
-                result: Ok(BoneMap::default())
+                result: Ok(BoneMap::default()),
             };
             arena.visit(node_tree, &mut visitor)?;
             out.bone_map = visitor.result?;
@@ -113,17 +119,23 @@ impl<'a> ModelContents<'a> {
     fn translate_node_mix(
         &self,
         out: &mut IntermediateModel,
-        arena: &IrArena
+        arena: &IrArena,
     ) -> SlipstreamResult<()> {
         struct DefinitionVisitor<'a> {
             model: &'a ModelContents<'a>,
-            result: SlipstreamResult<BoneWeights>
+            result: SlipstreamResult<BoneWeights>,
         }
 
         impl Visitor for DefinitionVisitor<'_> {
+            fn as_mdl0(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+                Some(self)
+            }
+        }
+
+        impl Mdl0Visitor for DefinitionVisitor<'_> {
             fn visit_definitions(
                 &mut self,
-                context: VisitorContext<'_, Definitions>
+                context: VisitorContext<'_, Definitions>,
             ) -> ControlFlow<()> {
                 tracing::trace!("Translating definition `{}`", context.meta.label);
                 self.result = BoneWeights::from_definitions(context.content);
@@ -135,7 +147,7 @@ impl<'a> ModelContents<'a> {
         if let Some(node_mix) = self.node_mix {
             let mut visitor = DefinitionVisitor {
                 model: self,
-                result: Ok(BoneWeights::default())
+                result: Ok(BoneWeights::default()),
             };
             arena.visit(node_mix, &mut visitor)?;
             out.bone_weights = Some(visitor.result?);
@@ -147,16 +159,22 @@ impl<'a> ModelContents<'a> {
     fn translate_polygons(
         &self,
         out: &mut IntermediateModel,
-        arena: &IrArena
+        arena: &IrArena,
     ) -> SlipstreamResult<()> {
         struct PolygonVisitor<'a> {
             out: &'a mut IntermediateModel,
             input: &'a ModelContents<'a>,
             scratch: &'a mut IntermediatePolygon,
-            result: SlipstreamResult<()>
+            result: SlipstreamResult<()>,
         }
 
         impl Visitor for PolygonVisitor<'_> {
+            fn as_mdl0(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+                Some(self)
+            }
+        }
+
+        impl Mdl0Visitor for PolygonVisitor<'_> {
             fn visit_polygon(&mut self, context: VisitorContext<'_, Polygon>) -> ControlFlow<()> {
                 tracing::trace!("Translating polygon `{}`", context.meta.label);
                 self.result = self
@@ -174,7 +192,7 @@ impl<'a> ModelContents<'a> {
                 out,
                 input: self,
                 scratch: &mut intermediate,
-                result: Ok(())
+                result: Ok(()),
             };
             let _ = arena.visit(polygon, &mut visitor)?;
             visitor.result?;
@@ -218,7 +236,7 @@ impl<'a> ModelContents<'a> {
             normals: Vec::new(),
             colors: Vec::new(),
             uvs: Vec::new(),
-            polygons: Vec::new()
+            polygons: Vec::new(),
         };
 
         arena.walk(root, &mut visitor)?;
@@ -227,6 +245,12 @@ impl<'a> ModelContents<'a> {
 }
 
 impl Visitor for ModelContents<'_> {
+    fn as_mdl0(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+        Some(self)
+    }
+}
+
+impl Mdl0Visitor for ModelContents<'_> {
     fn visit_mdl0(&mut self, model: VisitorContext<'_, Mdl0Root>) -> ControlFlow<()> {
         self.bounding_volume = model.header.bounding_volume;
 
@@ -235,14 +259,14 @@ impl Visitor for ModelContents<'_> {
 
     fn visit_definitions(
         &mut self,
-        definitions: VisitorContext<'_, Definitions>
+        definitions: VisitorContext<'_, Definitions>,
     ) -> ControlFlow<()> {
         match definitions.meta.label {
             DRAW_OPA_NAME => self.draw_opaque = Some(definitions.meta.key),
             DRAW_XLU_NAME => self.draw_xlu = Some(definitions.meta.key),
             NODE_TREE_NAME => self.node_tree = Some(definitions.meta.key),
             NODE_MIX_NAME => self.node_mix = Some(definitions.meta.key),
-            _ => tracing::warn!("Unknown definitions file: `{}`", definitions.meta.label)
+            _ => tracing::warn!("Unknown definitions file: `{}`", definitions.meta.label),
         }
 
         ControlFlow::Break(())

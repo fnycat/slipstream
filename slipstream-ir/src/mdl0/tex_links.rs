@@ -9,13 +9,13 @@ use crate::mdl0::section::{DeserializeContents, SerializeContents};
 use crate::node::node::{IrNode, IrNodeType};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut
+    VisitorContextNodeMut,
 };
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureLink {
     pub offset1: u32,
-    pub offset2: u32
+    pub offset2: u32,
 }
 
 impl TextureLink {
@@ -36,20 +36,26 @@ impl TextureLink {
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureLinks {
-    pub links: Vec<TextureLink>
+    pub links: Vec<TextureLink>,
 }
 
 impl Visitable for TextureLinks {
     fn accept(&self, node: VisitorContextNode<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
-        visitor.visit_texture_links(VisitorContext::new(node, self))
+        visitor
+            .as_mdl0()
+            .map(|vis| vis.visit_texture_links(VisitorContext::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
     }
 
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
-        visitor.visit_texture_links_mut(VisitorContextMut::new(node, self))
+        visitor
+            .as_mdl0()
+            .map(|vis| vis.visit_texture_links_mut(VisitorContextMut::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
     }
 }
 

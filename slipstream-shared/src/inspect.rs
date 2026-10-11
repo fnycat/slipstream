@@ -28,13 +28,13 @@ pub trait AsEnumLabel {
 /// Describes changes made by the window
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct Changes {
-    pub changed: bool
+    pub changed: bool,
 }
 
 impl From<Option<egui::Response>> for Changes {
     fn from(value: Option<egui::Response>) -> Self {
         Self {
-            changed: value.map(|c| c.changed()).unwrap_or(false)
+            changed: value.map(|c| c.changed()).unwrap_or(false),
         }
     }
 }
@@ -42,7 +42,7 @@ impl From<Option<egui::Response>> for Changes {
 impl From<egui::Response> for Changes {
     fn from(value: egui::Response) -> Self {
         Self {
-            changed: value.changed()
+            changed: value.changed(),
         }
     }
 }
@@ -52,7 +52,7 @@ impl BitOr for Changes {
 
     fn bitor(self, rhs: Self) -> Self::Output {
         Changes {
-            changed: self.changed || rhs.changed
+            changed: self.changed || rhs.changed,
         }
     }
 }
@@ -107,7 +107,7 @@ pub struct FieldConfig {
     pub range: Option<RangeInclusive<f64>>,
     pub prefix: Option<&'static str>,
     /// The suffix to add to the drag values.
-    pub suffix: Option<&'static str>
+    pub suffix: Option<&'static str>,
 }
 
 impl FieldConfig {
@@ -141,14 +141,14 @@ impl Default for FieldConfig {
             label: "<unknown>",
             category: None,
             read_only: false,
-            range: None
+            range: None,
         }
     }
 }
 
 pub struct BitFieldWrapper<T, F> {
     pub value: T,
-    pub on_update: F
+    pub on_update: F,
 }
 
 impl<T: Inspect + Copy, F: FnMut(T)> Inspect for BitFieldWrapper<T, F> {
@@ -240,6 +240,10 @@ impl_vector!(glam::U8Vec2, y, x);
 impl_vector!(glam::U8Vec3, z, y, x);
 impl_vector!(glam::U8Vec4, w, z, y, x);
 
+impl_vector!(glam::U16Vec2, y, x);
+impl_vector!(glam::U16Vec3, z, y, x);
+impl_vector!(glam::U16Vec4, w, z, y, x);
+
 impl Inspect for f32 {
     #[inline]
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
@@ -252,7 +256,7 @@ impl<T: Inspect> Inspect for Option<T> {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         match self {
             Some(x) => x.draw_inner(ui, cfg).into(),
-            None => ui.label("None").into()
+            None => ui.label("None").into(),
         }
     }
 }

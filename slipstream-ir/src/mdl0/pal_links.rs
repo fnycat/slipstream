@@ -9,13 +9,13 @@ use crate::mdl0::section::{DeserializeContents, SerializeContents};
 use crate::node::node::{IrNode, IrNodeType};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut
+    VisitorContextNodeMut,
 };
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PaletteLink {
     pub offset1: u32,
-    pub offset2: u32
+    pub offset2: u32,
 }
 
 impl PaletteLink {
@@ -35,20 +35,26 @@ impl PaletteLink {
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PaletteLinks {
-    pub links: Vec<PaletteLink>
+    pub links: Vec<PaletteLink>,
 }
 
 impl Visitable for PaletteLinks {
     fn accept(&self, node: VisitorContextNode<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
-        visitor.visit_palette_links(VisitorContext::new(node, self))
+        visitor
+            .as_mdl0()
+            .map(|vis| vis.visit_palette_links(VisitorContext::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
     }
 
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
-        visitor.visit_palette_links_mut(VisitorContextMut::new(node, self))
+        visitor
+            .as_mdl0()
+            .map(|vis| vis.visit_palette_links_mut(VisitorContextMut::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
     }
 }
 
