@@ -8,7 +8,7 @@ pub use visitor::*;
 
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt};
-use slipstream_derive::{Inspect, inspect_bitfield};
+use slipstream_derive::{Inspect, inspect_bitfield, try_from};
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 use slipstream_shared::verify;
@@ -692,31 +692,15 @@ impl Visitable for SkeletalAnimation {
 
 pub const CHR0_MAGIC: [u8; 4] = [0x43, 0x48, 0x52, 0x30];
 
+#[try_from(usize)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SectionType {
     Animations = 0,
     UserData = 1,
 }
 
-impl TryFrom<usize> for SectionType {
-    type Error = SlipstreamError;
-
-    fn try_from(value: usize) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0 => Self::Animations,
-            1 => Self::UserData,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid CHR0 section type: {value} (expected 0 or 1)"),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Inspect)]
+#[inspect(rename = "CHR0 File")]
 pub struct Chr0Root {
     /// The amount of animation frames stored in this file.
     #[inspect(rename = "Keyframe Count")]

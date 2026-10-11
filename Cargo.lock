@@ -1044,7 +1044,6 @@ dependencies = [
  "ahash",
  "egui",
  "enum-map",
- "image",
  "itertools",
  "log",
  "mime_guess2",
@@ -3364,6 +3363,7 @@ dependencies = [
  "byteorder",
  "dashmap",
  "downcast-rs 2.0.2",
+ "eframe",
  "egui",
  "egui_extras",
  "glam",
@@ -3376,6 +3376,7 @@ dependencies = [
  "slipstream-shared",
  "strum",
  "tracing",
+ "wgpu",
 ]
 
 [[package]]

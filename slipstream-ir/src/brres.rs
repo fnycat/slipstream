@@ -385,7 +385,7 @@ fn deserialize_nw4r_subdirectories(
         reader.set_position(data_start);
 
         {
-            let magic = &reader.remaining()[..4];
+            let magic = &reader.remaining_slice()[..4];
             tracing::trace!("Magic is {}", String::from_utf8_lossy(magic));
         }
 

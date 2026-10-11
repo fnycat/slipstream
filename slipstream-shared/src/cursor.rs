@@ -1,4 +1,5 @@
 use std::io::{self, SeekFrom, Write};
+use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
 
 /// Estimates the size of this type when serialized into a buffer.
@@ -9,7 +10,7 @@ pub trait SizeEstimate {
 
 #[derive(Default)]
 pub struct MutCursor {
-    inner: Vec<u8>
+    inner: Vec<u8>,
 }
 
 impl MutCursor {
@@ -68,12 +69,14 @@ impl Write for MutCursor {
 ///
 /// This allows the cursor to very cheaply be cloned.
 ///
+/// The `*_absolute` methods ignore the current position and operate on the entire underlying buffer.
+///
 /// [`Cursor`]: std::io::Cursor
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RefCursor<T: ?Sized> {
     inner: Arc<T>,
     /// The current position of the cursor.
-    pos: u64
+    pos: u64,
 }
 
 impl<T: ?Sized> RefCursor<T> {
@@ -99,29 +102,75 @@ impl<T: ?Sized> RefCursor<T> {
 }
 
 impl<T: AsRef<[u8]> + ?Sized> RefCursor<T> {
+    /// Returns the given range of bytes, taking into account the cursor position.
+    ///
+    /// This functions clamps the bounds to the size of array, it *does not panic*.
+    pub fn slice<B: RangeBounds<usize>>(&self, range: B) -> &[u8] {
+        let start = range.start_bound();
+        let end = range.end_bound();
+
+        let rem = self.remaining();
+        let start = match start {
+            Bound::Unbounded => 0,
+            Bound::Included(&x) => x.min(rem - 1),
+            Bound::Excluded(&x) => (x + 1).min(rem - 1),
+        };
+
+        let end = match end {
+            Bound::Unbounded => rem - 1,
+            Bound::Included(&x) => x.min(rem - 1),
+            Bound::Excluded(&x) => (x - 1).min(rem - 1),
+        };
+
+        &self.remaining_slice()[start..=end]
+    }
+
+    /// Returns the given range of bytes, ignoring the cursor position.
+    ///
+    /// This functions clamps the bounds to the size of array, it *does not panic*.
+    pub fn slice_absolute<B: RangeBounds<usize>>(&self, range: B) -> &[u8] {
+        let start = range.start_bound();
+        let end = range.end_bound();
+
+        let rem = self.remaining();
+        let start = match start {
+            Bound::Unbounded => 0,
+            Bound::Included(&x) => x.min(rem - 1),
+            Bound::Excluded(&x) => (x + 1).min(rem - 1),
+        };
+
+        let end = match end {
+            Bound::Unbounded => rem - 1,
+            Bound::Included(&x) => x.min(rem - 1),
+            Bound::Excluded(&x) => (x - 1).min(rem - 1),
+        };
+
+        &self.inner.as_ref().as_ref()[start..=end]
+    }
+
     /// Returns a reference to the bytes remaining in this buffer.
     ///
     /// I.e this buffer will be the bytes in the range `pos...range.end`.
     ///
     /// If the cursor is past the end of the buffer, the remaining buffer will be empty.
-    pub fn remaining(&self) -> &[u8] {
+    pub fn remaining_slice(&self) -> &[u8] {
         // If the position is past the end of the buffer, return an empty slice
-        if self.remaining_len() > 0 {
+        if self.remaining() > 0 {
             &self.inner.as_ref().as_ref()[self.pos as usize..]
         } else {
             &[]
         }
     }
 
-    /// Returns the length of the entire underlying buffer that this cursor has a view into.
-    pub fn full_len(&self) -> usize {
+    /// Returns the length of the underlying buffer, ignoring the cursor position.
+    pub fn len(&self) -> usize {
         self.inner.as_ref().as_ref().len()
     }
 
     /// The length of the remaining buffer.
     #[inline]
-    pub fn remaining_len(&self) -> usize {
-        (self.full_len() as u64).saturating_sub(self.pos) as usize
+    pub fn remaining(&self) -> usize {
+        (self.len() as u64).saturating_sub(self.pos) as usize
     }
 
     /// Dumps all contents to the given file in binary format.
@@ -134,7 +183,7 @@ impl<T: ?Sized> Clone for RefCursor<T> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
-            pos: self.pos
+            pos: self.pos,
         }
     }
 }
@@ -142,10 +191,10 @@ impl<T: ?Sized> Clone for RefCursor<T> {
 /// This is a nearly exact copy of the standard library.
 impl<T> io::Read for RefCursor<T>
 where
-    T: AsRef<[u8]> + ?Sized
+    T: AsRef<[u8]> + ?Sized,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let rem = self.remaining();
+        let rem = self.remaining_slice();
         let n = std::cmp::min(buf.len(), rem.len());
 
         buf[..n].copy_from_slice(&rem[..n]);
@@ -168,7 +217,7 @@ where
     }
 
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
-        let rem = self.remaining();
+        let rem = self.remaining_slice();
         let n = buf.len();
 
         if rem.len() < n {
@@ -184,7 +233,7 @@ where
     }
 
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        let rem = self.remaining();
+        let rem = self.remaining_slice();
         let n = rem.len();
 
         buf.reserve(n);
@@ -196,7 +245,7 @@ where
     }
 
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        let rem = self.remaining();
+        let rem = self.remaining_slice();
         let n = rem.len();
 
         let content = str::from_utf8(rem)
@@ -214,7 +263,7 @@ where
 /// This is a nearly exact copy of the standard library.
 impl<T> io::Seek for RefCursor<T>
 where
-    T: AsRef<[u8]> + ?Sized
+    T: AsRef<[u8]> + ?Sized,
 {
     fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
         let (base_pos, offset) = match style {
@@ -223,7 +272,7 @@ where
                 return Ok(n);
             }
             SeekFrom::End(n) => (self.inner.as_ref().as_ref().len() as u64, n),
-            SeekFrom::Current(n) => (self.position(), n)
+            SeekFrom::Current(n) => (self.position(), n),
         };
 
         match base_pos.checked_add_signed(offset) {
@@ -233,8 +282,8 @@ where
             }
             None => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "invalid seek to a negative or overflowing position"
-            ))
+                "invalid seek to a negative or overflowing position",
+            )),
         }
     }
 

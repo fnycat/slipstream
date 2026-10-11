@@ -1,6 +1,8 @@
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt};
+#[cfg(feature = "egui-impls")]
+use eframe::egui_wgpu;
 use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::error::UnsupportedError;
 use slipstream_shared::{RefCursor, SlipstreamResult, try_unwrap};
@@ -51,12 +53,87 @@ impl Deserialize for TextureFormat {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TextureData {
+    Cmpr(CmprImage),
+}
+
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Texture {
     #[inspect(tooltip = "Width and height of the texture in pixels")]
     pub size: glam::U16Vec2,
     pub format: TextureFormat,
     pub mipmap_count: u32,
+    #[inspect(ignore)]
+    pub data: TextureData,
+
+    #[inspect(ignore)]
+    #[cfg(feature = "egui-impls")]
+    pub egui_texture_id: Option<egui::TextureId>,
+}
+
+impl Texture {
+    /// Converts the texture to RGBA8 Unorm format.
+    pub fn to_rgba8_unorm(&self) -> Vec<glam::U8Vec4> {
+        todo!()
+    }
+
+    #[cfg(feature = "egui-impls")]
+    pub fn get_egui_texture_id(&self) -> Option<egui::TextureId> {
+        self.egui_texture_id
+    }
+
+    /// Generates a texture to be used in the UI.
+    ///
+    /// egui only supports `Rgba8Unorm` textures, so all textures are converted to this format first.
+    #[cfg(feature = "egui-impls")]
+    pub fn create_egui_texture(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        renderer: &mut egui_wgpu::Renderer,
+    ) -> egui::TextureId {
+        use wgpu::util::DeviceExt;
+
+        let rgba8_unorm = self.to_rgba8_unorm();
+
+        let texture = device.create_texture_with_data(
+            queue,
+            &wgpu::TextureDescriptor {
+                label: Some("TEX0 texture"),
+                size: wgpu::Extent3d {
+                    width: self.size.x as u32,
+                    height: self.size.y as u32,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: self.mipmap_count,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                view_formats: &[wgpu::TextureFormat::Rgba8Unorm],
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            },
+            wgpu::util::TextureDataOrder::LayerMajor,
+            bytemuck::cast_slice(&rgba8_unorm),
+        );
+
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("TEX0 texture view"),
+            format: Some(wgpu::TextureFormat::Rgba8Unorm),
+            dimension: Some(wgpu::TextureViewDimension::D2),
+            usage: Some(wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST),
+            aspect: wgpu::TextureAspect::All,
+            base_mip_level: 0,
+            mip_level_count: Some(self.mipmap_count),
+            base_array_layer: 0,
+            array_layer_count: None,
+        });
+
+        // Use `Nearest` filtering so small textures won't look blurry.
+        let id = renderer.register_native_texture(device, &texture_view, wgpu::FilterMode::Nearest);
+        self.egui_texture_id = Some(id);
+        id
+    }
 }
 
 impl Visitable for Texture {
