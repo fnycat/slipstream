@@ -1,14 +1,15 @@
-use std::{any::Any, panic::AssertUnwindSafe, sync::Arc};
+use std::any::Any;
+use std::panic::AssertUnwindSafe;
+use std::sync::Arc;
 
 use eframe::egui_wgpu;
 
-use crate::{
-    cmd::{AppCommand, AppCommandChannel},
-    config::{configure_dark_style, configure_light_style},
-    decorations::handle_frameless_resize,
-    pages::{RoutablePage, splash::SplashPage},
-    shared::GraphicsState,
-};
+use crate::cmd::{AppCommand, AppCommandChannel};
+use crate::config::{configure_dark_style, configure_light_style};
+use crate::decorations::handle_frameless_resize;
+use crate::pages::RoutablePage;
+use crate::pages::splash::SplashPage;
+use crate::shared::GraphicsState;
 
 const CHANNEL_SIZE: usize = 50;
 
@@ -27,7 +28,7 @@ pub struct App {
     /// The UI state context.
     pub ctx: egui::Context,
     /// The state of the current page. This contains all info that is currently displayed in the window.
-    pub page_state: Box<dyn RoutablePage>,
+    pub page_state: Box<dyn RoutablePage>
 }
 
 impl App {
@@ -42,7 +43,7 @@ impl App {
         egui_phosphor::add_font_bytes_as_family(
             &mut fonts,
             "slipstream_shared::icons::icons::fill",
-            egui_phosphor::bytes::fill::FONT,
+            egui_phosphor::bytes::fill::FONT
         );
 
         cc.egui_ctx.set_fonts(fonts);
@@ -60,7 +61,7 @@ impl App {
             instance: egui_rs.instance.clone(),
             device: egui_rs.device.clone(),
             queue: egui_rs.queue.clone(),
-            renderer: Arc::clone(&egui_rs.renderer),
+            renderer: Arc::clone(&egui_rs.renderer)
         };
 
         Self {
@@ -70,7 +71,7 @@ impl App {
             panic_info: None,
             bg_image: None,
             ctx: cc.egui_ctx.clone(),
-            page_state: SplashPage::new(cc.egui_ctx.clone(), render_state, cmd_channel),
+            page_state: SplashPage::new(cc.egui_ctx.clone(), render_state, cmd_channel)
         }
     }
 
@@ -91,7 +92,7 @@ impl App {
 
             self.ctx
                 .send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
-                    center_x, center_y,
+                    center_x, center_y
                 )));
         }
     }

@@ -1,7 +1,7 @@
 use byteorder::{BigEndian, ReadBytesExt};
-use slipstream_shared::{
-    cursor::RefCursor,
-    error::{CorruptionError, IncorrectFormat, SlipstreamError, SlipstreamResult},
+use slipstream_shared::cursor::RefCursor;
+use slipstream_shared::error::{
+    CorruptionError, IncorrectFormat, SlipstreamError, SlipstreamResult
 };
 
 use crate::encoding::ReadArrayExt;
@@ -14,7 +14,7 @@ pub struct Header {
     /// Size in bytes of the uncompressed file.
     pub uncompressed_size: u32,
     /// Reserved for special use. Always 0 in Mario Kart Wii.
-    pub reserved: [u32; 2],
+    pub reserved: [u32; 2]
 }
 
 impl Header {
@@ -24,7 +24,7 @@ impl Header {
             return Err(IncorrectFormat {
                 expected_magic: YAZ0_MAGIC.to_vec(),
                 found_magic: magic.to_vec(),
-                location: Some(reader.position()),
+                location: Some(reader.position())
             }
             .into());
         }
@@ -38,7 +38,7 @@ impl Header {
 
         Ok(Self {
             uncompressed_size,
-            reserved,
+            reserved
         })
     }
 }
@@ -81,7 +81,7 @@ pub struct Yaz0File {
     /// See [`Yaz0Header`] for the binary format of the header.
     pub header: Header,
     /// The uncompressed output stream.
-    pub uncompressed: Vec<u8>,
+    pub uncompressed: Vec<u8>
 }
 
 impl Yaz0File {
@@ -138,7 +138,7 @@ impl Yaz0File {
                     let copy_start = uncompressed.len().checked_sub(rrr + 1).ok_or_else(|| {
                         SlipstreamError::from(CorruptionError {
                             reason: "data group references byte before start of file".to_owned(),
-                            location: Some(reader.position()),
+                            location: Some(reader.position())
                         })
                     })?;
 
@@ -166,7 +166,7 @@ impl Yaz0File {
 
         Ok(Self {
             header,
-            uncompressed,
+            uncompressed
         })
     }
 }

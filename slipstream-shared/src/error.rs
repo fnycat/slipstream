@@ -1,7 +1,5 @@
-use std::{
-    fmt::{self, Display},
-    ops::Range,
-};
+use std::fmt::{self, Display};
+use std::ops::Range;
 use thiserror::Error;
 
 /// Some type of operation was not supported.
@@ -9,7 +7,7 @@ use thiserror::Error;
 pub struct UnsupportedError {
     /// The type of operation that is unsupported.
     pub reason: String,
-    pub location: Option<u64>,
+    pub location: Option<u64>
 }
 
 impl Display for UnsupportedError {
@@ -29,7 +27,7 @@ impl Display for UnsupportedError {
 #[derive(Debug, Error, Default)]
 pub struct CorruptionError {
     pub reason: String,
-    pub location: Option<u64>,
+    pub location: Option<u64>
 }
 
 impl Display for CorruptionError {
@@ -46,7 +44,7 @@ impl Display for CorruptionError {
 pub struct IncorrectFormat {
     pub expected_magic: Vec<u8>,
     pub found_magic: Vec<u8>,
-    pub location: Option<u64>,
+    pub location: Option<u64>
 }
 
 impl Display for IncorrectFormat {
@@ -74,7 +72,7 @@ impl Display for IncorrectFormat {
 pub struct RangeError {
     pub requested: u64,
     pub range: Range<u64>,
-    pub location: Option<u64>,
+    pub location: Option<u64>
 }
 
 impl Display for RangeError {
@@ -98,7 +96,7 @@ impl Display for RangeError {
 #[derive(Debug, Error, Clone, Default)]
 pub struct InvalidInputError {
     pub reason: String,
-    pub location: Option<u64>,
+    pub location: Option<u64>
 }
 
 impl Display for InvalidInputError {
@@ -114,7 +112,7 @@ impl Display for InvalidInputError {
 #[derive(Debug, Default, Error, Clone, PartialEq, Eq)]
 pub struct AssertFailed {
     pub reason: String,
-    pub location: Option<u64>,
+    pub location: Option<u64>
 }
 
 impl Display for AssertFailed {
@@ -132,52 +130,52 @@ pub enum SlipstreamError {
     #[error("assertion failed: {source}")]
     AssertFailed {
         #[from]
-        source: AssertFailed,
+        source: AssertFailed
     },
     #[error("unsupported: {source}")]
     Unsupported {
         #[from]
-        source: UnsupportedError,
+        source: UnsupportedError
     },
     #[error("incorrect format: {source}")]
     IncorrectFormat {
         #[from]
-        source: IncorrectFormat,
+        source: IncorrectFormat
     },
     #[error("corruption error: {source}")]
     Corrupted {
         #[from]
-        source: CorruptionError,
+        source: CorruptionError
     },
     #[error("IO error: {source}")]
     IoError {
         #[from]
-        source: std::io::Error,
+        source: std::io::Error
     },
     #[error("invalid utf-8 string: {source}")]
     InvalidString {
         #[from]
-        source: std::string::FromUtf8Error,
+        source: std::string::FromUtf8Error
     },
     #[error("out of range: {source}")]
     OutOfRange {
         #[from]
-        source: RangeError,
+        source: RangeError
     },
     #[error("eframe error: {source}")]
     EframeError {
         #[from]
-        source: eframe::Error,
+        source: eframe::Error
     },
     #[error("invalid input: {source}")]
     InvalidInput {
         #[from]
-        source: InvalidInputError,
+        source: InvalidInputError
     },
     #[error("channel has been disconnected")]
     ChannelDisconnect,
     #[error("channel is full")]
-    ChannelFull,
+    ChannelFull
 }
 
 pub type SlipstreamResult<T> = Result<T, SlipstreamError>;

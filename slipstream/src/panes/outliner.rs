@@ -1,13 +1,9 @@
 use std::sync::{Arc, mpsc};
 
-use slipstream_ir::node::{
-    arena::{IrArena, IrNodeKey},
-    node::{IrNode, IrNodeType},
-};
-use slipstream_shared::{
-    error::{SlipstreamError, SlipstreamResult},
-    fill_icon, reg_icon,
-};
+use slipstream_ir::node::arena::{IrArena, IrNodeKey};
+use slipstream_ir::node::node::{IrNode, IrNodeType};
+use slipstream_shared::error::{SlipstreamError, SlipstreamResult};
+use slipstream_shared::{fill_icon, reg_icon};
 
 use crate::panes::{ContentSignature, Pane, PaneAction, PaneId, RequestNewPane};
 use slipstream_shared::widgets::{self, CollapseDescriptor, DropdownType, HeaderIcons};
@@ -21,7 +17,7 @@ use slipstream_shared::widgets::{self, CollapseDescriptor, DropdownType, HeaderI
 pub struct OutlinerPane {
     cmd_sender: mpsc::Sender<PaneAction>,
     root: IrNodeKey,
-    arena: Arc<IrArena>,
+    arena: Arc<IrArena>
 }
 
 impl OutlinerPane {
@@ -32,12 +28,12 @@ impl OutlinerPane {
     pub fn new(
         cmd_sender: mpsc::Sender<PaneAction>,
         root_key: IrNodeKey,
-        arena: Arc<IrArena>,
+        arena: Arc<IrArena>
     ) -> Box<dyn Pane> {
         Box::new(Self {
             cmd_sender,
             root: root_key,
-            arena,
+            arena
         })
     }
 
@@ -59,7 +55,7 @@ impl OutlinerPane {
             if ui.button("Open in 3D viewer").clicked() {
                 self.cmd_sender
                     .send(PaneAction::RequestNewPane(RequestNewPane::Viewer {
-                        viewed: Some(node.key()),
+                        viewed: Some(node.key())
                     }))
                     .expect("failed to send context command");
             }
@@ -68,7 +64,7 @@ impl OutlinerPane {
         if ui.button("Open in new outliner").clicked() {
             self.cmd_sender
                 .send(PaneAction::RequestNewPane(RequestNewPane::Outliner {
-                    root: node.key(),
+                    root: node.key()
                 }))
                 .expect("failed to send context command");
         }
@@ -76,7 +72,7 @@ impl OutlinerPane {
         if ui.button("Properties").clicked() {
             self.cmd_sender
                 .send(PaneAction::RequestNewPane(RequestNewPane::Inspector {
-                    inspected: node.key(),
+                    inspected: node.key()
                 }))
                 .expect("failed to send context command");
         }
@@ -89,7 +85,7 @@ impl OutlinerPane {
                 node.label.clone().into(),
                 Some(HeaderIcons {
                     open: node.ty.open_icon(),
-                    closed: node.ty.closed_icon(),
+                    closed: node.ty.closed_icon()
                 }),
                 DropdownType::Regular,
                 false,
@@ -104,9 +100,9 @@ impl OutlinerPane {
 
                     Ok(())
                 },
-                |ui| self.draw_context_menu(node, ui),
+                |ui| self.draw_context_menu(node, ui)
             ),
-            ui,
+            ui
         )
     }
 
@@ -121,7 +117,7 @@ impl OutlinerPane {
             if response.clicked() {
                 self.cmd_sender
                     .send(PaneAction::RequestNewPane(RequestNewPane::Inspector {
-                        inspected: node.key(),
+                        inspected: node.key()
                     }))
                     .expect("failed to send inspector pane open request");
             }
@@ -165,7 +161,7 @@ impl Pane for OutlinerPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        is_focused: bool,
+        is_focused: bool
     ) -> egui_tiles::UiResponse {
         ui.set_min_size(ui.available_size());
 
@@ -184,7 +180,7 @@ fn draw_outliner_node_icon(
     ui: &mut egui::Ui,
     openness: f32,
     node_kind: IrNodeType,
-    response: &egui::Response,
+    response: &egui::Response
 ) {
     let icon = if openness < 0.5 {
         node_kind.closed_icon()
@@ -196,7 +192,7 @@ fn draw_outliner_node_icon(
         ui,
         Some(egui::TextWrapMode::Extend),
         f32::INFINITY,
-        egui::TextStyle::Body,
+        egui::TextStyle::Body
     );
 
     let center_pos = response.rect.center() - (galley.size() * 0.5);
@@ -220,7 +216,7 @@ impl NodeIconsExt for IrNodeType {
                 reg_icon!(FOLDER_OPEN)
             }
             // Just reuse the closed icon for everything else.
-            _ => self.closed_icon(),
+            _ => self.closed_icon()
         }
     }
 
@@ -249,7 +245,7 @@ impl NodeIconsExt for IrNodeType {
 
             Self::Texture => reg_icon!(IMAGES),
 
-            Self::Unknown => reg_icon!(FILE),
+            Self::Unknown => reg_icon!(FILE)
         }
     }
 }

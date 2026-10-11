@@ -4,11 +4,11 @@ use crate::viewer::translation::{IntermediateModel, ModelContents, VertexBoneDat
 use slipstream_ir::gx::GxOpCode;
 use slipstream_ir::gx::draw::{
     ColorData, DrawOpCode, InlineNormal, InlinePosition, NormalData, NormalIndex, OpVertex,
-    PositionData, UvData,
+    PositionData, UvData
 };
 use slipstream_ir::gx::load_indexed::IndexedLoad;
 use slipstream_ir::mdl0::{
-    ColorBuffer, MatrixId, NormalBuffer, Polygon, UvBufData, UvBuffer, VertexBuffer,
+    ColorBuffer, MatrixId, NormalBuffer, Polygon, UvBufData, UvBuffer, VertexBuffer
 };
 use slipstream_shared::{SlipstreamResult, try_unwrap, verify};
 use std::collections::HashMap;
@@ -32,7 +32,7 @@ pub struct VertexKey {
     pub normal: VertexAttrKey,
     pub color0: VertexAttrKey,
     pub color1: VertexAttrKey,
-    pub uvs: [VertexAttrKey; 8],
+    pub uvs: [VertexAttrKey; 8]
 }
 
 /// Describes how the vertex data should be retrieved.
@@ -56,7 +56,7 @@ pub enum VertexAttrKey {
     /// Some polygon draw commands might have their vertex data stored in the command itself
     /// instead of through an index. The translator keeps track of these using separate buffers,
     /// this is an index into those buffers.
-    Inline(u16),
+    Inline(u16)
 }
 
 impl VertexAttrKey {
@@ -64,7 +64,7 @@ impl VertexAttrKey {
     pub const fn is_present(&self) -> bool {
         match self {
             Self::NotPresent => false,
-            _ => true,
+            _ => true
         }
     }
 }
@@ -82,7 +82,7 @@ pub struct TranslatedVertex {
     pub normal: [f32; 3],
     pub color0: [f32; 4],
     pub bone_indices: [u32; MAX_BONE_INFLUENCES],
-    pub bone_weights: [f32; MAX_BONE_INFLUENCES],
+    pub bone_weights: [f32; MAX_BONE_INFLUENCES]
 }
 
 const XF_SLOT_COUNT: usize = 10;
@@ -90,7 +90,7 @@ const XF_SLOT_COUNT: usize = 10;
 #[derive(Default, Debug)]
 pub struct XfRegisters {
     pub positions: [MatrixId; XF_SLOT_COUNT],
-    pub normals: [MatrixId; XF_SLOT_COUNT],
+    pub normals: [MatrixId; XF_SLOT_COUNT]
 }
 
 #[derive(Default, Debug)]
@@ -102,7 +102,7 @@ pub struct InlineBuffers {
     /// Buffer of colors that are stored inline in the draw command.
     colors: Vec<glam::U8Vec4>,
     /// Buffer of texture coordinates that are stored inline in the draw command.
-    uvs: Vec<glam::Vec2>,
+    uvs: Vec<glam::Vec2>
 }
 
 impl InlineBuffers {
@@ -157,13 +157,13 @@ pub struct IntermediatePolygon {
     pub material: Material,
     pub uv_buffer: Vec<glam::Vec2>,
     /// Stores all inline data of polygon draw commands.
-    pub inline: InlineBuffers,
+    pub inline: InlineBuffers
 }
 
 impl ModelContents<'_> {
     fn try_inspect_positions<F, T>(&self, index: usize, inspect_fn: F) -> SlipstreamResult<T>
     where
-        F: FnOnce(&VertexBuffer) -> SlipstreamResult<T>,
+        F: FnOnce(&VertexBuffer) -> SlipstreamResult<T>
     {
         let key = try_unwrap!(self.vertices.get(index), "vertex buffer index out of range")?;
 
@@ -172,7 +172,7 @@ impl ModelContents<'_> {
 
     fn try_inspect_normals<F, T>(&self, index: usize, inspect_fn: F) -> SlipstreamResult<T>
     where
-        F: FnOnce(&NormalBuffer) -> SlipstreamResult<T>,
+        F: FnOnce(&NormalBuffer) -> SlipstreamResult<T>
     {
         let key = try_unwrap!(self.normals.get(index), "normal buffer index out of range")?;
 
@@ -181,7 +181,7 @@ impl ModelContents<'_> {
 
     fn try_inspect_colors<F, T>(&self, index: usize, inspect_fn: F) -> SlipstreamResult<T>
     where
-        F: FnOnce(&ColorBuffer) -> SlipstreamResult<T>,
+        F: FnOnce(&ColorBuffer) -> SlipstreamResult<T>
     {
         let key = try_unwrap!(self.colors.get(index), "color buffer index out of range")?;
 
@@ -190,7 +190,7 @@ impl ModelContents<'_> {
 
     fn try_inspect_uvs<F, T>(&self, index: usize, inspect_fn: F) -> SlipstreamResult<T>
     where
-        F: FnOnce(&UvBuffer) -> SlipstreamResult<T>,
+        F: FnOnce(&UvBuffer) -> SlipstreamResult<T>
     {
         let key = try_unwrap!(self.uvs.get(index), "color buffer index out of range")?;
 
@@ -205,7 +205,7 @@ impl ModelContents<'_> {
         model: &IntermediateModel,
         scratch: &mut IntermediatePolygon,
         polygon: &Polygon,
-        vertex_key: &VertexKey,
+        vertex_key: &VertexKey
     ) -> SlipstreamResult<TranslatedVertex> {
         const POSITION_DEFAULT: glam::Vec3 = glam::Vec3::ZERO;
         const NORMAL_DEFAULT: glam::Vec3 = glam::vec3(0.0, 1.0, 0.0);
@@ -214,7 +214,7 @@ impl ModelContents<'_> {
 
         let VertexBoneData {
             ids: indices,
-            weights,
+            weights
         } = self.translate_bones(model, scratch, polygon, vertex_key)?;
 
         let position = match vertex_key.position {
@@ -231,7 +231,7 @@ impl ModelContents<'_> {
                 .inline
                 .positions()
                 .get(idx as usize)
-                .expect("inline position index out of range"),
+                .expect("inline position index out of range")
         }
         .to_array();
 
@@ -249,7 +249,7 @@ impl ModelContents<'_> {
                 .inline
                 .normals()
                 .get(idx as usize)
-                .expect("inline normal index out of range"),
+                .expect("inline normal index out of range")
         }
         .to_array();
 
@@ -267,7 +267,7 @@ impl ModelContents<'_> {
                 .inline
                 .colors()
                 .get(idx as usize)
-                .expect("inline color0 index out of range"),
+                .expect("inline color0 index out of range")
         };
 
         // Divide by 255 to get the colour components into the [0, 1] range.
@@ -289,7 +289,7 @@ impl ModelContents<'_> {
                     .inline
                     .uvs()
                     .get(*idx as usize)
-                    .expect("inline UV index out of range"),
+                    .expect("inline UV index out of range")
             };
 
             scratch.uv_buffer.push(uv_data)
@@ -300,7 +300,7 @@ impl ModelContents<'_> {
             normal,
             color0,
             bone_indices: indices,
-            bone_weights: weights,
+            bone_weights: weights
         })
     }
 
@@ -309,7 +309,7 @@ impl ModelContents<'_> {
         model: &IntermediateModel,
         scratch: &mut IntermediatePolygon,
         polygon: &Polygon,
-        vertex: &OpVertex,
+        vertex: &OpVertex
     ) -> SlipstreamResult<crate::viewer::translation::vertex::VertexIndex> {
         let mut vertex_key = VertexKey::default();
 
@@ -333,11 +333,11 @@ impl ModelContents<'_> {
             NormalData::NotPresent => vertex_key.normal = VertexAttrKey::NotPresent,
             NormalData::Index8(idx) => match idx {
                 NormalIndex::Single(x) => vertex_key.normal = VertexAttrKey::Indexed(*x as u16),
-                NormalIndex::Triple(x) => vertex_key.normal = VertexAttrKey::Indexed(x[0] as u16),
+                NormalIndex::Triple(x) => vertex_key.normal = VertexAttrKey::Indexed(x[0] as u16)
             },
             NormalData::Index16(idx) => match idx {
                 NormalIndex::Single(x) => vertex_key.normal = VertexAttrKey::Indexed(*x),
-                NormalIndex::Triple(x) => vertex_key.normal = VertexAttrKey::Indexed(x[0]),
+                NormalIndex::Triple(x) => vertex_key.normal = VertexAttrKey::Indexed(x[0])
             },
             NormalData::Direct(x) => {
                 let normal = x.to_vec3();
@@ -413,7 +413,7 @@ impl ModelContents<'_> {
         model: &IntermediateModel,
         scratch: &mut IntermediatePolygon,
         polygon: &Polygon,
-        vertices: &[OpVertex],
+        vertices: &[OpVertex]
     ) -> SlipstreamResult<()> {
         scratch.indices.reserve(vertices.len());
         for vertex in vertices {
@@ -429,7 +429,7 @@ impl ModelContents<'_> {
         model: &IntermediateModel,
         scratch: &mut IntermediatePolygon,
         polygon: &Polygon,
-        vertices: &[OpVertex],
+        vertices: &[OpVertex]
     ) -> SlipstreamResult<()> {
         let expanded_len = (vertices.len() - 2) * 3;
 
@@ -454,7 +454,7 @@ impl ModelContents<'_> {
         model: &mut IntermediateModel,
         scratch: &mut IntermediatePolygon,
         polygon: &Polygon,
-        load: &IndexedLoad,
+        load: &IndexedLoad
     ) -> SlipstreamResult<()> {
         let address = load.address();
         verify!(
@@ -481,7 +481,7 @@ impl ModelContents<'_> {
         model: &mut IntermediateModel,
         scratch: &mut IntermediatePolygon,
         polygon: &Polygon,
-        load: &IndexedLoad,
+        load: &IndexedLoad
     ) -> SlipstreamResult<()> {
         todo!("normal indexed load");
 
@@ -492,7 +492,7 @@ impl ModelContents<'_> {
         &self,
         model: &mut IntermediateModel,
         scratch: &mut IntermediatePolygon,
-        polygon: &Polygon,
+        polygon: &Polygon
     ) -> SlipstreamResult<()> {
         for call in &polygon.vertex_data_gx.commands {
             match call {
@@ -511,7 +511,7 @@ impl ModelContents<'_> {
                 GxOpCode::LoadIndexedTextureMatrix(load) => {
                     // tracing::trace!("TODO: {load:?}");
                 }
-                _ => todo!("{call:?}"),
+                _ => todo!("{call:?}")
             }
         }
 

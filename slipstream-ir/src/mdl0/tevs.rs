@@ -7,7 +7,7 @@ use crate::mdl0::section::DeserializeContents;
 use crate::node::node::{IrNode, IrNodeType};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut,
+    VisitorContextNodeMut
 };
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::cursor::RefCursor;
@@ -16,7 +16,7 @@ use slipstream_shared::error::SlipstreamResult;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tev {
     pub tex_scales: [u8; 8],
-    pub bytecode: GxBytecode,
+    pub bytecode: GxBytecode
 }
 
 impl Visitable for Tev {
@@ -27,7 +27,7 @@ impl Visitable for Tev {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
         visitor.visit_tev_mut(VisitorContextMut::new(node, self))
     }
@@ -54,7 +54,7 @@ impl DeserializeContents for Tev {
 
         Ok(Self {
             tex_scales,
-            bytecode,
+            bytecode
         })
     }
 }

@@ -1,37 +1,36 @@
 use byteorder::{BigEndian, ReadBytesExt};
-use slipstream_shared::{cursor::RefCursor, error::SlipstreamResult};
+use slipstream_shared::cursor::RefCursor;
+use slipstream_shared::error::SlipstreamResult;
 
-use crate::{
-    encoding::ReadArrayExt,
-    gx::load_cp::VectorStorage,
-    img::deserialize_color,
-    mdl0::GxVertexDeclaration,
-    util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector},
-};
+use crate::encoding::ReadArrayExt;
+use crate::gx::load_cp::VectorStorage;
+use crate::img::deserialize_color;
+use crate::mdl0::GxVertexDeclaration;
+use crate::util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector};
 
 /// Position data that is stored directly inside of a draw call.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum InlinePosition {
     Xy(glam::Vec2),
-    Xyz(glam::Vec3),
+    Xyz(glam::Vec3)
 }
 
 impl InlinePosition {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        decl: &GxVertexDeclaration,
+        decl: &GxVertexDeclaration
     ) -> SlipstreamResult<Self> {
         Ok(if decl.vat_a.pos_extended() {
             Self::Xyz(glam::Vec3::from_array(deserialize_vector::<3>(
                 reader,
                 decl.vat_a.pos_format(),
-                VectorDivisor::Custom(decl.vat_a.pos_divisor()),
+                VectorDivisor::Custom(decl.vat_a.pos_divisor())
             )?))
         } else {
             Self::Xy(glam::Vec2::from_array(deserialize_vector::<2>(
                 reader,
                 decl.vat_a.pos_format(),
-                VectorDivisor::Custom(decl.vat_a.pos_divisor()),
+                VectorDivisor::Custom(decl.vat_a.pos_divisor())
             )?))
         })
     }
@@ -39,7 +38,7 @@ impl InlinePosition {
     pub fn to_vec3(&self) -> glam::Vec3 {
         match self {
             Self::Xy(glam::Vec2 { x, y }) => glam::vec3(*x, *y, 0.0),
-            Self::Xyz(x) => *x,
+            Self::Xyz(x) => *x
         }
     }
 }
@@ -62,13 +61,13 @@ pub enum PositionData {
     /// [`Shape`]: crate::format::mdl0::shape::Shape
     Index16(u16),
     /// The data for this vertex is stored directly inside of the draw call.
-    Direct(InlinePosition),
+    Direct(InlinePosition)
 }
 
 impl PositionData {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        decl: &GxVertexDeclaration,
+        decl: &GxVertexDeclaration
     ) -> SlipstreamResult<Self> {
         let pos_storage = decl.vcd_lo.pos_storage();
         Ok(match pos_storage {
@@ -87,7 +86,7 @@ pub enum InlineNormal {
     /// Stores only the normal
     Single(glam::Vec3),
     /// Stores the normal, binormal and tangent in a single 9 float block.
-    Packed([glam::Vec3; 3]),
+    Packed([glam::Vec3; 3])
 }
 
 impl InlineNormal {
@@ -96,20 +95,20 @@ impl InlineNormal {
     pub fn to_vec3(&self) -> glam::Vec3 {
         match self {
             Self::Single(x) => *x,
-            Self::Packed(x) => x[0],
+            Self::Packed(x) => x[0]
         }
     }
 
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        decl: &GxVertexDeclaration,
+        decl: &GxVertexDeclaration
     ) -> SlipstreamResult<Self> {
         Ok(if decl.vat_a.norm_extended() {
             // custom implementation because it doesn't work with the existing vector functions.
             let data = deserialize_vector::<9>(
                 reader,
                 VertexFormat::from(decl.vat_a.norm_format()),
-                VectorDivisor::Normalize,
+                VectorDivisor::Normalize
             )?;
             let normal = glam::Vec3::from_slice(&data[..3]);
             let tangent = glam::Vec3::from_slice(&data[3..6]);
@@ -120,7 +119,7 @@ impl InlineNormal {
             Self::Single(glam::Vec3::from_array(deserialize_vector::<3>(
                 reader,
                 VertexFormat::from(decl.vat_a.norm_format()),
-                VectorDivisor::Normalize,
+                VectorDivisor::Normalize
             )?))
         })
     }
@@ -133,7 +132,7 @@ pub enum NormalIndex<T> {
     Single(T),
     /// Should only appear when NBT mode is set. The three normal vectors each have their
     /// own indices.
-    Triple([T; 3]),
+    Triple([T; 3])
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -141,13 +140,13 @@ pub enum NormalData {
     NotPresent,
     Index8(NormalIndex<u8>),
     Index16(NormalIndex<u16>),
-    Direct(InlineNormal),
+    Direct(InlineNormal)
 }
 
 impl NormalData {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        decl: &GxVertexDeclaration,
+        decl: &GxVertexDeclaration
     ) -> SlipstreamResult<Self> {
         let norm_storage = decl.vcd_lo.norm_storage();
         Ok(match norm_storage {
@@ -174,7 +173,7 @@ impl NormalData {
 
                 NormalData::Index16(index)
             }
-            VectorStorage::Inline => NormalData::Direct(InlineNormal::deserialize(reader, decl)?),
+            VectorStorage::Inline => NormalData::Direct(InlineNormal::deserialize(reader, decl)?)
         })
     }
 }
@@ -182,7 +181,7 @@ impl NormalData {
 #[derive(Debug, Clone, PartialEq)]
 pub enum DirectColor {
     AlphaDisabled(glam::U8Vec4),
-    AlphaEnabled(glam::U8Vec4),
+    AlphaEnabled(glam::U8Vec4)
 }
 
 impl DirectColor {
@@ -190,13 +189,13 @@ impl DirectColor {
     pub fn to_rgba(&self) -> glam::U8Vec4 {
         match self {
             Self::AlphaDisabled(x) => *x,
-            Self::AlphaEnabled(x) => *x,
+            Self::AlphaEnabled(x) => *x
         }
     }
 
     pub fn deserialize_col0(
         reader: &mut RefCursor<[u8]>,
-        decl: &GxVertexDeclaration,
+        decl: &GxVertexDeclaration
     ) -> SlipstreamResult<Self> {
         Ok(if decl.vat_a.col0_extended() {
             Self::AlphaEnabled(deserialize_color(reader, decl.vat_a.col0_format())?)
@@ -207,7 +206,7 @@ impl DirectColor {
 
     pub fn deserialize_col1(
         reader: &mut RefCursor<[u8]>,
-        decl: &GxVertexDeclaration,
+        decl: &GxVertexDeclaration
     ) -> SlipstreamResult<Self> {
         Ok(if decl.vat_a.col1_extended() {
             Self::AlphaEnabled(deserialize_color(reader, decl.vat_a.col1_format())?)
@@ -222,33 +221,33 @@ pub enum ColorData {
     NotPresent,
     Index8(u8),
     Index16(u16),
-    Direct(DirectColor),
+    Direct(DirectColor)
 }
 
 impl ColorData {
     pub fn deserialize_col0(
         reader: &mut RefCursor<[u8]>,
-        decl: &GxVertexDeclaration,
+        decl: &GxVertexDeclaration
     ) -> SlipstreamResult<Self> {
         let color_storage = decl.vcd_lo.col0_storage();
         Ok(match color_storage {
             VectorStorage::NotPresent => Self::NotPresent,
             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
             VectorStorage::Index16 => Self::Index16(reader.read_u16::<BigEndian>()?),
-            VectorStorage::Inline => Self::Direct(DirectColor::deserialize_col0(reader, decl)?),
+            VectorStorage::Inline => Self::Direct(DirectColor::deserialize_col0(reader, decl)?)
         })
     }
 
     pub fn deserialize_col1(
         reader: &mut RefCursor<[u8]>,
-        decl: &GxVertexDeclaration,
+        decl: &GxVertexDeclaration
     ) -> SlipstreamResult<Self> {
         let color_storage = decl.vcd_lo.col1_storage();
         Ok(match color_storage {
             VectorStorage::NotPresent => Self::NotPresent,
             VectorStorage::Index8 => Self::Index8(reader.read_u8()?),
             VectorStorage::Index16 => Self::Index16(reader.read_u16::<BigEndian>()?),
-            VectorStorage::Inline => Self::Direct(DirectColor::deserialize_col1(reader, decl)?),
+            VectorStorage::Inline => Self::Direct(DirectColor::deserialize_col1(reader, decl)?)
         })
     }
 }
@@ -256,7 +255,7 @@ impl ColorData {
 #[derive(Debug, Clone, PartialEq)]
 pub enum DirectUv {
     S(f32),
-    St(glam::Vec2),
+    St(glam::Vec2)
 }
 
 impl DirectUv {
@@ -264,7 +263,7 @@ impl DirectUv {
     pub fn to_st(&self) -> glam::Vec2 {
         match self {
             Self::S(x) => glam::vec2(*x, 0.0),
-            Self::St(x) => *x,
+            Self::St(x) => *x
         }
     }
 }
@@ -274,7 +273,7 @@ pub enum UvData {
     NotPresent,
     Index8(u8),
     Index16(u16),
-    Direct(DirectUv),
+    Direct(DirectUv)
 }
 
 /// Implements the deserialisation methods for all 7 UV fields.
@@ -343,13 +342,13 @@ pub struct OpVertex {
     pub normals: NormalData,
     pub color0: ColorData,
     pub color1: ColorData,
-    pub uvs: [UvData; 8],
+    pub uvs: [UvData; 8]
 }
 
 impl OpVertex {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        decl: &GxVertexDeclaration,
+        decl: &GxVertexDeclaration
     ) -> SlipstreamResult<Self> {
         let mut byte_read = || reader.read_u8();
 
@@ -370,7 +369,7 @@ impl OpVertex {
             decl.vcd_lo.tm4().then(&mut byte_read).transpose()?,
             decl.vcd_lo.tm5().then(&mut byte_read).transpose()?,
             decl.vcd_lo.tm6().then(&mut byte_read).transpose()?,
-            decl.vcd_lo.tm7().then(byte_read).transpose()?,
+            decl.vcd_lo.tm7().then(byte_read).transpose()?
         ];
 
         let position = PositionData::deserialize(reader, decl)?;
@@ -386,7 +385,7 @@ impl OpVertex {
             UvData::deserialize_uv4(reader, decl)?,
             UvData::deserialize_uv5(reader, decl)?,
             UvData::deserialize_uv6(reader, decl)?,
-            UvData::deserialize_uv7(reader, decl)?,
+            UvData::deserialize_uv7(reader, decl)?
         ];
 
         Ok(OpVertex {
@@ -396,7 +395,7 @@ impl OpVertex {
             normals,
             color0,
             color1,
-            uvs,
+            uvs
         })
     }
 }
@@ -406,14 +405,14 @@ impl OpVertex {
 /// These are directly for the Wii, not suitable for PC rendering.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DrawOpCode {
-    pub vertices: Vec<OpVertex>,
+    pub vertices: Vec<OpVertex>
 }
 
 impl DrawOpCode {
     /// Decodes the draw command based on the vertex info given in the `LoadCP` opcode.
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        cp_opcodes: &GxVertexDeclaration,
+        cp_opcodes: &GxVertexDeclaration
     ) -> SlipstreamResult<Self> {
         let vertex_count = reader.read_u16::<BigEndian>()?;
 

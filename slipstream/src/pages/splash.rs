@@ -3,12 +3,11 @@ use std::sync::Mutex;
 use egui::load::SizedTexture;
 use slipstream_shared::error::SlipstreamResult;
 
-use crate::{
-    cmd::AppCommandChannel,
-    config::{APP_TITLE, DEFAULT_SIZE},
-    pages::{RoutablePage, intro::IntroPage},
-    shared::GraphicsState,
-};
+use crate::cmd::AppCommandChannel;
+use crate::config::{APP_TITLE, DEFAULT_SIZE};
+use crate::pages::RoutablePage;
+use crate::pages::intro::IntroPage;
+use crate::shared::GraphicsState;
 
 pub static BACKGROUND_TEXTURE: Mutex<Option<SizedTexture>> = Mutex::new(None);
 
@@ -21,14 +20,14 @@ pub struct SplashPage {
     /// when it is loaded.
     render_state: GraphicsState,
     /// Channel to communicate with the parent app instance.
-    cmd_channel: AppCommandChannel,
+    cmd_channel: AppCommandChannel
 }
 
 impl SplashPage {
     pub fn new(
         ctx: egui::Context,
         render_state: GraphicsState,
-        mut cmd_channel: AppCommandChannel,
+        mut cmd_channel: AppCommandChannel
     ) -> Box<dyn RoutablePage> {
         // Failing to center the window can be ignored.
         let _ = cmd_channel.try_center_window();
@@ -39,7 +38,7 @@ impl SplashPage {
         Box::new(Self {
             ctx,
             cmd_channel,
-            render_state,
+            render_state
         })
     }
 
@@ -52,13 +51,13 @@ impl SplashPage {
                 magnification: egui::TextureFilter::Linear,
                 minification: egui::TextureFilter::Linear,
                 mipmap_mode: None,
-                wrap_mode: egui::TextureWrapMode::Repeat,
+                wrap_mode: egui::TextureWrapMode::Repeat
             },
             egui::SizeHint::Size {
                 width: 3840,
                 height: 2160,
-                maintain_aspect_ratio: true,
-            },
+                maintain_aspect_ratio: true
+            }
         )
     }
 }
@@ -120,7 +119,7 @@ impl RoutablePage for SplashPage {
 
                     self.ctx
                         .send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
-                            center_x, center_y,
+                            center_x, center_y
                         )));
                 }
 
@@ -128,7 +127,7 @@ impl RoutablePage for SplashPage {
 
                 self.cmd_channel.try_route(IntroPage::new(
                     self.cmd_channel.clone(),
-                    self.render_state.clone(),
+                    self.render_state.clone()
                 ))?;
             }
             Ok(egui::load::TexturePoll::Pending { .. }) => {

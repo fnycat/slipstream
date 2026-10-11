@@ -2,23 +2,20 @@ use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::Inspect;
-use slipstream_shared::cursor::{MutCursor, SizeEstimate};
-use slipstream_shared::{cursor::RefCursor, error::SlipstreamResult};
+use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
+use slipstream_shared::error::SlipstreamResult;
 
 use crate::mdl0::section::{DeserializeContents, SerializeContents};
-use crate::node::node::IrNode;
+use crate::node::node::{IrNode, IrNodeType};
 use crate::visitor::{
-    VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut,
-};
-use crate::{
-    node::node::IrNodeType,
-    visitor::{Visitable, Visitor},
+    Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
+    VisitorContextNodeMut
 };
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PaletteLink {
     pub offset1: u32,
-    pub offset2: u32,
+    pub offset2: u32
 }
 
 impl PaletteLink {
@@ -38,7 +35,7 @@ impl PaletteLink {
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PaletteLinks {
-    pub links: Vec<PaletteLink>,
+    pub links: Vec<PaletteLink>
 }
 
 impl Visitable for PaletteLinks {
@@ -49,7 +46,7 @@ impl Visitable for PaletteLinks {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
         visitor.visit_palette_links_mut(VisitorContextMut::new(node, self))
     }

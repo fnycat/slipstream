@@ -1,7 +1,9 @@
-use std::{collections::HashMap, io::Write};
+use std::collections::HashMap;
+use std::io::Write;
 
 use byteorder::{BigEndian, WriteBytesExt};
-use slipstream_shared::{SlipstreamResult, cursor::MutCursor};
+use slipstream_shared::SlipstreamResult;
+use slipstream_shared::cursor::MutCursor;
 
 /// Placeholder that is used for 32-bit offsets. A recognizable placeholder
 /// makes it easier to find offsets.
@@ -15,7 +17,7 @@ pub struct DeferredString {
     /// Offset to the string within its string pool.
     pub pool_offset: u32,
     /// Exact location of the offset that needs to be replaced.
-    pub location: u32,
+    pub location: u32
 }
 
 #[derive(Debug)]
@@ -26,7 +28,7 @@ pub enum DeferredOffset {
     String(DeferredString),
     /// The strings in an `ARC` file have 24-bit offsets.
     ArcString(DeferredString),
-    SectionData(DeferredData),
+    SectionData(DeferredData)
 }
 
 /// The deferred pass keeps track of which values need to be modified in
@@ -35,14 +37,14 @@ pub enum DeferredOffset {
 /// This is required because the string and data offsets aren't known during the first pass.
 pub struct DeferredPass {
     deferred: Vec<DeferredOffset>,
-    strings: StringPool,
+    strings: StringPool
 }
 
 impl DeferredPass {
     pub fn new() -> Self {
         Self {
             deferred: Vec::new(),
-            strings: StringPool::new(),
+            strings: StringPool::new()
         }
     }
 
@@ -50,12 +52,12 @@ impl DeferredPass {
     pub fn defer_arc_string<S: AsRef<str>>(
         &mut self,
         writer: &mut MutCursor,
-        string: S,
+        string: S
     ) -> SlipstreamResult<()> {
         self.deferred
             .push(DeferredOffset::ArcString(DeferredString {
                 location: writer.len() as u32,
-                pool_offset: self.strings.insert(string.as_ref())?,
+                pool_offset: self.strings.insert(string.as_ref())?
             }));
 
         writer.write_u24::<BigEndian>(DEFER_PLACEHOLDER24)?;
@@ -67,11 +69,11 @@ impl DeferredPass {
     pub fn defer_string<'a, S: Into<&'a str>>(
         &mut self,
         writer: &mut MutCursor,
-        string: S,
+        string: S
     ) -> SlipstreamResult<()> {
         self.deferred.push(DeferredOffset::String(DeferredString {
             location: writer.len() as u32,
-            pool_offset: self.strings.insert(string.into())?,
+            pool_offset: self.strings.insert(string.into())?
         }));
 
         writer.write_u32::<BigEndian>(DEFER_PLACEHOLDER)?;
@@ -87,14 +89,14 @@ impl DeferredPass {
 pub struct StringPool {
     /// Maps a string to an index into the string pool.
     strings: HashMap<String, u32>,
-    buffer: MutCursor,
+    buffer: MutCursor
 }
 
 impl StringPool {
     pub fn new() -> Self {
         Self {
             strings: HashMap::new(),
-            buffer: MutCursor::new(),
+            buffer: MutCursor::new()
         }
     }
 

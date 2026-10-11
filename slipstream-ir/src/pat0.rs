@@ -1,18 +1,17 @@
 use byteorder::{BigEndian, ReadBytesExt};
-use slipstream_shared::{cursor::RefCursor, error::SlipstreamResult};
+use slipstream_shared::cursor::RefCursor;
+use slipstream_shared::error::SlipstreamResult;
 
-use crate::{
-    brres::{BFile, BFileHeader, BFileType},
-    encoding::ReadStringExt,
-    index::IndexGroup,
-};
+use crate::brres::{BFile, BFileHeader, BFileType};
+use crate::encoding::ReadStringExt;
+use crate::index::IndexGroup;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pat0Header {
     pub frame_count: u16,
     pub base_number: u16,
     pub string_number: u16,
-    pub cyclic: bool,
+    pub cyclic: bool
 }
 
 impl Pat0Header {
@@ -28,7 +27,7 @@ impl Pat0Header {
             frame_count,
             base_number,
             string_number,
-            cyclic,
+            cyclic
         })
     }
 }
@@ -39,7 +38,7 @@ pub struct AnimationSection {}
 /// Both section #1 and section #3 have the same format of `string_number` amount of u32s.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct U32Section {
-    pub offsets: Vec<u32>,
+    pub offsets: Vec<u32>
 }
 
 impl U32Section {
@@ -56,7 +55,7 @@ impl U32Section {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pat0Subfile {
     pub subfile_header: BFileHeader,
-    pub pat0_header: Pat0Header,
+    pub pat0_header: Pat0Header
 }
 
 impl Pat0Subfile {

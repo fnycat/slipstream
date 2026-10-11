@@ -3,11 +3,8 @@ use std::ops::{Deref, DerefMut};
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_derive::inspect_bitfield;
-use slipstream_shared::{
-    RefCursor, SlipstreamResult,
-    inspect::{FieldConfig, Inspect},
-    verify, widgets,
-};
+use slipstream_shared::inspect::{FieldConfig, Inspect};
+use slipstream_shared::{RefCursor, SlipstreamResult, verify, widgets};
 
 /// A 4-byte animation frame.
 #[derive(Debug, Clone, PartialEq)]
@@ -16,7 +13,7 @@ pub struct I4Frame {
     pub index: u8,
     pub step: f32,
     /// The tangent line to the interpolation slope of the animation.
-    pub tangent: f32,
+    pub tangent: f32
 }
 
 #[bitfield(u32)]
@@ -26,7 +23,7 @@ struct I4FrameBits {
     #[bits(12)]
     pub step: u16,
     #[bits(12)]
-    pub tangent: u16,
+    pub tangent: u16
 }
 
 impl I4Frame {
@@ -41,7 +38,7 @@ impl I4Frame {
         Ok(Self {
             index,
             step,
-            tangent,
+            tangent
         })
     }
 }
@@ -50,7 +47,7 @@ impl I4Frame {
 pub struct I6Frame {
     pub index: f32,
     pub step: f32,
-    pub tangent: f32,
+    pub tangent: f32
 }
 
 impl I6Frame {
@@ -62,7 +59,7 @@ impl I6Frame {
         Ok(Self {
             index,
             step,
-            tangent,
+            tangent
         })
     }
 }
@@ -71,7 +68,7 @@ impl I6Frame {
 pub struct I12Frame {
     pub index: f32,
     pub value: f32,
-    pub tangent: f32,
+    pub tangent: f32
 }
 
 impl I12Frame {
@@ -83,7 +80,7 @@ impl I12Frame {
         Ok(Self {
             index,
             value,
-            tangent,
+            tangent
         })
     }
 }
@@ -93,13 +90,13 @@ pub struct I4Animation {
     pub frame_scale: f32,
     pub step: f32,
     pub base: f32,
-    pub frames: Vec<I4Frame>,
+    pub frames: Vec<I4Frame>
 }
 
 impl I4Animation {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header_frame_count: u16,
+        header_frame_count: u16
     ) -> SlipstreamResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         verify!(
@@ -126,7 +123,7 @@ impl I4Animation {
             frame_scale,
             step,
             base,
-            frames,
+            frames
         })
     }
 }
@@ -136,13 +133,13 @@ pub struct I6Animation {
     pub frame_scale: f32,
     pub step: f32,
     pub base: f32,
-    pub frames: Vec<I6Frame>,
+    pub frames: Vec<I6Frame>
 }
 
 impl I6Animation {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header_frame_count: u16,
+        header_frame_count: u16
     ) -> SlipstreamResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         verify!(
@@ -169,7 +166,7 @@ impl I6Animation {
             frame_scale,
             step,
             base,
-            frames,
+            frames
         })
     }
 }
@@ -177,13 +174,13 @@ impl I6Animation {
 #[derive(Debug, Clone, PartialEq)]
 pub struct I12Animation {
     pub frame_scale: f32,
-    pub frames: Vec<I12Frame>,
+    pub frames: Vec<I12Frame>
 }
 
 impl I12Animation {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header_frame_count: u16,
+        header_frame_count: u16
     ) -> SlipstreamResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         verify!(
@@ -206,7 +203,7 @@ impl I12Animation {
 
         Ok(Self {
             frame_scale,
-            frames,
+            frames
         })
     }
 }
@@ -215,13 +212,13 @@ impl I12Animation {
 pub struct L1Animation {
     pub step: f32,
     pub base: f32,
-    pub frames: Vec<f32>,
+    pub frames: Vec<f32>
 }
 
 impl L1Animation {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header_frame_count: u16,
+        header_frame_count: u16
     ) -> SlipstreamResult<Self> {
         tracing::trace!(
             "Reading {header_frame_count} L1 frames at location {}",
@@ -244,13 +241,13 @@ impl L1Animation {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct L4Animation {
-    pub frames: Vec<f32>,
+    pub frames: Vec<f32>
 }
 
 impl L4Animation {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header_frame_count: u16,
+        header_frame_count: u16
     ) -> SlipstreamResult<Self> {
         tracing::trace!(
             "Reading {header_frame_count} L4 frames at location {}",

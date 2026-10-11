@@ -1,29 +1,28 @@
 use slipstream_shared::error::SlipstreamResult;
 
+use crate::cmd::AppCommandChannel;
+use crate::decorations;
 use crate::editor::{Editor, OpenedFileInfo};
+use crate::pages::RoutablePage;
+use crate::pages::splash::BACKGROUND_TEXTURE;
 use crate::shared::GraphicsState;
-use crate::{
-    cmd::AppCommandChannel,
-    decorations,
-    pages::{RoutablePage, splash::BACKGROUND_TEXTURE},
-};
 
 pub struct IntroPage {
     bg_image: egui::load::SizedTexture,
     render_state: GraphicsState,
-    cmd_channel: AppCommandChannel,
+    cmd_channel: AppCommandChannel
 }
 
 impl IntroPage {
     pub fn new(
         cmd_channel: AppCommandChannel,
-        render_state: GraphicsState,
+        render_state: GraphicsState
     ) -> Box<dyn RoutablePage> {
         let bg_image = BACKGROUND_TEXTURE.lock().unwrap().unwrap();
         Box::new(Self {
             cmd_channel,
             bg_image,
-            render_state,
+            render_state
         })
     }
 }
@@ -117,10 +116,10 @@ impl RoutablePage for IntroPage {
                                                                 OpenedFileInfo::Native {
                                                                     path: file_path,
                                                                     file_name,
-                                                                    content,
+                                                                    content
                                                                 },
                                                                 cmd_channel.clone(),
-                                                                render_state,
+                                                                render_state
                                                             )
                                                             .unwrap();
 
@@ -154,10 +153,10 @@ impl RoutablePage for IntroPage {
                                                         let editor = Editor::new(
                                                             OpenedFileInfo::Web {
                                                                 file_name,
-                                                                content,
+                                                                content
                                                             },
                                                             cmd_channel.clone(),
-                                                            render_state,
+                                                            render_state
                                                         )
                                                         .unwrap();
 
@@ -198,7 +197,7 @@ impl RoutablePage for IntroPage {
         let alpha = (ui.animate_bool_with_time(
             ui.make_persistent_id("file_drop_overlay_fade"),
             hovered_file.is_some(),
-            0.25,
+            0.25
         ) * 100.0) as u8;
 
         if alpha > 0 {

@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::*;
 #[derive(Clone)]
 #[wasm_bindgen]
 pub struct WebHandle {
-    runner: eframe::WebRunner,
+    runner: eframe::WebRunner
 }
 
 #[wasm_bindgen]
@@ -13,14 +13,14 @@ impl WebHandle {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
-            runner: eframe::WebRunner::new(),
+            runner: eframe::WebRunner::new()
         }
     }
 
     #[wasm_bindgen]
     pub async fn start(
         &self,
-        canvas: web_sys::HtmlCanvasElement,
+        canvas: web_sys::HtmlCanvasElement
     ) -> Result<(), wasm_bindgen::JsValue> {
         web_sys::console::info_1(&JsValue::from_str("Setting up tracing..."));
 
@@ -32,7 +32,7 @@ impl WebHandle {
             .start(
                 canvas,
                 eframe::WebOptions::default(),
-                Box::new(|cc| Ok(Box::new(App::new(cc)))),
+                Box::new(|cc| Ok(Box::new(App::new(cc))))
             )
             .await
     }

@@ -6,7 +6,7 @@ use crate::inspect::{Changes, FieldConfig};
 pub fn value_cell<R>(ui: &mut egui::Ui, id: egui::Id, add: impl FnOnce(&mut egui::Ui) -> R) -> R {
     let rect = egui::Rect::from_min_size(
         ui.cursor().min,
-        egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
+        egui::vec2(ui.available_width(), ui.spacing().interact_size.y)
     );
 
     ui.scope_builder(
@@ -14,7 +14,7 @@ pub fn value_cell<R>(ui: &mut egui::Ui, id: egui::Id, add: impl FnOnce(&mut egui
             .id_salt(id)
             .max_rect(rect)
             .layout(egui::Layout::right_to_left(egui::Align::Center)),
-        add,
+        add
     )
     .inner
 }
@@ -24,13 +24,13 @@ pub fn leaf<R>(
     ui: &mut egui::Ui,
     id: egui::Id,
     label: &str,
-    value: impl FnOnce(&mut egui::Ui) -> R,
+    value: impl FnOnce(&mut egui::Ui) -> R
 ) -> R {
     ui.horizontal(|ui| {
         ui.add(
             egui::Label::new(format!("{label}: "))
                 .wrap_mode(egui::TextWrapMode::Extend)
-                .selectable(false),
+                .selectable(false)
         );
         value_cell(ui, id.with("value"), value)
     })
@@ -47,12 +47,12 @@ pub fn nested<R>(
     label: &str,
     summary: &str,
     default_open: bool,
-    body: impl FnOnce(&mut egui::Ui) -> R,
+    body: impl FnOnce(&mut egui::Ui) -> R
 ) -> Option<R> {
     let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
         id,
-        default_open,
+        default_open
     );
 
     // Reserve a spot below the text for the hover highlight.
@@ -69,7 +69,7 @@ pub fn nested<R>(
         ui.add(
             egui::Label::new(format!("{label}: "))
                 .wrap_mode(egui::TextWrapMode::Extend)
-                .selectable(false),
+                .selectable(false)
         );
 
         // A weak summary instead of a second arrow, so it reads as a hint, not a button.
@@ -77,7 +77,7 @@ pub fn nested<R>(
             ui.add(
                 egui::Label::new(egui::RichText::new(summary).weak())
                     .selectable(false)
-                    .wrap_mode(egui::TextWrapMode::Truncate),
+                    .wrap_mode(egui::TextWrapMode::Truncate)
             );
         });
     });
@@ -93,8 +93,8 @@ pub fn nested<R>(
             egui::epaint::RectShape::filled(
                 rect.expand2(egui::vec2(2.0, gap)),
                 visuals.corner_radius,
-                visuals.weak_bg_fill,
-            ),
+                visuals.weak_bg_fill
+            )
         );
         ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
     }
@@ -118,7 +118,7 @@ pub fn wrapped<T>(
     id: egui::Id,
     items: &mut [T],
     per_row: usize,
-    mut add: impl FnMut(&mut egui::Ui, &mut T),
+    mut add: impl FnMut(&mut egui::Ui, &mut T)
 ) {
     ui.vertical(|ui| {
         for (row, chunk) in items.chunks_mut(per_row.max(1)).enumerate() {
@@ -136,7 +136,7 @@ pub const DRAG_INPUT_SIZE: egui::Vec2 = egui::vec2(70.0, 20.0);
 pub fn drag_value(
     mut drag_value: egui::DragValue<'_>,
     cfg: &FieldConfig,
-    ui: &mut egui::Ui,
+    ui: &mut egui::Ui
 ) -> Changes {
     if let Some(range) = &cfg.range {
         drag_value = drag_value.range(range.clone());

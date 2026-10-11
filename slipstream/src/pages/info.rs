@@ -1,25 +1,24 @@
 use slipstream_shared::error::SlipstreamResult;
 
-use crate::{
-    cmd::AppCommandChannel,
-    pages::{RoutablePage, intro::IntroPage},
-    shared::GraphicsState,
-};
+use crate::cmd::AppCommandChannel;
+use crate::pages::RoutablePage;
+use crate::pages::intro::IntroPage;
+use crate::shared::GraphicsState;
 
 /// Displays version and licensing info of the editor.
 pub struct InfoPage {
     cmd_channel: AppCommandChannel,
-    render_state: GraphicsState,
+    render_state: GraphicsState
 }
 
 impl InfoPage {
     pub fn new(
         cmd_channel: AppCommandChannel,
-        render_state: GraphicsState,
+        render_state: GraphicsState
     ) -> Box<dyn RoutablePage> {
         Box::new(Self {
             cmd_channel,
-            render_state,
+            render_state
         })
     }
 }

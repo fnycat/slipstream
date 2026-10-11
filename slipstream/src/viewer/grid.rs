@@ -2,7 +2,7 @@ use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT};
 
 /// Pipeline that renders the 3D view background grid.
 pub struct GridPipeline {
-    pipeline: wgpu::RenderPipeline,
+    pipeline: wgpu::RenderPipeline
 }
 
 impl GridPipeline {
@@ -10,7 +10,7 @@ impl GridPipeline {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("grid pipeline layout"),
             bind_group_layouts: &[Some(&camera_bind_layout)],
-            immediate_size: 0,
+            immediate_size: 0
         });
 
         let module = device.create_shader_module(wgpu::include_wgsl!("../../shaders/grid.wgsl"));
@@ -22,7 +22,7 @@ impl GridPipeline {
                 module: &module,
                 entry_point: Some("vs_main"),
                 buffers: &[],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                compilation_options: wgpu::PipelineCompilationOptions::default()
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -31,14 +31,14 @@ impl GridPipeline {
                 cull_mode: None,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 unclipped_depth: false,
-                conservative: false,
+                conservative: false
             },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: DEPTH_FORMAT,
                 depth_write_enabled: Some(false),
                 depth_compare: None,
                 stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
+                bias: wgpu::DepthBiasState::default()
             }),
             fragment: Some(wgpu::FragmentState {
                 module: &module,
@@ -46,17 +46,17 @@ impl GridPipeline {
                 targets: &[Some(wgpu::ColorTargetState {
                     format: TARGET_FORMAT,
                     blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
+                    write_mask: wgpu::ColorWrites::ALL
                 })],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                compilation_options: wgpu::PipelineCompilationOptions::default()
             }),
             multisample: wgpu::MultisampleState {
                 count: MSAA_SAMPLE_COUNT,
                 mask: !0,
-                alpha_to_coverage_enabled: false,
+                alpha_to_coverage_enabled: false
             },
             multiview_mask: None,
-            cache: None,
+            cache: None
         });
 
         Self { pipeline }

@@ -3,31 +3,29 @@
 use slipstream_shared::SlipstreamResult;
 use wgpu::util::DeviceExt;
 
+use crate::viewer::pipeline::CameraState;
 use crate::viewer::translation::{IntermediateModel, IntermediatePolygon};
-use crate::viewer::{
-    pipeline::CameraState,
-    wgpu::{PipelineDescriptor, PipelineRegistry, PipelineSignature},
-};
+use crate::viewer::wgpu::{PipelineDescriptor, PipelineRegistry, PipelineSignature};
 
 pub struct WgpuModel {
     camera_bind_group: wgpu::BindGroup,
     bind_pose_group: wgpu::BindGroup,
 
     pipelines: PipelineRegistry,
-    polygons: Vec<WgpuPolygon>,
+    polygons: Vec<WgpuPolygon>
 }
 
 impl WgpuModel {
     pub fn from_intermediate(
         device: &wgpu::Device,
         camera_state: &CameraState,
-        ir: IntermediateModel,
+        ir: IntermediateModel
     ) -> SlipstreamResult<Self> {
         let transform_matrix_buffer =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("transform matrix storage buffer"),
                 contents: bytemuck::cast_slice(&ir.bone_translations),
-                usage: wgpu::BufferUsages::STORAGE,
+                usage: wgpu::BufferUsages::STORAGE
             });
 
         let transform_matrix_layout =
@@ -39,10 +37,10 @@ impl WgpuModel {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: true },
                         min_binding_size: None,
-                        has_dynamic_offset: false,
+                        has_dynamic_offset: false
                     },
-                    count: None,
-                }],
+                    count: None
+                }]
             });
 
         let transform_matrix_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -53,9 +51,9 @@ impl WgpuModel {
                 resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                     buffer: &transform_matrix_buffer,
                     offset: 0,
-                    size: None,
-                }),
-            }],
+                    size: None
+                })
+            }]
         });
 
         let mut pipelines = PipelineRegistry::new(device.clone());
@@ -67,7 +65,7 @@ impl WgpuModel {
                 &transform_matrix_layout,
                 &camera_state.bind_group_layout,
                 &mut pipelines,
-                polygon,
+                polygon
             )?);
         }
 
@@ -75,7 +73,7 @@ impl WgpuModel {
             camera_bind_group: camera_state.bind_group.clone(),
             bind_pose_group: transform_matrix_group,
             pipelines,
-            polygons,
+            polygons
         })
     }
 
@@ -85,7 +83,7 @@ impl WgpuModel {
                 &self.pipelines,
                 &self.camera_bind_group,
                 &self.bind_pose_group,
-                render_pass,
+                render_pass
             );
         }
     }
@@ -97,7 +95,7 @@ pub struct WgpuPolygon {
     indices: u32,
     index_buffer: wgpu::Buffer,
     vertex_buffer: wgpu::Buffer,
-    uv_buffer: wgpu::Buffer,
+    uv_buffer: wgpu::Buffer
 }
 
 impl WgpuPolygon {
@@ -111,7 +109,7 @@ impl WgpuPolygon {
             3 => Uint32x4,
             4 => Float32x4,
         ],
-        step_mode: wgpu::VertexStepMode::Vertex,
+        step_mode: wgpu::VertexStepMode::Vertex
     };
     pub const UV_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
         array_stride: 64,
@@ -121,7 +119,7 @@ impl WgpuPolygon {
             7 => Float32x4,
             8 => Float32x4
         ],
-        step_mode: wgpu::VertexStepMode::Vertex,
+        step_mode: wgpu::VertexStepMode::Vertex
     };
 
     pub fn from_intermediate(
@@ -129,30 +127,30 @@ impl WgpuPolygon {
         bind_pose_layout: &wgpu::BindGroupLayout,
         camera_layout: &wgpu::BindGroupLayout,
         pipelines: &mut PipelineRegistry,
-        ir: IntermediatePolygon,
+        ir: IntermediatePolygon
     ) -> SlipstreamResult<Self> {
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("polygon index buffer"),
             contents: bytemuck::cast_slice(&ir.indices),
-            usage: wgpu::BufferUsages::INDEX,
+            usage: wgpu::BufferUsages::INDEX
         });
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("polygon vertex buffer"),
             contents: bytemuck::cast_slice(&ir.vertices),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX
         });
 
         let uv_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("polygon uv buffer"),
             contents: bytemuck::cast_slice(&ir.uv_buffer),
-            usage: wgpu::BufferUsages::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX
         });
 
         let pipeline_signature = pipelines.register(PipelineDescriptor {
             name: "polygon",
             bind_group_layouts: &[Some(camera_layout), Some(bind_pose_layout)],
-            vertex_layouts: &[Some(Self::VERTEX_LAYOUT), Some(Self::UV_LAYOUT)],
+            vertex_layouts: &[Some(Self::VERTEX_LAYOUT), Some(Self::UV_LAYOUT)]
         });
 
         tracing::trace!("Generated wgpu model with {} indices", ir.indices.len());
@@ -163,7 +161,7 @@ impl WgpuPolygon {
 
             vertex_buffer,
             uv_buffer,
-            index_buffer,
+            index_buffer
         })
     }
 
@@ -172,7 +170,7 @@ impl WgpuPolygon {
         pipelines: &PipelineRegistry,
         camera_group: &wgpu::BindGroup,
         bind_pose_group: &wgpu::BindGroup,
-        render_pass: &mut wgpu::RenderPass,
+        render_pass: &mut wgpu::RenderPass
     ) {
         let pipeline = pipelines.get(self.pipeline).expect("pipeline not found");
 

@@ -7,29 +7,23 @@ pub use frame::*;
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_derive::{Inspect, inspect_bitfield};
-use slipstream_shared::{
-    cursor::RefCursor,
-    error::{CorruptionError, SlipstreamError, SlipstreamResult},
-    verify,
-};
+use slipstream_shared::cursor::RefCursor;
+use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
+use slipstream_shared::verify;
 
-use crate::{
-    brres::{self, BFile, BFileHeader, BFileType},
-    index::IndexGroup,
-    node::{
-        arena::{IrArena, IrNodeDescriptor, IrNodeKey},
-        node::{ContentSlot, IrNodeType},
-    },
-    visitor::{
-        Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-        VisitorContextNodeMut,
-    },
+use crate::brres::{self, BFile, BFileHeader, BFileType};
+use crate::index::IndexGroup;
+use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
+use crate::node::node::{ContentSlot, IrNodeType};
+use crate::visitor::{
+    Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
+    VisitorContextNodeMut
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 pub enum AnimationPolicy {
     OneTime,
-    Loop,
+    Loop
 }
 
 impl TryFrom<u32> for AnimationPolicy {
@@ -64,7 +58,7 @@ pub enum ScalingRule {
     #[inspect(rename = "Autodesk Softimage")]
     Softimage,
     #[inspect(rename = "Autodesk Maya")]
-    Maya,
+    Maya
 }
 
 impl TryFrom<u32> for ScalingRule {
@@ -143,7 +137,7 @@ pub enum AnimationFormat2 {
     /// A fallback for [`bitenum`], this variant should never be used.
     #[inspect(ignore)]
     #[fallback]
-    Invalid,
+    Invalid
 }
 
 impl AnimationFormat2 {
@@ -154,7 +148,7 @@ impl AnimationFormat2 {
             Self::Interpolated4 => AnimationFormat3::Interpolated4,
             Self::Interpolated6 => AnimationFormat3::Interpolated6,
             Self::Interpolated12 => AnimationFormat3::Interpolated12,
-            Self::Invalid => AnimationFormat3::Invalid,
+            Self::Invalid => AnimationFormat3::Invalid
         }
     }
 }
@@ -231,7 +225,7 @@ pub enum AnimationFormat3 {
     /// A fallback for [`bitenum`], this variant should never be used.
     #[inspect(ignore)]
     #[fallback]
-    Invalid,
+    Invalid
 }
 
 impl AnimationFormat3 {
@@ -277,7 +271,7 @@ pub struct AnimationCode {
     #[bits(3)]
     pub rotation_format: AnimationFormat3,
     #[bits(2)]
-    pub translation_format: AnimationFormat2,
+    pub translation_format: AnimationFormat2
 }
 
 impl AnimationCode {
@@ -298,7 +292,7 @@ pub enum ComponentType {
     /// The bone stays in place throughout the entire animation.
     Fixed(f32),
     /// The bone is animated.
-    Animated(AnimationType),
+    Animated(AnimationType)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -307,7 +301,7 @@ pub enum AnimationType {
     Interpolated6(I6Animation),
     Interpolated12(I12Animation),
     Linear1(L1Animation),
-    Linear4(L4Animation),
+    Linear4(L4Animation)
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
@@ -317,14 +311,14 @@ pub struct ComponentData {
     #[inspect(ignore)]
     pub y: ComponentType,
     #[inspect(ignore)]
-    pub z: ComponentType,
+    pub z: ComponentType
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct AnimationData {
     pub translation: Option<ComponentData>,
     pub rotation: Option<ComponentData>,
-    pub scale: Option<ComponentData>,
+    pub scale: Option<ComponentData>
 }
 
 impl AnimationData {
@@ -333,7 +327,7 @@ impl AnimationData {
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u64,
         header_frame_count: u16,
-        format: AnimationFormat3,
+        format: AnimationFormat3
     ) -> SlipstreamResult<AnimationType> {
         let orig_position = reader.position();
 
@@ -349,7 +343,7 @@ impl AnimationData {
                 AnimationType::Interpolated6(I6Animation::deserialize(reader, header_frame_count)?)
             }
             AnimationFormat3::Interpolated12 => AnimationType::Interpolated12(
-                I12Animation::deserialize(reader, header_frame_count)?,
+                I12Animation::deserialize(reader, header_frame_count)?
             ),
             AnimationFormat3::Linear1 => {
                 AnimationType::Linear1(L1Animation::deserialize(reader, header_frame_count)?)
@@ -357,7 +351,7 @@ impl AnimationData {
             AnimationFormat3::Linear4 => {
                 AnimationType::Linear4(L4Animation::deserialize(reader, header_frame_count)?)
             }
-            _ => unreachable!("cannot call `deserialize_keyframe` on `{format:?}`"),
+            _ => unreachable!("cannot call `deserialize_keyframe` on `{format:?}`")
         };
 
         reader.set_position(orig_position + 4);
@@ -369,7 +363,7 @@ impl AnimationData {
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u64,
         frame_count: u16,
-        anim_ty_code: &AnimationCode,
+        anim_ty_code: &AnimationCode
     ) -> SlipstreamResult<ComponentData> {
         tracing::trace!(
             "Reading scale animations (iso: {}, x fixed: {}, y fixed: {}, z fixed: {})",
@@ -390,7 +384,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_ty_code.scale_format().extend(),
+                    anim_ty_code.scale_format().extend()
                 )?;
                 iso_scale = ComponentType::Animated(frame);
             }
@@ -398,7 +392,7 @@ impl AnimationData {
             Ok(ComponentData {
                 x: iso_scale.clone(),
                 y: iso_scale.clone(),
-                z: iso_scale,
+                z: iso_scale
             })
         } else {
             let x_scale = if anim_ty_code.scale_x_fixed() {
@@ -408,7 +402,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_ty_code.scale_format().extend(),
+                    anim_ty_code.scale_format().extend()
                 )?;
                 ComponentType::Animated(frame)
             };
@@ -420,7 +414,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_ty_code.scale_format().extend(),
+                    anim_ty_code.scale_format().extend()
                 )?;
                 ComponentType::Animated(frame)
             };
@@ -432,7 +426,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_ty_code.scale_format().extend(),
+                    anim_ty_code.scale_format().extend()
                 )?;
                 ComponentType::Animated(frame)
             };
@@ -440,7 +434,7 @@ impl AnimationData {
             Ok(ComponentData {
                 x: x_scale,
                 y: y_scale,
-                z: z_scale,
+                z: z_scale
             })
         }
     }
@@ -450,7 +444,7 @@ impl AnimationData {
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u64,
         frame_count: u16,
-        anim_code: &AnimationCode,
+        anim_code: &AnimationCode
     ) -> SlipstreamResult<ComponentData> {
         tracing::trace!(
             "Reading rotation animations (iso: {}, x fixed: {}, y fixed: {}, z fixed: {})",
@@ -468,7 +462,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_code.rotation_format(),
+                    anim_code.rotation_format()
                 )?;
                 ComponentType::Animated(frame)
             };
@@ -476,7 +470,7 @@ impl AnimationData {
             Ok(ComponentData {
                 x: iso_rot.clone(),
                 y: iso_rot.clone(),
-                z: iso_rot,
+                z: iso_rot
             })
         } else {
             let x_rot = if anim_code.rotation_x_fixed() {
@@ -486,7 +480,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_code.rotation_format(),
+                    anim_code.rotation_format()
                 )?;
                 ComponentType::Animated(frame)
             };
@@ -498,7 +492,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_code.rotation_format(),
+                    anim_code.rotation_format()
                 )?;
                 ComponentType::Animated(frame)
             };
@@ -510,7 +504,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_code.rotation_format(),
+                    anim_code.rotation_format()
                 )?;
                 ComponentType::Animated(frame)
             };
@@ -518,7 +512,7 @@ impl AnimationData {
             Ok(ComponentData {
                 x: x_rot,
                 y: y_rot,
-                z: z_rot,
+                z: z_rot
             })
         }
     }
@@ -528,7 +522,7 @@ impl AnimationData {
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u64,
         frame_count: u16,
-        anim_code: &AnimationCode,
+        anim_code: &AnimationCode
     ) -> SlipstreamResult<ComponentData> {
         tracing::trace!(
             "Reading translation animations (iso: {}, x fixed: {}, y fixed: {}, z fixed: {})",
@@ -546,14 +540,14 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_code.translation_format().extend(),
+                    anim_code.translation_format().extend()
                 )?)
             };
 
             Ok(ComponentData {
                 x: iso_trans.clone(),
                 y: iso_trans.clone(),
-                z: iso_trans,
+                z: iso_trans
             })
         } else {
             let trans_x = if anim_code.x_fixed() {
@@ -563,7 +557,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_code.translation_format().extend(),
+                    anim_code.translation_format().extend()
                 )?)
             };
 
@@ -574,7 +568,7 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_code.translation_format().extend(),
+                    anim_code.translation_format().extend()
                 )?)
             };
 
@@ -585,14 +579,14 @@ impl AnimationData {
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_code.translation_format().extend(),
+                    anim_code.translation_format().extend()
                 )?)
             };
 
             Ok(ComponentData {
                 x: trans_x,
                 y: trans_y,
-                z: trans_z,
+                z: trans_z
             })
         }
     }
@@ -602,14 +596,14 @@ impl AnimationData {
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u64,
         frame_count: u16,
-        anim_code: &AnimationCode,
+        anim_code: &AnimationCode
     ) -> SlipstreamResult<Self> {
         let scale = if anim_code.has_scale() {
             Some(Self::deserialize_scale(
                 reader,
                 bone_data_start,
                 frame_count,
-                anim_code,
+                anim_code
             )?)
         } else {
             None
@@ -620,7 +614,7 @@ impl AnimationData {
                 reader,
                 bone_data_start,
                 frame_count,
-                anim_code,
+                anim_code
             )?)
         } else {
             None
@@ -631,7 +625,7 @@ impl AnimationData {
                 reader,
                 bone_data_start,
                 frame_count,
-                anim_code,
+                anim_code
             )?)
         } else {
             None
@@ -641,7 +635,7 @@ impl AnimationData {
         Ok(AnimationData {
             scale,
             rotation,
-            translation,
+            translation
         })
     }
 }
@@ -651,7 +645,7 @@ pub struct SkeletalAnimation {
     #[inspect(rename = "Animation Settings")]
     pub anim_code: AnimationCode,
     #[inspect(rename = "Animation Data")]
-    pub anim_data: AnimationData,
+    pub anim_data: AnimationData
 }
 
 impl SkeletalAnimation {
@@ -669,7 +663,7 @@ impl SkeletalAnimation {
         Ok(Self {
             anim_code,
             // anim_flags,
-            anim_data,
+            anim_data
         })
     }
 }
@@ -682,7 +676,7 @@ impl Visitable for SkeletalAnimation {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
         visitor.visit_skeletal_animation_mut(VisitorContextMut::new(node, self))
     }
@@ -693,7 +687,7 @@ pub const CHR0_MAGIC: [u8; 4] = [0x43, 0x48, 0x52, 0x30];
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SectionType {
     Animations = 0,
-    UserData = 1,
+    UserData = 1
 }
 
 impl TryFrom<usize> for SectionType {
@@ -723,7 +717,7 @@ pub struct Chr0Root {
     /// Whether the animation loops or is a one time animation.
     #[inspect(rename = "Animation Policy")]
     pub anim_policy: AnimationPolicy,
-    pub scaling_rule: ScalingRule,
+    pub scaling_rule: ScalingRule
 }
 
 impl Chr0Root {
@@ -737,7 +731,7 @@ impl Chr0Root {
             frame_count,
             anim_data_count,
             anim_policy,
-            scaling_rule,
+            scaling_rule
         })
     }
 }
@@ -750,7 +744,7 @@ impl Visitable for Chr0Root {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
         visitor.visit_chr0_mut(VisitorContextMut::new(node, self))
     }
@@ -761,7 +755,7 @@ pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
     parent_id: IrNodeKey,
     arena: &IrArena,
-    name: String,
+    name: String
 ) -> SlipstreamResult<IrNodeKey> {
     let subfile_header = BFileHeader::deserialize(reader, BFileType::Chr0)?;
     reader.set_position(reader.position() + 4); // there are 4 bytes of padding between the headers
@@ -810,12 +804,12 @@ pub fn deserialize(
                         ty: IrNodeType::SkeletalAnimation,
                         parent: Some(chr0_root_key),
                         children: Vec::new(),
-                        contents: ContentSlot::eager(Box::new(anim)),
+                        contents: ContentSlot::eager(Box::new(anim))
                     });
                     files.push(anim_file);
                 }
             }
-            SectionType::UserData => todo!("CHR0 user data"),
+            SectionType::UserData => todo!("CHR0 user data")
         };
     }
 
@@ -826,8 +820,8 @@ pub fn deserialize(
             ty: IrNodeType::Chr0Root,
             parent: Some(parent_id),
             children: files,
-            contents: ContentSlot::eager(Box::new(chr0_header)),
-        },
+            contents: ContentSlot::eager(Box::new(chr0_header))
+        }
     );
 
     Ok(chr0_root_key)

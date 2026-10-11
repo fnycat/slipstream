@@ -1,4 +1,5 @@
-use std::{ops::Deref, sync::Arc};
+use std::ops::Deref;
+use std::sync::Arc;
 
 use parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock};
 
@@ -7,7 +8,7 @@ use crate::node::node::{ContentSlot, IrNode};
 type LockReadGuard = ArcRwLockReadGuard<RawRwLock, IrNode>;
 
 pub struct ContentReadGuard {
-    inner: LockReadGuard,
+    inner: LockReadGuard
 }
 
 impl ContentReadGuard {

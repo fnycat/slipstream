@@ -6,7 +6,8 @@ use std::sync::LazyLock;
 
 use parking_lot::Mutex;
 use tracing::{Event, Level, Subscriber};
-use tracing_subscriber::{Layer, layer::Context};
+use tracing_subscriber::Layer;
+use tracing_subscriber::layer::Context;
 
 /// Global vector containing all logs logged by the current process.
 pub static GLOBAL_MEM_LOGS: LazyLock<Mutex<Vec<LogEvent>>> = LazyLock::new(|| Mutex::default());
@@ -32,7 +33,7 @@ pub struct LogEvent {
     pub name: &'static str,
     pub verbosity: Level,
     pub target: String,
-    pub message: String,
+    pub message: String
 }
 
 impl<S: Subscriber> Layer<S> for GlobalMemLogLayer {
@@ -47,7 +48,7 @@ impl<S: Subscriber> Layer<S> for GlobalMemLogLayer {
             name: metadata.name(),
             verbosity: *metadata.level(),
             target: metadata.target().to_owned(),
-            message: visitor.0,
+            message: visitor.0
         });
     }
 }

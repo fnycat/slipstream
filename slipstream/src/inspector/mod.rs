@@ -2,7 +2,7 @@ use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
 use slipstream_ir::chr0::{self, SkeletalAnimation};
 use slipstream_ir::mdl0::{
     Bone, ColorBuffer, Definitions, MaterialBuffer, Mdl0Root, NormalBuffer, PaletteLinks, Polygon,
-    TextureLinks, UvBuffer, VertexBuffer,
+    TextureLinks, UvBuffer, VertexBuffer
 };
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::tex0::Texture;
@@ -13,7 +13,7 @@ use std::ops::ControlFlow;
 use std::sync::{Arc, mpsc};
 
 struct InspectorVisitor<'ui> {
-    pub ui: &'ui mut egui::Ui,
+    pub ui: &'ui mut egui::Ui
 }
 
 impl Visitor for InspectorVisitor<'_> {
@@ -27,7 +27,7 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_definitions_mut(
         &mut self,
-        context: VisitorContextMut<'_, Definitions>,
+        context: VisitorContextMut<'_, Definitions>
     ) -> ControlFlow<()> {
         self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
@@ -43,7 +43,7 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_vertices_mut(
         &mut self,
-        context: VisitorContextMut<'_, VertexBuffer>,
+        context: VisitorContextMut<'_, VertexBuffer>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -54,7 +54,7 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_normals_mut(
         &mut self,
-        context: VisitorContextMut<'_, NormalBuffer>,
+        context: VisitorContextMut<'_, NormalBuffer>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -81,7 +81,7 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_material_mut(
         &mut self,
-        context: VisitorContextMut<'_, MaterialBuffer>,
+        context: VisitorContextMut<'_, MaterialBuffer>
     ) -> ControlFlow<()> {
         self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
@@ -97,7 +97,7 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_texture_links_mut(
         &mut self,
-        context: VisitorContextMut<'_, TextureLinks>,
+        context: VisitorContextMut<'_, TextureLinks>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -108,7 +108,7 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_palette_links_mut(
         &mut self,
-        context: VisitorContextMut<'_, PaletteLinks>,
+        context: VisitorContextMut<'_, PaletteLinks>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -124,7 +124,7 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_chr0_mut(
         &mut self,
-        context: VisitorContextMut<'_, chr0::Chr0Root>,
+        context: VisitorContextMut<'_, chr0::Chr0Root>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -135,7 +135,7 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_skeletal_animation_mut(
         &mut self,
-        context: VisitorContextMut<'_, SkeletalAnimation>,
+        context: VisitorContextMut<'_, SkeletalAnimation>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -149,19 +149,19 @@ pub struct InspectorPane {
     cmd_sender: mpsc::Sender<PaneAction>,
 
     inspected: IrNodeKey,
-    arena: Arc<IrArena>,
+    arena: Arc<IrArena>
 }
 
 impl InspectorPane {
     pub fn new(
         cmd_sender: mpsc::Sender<PaneAction>,
         inspected: IrNodeKey,
-        arena: Arc<IrArena>,
+        arena: Arc<IrArena>
     ) -> Box<dyn Pane> {
         Box::new(Self {
             cmd_sender,
             inspected,
-            arena,
+            arena
         })
     }
 
@@ -177,7 +177,7 @@ impl InspectorPane {
                     key: node.key(),
                     label: &mut node.label,
                     ty: node.ty,
-                    children: &mut node.children,
+                    children: &mut node.children
                 };
 
                 // Evaluate contents if lazy
@@ -208,7 +208,7 @@ impl Pane for InspectorPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        _is_focused: bool,
+        _is_focused: bool
     ) -> egui_tiles::UiResponse {
         self.draw_properties(ui).unwrap();
 

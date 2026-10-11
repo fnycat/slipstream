@@ -10,7 +10,7 @@ pub struct FreeCamera {
     pub move_speed: f32,
     pub orientation: glam::Quat,
     pub vertical_fov: f32,
-    pub aspect_ratio: f32,
+    pub aspect_ratio: f32
 }
 
 impl CameraController for FreeCamera {
@@ -63,8 +63,7 @@ impl CameraController for FreeCamera {
         let proj_matrix = glam::camera::lh::proj::directx::perspective_infinite_reverse(
             self.vertical_fov,
             self.aspect_ratio,
-            NEAR_PLANE,
-            // FAR_PLANE,
+            NEAR_PLANE // FAR_PLANE,
         );
 
         proj_matrix * view_matrix

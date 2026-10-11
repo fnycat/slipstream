@@ -1,8 +1,6 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_shared::{
-    cursor::{MutCursor, RefCursor, SizeEstimate},
-    error::SlipstreamResult,
-};
+use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
+use slipstream_shared::error::SlipstreamResult;
 
 use crate::encoding::ReadStringExt;
 
@@ -12,14 +10,14 @@ pub struct IndexGroupHeader {
     /// The length in bytes of the index group.
     pub length: u32,
     /// The number of entries in this index, excluding the root file.
-    pub number: u32,
+    pub number: u32
 }
 
 impl IndexGroupHeader {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         Ok(Self {
             length: reader.read_u32::<BigEndian>()?,
-            number: reader.read_u32::<BigEndian>()?,
+            number: reader.read_u32::<BigEndian>()?
         })
     }
 
@@ -57,7 +55,7 @@ pub struct IndexGroupEntry {
     /// Use [`get_entry_data_start`] to get a pointer to the start of the actual data.
     ///
     /// [`get_entry_data_start`]: IndexGroup::get_entry_data_start
-    pub data_pointer: u32,
+    pub data_pointer: u32
 }
 
 impl IndexGroupEntry {
@@ -75,7 +73,7 @@ impl IndexGroupEntry {
             left_index,
             right_index,
             name_pointer,
-            data_pointer,
+            data_pointer
         })
     }
 
@@ -112,7 +110,7 @@ pub struct IndexGroup {
     /// `header.number + 1` entries.
     ///
     /// The first entry is a dummy entry that has no name.
-    pub entries: Vec<IndexGroupEntry>,
+    pub entries: Vec<IndexGroupEntry>
 }
 
 impl IndexGroup {
@@ -128,7 +126,7 @@ impl IndexGroup {
     pub fn get_entry_name(
         &self,
         reader: &mut RefCursor<[u8]>,
-        entry: &IndexGroupEntry,
+        entry: &IndexGroupEntry
     ) -> SlipstreamResult<String> {
         if entry.name_pointer == 0 {
             return Ok(String::new()); // This entry has no name.
@@ -167,7 +165,7 @@ impl IndexGroup {
         Ok(Self {
             group_start,
             header,
-            entries,
+            entries
         })
     }
 

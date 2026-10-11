@@ -1,20 +1,18 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::{
-    img::{deserialize_color, to_rgb565},
-    mdl0::ColorFormat,
-};
+use crate::img::{deserialize_color, to_rgb565};
+use crate::mdl0::ColorFormat;
 
 pub struct CmprDescriptor {
     pub width: u16,
     pub height: u16,
-    pub mipmap_count: u32,
+    pub mipmap_count: u32
 }
 
 pub struct CmprImage {
     pub size: glam::U16Vec2,
-    pub pixels: Vec<glam::U8Vec4>,
+    pub pixels: Vec<glam::U8Vec4>
 }
 
 impl CmprImage {
@@ -22,7 +20,7 @@ impl CmprImage {
     /// `wgpu` natively supports DXT1 compression through the `Bc1RgbaUnorm` texture format.
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        desc: CmprDescriptor,
+        desc: CmprDescriptor
     ) -> SlipstreamResult<Self> {
         const CMPR_SUBBLOCKS: usize = 4;
         const CMPR_SUBBLOCK_SIZE: usize = 4 * 4;
@@ -67,7 +65,7 @@ impl CmprImage {
                     color0.as_u8vec4(),
                     color1.as_u8vec4(),
                     color2.as_u8vec4(),
-                    color3.as_u8vec4(),
+                    color3.as_u8vec4()
                 ];
 
                 // The pixels are then stored as 2 bit indices into these blocks.
@@ -84,7 +82,7 @@ impl CmprImage {
 
         Ok(Self {
             size: glam::u16vec2(desc.width, desc.height),
-            pixels,
+            pixels
         })
     }
 }

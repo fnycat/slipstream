@@ -3,23 +3,19 @@ use std::ops::ControlFlow;
 use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::Inspect;
-use slipstream_shared::{
-    cursor::{MutCursor, RefCursor},
-    error::{CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult},
-    verify,
+use slipstream_shared::cursor::{MutCursor, RefCursor};
+use slipstream_shared::error::{
+    CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult
 };
+use slipstream_shared::verify;
 
-use crate::node::node::IrNode;
+use crate::img::deserialize_color;
+use crate::mdl0::SectionHeader;
+use crate::mdl0::section::DeserializeContents;
+use crate::node::node::{IrNode, IrNodeType};
 use crate::visitor::{
-    VisitorContext, VisitorContextMut, VisitorContextNode, VisitorContextNodeMut,
-};
-use crate::{
-    img::deserialize_color,
-    mdl0::{SectionHeader, section::DeserializeContents},
-};
-use crate::{
-    node::node::IrNodeType,
-    visitor::{Visitable, Visitor},
+    Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
+    VisitorContextNodeMut
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
@@ -27,7 +23,7 @@ pub enum ColorComponents {
     #[inspect(rename = "RGB")]
     Rgb = 0x00,
     #[inspect(rename = "RGBA")]
-    Rgba = 0x01,
+    Rgba = 0x01
 }
 
 impl TryFrom<u32> for ColorComponents {
@@ -128,7 +124,7 @@ pub enum ColorFormat {
     /// This is a fallback for `bitenum`, it should never be used and is not visible to users.
     #[inspect(ignore)]
     #[fallback]
-    Invalid,
+    Invalid
 }
 
 impl ColorFormat {
@@ -142,7 +138,7 @@ impl ColorFormat {
             Self::Rgba4 => 2,
             Self::Rgba6 => 3,
             Self::Rgba8 => 4,
-            Self::Invalid => 0,
+            Self::Invalid => 0
         }
     }
 }
@@ -201,7 +197,7 @@ pub struct ColorBuffer {
     )]
     format: ColorFormat,
     #[inspect(opened = false)]
-    colors: Vec<glam::U8Vec4>,
+    colors: Vec<glam::U8Vec4>
 }
 
 impl ColorBuffer {
@@ -219,7 +215,7 @@ impl Visitable for ColorBuffer {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
         visitor.visit_colors_mut(VisitorContextMut::new(node, self))
     }
@@ -251,7 +247,7 @@ impl DeserializeContents for ColorBuffer {
             header,
             components,
             format,
-            colors,
+            colors
         })
     }
 }

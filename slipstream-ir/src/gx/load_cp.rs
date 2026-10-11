@@ -1,15 +1,11 @@
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::{Inspect, inspect_bitfield};
-use slipstream_shared::{
-    cursor::{MutCursor, RefCursor, SizeEstimate},
-    error::{CorruptionError, SlipstreamResult},
-};
+use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
+use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
-use crate::{
-    mdl0::{ColorFormat, NormalFormat},
-    util::VertexFormat,
-};
+use crate::mdl0::{ColorFormat, NormalFormat};
+use crate::util::VertexFormat;
 
 pub const FORMAT_DIVISOR_TOOLTIP: &str = "Determines how to scale lower quality formats back up to floats. \
 A lower quality format is scaled up to a float by dividing it by `2^divisor`. \
@@ -44,7 +40,7 @@ pub enum VectorStorage {
     #[inspect(tooltip = "Store a 16-bit index to an entry in a separate buffer. \
         The GPU will use this index to load the data from the buffer given by the corresponding `Array ID` \
         entry in this polygon.")]
-    Index16 = 0b11,
+    Index16 = 0b11
 }
 
 /// Vertex control descriptor part 1/2.
@@ -101,7 +97,7 @@ pub struct CpVcdLo {
     #[bits(2)]
     pub col1_storage: VectorStorage,
     #[bits(15)]
-    _padding: u16,
+    _padding: u16
 }
 
 impl CpVcdLo {
@@ -164,7 +160,7 @@ pub struct CpVcdHi {
     #[bits(2)]
     pub uv7_storage: VectorStorage,
     #[bits(16)]
-    _padding: u16,
+    _padding: u16
 }
 
 impl CpVcdHi {
@@ -224,7 +220,7 @@ pub struct CpVatA {
     /// 3 separate indices. If not set and [`norm_extended`] is set, then the normals will be read
     /// as 9 consecutive floats.
     #[inspect(rename = "Use Additional Normals")]
-    pub norm_i3: bool,
+    pub norm_i3: bool
 }
 
 impl CpVatA {
@@ -296,7 +292,7 @@ pub struct CpVatB {
     #[bits(3)]
     pub uv4_format: VertexFormat,
     #[bits(1)]
-    _padding: bool,
+    _padding: bool
 }
 
 impl CpVatB {
@@ -359,7 +355,7 @@ pub struct CpVatC {
     #[inspect(rename = "UV 8 Divisor")]
     #[inspect(tooltip = FORMAT_DIVISOR_TOOLTIP)]
     #[bits(5)]
-    pub uv7_divisor: u8,
+    pub uv7_divisor: u8
 }
 
 impl CpVatC {
@@ -375,7 +371,7 @@ pub enum LoadCpOpCode {
     VcdHi(CpVcdHi),
     VatA(CpVatA),
     VatB(CpVatB),
-    VatC(CpVatC),
+    VatC(CpVatC)
 }
 
 const VCD_LO_OPCODE: u8 = 0x50;

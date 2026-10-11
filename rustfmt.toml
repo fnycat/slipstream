@@ -1,0 +1,9 @@
+binop_separator = "Front"
+condense_wildcard_suffixes = true
+edition = "2024"
+imports_granularity = "Module"
+style_edition = "2024"
+tab_spaces = 4
+trailing_comma = "Never"
+use_field_init_shorthand = true
+use_try_shorthand = true

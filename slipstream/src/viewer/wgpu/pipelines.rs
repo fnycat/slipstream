@@ -1,8 +1,6 @@
 use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT};
-use std::{
-    collections::HashMap,
-    hash::{DefaultHasher, Hash, Hasher},
-};
+use std::collections::HashMap;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use wgpu::util::DeviceExt;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -22,24 +20,24 @@ impl PipelineSignature {
 pub struct PipelineDescriptor<'a> {
     pub name: &'a str,
     pub bind_group_layouts: &'a [Option<&'a wgpu::BindGroupLayout>],
-    pub vertex_layouts: &'a [Option<wgpu::VertexBufferLayout<'a>>],
+    pub vertex_layouts: &'a [Option<wgpu::VertexBufferLayout<'a>>]
 }
 
 pub struct PipelineEntry {
     layout: wgpu::PipelineLayout,
-    pipeline: wgpu::RenderPipeline,
+    pipeline: wgpu::RenderPipeline
 }
 
 pub struct PipelineRegistry {
     device: wgpu::Device,
-    pipelines: HashMap<PipelineSignature, PipelineEntry>,
+    pipelines: HashMap<PipelineSignature, PipelineEntry>
 }
 
 impl PipelineRegistry {
     pub fn new(device: wgpu::Device) -> Self {
         Self {
             device,
-            pipelines: HashMap::new(),
+            pipelines: HashMap::new()
         }
     }
 
@@ -59,7 +57,7 @@ impl PipelineRegistry {
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: None,
                     bind_group_layouts: desc.bind_group_layouts,
-                    immediate_size: 0,
+                    immediate_size: 0
                 });
 
             let pipeline = self
@@ -71,7 +69,7 @@ impl PipelineRegistry {
                         module: &module,
                         entry_point: Some("vs_main"),
                         buffers: desc.vertex_layouts,
-                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                        compilation_options: wgpu::PipelineCompilationOptions::default()
                     },
                     primitive: wgpu::PrimitiveState {
                         topology: wgpu::PrimitiveTopology::TriangleList,
@@ -81,14 +79,14 @@ impl PipelineRegistry {
                         cull_mode: None,
                         polygon_mode: wgpu::PolygonMode::Fill,
                         conservative: false,
-                        unclipped_depth: false,
+                        unclipped_depth: false
                     },
                     depth_stencil: Some(wgpu::DepthStencilState {
                         format: DEPTH_FORMAT,
                         depth_write_enabled: Some(true),
                         depth_compare: Some(wgpu::CompareFunction::Greater),
                         bias: wgpu::DepthBiasState::default(),
-                        stencil: wgpu::StencilState::default(),
+                        stencil: wgpu::StencilState::default()
                     }),
                     fragment: Some(wgpu::FragmentState {
                         module: &module,
@@ -96,17 +94,17 @@ impl PipelineRegistry {
                         targets: &[Some(wgpu::ColorTargetState {
                             format: TARGET_FORMAT,
                             blend: Some(wgpu::BlendState::REPLACE),
-                            write_mask: wgpu::ColorWrites::ALL,
+                            write_mask: wgpu::ColorWrites::ALL
                         })],
-                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                        compilation_options: wgpu::PipelineCompilationOptions::default()
                     }),
                     multisample: wgpu::MultisampleState {
                         count: MSAA_SAMPLE_COUNT,
                         mask: !0,
-                        alpha_to_coverage_enabled: false,
+                        alpha_to_coverage_enabled: false
                     },
                     multiview_mask: None,
-                    cache: None,
+                    cache: None
                 });
 
             PipelineEntry { layout, pipeline }

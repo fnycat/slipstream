@@ -27,7 +27,7 @@ impl StringAttrExt for Option<StringAttr> {
 
 #[derive(Debug)]
 struct StringAttr {
-    expr: Expr,
+    expr: Expr
 }
 
 impl FromMeta for StringAttr {
@@ -36,10 +36,10 @@ impl FromMeta for StringAttr {
             syn::Lit::Str(s) => Ok(Self {
                 expr: Expr::Lit(ExprLit {
                     attrs: Vec::new(),
-                    lit: Lit::Str(s.clone()),
-                }),
+                    lit: Lit::Str(s.clone())
+                })
             }),
-            _ => Err(darling::Error::unexpected_lit_type(value)),
+            _ => Err(darling::Error::unexpected_lit_type(value))
         }
     }
 
@@ -47,8 +47,8 @@ impl FromMeta for StringAttr {
         Ok(Self {
             expr: Expr::Lit(ExprLit {
                 attrs: Vec::new(),
-                lit: Lit::Str(LitStr::new(value, Span::call_site())),
-            }),
+                lit: Lit::Str(LitStr::new(value, Span::call_site()))
+            })
         })
     }
 
@@ -95,7 +95,7 @@ struct FieldOpt {
     pub rename: Option<String>,
     /// Nested structs start out expanded: `#[inspect(opened)]`.
     #[darling(default = "default_opened")]
-    pub opened: bool,
+    pub opened: bool
 }
 
 impl FieldOpt {
@@ -110,7 +110,7 @@ impl FieldOpt {
                     quote! { self.#x }
                 }
             }
-            None => todo!("tuple structs are not supported yet"),
+            None => todo!("tuple structs are not supported yet")
         }
     }
 
@@ -118,7 +118,7 @@ impl FieldOpt {
         match (&self.rename, &self.ident) {
             (Some(rename), _) => rename.clone(),
             (None, Some(ident)) => ident.to_string().to_title_case(),
-            (None, None) => String::from("<unknown>"),
+            (None, None) => String::from("<unknown>")
         }
     }
 
@@ -180,7 +180,7 @@ impl FieldOpt {
                     // #ty is specified twice because we need to both specify the generic and the impl we want to use.
                     Some(<#ty as IntoBounds::<#ty>>::into_bounds(None, Some(#max)))
                 }
-            },
+            }
         };
 
         let label = if let Some(name) = &self.rename {
@@ -214,7 +214,7 @@ impl FieldOpt {
     pub fn to_tokens(
         parent: &Ident,
         fields: &[FieldOpt],
-        is_bitfield: bool,
+        is_bitfield: bool
     ) -> proc_macro2::TokenStream {
         let fields = fields.iter().filter(|f| {
             // skip over field when it has the ignore attribute, or when it has a _ prefix in bitfield structs.
@@ -284,7 +284,7 @@ struct FieldVariant {
     #[darling(default)]
     pub rename: Option<String>,
     #[darling(default)]
-    pub ignore: bool,
+    pub ignore: bool
 }
 
 impl FieldVariant {
@@ -310,7 +310,7 @@ impl FieldVariant {
             let tooltip = match &variant.tooltip {
                 Some(tooltip) => quote! { Some(#tooltip) },
                 // we have to set the type explicitly here because the compiler is unable to infer it.
-                None => quote! { None::<&'static str> },
+                None => quote! { None::<&'static str> }
             };
 
             tokens.append_all(quote! {
@@ -343,7 +343,7 @@ pub struct Input {
     /// Optional `fn(&Self) -> String` used for the text shown next to a collapsed struct:
     /// `#[inspect(summary = "my_summary_fn")]`. Defaults to the struct's display name.
     #[darling(default)]
-    pub summary: Option<syn::Path>,
+    pub summary: Option<syn::Path>
 }
 
 impl Input {
@@ -359,7 +359,7 @@ impl Input {
         &self,
         fields: &[FieldOpt],
         is_bitfield: bool,
-        tokens: &mut proc_macro2::TokenStream,
+        tokens: &mut proc_macro2::TokenStream
     ) {
         let Self { ident, .. } = self;
 
@@ -368,7 +368,7 @@ impl Input {
 
         let summary = match &self.summary {
             Some(path) => quote! { #path(self) },
-            None => quote! { ::std::string::String::from(#name) },
+            None => quote! { ::std::string::String::from(#name) }
         };
 
         tokens.append_all(quote! {
@@ -436,14 +436,8 @@ impl Input {
             let field_count = variant.fields.fields.len();
             let pattern_content = match variant.fields.style {
                 Style::Struct => Some(quote! { { .. } }),
-                Style::Tuple => {
-                    // Repeat the `_` pattern to match the whole tuple.
-                    let dash_repeat = std::iter::repeat(quote! { _ }).take(field_count);
-                    Some(quote! {
-                        (#(#dash_repeat),*)
-                    })
-                }
-                Style::Unit => None,
+                Style::Tuple => Some(quote! { (..) }),
+                Style::Unit => None
             };
 
             let pattern = quote! {
@@ -468,7 +462,7 @@ impl Input {
                         (#(#dash_repeat),*)
                     })
                 }
-                Style::Unit => None,
+                Style::Unit => None
             };
 
             let pattern = quote! {
@@ -529,7 +523,7 @@ impl Input {
 
         match &self.data {
             Data::Struct(data) => self.struct_to_tokens(&data.fields, is_bitfield, &mut tokens),
-            Data::Enum(data) => self.enum_to_tokens(&data, &mut tokens),
+            Data::Enum(data) => self.enum_to_tokens(&data, &mut tokens)
         }
 
         tokens

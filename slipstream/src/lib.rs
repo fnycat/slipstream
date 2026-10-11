@@ -1,3 +1,23 @@
+#![deny(
+    clippy::complexity,
+    clippy::correctness,
+    clippy::perf,
+    clippy::style,
+    clippy::suspicious,
+    clippy::allow_attributes,
+    clippy::default_trait_access,
+    clippy::broken_intra_doc_links
+)]
+#![warn(
+    clippy::assigning_clones,
+    clippy::cloned_instead_of_copied,
+    clippy::collapsible_else_if,
+    clippy::comparison_chain,
+    clippy::doc_link_with_quotes,
+    clippy::enum_glob_use,
+    clippy::expl_impl_clone_on_copy
+)]
+
 pub mod app;
 
 pub mod cmd;
@@ -15,7 +35,8 @@ mod web;
 
 use slipstream_shared::error::SlipstreamResult;
 
-use crate::{app::App, config::DEFAULT_SIZE};
+use crate::app::App;
+use crate::config::DEFAULT_SIZE;
 
 /// Initialises the tracing subscriber for the current environment.
 ///
@@ -92,7 +113,7 @@ pub fn run() -> SlipstreamResult<()> {
                 backend_options: wgpu::BackendOptions::default(),
                 display: None,
                 flags: wgpu::InstanceFlags::empty(),
-                memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
+                memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default()
             },
             device_descriptor: Arc::new(|adapter| {
                 let adapter_info = adapter.get_info();
@@ -105,12 +126,12 @@ pub fn run() -> SlipstreamResult<()> {
                     memory_hints: wgpu::MemoryHints::Performance,
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::defaults(),
-                    trace: wgpu::Trace::Off,
+                    trace: wgpu::Trace::Off
                 }
             }),
             native_adapter_selector: None,
             display_handle: None,
-            power_preference: wgpu::PowerPreference::default(),
+            power_preference: wgpu::PowerPreference::default()
         };
 
         let wgpu_options = eframe::WgpuConfiguration {
@@ -130,7 +151,7 @@ pub fn run() -> SlipstreamResult<()> {
                 }
             }),
             surface: eframe::SurfaceConfig::HIGH_THROUGHPUT,
-            wgpu_setup: eframe::egui_wgpu::WgpuSetup::CreateNew(wgpu_setup),
+            wgpu_setup: eframe::egui_wgpu::WgpuSetup::CreateNew(wgpu_setup)
         };
 
         let native_options = eframe::NativeOptions {
@@ -145,7 +166,7 @@ pub fn run() -> SlipstreamResult<()> {
         eframe::run_native(
             "Slipstream",
             native_options,
-            Box::new(|cc| Ok(Box::new(App::new(cc)))),
+            Box::new(|cc| Ok(Box::new(App::new(cc))))
         )?;
     }
 

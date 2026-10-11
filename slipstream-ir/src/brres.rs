@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{
     CorruptionError, IncorrectFormat, RangeError, SlipstreamError, SlipstreamResult,
-    UnsupportedError,
+    UnsupportedError
 };
 
 use crate::arc::UnknownFile;
@@ -80,7 +80,7 @@ pub fn get_section_count(ty: BFileType, version: u32) -> SlipstreamResult<usize>
                 }
                 .into());
             }
-        },
+        }
     })
 }
 
@@ -89,7 +89,7 @@ struct BrresHeader {
     pub start: u64,
     pub size: u32,
     pub root_offset: u16,
-    pub section_count: u16,
+    pub section_count: u16
 }
 
 impl BrresHeader {
@@ -101,7 +101,7 @@ impl BrresHeader {
             return Err(IncorrectFormat {
                 expected_magic: BRRES_MAGIC.to_vec(),
                 found_magic: magic.to_vec(),
-                location: Some(reader.position()),
+                location: Some(reader.position())
             }
             .into());
         }
@@ -137,7 +137,7 @@ impl BrresHeader {
             start,
             root_offset,
             size,
-            section_count,
+            section_count
         })
     }
 
@@ -169,7 +169,7 @@ pub trait BFile {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RootSection {
     /// Size of the entire BRRES file.
-    pub size: u32,
+    pub size: u32
 }
 
 impl RootSection {
@@ -179,13 +179,13 @@ impl RootSection {
             return Err(IncorrectFormat {
                 expected_magic: Self::MAGIC.to_vec(),
                 found_magic: magic.to_vec(),
-                location: Some(reader.position()),
+                location: Some(reader.position())
             }
             .into());
         }
 
         Ok(RootSection {
-            size: reader.read_u32::<BigEndian>()?,
+            size: reader.read_u32::<BigEndian>()?
         })
     }
 
@@ -220,7 +220,7 @@ pub struct BFileHeader {
     /// This offset is relative to [`header_start`](Self::header_start).
     ///
     /// Note that the offset points to the start of the string data, the length prefix is 4 bytes ahead of it.
-    pub name_offset: i32,
+    pub name_offset: i32
 }
 
 impl BFileHeader {
@@ -246,7 +246,7 @@ impl BFileHeader {
             version: subfile_version,
             brres_offset,
             offsets,
-            name_offset,
+            name_offset
         })
     }
 
@@ -290,7 +290,7 @@ pub enum BFileType {
     /// Character animations controlling the bones of a mesh.
     Chr0,
     Pat0,
-    Tex0,
+    Tex0
 }
 
 #[tracing::instrument(skip_all, fields(name))]
@@ -298,7 +298,7 @@ fn deserialize_bfile(
     reader: &mut RefCursor<[u8]>,
     parent_id: IrNodeKey,
     arena: &IrArena,
-    name: String,
+    name: String
 ) -> SlipstreamResult<IrNodeKey> {
     // Check magic
     let magic = reader.read_u8_array::<4>()?;
@@ -313,7 +313,7 @@ fn deserialize_bfile(
                 label: String::from("<unimplemented>"),
                 ty: IrNodeType::Unknown,
                 contents: ContentSlot::eager(Box::new(UnknownFile {
-                    reader: reader.clone(),
+                    reader: reader.clone()
                 })),
                 ..Default::default()
             });
@@ -326,7 +326,7 @@ fn deserialize_bfile(
 fn serialize_bfile(writer: &mut MutCursor, node: &IrNode) -> SlipstreamResult<()> {
     struct BFileVisitor<'a> {
         result: SlipstreamResult<()>,
-        writer: &'a mut MutCursor,
+        writer: &'a mut MutCursor
     }
 
     impl Visitor for BFileVisitor<'_> {
@@ -341,12 +341,12 @@ fn serialize_bfile(writer: &mut MutCursor, node: &IrNode) -> SlipstreamResult<()
 
     let mut visitor = BFileVisitor {
         result: Ok(()),
-        writer,
+        writer
     };
 
     match node.contents.get() {
         Some(c) => c.accept(VisitorContextNode::from(node), &mut visitor),
-        None => todo!("serialize unparsed file"), // this can be transferred straight over rather than deserializing and then serializing
+        None => todo!("serialize unparsed file") // this can be transferred straight over rather than deserializing and then serializing
     };
 
     Ok(())
@@ -360,7 +360,7 @@ fn deserialize_nw4r_subdirectories(
     reader: &mut RefCursor<[u8]>,
     label: String,
     parent_key: IrNodeKey,
-    arena: &IrArena,
+    arena: &IrArena
 ) -> SlipstreamResult<IrNodeKey> {
     let index = IndexGroup::deserialize(reader)?;
 
@@ -389,7 +389,7 @@ fn deserialize_nw4r_subdirectories(
             parent: Some(parent_key),
             children: bfiles,
             ..Default::default()
-        },
+        }
     );
 
     Ok(dir_key)
@@ -407,7 +407,7 @@ fn serialize_nw4r_subdirectories(writer: &mut MutCursor) -> SlipstreamResult<()>
 fn deserialize_nw4r_directories(
     reader: &mut RefCursor<[u8]>,
     parent_key: IrNodeKey,
-    arena: &IrArena,
+    arena: &IrArena
 ) -> SlipstreamResult<Vec<IrNodeKey>> {
     let index = IndexGroup::deserialize(reader)?;
 
@@ -421,7 +421,7 @@ fn deserialize_nw4r_directories(
         tracing::trace!("Deserializing BRRES NW4R directory `{label}`");
 
         section_dirs.push(deserialize_nw4r_subdirectories(
-            reader, label, parent_key, arena,
+            reader, label, parent_key, arena
         )?);
     }
 
@@ -434,7 +434,7 @@ pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
     parent_key: Option<IrNodeKey>,
     arena: &IrArena,
-    label: String,
+    label: String
 ) -> SlipstreamResult<IrNodeKey> {
     let header = BrresHeader::deserialize(reader)?;
     reader.set_position(header.start + header.root_offset as u64); // Skip to root start
@@ -452,7 +452,7 @@ pub fn deserialize(
             parent: parent_key,
             children: brres_subdirectories,
             ..Default::default()
-        },
+        }
     );
 
     Ok(brres_key)

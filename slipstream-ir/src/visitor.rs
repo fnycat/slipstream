@@ -2,7 +2,7 @@ use crate::arc::{ArcDirectory, UnknownFile};
 use crate::chr0;
 use crate::mdl0::{
     self, Bone, ColorBuffer, Definitions, MaterialBuffer, NormalBuffer, PaletteLinks, Polygon, Tev,
-    TextureLinks, UvBuffer, VertexBuffer,
+    TextureLinks, UvBuffer, VertexBuffer
 };
 use crate::node::arena::IrNodeKey;
 use crate::node::node::{IrNode, IrNodeType};
@@ -14,7 +14,7 @@ pub struct VisitorContextNode<'a> {
     pub label: &'a str,
     pub ty: IrNodeType,
     pub key: IrNodeKey,
-    pub children: &'a [IrNodeKey],
+    pub children: &'a [IrNodeKey]
 }
 
 impl<'a> From<&'a IrNode> for VisitorContextNode<'a> {
@@ -24,14 +24,14 @@ impl<'a> From<&'a IrNode> for VisitorContextNode<'a> {
             label: &node.label,
             ty: node.ty,
             key: node.key(),
-            children: &node.children,
+            children: &node.children
         }
     }
 }
 
 pub struct VisitorContext<'a, T> {
     pub meta: VisitorContextNode<'a>,
-    pub content: &'a T,
+    pub content: &'a T
 }
 
 impl<'a, T> VisitorContext<'a, T> {
@@ -39,7 +39,7 @@ impl<'a, T> VisitorContext<'a, T> {
     pub(crate) fn new(node: VisitorContextNode<'a>, content: &'a T) -> Self {
         Self {
             meta: node,
-            content,
+            content
         }
     }
 }
@@ -56,7 +56,7 @@ pub struct VisitorContextNodeMut<'a> {
     pub label: &'a mut String,
     pub ty: IrNodeType,
     pub key: IrNodeKey,
-    pub children: &'a mut [IrNodeKey],
+    pub children: &'a mut [IrNodeKey]
 }
 
 impl<'a> From<&'a mut IrNode> for VisitorContextNodeMut<'a> {
@@ -65,7 +65,7 @@ impl<'a> From<&'a mut IrNode> for VisitorContextNodeMut<'a> {
             key: node.key(),
             label: &mut node.label,
             ty: node.ty,
-            children: &mut node.children,
+            children: &mut node.children
         }
     }
 }
@@ -73,7 +73,7 @@ impl<'a> From<&'a mut IrNode> for VisitorContextNodeMut<'a> {
 /// The contents can be accessed via the deref implementations.
 pub struct VisitorContextMut<'a, T> {
     pub meta: VisitorContextNodeMut<'a>,
-    pub content: &'a mut T,
+    pub content: &'a mut T
 }
 
 impl<'a, T> VisitorContextMut<'a, T> {
@@ -81,7 +81,7 @@ impl<'a, T> VisitorContextMut<'a, T> {
     pub(crate) fn new(node: VisitorContextNodeMut<'a>, content: &'a mut T) -> Self {
         Self {
             meta: node,
-            content,
+            content
         }
     }
 }
@@ -146,7 +146,7 @@ pub trait Visitor {
 
     fn visit_skeletal_animation(
         &mut self,
-        animation: VisitorContext<'_, chr0::SkeletalAnimation>,
+        animation: VisitorContext<'_, chr0::SkeletalAnimation>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -157,7 +157,7 @@ pub trait Visitor {
 
     fn visit_chr0_mut(
         &mut self,
-        animation: VisitorContextMut<'_, chr0::Chr0Root>,
+        animation: VisitorContextMut<'_, chr0::Chr0Root>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -168,7 +168,7 @@ pub trait Visitor {
 
     fn visit_skeletal_animation_mut(
         &mut self,
-        animation: VisitorContextMut<'_, chr0::SkeletalAnimation>,
+        animation: VisitorContextMut<'_, chr0::SkeletalAnimation>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -190,7 +190,7 @@ pub trait Visitor {
 
     fn visit_definitions(
         &mut self,
-        definitions: VisitorContext<'_, Definitions>,
+        definitions: VisitorContext<'_, Definitions>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -289,7 +289,7 @@ pub trait Visitor {
 
     fn visit_definitions_mut(
         &mut self,
-        definitions: VisitorContextMut<'_, Definitions>,
+        definitions: VisitorContextMut<'_, Definitions>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -306,7 +306,7 @@ pub trait Visitor {
     }
     fn visit_vertices_mut(
         &mut self,
-        vertex_buf: VisitorContextMut<'_, VertexBuffer>,
+        vertex_buf: VisitorContextMut<'_, VertexBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -316,7 +316,7 @@ pub trait Visitor {
     }
     fn visit_normals_mut(
         &mut self,
-        normal_buf: VisitorContextMut<'_, NormalBuffer>,
+        normal_buf: VisitorContextMut<'_, NormalBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -326,7 +326,7 @@ pub trait Visitor {
     }
     fn visit_colors_mut(
         &mut self,
-        color_buf: VisitorContextMut<'_, ColorBuffer>,
+        color_buf: VisitorContextMut<'_, ColorBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -350,7 +350,7 @@ pub trait Visitor {
     }
     fn visit_material_mut(
         &mut self,
-        material: VisitorContextMut<'_, MaterialBuffer>,
+        material: VisitorContextMut<'_, MaterialBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -367,7 +367,7 @@ pub trait Visitor {
     }
     fn visit_palette_links_mut(
         &mut self,
-        links: VisitorContextMut<'_, PaletteLinks>,
+        links: VisitorContextMut<'_, PaletteLinks>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -377,7 +377,7 @@ pub trait Visitor {
     }
     fn visit_texture_links_mut(
         &mut self,
-        links: VisitorContextMut<'_, TextureLinks>,
+        links: VisitorContextMut<'_, TextureLinks>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -387,7 +387,7 @@ pub trait Visitor {
     }
     fn visit_unknown_mut(
         &mut self,
-        unknown: VisitorContextMut<'_, UnknownFile>,
+        unknown: VisitorContextMut<'_, UnknownFile>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -421,7 +421,7 @@ pub trait Visitable: Downcast {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()>;
 }
 impl_downcast!(Visitable);

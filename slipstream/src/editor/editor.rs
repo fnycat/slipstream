@@ -1,6 +1,5 @@
-use std::path::Path;
-use std::sync::mpsc;
-use std::{path::PathBuf, sync::Arc};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, mpsc};
 
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::encoding::serialize_node;
@@ -23,7 +22,7 @@ use crate::viewer::ViewerPane;
 
 pub struct Properties {
     pub label: String,
-    pub node_id: IrNodeKey,
+    pub node_id: IrNodeKey
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,26 +30,26 @@ pub enum OpenedFileInfo {
     Native {
         path: PathBuf,
         file_name: String,
-        content: Vec<u8>,
+        content: Vec<u8>
     },
     Web {
         file_name: String,
-        content: Vec<u8>,
-    },
+        content: Vec<u8>
+    }
 }
 
 impl OpenedFileInfo {
     pub fn content(&self) -> &[u8] {
         match self {
             Self::Native { content, .. } => content,
-            Self::Web { content, .. } => content,
+            Self::Web { content, .. } => content
         }
     }
 
     pub fn file_name(&self) -> &str {
         match self {
             Self::Native { file_name, .. } => file_name,
-            Self::Web { file_name, .. } => file_name,
+            Self::Web { file_name, .. } => file_name
         }
     }
 }
@@ -69,14 +68,14 @@ pub struct Editor {
     pub arena: Arc<IrArena>,
 
     pub pane_behavior: PaneBehavior,
-    pub pane_tree: egui_tiles::Tree<Box<dyn Pane>>,
+    pub pane_tree: egui_tiles::Tree<Box<dyn Pane>>
 }
 
 impl Editor {
     pub fn new(
         file_info: OpenedFileInfo,
         cmd_channel: AppCommandChannel,
-        render_state: GraphicsState,
+        render_state: GraphicsState
     ) -> SlipstreamResult<Box<dyn RoutablePage>> {
         let contents = file_info.content();
         let cursor = RefCursor::new(Arc::<[u8]>::from(contents));
@@ -108,7 +107,7 @@ impl Editor {
         let pane_behavior = PaneBehavior {
             receiver: rx,
             sender: tx,
-            focused_pane: None,
+            focused_pane: None
         };
 
         let pane_tree =
@@ -123,7 +122,7 @@ impl Editor {
             file_base_node: root_node,
 
             pane_behavior,
-            pane_tree,
+            pane_tree
         }))
     }
 
@@ -150,7 +149,7 @@ impl Editor {
     /// If no tiles were found at all, this pane will be set as root.
     pub fn on_new_pane_request(
         &mut self,
-        request: RequestNewPane,
+        request: RequestNewPane
     ) -> SlipstreamResult<egui_tiles::TileId> {
         // Check if this pane already exists.
 
@@ -175,16 +174,16 @@ impl Editor {
             RequestNewPane::Inspector { inspected } => InspectorPane::new(
                 self.pane_behavior.sender.clone(),
                 inspected,
-                self.arena.clone(),
+                self.arena.clone()
             ),
             RequestNewPane::Viewer { viewed } => ViewerPane::new(
                 self.pane_behavior.sender.clone(),
                 viewed,
                 self.arena.clone(),
-                self.render_state.clone(),
+                self.render_state.clone()
             )?,
             RequestNewPane::Log => LogPane::new(self.pane_behavior.sender.clone()),
-            RequestNewPane::Debug { ty } => Box::new(ty),
+            RequestNewPane::Debug { ty } => Box::new(ty)
         };
 
         Ok(if let Some(existing_tile) = existing_tile {
@@ -250,7 +249,7 @@ impl Editor {
 
                         self.pane_tree.root = Some(new_pane_id);
                     }
-                },
+                }
             }
 
             new_pane_id
@@ -268,7 +267,7 @@ impl Editor {
                 egui::Frame::new()
                     .fill(ui.visuals().window_fill)
                     .inner_margin(egui::Margin::symmetric(8, 0))
-                    .outer_margin(egui::Margin::ZERO),
+                    .outer_margin(egui::Margin::ZERO)
             )
             .resizable(false)
             .show(ui, |ui| {
@@ -276,7 +275,7 @@ impl Editor {
                 let response = ui.interact(
                     ui.ctx().viewport_rect(),
                     decorations_id,
-                    egui::Sense::click_and_drag(),
+                    egui::Sense::click_and_drag()
                 );
 
                 if response.double_clicked() {
@@ -317,7 +316,7 @@ impl Editor {
                                 self.cmd
                                     .try_route(IntroPage::new(
                                         self.cmd.clone(),
-                                        self.render_state.clone(),
+                                        self.render_state.clone()
                                     ))
                                     .unwrap();
                             }
@@ -340,37 +339,37 @@ impl Editor {
                         let egui::InnerResponse { inner, .. } = ui.menu_button("Debug", |ui| {
                             if ui.button("Widget Inspector").clicked() {
                                 self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::Inspection,
+                                    ty: DebugPane::Inspection
                                 })?;
                             }
 
                             if ui.button("GUI Settings").clicked() {
                                 self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::General,
+                                    ty: DebugPane::General
                                 })?;
                             }
 
                             if ui.button("Style Settings").clicked() {
                                 self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::Style,
+                                    ty: DebugPane::Style
                                 })?;
                             }
 
                             if ui.button("Image Loader Statistics").clicked() {
                                 self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::Loaders,
+                                    ty: DebugPane::Loaders
                                 })?;
                             }
 
                             if ui.button("Memory Statistics").clicked() {
                                 self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::Memory,
+                                    ty: DebugPane::Memory
                                 })?;
                             }
 
                             if ui.button("Texture Statistics").clicked() {
                                 self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::Textures,
+                                    ty: DebugPane::Textures
                                 })?;
                             }
 

@@ -1,18 +1,16 @@
 use byteorder::ReadBytesExt;
 use slipstream_derive::Inspect;
-use slipstream_shared::{
-    cursor::RefCursor,
-    error::{CorruptionError, SlipstreamError, SlipstreamResult},
-    verify,
-};
+use slipstream_shared::cursor::RefCursor;
+use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
+use slipstream_shared::verify;
 
-use crate::{
-    gx::{
-        call::CallDisplayList, draw::DrawOpCode, load_bp::LoadBpOpCode, load_cp::LoadCpOpCode,
-        load_indexed::IndexedLoad, load_xf::LoadXfOpCode,
-    },
-    mdl0::GxVertexDeclaration,
-};
+use crate::gx::call::CallDisplayList;
+use crate::gx::draw::DrawOpCode;
+use crate::gx::load_bp::LoadBpOpCode;
+use crate::gx::load_cp::LoadCpOpCode;
+use crate::gx::load_indexed::IndexedLoad;
+use crate::gx::load_xf::LoadXfOpCode;
+use crate::mdl0::GxVertexDeclaration;
 
 pub mod call;
 pub mod draw;
@@ -58,7 +56,7 @@ pub enum GxOpCodeId {
     /// Draw line strip.
     DrawLineStrip = 0xb0,
     /// Draw points.
-    DrawPoints = 0xb8,
+    DrawPoints = 0xb8
 }
 
 impl TryFrom<u8> for GxOpCodeId {
@@ -116,18 +114,18 @@ pub enum GxOpCode {
     DrawLines(DrawOpCode),
     DrawLineStrip(DrawOpCode),
     DrawPoints(DrawOpCode),
-    Unknown,
+    Unknown
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GxBytecode {
-    pub commands: Vec<GxOpCode>,
+    pub commands: Vec<GxOpCode>
 }
 
 impl GxBytecode {
     pub fn deserialize_vertex_declaration(
         reader: &mut RefCursor<[u8]>,
-        section_end: u64,
+        section_end: u64
     ) -> SlipstreamResult<Self> {
         let mut commands = Vec::new();
         while reader.position() < section_end {
@@ -140,7 +138,7 @@ impl GxBytecode {
                 _ => {
                     return Err(CorruptionError {
                         reason: format!("invalid vertex declaration GX opcode: {opcode:?}"),
-                        location: Some(reader.position()),
+                        location: Some(reader.position())
                     }
                     .into());
                 }
@@ -160,7 +158,7 @@ impl GxBytecode {
     pub fn deserialize_vertex_data(
         reader: &mut RefCursor<[u8]>,
         vertex_decl: &GxVertexDeclaration,
-        section_end: u64,
+        section_end: u64
     ) -> SlipstreamResult<Self> {
         let mut commands = Vec::new();
         while reader.position() < section_end {
@@ -206,7 +204,7 @@ impl GxBytecode {
                 _ => {
                     return Err(CorruptionError {
                         reason: format!("invalid vertex data GX opcode: {opcode:?}"),
-                        location: Some(reader.position()),
+                        location: Some(reader.position())
                     }
                     .into());
                 }
@@ -236,7 +234,7 @@ impl GxBytecode {
                 _ => {
                     return Err(CorruptionError {
                         reason: format!("invalid TEV bytecode opcode ID: {opcode:?}"),
-                        location: Some(reader.position()),
+                        location: Some(reader.position())
                     }
                     .into());
                 }

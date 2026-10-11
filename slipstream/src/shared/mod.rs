@@ -12,5 +12,5 @@ pub struct GraphicsState {
     pub instance: wgpu::Instance,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
-    pub renderer: Arc<RwLock<egui_wgpu::Renderer>>,
+    pub renderer: Arc<RwLock<egui_wgpu::Renderer>>
 }

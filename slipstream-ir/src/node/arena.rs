@@ -1,27 +1,17 @@
 use parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock};
-use slipstream_shared::{
-    SlipstreamError, SlipstreamResult,
-    error::InvalidInputError,
-    inspect::{Changes, FieldConfig, Inspect},
-};
+use slipstream_shared::error::InvalidInputError;
+use slipstream_shared::inspect::{Changes, FieldConfig, Inspect};
+use slipstream_shared::{SlipstreamError, SlipstreamResult};
 
-use crate::{
-    node::{
-        guard::ContentReadGuard,
-        node::{ContentSlot, IrNode, IrNodeType},
-    },
-    visitor::{Visitor, VisitorContextNode},
-};
+use crate::node::guard::ContentReadGuard;
+use crate::node::node::{ContentSlot, IrNode, IrNodeType};
+use crate::visitor::{Visitor, VisitorContextNode};
 
-use std::{
-    collections::HashMap,
-    num::NonZeroU64,
-    ops::ControlFlow,
-    sync::{
-        Arc,
-        atomic::{AtomicU64, Ordering},
-    },
-};
+use std::collections::HashMap;
+use std::num::NonZeroU64;
+use std::ops::ControlFlow;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// A key that can be used to refer to a node.
 ///
@@ -55,7 +45,7 @@ pub struct IrNodeDescriptor {
     pub ty: IrNodeType,
     pub parent: Option<IrNodeKey>,
     pub children: Vec<IrNodeKey>,
-    pub contents: ContentSlot,
+    pub contents: ContentSlot
 }
 
 impl Default for IrNodeDescriptor {
@@ -65,21 +55,21 @@ impl Default for IrNodeDescriptor {
             ty: IrNodeType::Unknown,
             parent: None,
             children: Vec::new(),
-            contents: const { ContentSlot::none() },
+            contents: const { ContentSlot::none() }
         }
     }
 }
 
 pub struct IrArena {
     counter: AtomicU64,
-    map: RwLock<HashMap<IrNodeKey, IrNodeRef>>,
+    map: RwLock<HashMap<IrNodeKey, IrNodeRef>>
 }
 
 impl IrArena {
     pub fn new() -> Self {
         Self {
             counter: AtomicU64::new(1),
-            map: RwLock::new(HashMap::new()),
+            map: RwLock::new(HashMap::new())
         }
     }
 
@@ -90,7 +80,7 @@ impl IrArena {
     pub fn reserve_key(&self) -> IrNodeKey {
         IrNodeKey(
             NonZeroU64::new(self.counter.fetch_add(1, Ordering::Relaxed))
-                .expect("arena counter was set to 0"),
+                .expect("arena counter was set to 0")
         )
     }
 
@@ -104,8 +94,8 @@ impl IrArena {
                 parent: desc.parent,
                 key,
                 children: desc.children,
-                contents: desc.contents,
-            })),
+                contents: desc.contents
+            }))
         );
     }
 
@@ -121,8 +111,8 @@ impl IrArena {
                 parent: desc.parent,
                 key,
                 children: desc.children,
-                contents: desc.contents,
-            })),
+                contents: desc.contents
+            }))
         );
 
         key
@@ -143,7 +133,7 @@ impl IrArena {
     /// Loads the given node and runs `inspect_fn` with a shared reference to it.
     pub fn inspect<T, F>(&self, key: IrNodeKey, inspect_fn: F) -> Option<T>
     where
-        F: FnOnce(&IrNode) -> T,
+        F: FnOnce(&IrNode) -> T
     {
         let guard = self.map.read();
         guard.get(&key).map(|lock| {
@@ -155,7 +145,7 @@ impl IrArena {
     /// Loads the given node and runs `update_fn` with a mutable reference to it.
     pub fn update<T, F>(&self, key: IrNodeKey, update_fn: F) -> Option<T>
     where
-        F: FnOnce(&mut IrNode) -> T,
+        F: FnOnce(&mut IrNode) -> T
     {
         let mut guard = self.map.write();
         guard.get_mut(&key).map(|lock| {
@@ -184,7 +174,7 @@ impl IrArena {
         &self,
         root_key: IrNodeKey,
         visit_root: bool,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> SlipstreamResult<()> {
         let root = self
             .map
@@ -210,7 +200,7 @@ impl IrArena {
                 .inspect(child, |child| {
                     if let Some(contents) = child.contents.get_or_try_init()? {
                         return Ok::<_, SlipstreamError>(
-                            contents.accept(VisitorContextNode::from(child), visitor),
+                            contents.accept(VisitorContextNode::from(child), visitor)
                         );
                     }
 
@@ -242,7 +232,7 @@ impl IrArena {
     pub fn walk_children(
         &self,
         root_key: IrNodeKey,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> SlipstreamResult<()> {
         self.walk_inner(root_key, false, visitor)
     }

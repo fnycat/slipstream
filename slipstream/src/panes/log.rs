@@ -1,14 +1,8 @@
-use crate::panes::{PaneAction, PaneId};
-use crate::{
-    panes::{ContentSignature, Pane},
-    shared::mem_logger::GLOBAL_MEM_LOGS,
-};
+use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
+use crate::shared::mem_logger::GLOBAL_MEM_LOGS;
 use slipstream_shared::{SlipstreamError, SlipstreamResult};
-use std::sync::mpsc;
-use std::{
-    hash::{DefaultHasher, Hash, Hasher},
-    sync::LazyLock,
-};
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::sync::{LazyLock, mpsc};
 
 // These are the colours from the Campbell theme. Except that the trace level is white instead of purple.
 const LEVEL_COLORS: &[egui::Color32] = &[
@@ -16,11 +10,11 @@ const LEVEL_COLORS: &[egui::Color32] = &[
     egui::Color32::from_rgba_unmultiplied_const(249, 241, 165, 255), // Warn
     egui::Color32::from_rgba_unmultiplied_const(22, 198, 12, 255), // Info
     egui::Color32::from_rgba_unmultiplied_const(97, 214, 214, 255), // Debug
-    egui::Color32::from_rgba_unmultiplied_const(242, 242, 242, 255), // Trace
+    egui::Color32::from_rgba_unmultiplied_const(242, 242, 242, 255)  // Trace
 ];
 
 pub struct LogPane {
-    cmd_sender: mpsc::Sender<PaneAction>,
+    cmd_sender: mpsc::Sender<PaneAction>
 }
 
 impl LogPane {
@@ -42,7 +36,7 @@ impl Pane for LogPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        is_focused: bool,
+        is_focused: bool
     ) -> egui_tiles::UiResponse {
         let row_height = 15.0;
         let logs = GLOBAL_MEM_LOGS.lock();
@@ -63,7 +57,7 @@ impl Pane for LogPane {
                             tracing::Level::WARN => LEVEL_COLORS[1],
                             tracing::Level::INFO => LEVEL_COLORS[2],
                             tracing::Level::DEBUG => LEVEL_COLORS[3],
-                            tracing::Level::TRACE => LEVEL_COLORS[4],
+                            tracing::Level::TRACE => LEVEL_COLORS[4]
                         };
 
                         ui.colored_label(label_color, log.verbosity.as_str());

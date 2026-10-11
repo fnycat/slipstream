@@ -1,4 +1,5 @@
-use futures::{SinkExt, channel::mpsc};
+use futures::SinkExt;
+use futures::channel::mpsc;
 use slipstream_shared::error::SlipstreamResult;
 
 use crate::pages::RoutablePage;
@@ -7,14 +8,14 @@ use crate::pages::RoutablePage;
 pub enum AppCommand {
     /// Changes the currently displayed page to the given one.
     Route(Box<dyn RoutablePage>),
-    CenterWindow,
+    CenterWindow
 }
 
 /// A message channel used to make structural changes to the app, that cannot be performed
 /// while drawing UI.
 #[derive(Clone)]
 pub struct AppCommandChannel {
-    sender: mpsc::Sender<AppCommand>,
+    sender: mpsc::Sender<AppCommand>
 }
 
 impl AppCommandChannel {

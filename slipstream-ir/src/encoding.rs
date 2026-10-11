@@ -1,10 +1,8 @@
 use std::io::Read;
 
 use byteorder::ReadBytesExt;
-use slipstream_shared::{
-    cursor::RefCursor,
-    error::{CorruptionError, SlipstreamError, SlipstreamResult},
-};
+use slipstream_shared::cursor::RefCursor;
+use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 
 macro_rules! impl_byteorder_arrays {
     ($($ty: ty),*) => {

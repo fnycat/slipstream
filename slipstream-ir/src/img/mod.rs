@@ -3,9 +3,11 @@ mod tpl;
 
 use byteorder::{BigEndian, ReadBytesExt};
 pub use cmpr::*;
-use slipstream_shared::{RefCursor, SlipstreamResult, error::InvalidInputError};
+use slipstream_shared::error::InvalidInputError;
+use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::{encoding::ReadArrayExt, mdl0::ColorFormat};
+use crate::encoding::ReadArrayExt;
+use crate::mdl0::ColorFormat;
 
 /// Converts a 16-byte integer to an opaque RGB565 colour.
 ///
@@ -25,7 +27,7 @@ pub fn to_rgb565(short: u16) -> glam::U8Vec4 {
 
 pub fn deserialize_color(
     reader: &mut RefCursor<[u8]>,
-    format: ColorFormat,
+    format: ColorFormat
 ) -> SlipstreamResult<glam::U8Vec4> {
     Ok(match format {
         ColorFormat::Rgb565 => {
@@ -87,7 +89,7 @@ pub fn deserialize_color(
         ColorFormat::Invalid => {
             return Err(InvalidInputError {
                 reason: String::from("cannot read color of invalid format"),
-                location: Some(reader.position()),
+                location: Some(reader.position())
             }
             .into());
         }

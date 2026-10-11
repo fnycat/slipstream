@@ -7,7 +7,7 @@ impl<T> UncheckedOptionExt<T> for Option<T> {
     unsafe fn unchecked_unwrap(self) -> T {
         match self {
             Some(x) => x,
-            None => unsafe { unreachable() },
+            None => unsafe { unreachable() }
         }
     }
 }

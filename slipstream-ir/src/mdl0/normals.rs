@@ -15,7 +15,7 @@ use crate::node::node::{IrNode, IrNodeType};
 use crate::util::{VectorDivisor, VertexFormat, deserialize_vector, deserialize_vector_data};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut,
+    VisitorContextNodeMut
 };
 
 const COMPONENTS_NORMAL: u32 = 0x0;
@@ -39,7 +39,7 @@ pub enum NormalFormat {
     /// Fallback value for `bitenum`, this variant should never be used.
     #[inspect(ignore)]
     #[fallback]
-    Invalid,
+    Invalid
 }
 
 impl TryFrom<u32> for NormalFormat {
@@ -88,7 +88,7 @@ pub enum NormalBufType {
     /// Only the normal itself is included in the buffer.
     Normal,
     /// All three (normal/binormal/tangent) vectors are included in the buffer.
-    All,
+    All
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -96,14 +96,14 @@ pub enum NormalBufData {
     /// Only the normal.
     Single(Vec<glam::Vec3>),
     /// Includes all of the normal, bi-normal and tangent
-    Triple(Vec<[glam::Vec3; 3]>),
+    Triple(Vec<[glam::Vec3; 3]>)
 }
 
 impl NormalBufData {
     pub fn ty(&self) -> NormalBufType {
         match self {
             Self::Single(_) => NormalBufType::Normal,
-            Self::Triple(_) => NormalBufType::All,
+            Self::Triple(_) => NormalBufType::All
         }
     }
 
@@ -115,7 +115,7 @@ impl NormalBufData {
     pub fn len(&self) -> usize {
         match self {
             Self::Single(x) => x.len(),
-            Self::Triple(x) => x.len(),
+            Self::Triple(x) => x.len()
         }
     }
 }
@@ -145,14 +145,14 @@ pub struct NormalBuffer {
     // pub stride: u8,
     /// The normal data.
     #[inspect(ignore)]
-    pub normals: NormalBufData,
+    pub normals: NormalBufData
 }
 
 impl NormalBuffer {
     pub fn get_normal(&self, index: usize) -> Option<glam::Vec3> {
         match &self.normals {
             NormalBufData::Single(x) => x.get(index).copied(),
-            NormalBufData::Triple(x) => x.get(index).map(|x| x[0]),
+            NormalBufData::Triple(x) => x.get(index).map(|x| x[0])
         }
     }
 }
@@ -165,7 +165,7 @@ impl Visitable for NormalBuffer {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
         visitor.visit_normals_mut(VisitorContextMut::new(node, self))
     }
@@ -192,7 +192,7 @@ impl DeserializeContents for NormalBuffer {
                 reader,
                 normal_count as usize,
                 VertexFormat::from(format),
-                VectorDivisor::Custom(divisor),
+                VectorDivisor::Custom(divisor)
             )?),
             COMPONENTS_ALL => {
                 // custom implementation because it doesn't work with the existing vector functions.
@@ -202,7 +202,7 @@ impl DeserializeContents for NormalBuffer {
                     let data = deserialize_vector::<9>(
                         reader,
                         VertexFormat::from(format),
-                        VectorDivisor::Custom(divisor),
+                        VectorDivisor::Custom(divisor)
                     )?;
                     let normal = glam::Vec3::from_slice(&data[..3]);
                     let tangent = glam::Vec3::from_slice(&data[3..6]);
@@ -216,7 +216,7 @@ impl DeserializeContents for NormalBuffer {
                 reader,
                 normal_count as usize,
                 VertexFormat::from(format),
-                VectorDivisor::Custom(divisor),
+                VectorDivisor::Custom(divisor)
             )?),
             v => {
                 return Err(CorruptionError {
@@ -232,7 +232,7 @@ impl DeserializeContents for NormalBuffer {
             header,
             format,
             divisor,
-            normals,
+            normals
         })
     }
 }

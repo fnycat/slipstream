@@ -1,13 +1,11 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_shared::{
-    cursor::{MutCursor, RefCursor, SizeEstimate},
-    error::SlipstreamResult,
-};
+use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
+use slipstream_shared::error::SlipstreamResult;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CallDisplayList {
     pub address: u32,
-    pub size: u32,
+    pub size: u32
 }
 
 impl CallDisplayList {

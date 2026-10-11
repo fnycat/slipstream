@@ -1,11 +1,12 @@
-use std::{fs, io, io::Read, path};
+use std::io::Read;
+use std::{fs, io, path};
 
 pub fn load_shader(device: &wgpu::Device, name: &str) -> io::Result<wgpu::ShaderModule> {
     let shader_code = load_shader_module(name)?;
 
     Ok(device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some(name),
-        source: wgpu::ShaderSource::Wgsl(shader_code.into()),
+        source: wgpu::ShaderSource::Wgsl(shader_code.into())
     }))
 }
 

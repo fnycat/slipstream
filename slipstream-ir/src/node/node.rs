@@ -12,7 +12,7 @@ pub enum ContentSlot {
     ///
     /// This should also be used when the node has no content.
     Eager(Option<Box<dyn Visitable + Send + Sync>>),
-    Lazy(LazyContent),
+    Lazy(LazyContent)
 }
 
 impl ContentSlot {
@@ -31,7 +31,7 @@ impl ContentSlot {
     pub fn is_parsed(&self) -> bool {
         match self {
             Self::Eager(_) => true,
-            Self::Lazy(lock) => LazyContent::initialized(lock),
+            Self::Lazy(lock) => LazyContent::initialized(lock)
         }
     }
 
@@ -40,7 +40,7 @@ impl ContentSlot {
         match self {
             Self::Eager(Some(x)) => Some(x.as_ref()),
             Self::Eager(None) => None,
-            Self::Lazy(lock) => LazyContent::get(lock),
+            Self::Lazy(lock) => LazyContent::get(lock)
         }
     }
 
@@ -49,7 +49,7 @@ impl ContentSlot {
         match self {
             Self::Eager(Some(x)) => Some(x.as_mut()),
             Self::Eager(None) => None,
-            Self::Lazy(lock) => LazyContent::get_mut(lock),
+            Self::Lazy(lock) => LazyContent::get_mut(lock)
         }
     }
 
@@ -58,17 +58,17 @@ impl ContentSlot {
         Ok(match self {
             Self::Eager(Some(x)) => Some(x.as_ref()),
             Self::Eager(None) => None,
-            Self::Lazy(lock) => Some(LazyContent::try_force(lock)?),
+            Self::Lazy(lock) => Some(LazyContent::try_force(lock)?)
         })
     }
 
     pub fn get_or_try_init_mut(
-        &mut self,
+        &mut self
     ) -> SlipstreamResult<Option<&mut (dyn Visitable + Send + Sync)>> {
         Ok(match self {
             Self::Eager(Some(x)) => Some(x.as_mut()),
             Self::Eager(None) => None,
-            Self::Lazy(lock) => Some(LazyContent::try_force_mut(lock)?),
+            Self::Lazy(lock) => Some(LazyContent::try_force_mut(lock)?)
         })
     }
 }
@@ -99,7 +99,7 @@ pub struct IrNode {
     /// This value may be lazily evaluated, i.e. it may not be known yet.
     /// By accessing this value, it will be evaluated.
     pub children: Vec<IrNodeKey>,
-    pub contents: ContentSlot,
+    pub contents: ContentSlot
 }
 
 impl IrNode {
@@ -134,7 +134,7 @@ pub enum IrNodeType {
         /// Whether this directory is the root of a file.
         is_root: bool,
         /// Whether the directory is empty. If it is, it will be inactive and have a special icon.
-        empty: bool,
+        empty: bool
     },
     /// A BRRES file.
     BrresFile,
@@ -147,7 +147,7 @@ pub enum IrNodeType {
     /// The bone section of an MDL0 file.
     Bone {
         /// Whether this is the end bone of a limb. This makes sure it is not displayed as a folder.
-        end: bool,
+        end: bool
     },
     /// A vertex buffer in an MDL0 file.
     VertexBuffer,
@@ -170,5 +170,5 @@ pub enum IrNodeType {
     /// A TEX0 texture
     Texture,
     /// An unknown file format. The object simply stores the raw bytes of the file.
-    Unknown,
+    Unknown
 }

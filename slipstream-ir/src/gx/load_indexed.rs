@@ -1,9 +1,7 @@
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_shared::{
-    cursor::{MutCursor, RefCursor, SizeEstimate},
-    error::SlipstreamResult,
-};
+use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
+use slipstream_shared::error::SlipstreamResult;
 
 /// Loads a matrix from the table and puts it into the given slot.
 #[bitfield(u32)]
@@ -19,7 +17,7 @@ pub struct IndexedLoad {
     pub transfer_count: u8,
     /// The matrix slot to pull the data from
     #[bits(16)]
-    pub index: u16,
+    pub index: u16
 }
 
 impl IndexedLoad {

@@ -19,8 +19,8 @@ macro_rules! assert_u8 {
                         $msg,
                         stringify!($pattern)
                     ),
-                    location: Some($cursor.position()),
-                },
+                    location: Some($cursor.position())
+                }
             ));
         }
 

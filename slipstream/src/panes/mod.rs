@@ -1,7 +1,5 @@
-use std::{
-    hash::{DefaultHasher, Hash, Hasher},
-    sync::mpsc,
-};
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::sync::mpsc;
 
 use egui_phosphor::thin::X;
 use slipstream_ir::node::arena::IrNodeKey;
@@ -54,7 +52,7 @@ pub trait Pane: Send + Sync {
                         .interact(
                             ui.available_rect_before_wrap(),
                             ui.id().with("pane_header"),
-                            egui::Sense::drag(),
+                            egui::Sense::drag()
                         )
                         .drag_started()
                     {
@@ -64,7 +62,7 @@ pub trait Pane: Send + Sync {
                     let label = egui::Label::new(
                         egui::RichText::new(self.title())
                             .heading()
-                            .size(PANE_TITLE_SIZE),
+                            .size(PANE_TITLE_SIZE)
                     )
                     .selectable(false);
 
@@ -89,7 +87,7 @@ pub trait Pane: Send + Sync {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
-        is_focused: bool,
+        is_focused: bool
     ) -> egui_tiles::UiResponse {
         let mut response = self.draw_pane_header(ui, is_focused);
 
@@ -111,7 +109,7 @@ pub trait Pane: Send + Sync {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
-        is_focused: bool,
+        is_focused: bool
     ) -> egui_tiles::UiResponse;
 
     fn highlight(&self, _painter: &mut egui::Painter) {
@@ -125,7 +123,7 @@ pub enum PaneId {
     Inspector,
     Viewer,
     Logs,
-    Debug,
+    Debug
 }
 
 /// Requests to the tile manager to open a new pane.
@@ -140,18 +138,18 @@ pub enum RequestNewPane {
     ///
     /// [`Outliner`]: outliner::OutlinerPane.
     Outliner {
-        root: IrNodeKey,
+        root: IrNodeKey
     },
     Inspector {
-        inspected: IrNodeKey,
+        inspected: IrNodeKey
     },
     Viewer {
-        viewed: Option<IrNodeKey>,
+        viewed: Option<IrNodeKey>
     },
     Log,
     Debug {
-        ty: DebugPane,
-    },
+        ty: DebugPane
+    }
 }
 
 impl RequestNewPane {
@@ -161,7 +159,7 @@ impl RequestNewPane {
             Self::Inspector { .. } => PaneId::Inspector,
             Self::Viewer { .. } => PaneId::Viewer,
             Self::Log => PaneId::Logs,
-            Self::Debug { .. } => PaneId::Debug,
+            Self::Debug { .. } => PaneId::Debug
         }
     }
 
@@ -185,7 +183,7 @@ impl RequestNewPane {
                 viewed.hash(&mut hasher);
             }
             RequestNewPane::Log => {}
-            RequestNewPane::Debug { ty } => ty.hash(&mut hasher),
+            RequestNewPane::Debug { ty } => ty.hash(&mut hasher)
         }
 
         ContentSignature::from(hasher.finish())
@@ -195,7 +193,7 @@ impl RequestNewPane {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RequestPaneEdit {
     pub tile_id: egui_tiles::TileId,
-    pub new_node: IrNodeKey,
+    pub new_node: IrNodeKey
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -209,14 +207,14 @@ pub enum PaneAction {
     /// If this specific pane already exists, it will become active instead.
     RequestNewPane(RequestNewPane),
     /// Removes the pane with the given tile ID.
-    RemoveTile(egui_tiles::TileId),
+    RemoveTile(egui_tiles::TileId)
 }
 
 pub struct PaneBehavior {
     pub sender: mpsc::Sender<PaneAction>,
     pub receiver: mpsc::Receiver<PaneAction>,
 
-    pub focused_pane: Option<egui_tiles::TileId>,
+    pub focused_pane: Option<egui_tiles::TileId>
 }
 
 impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
@@ -228,7 +226,7 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
     fn is_tab_closable(
         &self,
         _tiles: &egui_tiles::Tiles<Box<dyn Pane>>,
-        _tile_id: egui_tiles::TileId,
+        _tile_id: egui_tiles::TileId
     ) -> bool {
         true
     }
@@ -243,7 +241,7 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
         visuals: &egui::Visuals,
         painter: &egui::Painter,
         parent_rect: Option<egui::Rect>,
-        preview_rect: egui::Rect,
+        preview_rect: egui::Rect
     ) {
         let preview_stroke = self.drag_preview_stroke(visuals);
         let preview_color = self.drag_preview_color(visuals);
@@ -257,7 +255,7 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
             0.0,
             preview_color,
             preview_stroke,
-            egui::StrokeKind::Inside,
+            egui::StrokeKind::Inside
         );
     }
 
@@ -265,7 +263,7 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
-        pane: &mut Box<dyn Pane>,
+        pane: &mut Box<dyn Pane>
     ) -> egui_tiles::UiResponse {
         let pane_rect = ui.cursor();
         let clicked = ui.input(|i| {

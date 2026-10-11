@@ -1,13 +1,14 @@
-use crate::{SlipstreamResult, error::AssertFailed, verify};
+use crate::error::AssertFailed;
+use crate::{SlipstreamResult, verify};
 
 pub struct HeaderIcons {
     pub open: egui::RichText,
-    pub closed: egui::RichText,
+    pub closed: egui::RichText
 }
 
 pub enum DropdownType {
     Regular,
-    MenuButton,
+    MenuButton
 }
 
 pub struct CollapseDescriptor<B, C> {
@@ -19,13 +20,13 @@ pub struct CollapseDescriptor<B, C> {
     indent: bool,
 
     on_body: B,
-    on_ctx_menu: Option<C>,
+    on_ctx_menu: Option<C>
 }
 
 // Set `C` to a default function pointer so we don't have to explicitly name the type.
 impl<B> CollapseDescriptor<B, fn(&mut egui::Ui)>
 where
-    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
+    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>
 {
     pub fn new(
         state_id: egui::Id,
@@ -34,7 +35,7 @@ where
         header_alignment: DropdownType,
         default_open: bool,
         indent: bool,
-        on_body: B,
+        on_body: B
     ) -> Self {
         Self {
             state_id,
@@ -44,7 +45,7 @@ where
             default_open,
             indent,
             on_body,
-            on_ctx_menu: None,
+            on_ctx_menu: None
         }
     }
 }
@@ -52,7 +53,7 @@ where
 impl<B, C> CollapseDescriptor<B, C>
 where
     B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
-    C: FnMut(&mut egui::Ui),
+    C: FnMut(&mut egui::Ui)
 {
     pub fn with_context_menu(
         state_id: egui::Id,
@@ -62,7 +63,7 @@ where
         default_open: bool,
         indent: bool,
         on_body: B,
-        on_ctx_menu: C,
+        on_ctx_menu: C
     ) -> Self {
         Self {
             state_id,
@@ -72,7 +73,7 @@ where
             default_open,
             indent,
             on_body,
-            on_ctx_menu: Some(on_ctx_menu),
+            on_ctx_menu: Some(on_ctx_menu)
         }
     }
 }
@@ -81,13 +82,13 @@ where
 fn draw_header_icon<'a, 'r>(
     ui: &'a mut egui::Ui,
     icon: egui::RichText,
-    response: &'r egui::Response,
+    response: &'r egui::Response
 ) {
     let galley = egui::WidgetText::from(icon).into_galley(
         ui,
         Some(egui::TextWrapMode::Extend),
         f32::INFINITY,
-        egui::TextStyle::Body,
+        egui::TextStyle::Body
     );
 
     let center_pos = response.rect.center() - (galley.size() * 0.5);
@@ -98,16 +99,16 @@ fn draw_header_icon<'a, 'r>(
 
 pub fn draw_collapsing_state<'a, 'b, B, C>(
     mut desc: CollapseDescriptor<B, C>,
-    ui: &'a mut egui::Ui,
+    ui: &'a mut egui::Ui
 ) -> SlipstreamResult<()>
 where
     B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
-    C: FnMut(&mut egui::Ui),
+    C: FnMut(&mut egui::Ui)
 {
     let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
         desc.state_id,
-        desc.default_open,
+        desc.default_open
     );
 
     // Determines the rect that should be coloured when the node is hovered over.
@@ -118,7 +119,7 @@ where
 
     let header_rect = egui::Rect::from_min_size(
         ui.cursor().min.max(egui::Pos2::ZERO),
-        egui::vec2(row_width, row_height),
+        egui::vec2(row_width, row_height)
     );
 
     assert!(
@@ -129,7 +130,7 @@ where
     let row_response = ui.interact(
         header_rect,
         desc.state_id.with("interact"),
-        egui::Sense::click(),
+        egui::Sense::click()
     );
 
     // If the cursor hovers over the node, fill the background with a different colour.
@@ -137,7 +138,7 @@ where
         ui.painter().rect_filled(
             header_rect,
             ui.visuals().widgets.hovered.corner_radius,
-            ui.visuals().widgets.hovered.bg_fill,
+            ui.visuals().widgets.hovered.bg_fill
         );
     }
 

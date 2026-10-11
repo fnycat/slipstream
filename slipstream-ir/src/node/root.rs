@@ -1,22 +1,18 @@
 use std::sync::Arc;
 
-use slipstream_shared::{
-    cursor::RefCursor,
-    error::{SlipstreamResult, UnsupportedError},
-};
+use slipstream_shared::cursor::RefCursor;
+use slipstream_shared::error::{SlipstreamResult, UnsupportedError};
 
-use crate::{
-    arc, brres,
-    node::arena::{IrArena, IrNodeKey},
-    yaz0::{self, YAZ0_MAGIC},
-};
+use crate::node::arena::{IrArena, IrNodeKey};
+use crate::yaz0::{self, YAZ0_MAGIC};
+use crate::{arc, brres};
 /// Deserializes a possibly YAZ0-compressed file.
 ///
 /// After decompressing, this forwards the call to [`deserialize_unknown_root`]
 pub fn deserialize_maybe_compressed(
     mut reader: RefCursor<[u8]>,
     arena: &IrArena,
-    name: String,
+    name: String
 ) -> SlipstreamResult<IrNodeKey> {
     // Is this file compressed?
     if reader.remaining()[..4] == YAZ0_MAGIC {
@@ -35,7 +31,7 @@ pub fn deserialize_maybe_compressed(
 pub fn deserialize_unknown_root(
     reader: &mut RefCursor<[u8]>,
     arena: &IrArena,
-    name: String,
+    name: String
 ) -> SlipstreamResult<IrNodeKey> {
     let magic: &[u8; 4] = reader.remaining()[..4]
         .try_into()
@@ -50,7 +46,7 @@ pub fn deserialize_unknown_root(
                     "unknown or unsupported file magic: `{}`",
                     String::from_utf8_lossy(magic)
                 ),
-                location: Some(reader.position()),
+                location: Some(reader.position())
             }
             .into());
         }

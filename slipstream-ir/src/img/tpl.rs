@@ -1,8 +1,10 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_derive::{Inspect, try_from};
-use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult, error::IncorrectFormat};
+use slipstream_shared::error::IncorrectFormat;
+use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult};
 
-use crate::{encoding::ReadArrayExt, node::arena::IrNodeKey};
+use crate::encoding::ReadArrayExt;
+use crate::node::arena::IrNodeKey;
 
 pub const TPL_MAGIC: [u8; 4] = [0x00, 0x20, 0xAF, 0x30];
 
@@ -14,7 +16,7 @@ pub struct TplHeader {
     #[inspect(tooltip = "Number of images in this file.")]
     pub image_count: u32,
     #[inspect(tooltip = "Offset in bytes to the image table.")]
-    pub table_offset: i32,
+    pub table_offset: i32
 }
 
 impl TplHeader {
@@ -36,7 +38,7 @@ impl TplHeader {
             return Err(IncorrectFormat {
                 expected_magic: TPL_MAGIC.into(),
                 found_magic: magic.into(),
-                location: Some(reader.position()),
+                location: Some(reader.position())
             }
             .into());
         }
@@ -47,7 +49,7 @@ impl TplHeader {
         Ok(Self {
             header_start,
             image_count,
-            table_offset,
+            table_offset
         })
     }
 }
@@ -57,7 +59,7 @@ impl TplHeader {
 pub enum PaletteFormat {
     Ia8 = 0x00,
     Rgb565 = 0x01,
-    Rgb5A3 = 0x02,
+    Rgb5A3 = 0x02
 }
 
 impl PaletteFormat {

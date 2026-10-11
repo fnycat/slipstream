@@ -1,20 +1,17 @@
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt};
-use slipstream_shared::{RefCursor, SlipstreamResult, error::UnsupportedError, try_unwrap};
+use slipstream_shared::error::UnsupportedError;
+use slipstream_shared::{RefCursor, SlipstreamResult, try_unwrap};
 
-use crate::{
-    brres::{BFileHeader, BFileType},
-    encoding::Deserialize,
-    img::{CmprDescriptor, CmprImage},
-    node::{
-        arena::{IrArena, IrNodeDescriptor, IrNodeKey},
-        node::{ContentSlot, IrNodeType},
-    },
-    visitor::{
-        Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-        VisitorContextNodeMut,
-    },
+use crate::brres::{BFileHeader, BFileType};
+use crate::encoding::Deserialize;
+use crate::img::{CmprDescriptor, CmprImage};
+use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
+use crate::node::node::{ContentSlot, IrNodeType};
+use crate::visitor::{
+    Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
+    VisitorContextNodeMut
 };
 
 pub const TEX0_MAGIC: [u8; 4] = [0x54, 0x45, 0x58, 0x30]; // "TEX0"
@@ -34,7 +31,7 @@ pub enum TextureFormat {
     C8 = 0x09,
     C14x2 = 0x0a,
     // also no 0x0b, 0x0c and 0x0d
-    Cmpr = 0x0e,
+    Cmpr = 0x0e
 }
 
 impl Deserialize for TextureFormat {
@@ -48,7 +45,7 @@ impl Deserialize for TextureFormat {
 pub struct Texture {
     pub size: glam::U16Vec2,
     pub format: TextureFormat,
-    pub mipmap_count: u32,
+    pub mipmap_count: u32
 }
 
 impl Visitable for Texture {
@@ -59,7 +56,7 @@ impl Visitable for Texture {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> std::ops::ControlFlow<()> {
         visitor.visit_tex0_mut(VisitorContextMut::new(node, self))
     }
@@ -70,7 +67,7 @@ pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
     parent_id: IrNodeKey,
     arena: &IrArena,
-    name: String,
+    name: String
 ) -> SlipstreamResult<IrNodeKey> {
     let subfile_header = BFileHeader::deserialize(reader, BFileType::Tex0)?;
 
@@ -92,8 +89,8 @@ pub fn deserialize(
                 CmprDescriptor {
                     width: pixel_width,
                     height: pixel_height,
-                    mipmap_count: mipmap_count,
-                },
+                    mipmap_count
+                }
             )?;
         }
         _ => {}
@@ -107,8 +104,8 @@ pub fn deserialize(
         contents: ContentSlot::eager(Box::new(Texture {
             size: glam::u16vec2(pixel_width, pixel_height),
             format,
-            mipmap_count,
-        })),
+            mipmap_count
+        }))
     });
 
     Ok(key)
