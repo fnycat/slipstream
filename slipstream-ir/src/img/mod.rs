@@ -56,15 +56,20 @@ pub fn hash_pixels(pixels: &[u8]) -> u64 {
     hasher.finish()
 }
 
-pub fn detile<const TILE_W: usize, const TILE_H: usize, const TILE_SIZE: usize>(
-    tiled: &[u8],
+pub fn detile<
+    const TILE_W: usize,
+    const TILE_H: usize,
+    const TILE_SIZE: usize,
+    P: Default + Copy,
+>(
+    tiled: &[P],
     dims: glam::U16Vec2,
-) -> Vec<u8> {
+) -> Vec<P> {
     let width = dims.x as usize;
     let height = dims.y as usize;
 
     let tiles_x = width.div_ceil(TILE_W);
-    let mut out = vec![0u8; width * height];
+    let mut out = vec![P::default(); width * height];
 
     let (blocks, rem) = tiled.as_chunks::<TILE_SIZE>();
     debug_assert!(rem.is_empty());

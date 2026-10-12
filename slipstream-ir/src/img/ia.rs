@@ -2,7 +2,7 @@ use byteorder::ReadBytesExt;
 use glam::Vec2Swizzles;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::img::{EncodedTexture, Rgba8UnormTexture, hash_pixels};
+use crate::img::{EncodedTexture, Rgba8UnormTexture, detile, hash_pixels};
 use crate::tex0::TextureFormat;
 
 /// Single channel 4-bit intensity values.
@@ -35,7 +35,7 @@ impl Ia4Texture {
             blocks_x as usize * blocks_y as usize
         };
 
-        let mut pixels = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
+        let mut tiles = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
         for _ in 0..blocks {
             // Decode an 8x8 pixel block.
             for _ in 0..Self::PIXELS_PER_BLOCK {
@@ -43,10 +43,11 @@ impl Ia4Texture {
                 let a = (byte & 0x0F) * 0x11;
                 let rgb = ((byte >> 4) & 0x0F) * 0x11;
 
-                pixels.push(glam::u8vec2(rgb, a))
+                tiles.push(glam::u8vec2(rgb, a))
             }
         }
 
+        let pixels = detile::<8, 4, 32, _>(&tiles, dimensions);
         let hash = hash_pixels(bytemuck::cast_slice(&pixels));
 
         Ok(Self {
@@ -118,17 +119,18 @@ impl Ia8Texture {
             blocks_x as usize * blocks_y as usize
         };
 
-        let mut pixels = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
+        let mut tiles = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
         for _ in 0..blocks {
             // Decode an 8x8 pixel block.
             for _ in 0..Self::PIXELS_PER_BLOCK {
                 let a = reader.read_u8()?;
                 let rgb = reader.read_u8()?;
 
-                pixels.push(glam::u8vec2(rgb, a));
+                tiles.push(glam::u8vec2(rgb, a));
             }
         }
 
+        let pixels = detile::<4, 4, 16, _>(&tiles, dimensions);
         let hash = hash_pixels(bytemuck::cast_slice(&pixels));
 
         Ok(Self {

@@ -167,11 +167,6 @@ pub struct Texture {
 }
 
 impl Texture {
-    /// Converts the texture to RGBA8 Unorm format.
-    pub fn to_rgba8_unorm(&self) -> Vec<glam::U8Vec4> {
-        todo!()
-    }
-
     #[cfg(feature = "egui-impls")]
     pub fn get_egui_texture_id(&self) -> Option<egui::TextureId> {
         self.egui_texture_id

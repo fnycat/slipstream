@@ -55,7 +55,7 @@ impl I4Texture {
         }
 
         // Then remove the tile pattern
-        let pixels = detile::<8, 8, 64>(&tiles, dimensions);
+        let pixels = detile::<8, 8, 64, _>(&tiles, dimensions);
         let hash = hash_pixels(&pixels);
 
         Ok(Self {
@@ -135,7 +135,7 @@ impl I8Texture {
             }
         }
 
-        let pixels = detile::<8, 4, 32>(&tiles, dimensions);
+        let pixels = detile::<8, 4, 32, _>(&tiles, dimensions);
         let hash = hash_pixels(&pixels);
 
         Ok(Self {

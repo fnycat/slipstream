@@ -1,7 +1,9 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult, verify};
 
-use crate::img::{EncodedTexture, Rgba8UnormTexture, deserialize_color, hash_pixels, to_rgb565};
+use crate::img::{
+    EncodedTexture, Rgba8UnormTexture, deserialize_color, detile, hash_pixels, to_rgb565,
+};
 use crate::tex0::TextureFormat;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -127,50 +129,57 @@ impl EncodedTexture for CmprTexture {
         let dims = self.dimensions();
         let blocks = self.subblock_count();
 
-        let mut pixels = Vec::with_capacity(dims.x as usize * dims.y as usize);
-        for _ in 0..blocks {
-            // Every 8x8 image block is subdivided into 4 4x4 sub-blocks.
-            for _ in 0..Self::SUBBLOCKS {
-                // The subblock is prefixed by two shorts for the RGB565 color palette.
-                let short0 = reader.read_u16::<BigEndian>()?;
-                let short1 = reader.read_u16::<BigEndian>()?;
+        let (w, h) = (dims.x as usize, dims.y as usize);
+        let mut pixels = vec![glam::U8Vec4::ZERO; w * h];
 
-                let color0 = to_rgb565(short0).as_vec4();
-                let color1 = to_rgb565(short1).as_vec4();
+        for tile_y in 0..h.div_ceil(8) {
+            for tile_x in 0..w.div_ceil(8) {
+                for sub in 0..4 {
+                    let orig_x = tile_x * 8 + (sub % 2) * 4;
+                    let orig_y = tile_y * 8 + (sub / 2) * 4;
 
-                let (color2, color3) = if short0 > short1 {
-                    // Remaining palette colours are formed by interpolating a third and then two thirds of the way
-                    // between the two palette entries.
+                    // The subblock is prefixed by two shorts for the RGB565 color palette.
+                    let short0 = reader.read_u16::<BigEndian>()?;
+                    let short1 = reader.read_u16::<BigEndian>()?;
 
-                    let color2 = color0.lerp(color1, 1.0 / 3.0);
-                    let color3 = color0.lerp(color1, 2.0 / 3.0);
+                    let color0 = to_rgb565(short0).as_vec4();
+                    let color1 = to_rgb565(short1).as_vec4();
 
-                    (color2, color3)
-                } else {
-                    // The third palette entry is formed by interpolating halfway between the first two
-                    // entries. The fourth entry is transparent.
+                    let (color2, color3) = if short0 > short1 {
+                        // Remaining palette colours are formed by interpolating a third and then two thirds of the way
+                        // between the two palette entries.
 
-                    let color2 = color0.midpoint(color1);
-                    let color3 = glam::Vec4::ZERO;
+                        let color2 = color0.lerp(color1, 1.0 / 3.0);
+                        let color3 = color0.lerp(color1, 2.0 / 3.0);
 
-                    (color2, color3)
-                };
+                        (color2, color3)
+                    } else {
+                        // The third palette entry is formed by interpolating halfway between the first two
+                        // entries. The fourth entry is transparent.
 
-                let palette = [
-                    color0.as_u8vec4(),
-                    color1.as_u8vec4(),
-                    color2.as_u8vec4(),
-                    color3.as_u8vec4(),
-                ];
+                        let color2 = color0.midpoint(color1);
+                        let color3 = glam::Vec4::ZERO;
 
-                // The pixels are then stored as 2 bit indices into these blocks.
+                        (color2, color3)
+                    };
 
-                let mut indices = reader.read_u32::<BigEndian>()?;
-                for _ in 0..Self::SUBBLOCK_SIZE {
-                    let index = indices & 0x02;
-                    pixels.push(palette[index as usize]);
+                    let palette = [
+                        color0.as_u8vec4(),
+                        color1.as_u8vec4(),
+                        color2.as_u8vec4(),
+                        color3.as_u8vec4(),
+                    ];
 
-                    indices >>= 2;
+                    let mut indices = reader.read_u32::<BigEndian>()?;
+                    for i in 0..16 {
+                        let index = (indices >> 30) & 0b11;
+                        indices <<= 2;
+
+                        let (x, y) = (orig_x + i % 4, orig_y + i / 4);
+                        if x < w && y < h {
+                            pixels[y * w + x] = palette[index as usize];
+                        }
+                    }
                 }
             }
         }
