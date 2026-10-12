@@ -1,19 +1,25 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 use byteorder::ReadBytesExt;
+
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::{
-    img::{EncodedTexture, Rgba8UnormTexture},
+    img::{EncodedTexture, Rgba8UnormTexture, detile, hash_pixels},
     tex0::TextureFormat,
 };
 
 /// Single channel 4-bit intensity values.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct I4Texture {
     pub dimensions: glam::U16Vec2,
     pub mipmaps: u32,
     /// Intensity values. The values have already been multiplied by `0x11` compared
     /// to the disk format.
     pub pixels: Vec<u8>,
+
+    /// A hash of the pixel's contents.
+    pub hash: u64,
 }
 
 impl I4Texture {
@@ -35,22 +41,28 @@ impl I4Texture {
             blocks_x as usize * blocks_y as usize
         };
 
-        let mut pixels = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
+        // Decode into tiles.
+        let mut tiles = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
         for _ in 0..blocks {
             // Decode an 8x8 pixel block.
             for _ in 0..Self::PAIRS_PER_BLOCK {
                 let pair = reader.read_u8()?;
 
                 // multiply by 0x11 to map from 4 bit to 8 bit range.
-                pixels.push((pair & 0x0F) * 0x11);
-                pixels.push(((pair >> 4) & 0x0F) * 0x11);
+                tiles.push((pair & 0x0F) * 0x11);
+                tiles.push(((pair >> 4) & 0x0F) * 0x11);
             }
         }
+
+        // Then remove the tile pattern
+        let pixels = detile::<8, 8, 64>(&tiles, dimensions);
+        let hash = hash_pixels(&pixels);
 
         Ok(Self {
             dimensions,
             mipmaps,
             pixels,
+            hash,
         })
     }
 }
@@ -82,13 +94,18 @@ impl EncodedTexture for I4Texture {
     fn mipmaps(&self) -> u32 {
         self.mipmaps
     }
+
+    fn content_hash(&self) -> u64 {
+        self.hash
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct I8Texture {
     dimensions: glam::U16Vec2,
     mipmaps: u32,
     pixels: Vec<u8>,
+    hash: u64,
 }
 
 impl I8Texture {
@@ -110,18 +127,22 @@ impl I8Texture {
             blocks_x as usize * blocks_y as usize
         };
 
-        let mut pixels = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
+        let mut tiles = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
         for _ in 0..blocks {
             // Decode an 8x8 pixel block.
             for _ in 0..Self::PIXELS_PER_BLOCK {
-                pixels.push(reader.read_u8()?);
+                tiles.push(reader.read_u8()?);
             }
         }
+
+        let pixels = detile::<8, 4, 32>(&tiles, dimensions);
+        let hash = hash_pixels(&pixels);
 
         Ok(Self {
             dimensions,
             mipmaps,
             pixels,
+            hash,
         })
     }
 }
@@ -152,5 +173,9 @@ impl EncodedTexture for I8Texture {
 
     fn mipmaps(&self) -> u32 {
         self.mipmaps
+    }
+
+    fn content_hash(&self) -> u64 {
+        self.hash
     }
 }

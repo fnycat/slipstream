@@ -2,17 +2,18 @@ use byteorder::ReadBytesExt;
 use glam::Vec2Swizzles;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::img::{EncodedTexture, Rgba8UnormTexture};
+use crate::img::{EncodedTexture, Rgba8UnormTexture, hash_pixels};
 use crate::tex0::TextureFormat;
 
 /// Single channel 4-bit intensity values.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ia4Texture {
-    pub dimensions: glam::U16Vec2,
-    pub mipmaps: u32,
+    dimensions: glam::U16Vec2,
+    mipmaps: u32,
     /// Intensity values. The values have already been multiplied by `0x11` compared
     /// to the disk format.
-    pub pixels: Vec<glam::U8Vec2>
+    pixels: Vec<glam::U8Vec2>,
+    hash: u64,
 }
 
 impl Ia4Texture {
@@ -25,7 +26,7 @@ impl Ia4Texture {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32
+        mipmaps: u32,
     ) -> SlipstreamResult<Self> {
         let blocks = {
             let blocks_x = dimensions.x.div_ceil(8);
@@ -46,10 +47,13 @@ impl Ia4Texture {
             }
         }
 
+        let hash = hash_pixels(bytemuck::cast_slice(&pixels));
+
         Ok(Self {
             dimensions,
             mipmaps,
-            pixels
+            pixels,
+            hash,
         })
     }
 }
@@ -81,13 +85,18 @@ impl EncodedTexture for Ia4Texture {
     fn mipmaps(&self) -> u32 {
         self.mipmaps
     }
+
+    fn content_hash(&self) -> u64 {
+        self.hash
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ia8Texture {
     dimensions: glam::U16Vec2,
     mipmaps: u32,
-    pixels: Vec<glam::U8Vec2>
+    pixels: Vec<glam::U8Vec2>,
+    hash: u64,
 }
 
 impl Ia8Texture {
@@ -100,7 +109,7 @@ impl Ia8Texture {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32
+        mipmaps: u32,
     ) -> SlipstreamResult<Self> {
         let blocks = {
             let blocks_x = dimensions.x.div_ceil(8);
@@ -120,10 +129,13 @@ impl Ia8Texture {
             }
         }
 
+        let hash = hash_pixels(bytemuck::cast_slice(&pixels));
+
         Ok(Self {
             dimensions,
             mipmaps,
-            pixels
+            pixels,
+            hash,
         })
     }
 }
@@ -154,5 +166,9 @@ impl EncodedTexture for Ia8Texture {
 
     fn mipmaps(&self) -> u32 {
         self.mipmaps
+    }
+
+    fn content_hash(&self) -> u64 {
+        self.hash
     }
 }

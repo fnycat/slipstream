@@ -13,6 +13,10 @@ impl Rgba8UnormTexture {
         self.size
     }
 
+    pub fn bytes(&self) -> &[u8] {
+        bytemuck::cast_slice(&self.pixels)
+    }
+
     pub fn pixels(&self) -> &[glam::U8Vec4] {
         &self.pixels
     }

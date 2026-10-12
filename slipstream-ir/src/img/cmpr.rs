@@ -1,7 +1,7 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult, verify};
 
-use crate::img::{EncodedTexture, Rgba8UnormTexture, deserialize_color, to_rgb565};
+use crate::img::{EncodedTexture, Rgba8UnormTexture, deserialize_color, hash_pixels, to_rgb565};
 use crate::tex0::TextureFormat;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -11,6 +11,7 @@ pub struct CmprTexture {
     // As `wgpu` natively supports this format, we will simply store a reference to the reader
     // instead of deserializing the texture data.
     pub raw: RefCursor<[u8]>,
+    pub hash: u64,
 }
 
 impl CmprTexture {
@@ -18,6 +19,8 @@ impl CmprTexture {
     pub const SUBBLOCKS: usize = 4;
     /// How many pixels are in a single CMPR subblock?
     pub const SUBBLOCK_SIZE: usize = 4 * 4;
+    /// Size in bytes of a CMPR subblock.
+    pub const SUBBLOCK_BYTE_SIZE: usize = 8;
     /// The format of this texture when uploaded to the GPU.
     #[cfg(feature = "egui-impls")]
     pub const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bc1RgbaUnorm;
@@ -85,10 +88,20 @@ impl CmprTexture {
         dimensions: glam::U16Vec2,
         mipmap_count: u32,
     ) -> SlipstreamResult<Self> {
+        let blocks_x = dimensions.x.div_ceil(8);
+        let blocks_y = dimensions.y.div_ceil(8);
+
+        let block_count = blocks_x as usize * blocks_y as usize;
+        let subblock_count = Self::SUBBLOCKS * block_count;
+        let data_len = subblock_count * Self::SUBBLOCK_BYTE_SIZE;
+
+        let hash = hash_pixels(reader.slice(..data_len));
+
         Ok(Self {
             dimensions,
             mipmaps: mipmap_count,
             raw: reader.clone(),
+            hash,
         })
     }
 }
@@ -118,7 +131,7 @@ impl EncodedTexture for CmprTexture {
         for _ in 0..blocks {
             // Every 8x8 image block is subdivided into 4 4x4 sub-blocks.
             for _ in 0..Self::SUBBLOCKS {
-                // The subblock is prefixed by two shorts for the RGB565 coloor palette.
+                // The subblock is prefixed by two shorts for the RGB565 color palette.
                 let short0 = reader.read_u16::<BigEndian>()?;
                 let short1 = reader.read_u16::<BigEndian>()?;
 
@@ -175,5 +188,9 @@ impl EncodedTexture for CmprTexture {
 
     fn mipmaps(&self) -> u32 {
         self.mipmaps
+    }
+
+    fn content_hash(&self) -> u64 {
+        self.hash
     }
 }

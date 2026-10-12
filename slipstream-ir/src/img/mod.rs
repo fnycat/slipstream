@@ -8,6 +8,8 @@ mod rgb5a3;
 mod rgba8unorm;
 mod tpl;
 
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 pub use c::*;
 pub use c14x2::*;
 pub use cmpr::*;
@@ -42,6 +44,44 @@ pub trait EncodedTexture {
 
     /// The amount of mipmaps in this texture.
     fn mipmaps(&self) -> u32;
+
+    /// Returns the hash of the image's contents.
+    fn content_hash(&self) -> u64;
+}
+
+/// Creates a hash of the image's contents.
+pub fn hash_pixels(pixels: &[u8]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    pixels.hash(&mut hasher);
+    hasher.finish()
+}
+
+pub fn detile<const TILE_W: usize, const TILE_H: usize, const TILE_SIZE: usize>(
+    tiled: &[u8],
+    dims: glam::U16Vec2,
+) -> Vec<u8> {
+    let width = dims.x as usize;
+    let height = dims.y as usize;
+
+    let tiles_x = width.div_ceil(TILE_W);
+    let mut out = vec![0u8; width * height];
+
+    let (blocks, rem) = tiled.as_chunks::<TILE_SIZE>();
+    debug_assert!(rem.is_empty());
+
+    for (tile_idx, tile) in blocks.iter().enumerate() {
+        let (tx, ty) = (tile_idx % tiles_x, tile_idx / tiles_x);
+        for (i, &p) in tile.iter().enumerate() {
+            let x = tx * TILE_W + i % TILE_W;
+            let y = ty * TILE_H + i / TILE_W;
+
+            if x < width && y < height {
+                out[y * width + x] = p;
+            }
+        }
+    }
+
+    out
 }
 
 /// Converts a 16-byte integer to an opaque RGB565 colour.

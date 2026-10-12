@@ -75,27 +75,46 @@ struct FieldOpt {
     pub ident: Option<Ident>,
     pub ty: Type,
 
+    /// A tooltip to display when hovering over the value.
     #[darling(default)]
     pub tooltip: Option<StringAttr>,
+    /// A prefix to put in front of the value. This is used in draggable values.
     #[darling(default)]
     pub prefix: Option<StringAttr>,
+    /// A suffix to put behind the value. This is used in draggable values to put a degrees circle
+    /// behind rotations for example.
     #[darling(default)]
     pub suffix: Option<StringAttr>,
+    /// The lower bound of this value.
     #[darling(default)]
     pub min: Option<syn::Expr>,
+    /// The upper bound of this value.
     #[darling(default)]
     pub max: Option<syn::Expr>,
+    /// Whether this value is read only and cannot be edited.
     #[darling(default)]
     pub read_only: bool,
+    /// The category to put this value in.
     #[darling(default)]
     pub category: Option<StringAttr>,
+    /// Whether to ignore this field.
+    ///
+    /// It will not be shown in the property window and the value also does not have
+    /// to implement the `Inspect` trait.
     #[darling(default)]
     pub ignore: bool,
+    /// Gives the field a different name.
+    ///
+    /// By default, the field's name in the struct is converted to Title Case and used.
+    /// But this can be used to override the name.
     #[darling(default)]
     pub rename: Option<String>,
     /// Nested structs start out expanded: `#[inspect(opened)]`.
     #[darling(default = "default_opened")]
     pub opened: bool,
+    /// Draws this field with the given function.
+    #[darling(default)]
+    pub with: Option<syn::Path>,
 }
 
 impl FieldOpt {
@@ -129,8 +148,6 @@ impl FieldOpt {
             read_only,
             min,
             max,
-            suffix,
-            tooltip,
             ..
         } = self;
 
@@ -237,36 +254,49 @@ impl FieldOpt {
             let config = field.config();
             let default_open = field.opened;
 
-            // Each field gets its own block so the borrows of `self` don't overlap.
-            tokens.append_all(quote! {
-                {
-                    const CONFIG: slipstream_shared::inspect::FieldConfig = #config;
-                    let value = &mut #accessor;
-                    let field_id = id.with(#name);
+            if let Some(draw_fn) = &field.with {
+                tokens.append_all(quote! {
+                    {
+                        const CONFIG: slipstream_shared::inspect::FieldConfig = #config;
+                        let value = &mut #accessor;
+                        let field_id = id.with(#name);
 
-                    if slipstream_shared::inspect::Inspect::is_nested(&*value) {
-                        // Nested struct: clickable header row plus an animated, indented body.
-                        let summary = slipstream_shared::inspect::Inspect::summary(&*value);
-                        let nested_changes = widgets::property::nested(
-                            ui,
-                            field_id,
-                            #name,
-                            summary.as_deref().unwrap_or(""),
-                            #default_open,
-                            |ui| slipstream_shared::inspect::Inspect::draw_rows(&mut *value, ui, field_id),
-                        );
-
-                        // `None` while the body is fully closed.
-                        if let Some(nested_changes) = nested_changes {
-                            changes |= nested_changes;
-                        }
-                    } else {
                         changes |= widgets::property::leaf(ui, field_id, #name, |ui| {
-                            slipstream_shared::inspect::Inspect::draw_inner(&mut *value, ui, &CONFIG)
+                            #draw_fn(&mut *value, ui, &CONFIG)
                         });
                     }
-                }
-            });
+                });
+            } else {
+                tokens.append_all(quote! {
+                    {
+                        const CONFIG: slipstream_shared::inspect::FieldConfig = #config;
+                        let value = &mut #accessor;
+                        let field_id = id.with(#name);
+
+                        if slipstream_shared::inspect::Inspect::is_nested(&*value) {
+                            // Nested struct: clickable header row plus an animated, indented body.
+                            let summary = slipstream_shared::inspect::Inspect::summary(&*value);
+                            let nested_changes = widgets::property::nested(
+                                ui,
+                                field_id,
+                                #name,
+                                summary.as_deref().unwrap_or(""),
+                                #default_open,
+                                |ui| slipstream_shared::inspect::Inspect::draw_rows(&mut *value, ui, field_id),
+                            );
+
+                            // `None` while the body is fully closed.
+                            if let Some(nested_changes) = nested_changes {
+                                changes |= nested_changes;
+                            }
+                        } else {
+                            changes |= widgets::property::leaf(ui, field_id, #name, |ui| {
+                                slipstream_shared::inspect::Inspect::draw_inner(&mut *value, ui, &CONFIG)
+                            });
+                        }
+                    }
+                });
+            }
         }
 
         tokens

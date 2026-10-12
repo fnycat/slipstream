@@ -5,11 +5,16 @@ use byteorder::{BigEndian, ReadBytesExt};
 use eframe::egui_wgpu;
 use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::error::UnsupportedError;
+use slipstream_shared::inspect::Changes;
+#[cfg(feature = "egui-impls")]
+use slipstream_shared::inspect::FieldConfig;
 use slipstream_shared::{RefCursor, SlipstreamResult, try_unwrap};
 
 use crate::brres::{BFileHeader, BFileType};
 use crate::encoding::Deserialize;
-use crate::img::{CmprTexture, EncodedTexture, I4Texture, I8Texture, Rgba8UnormTexture};
+use crate::img::{
+    CmprTexture, EncodedTexture, I4Texture, I8Texture, Ia4Texture, Ia8Texture, Rgba8UnormTexture,
+};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::visitor::{
@@ -57,7 +62,54 @@ impl Deserialize for TextureFormat {
 pub enum TextureData {
     I4(I4Texture),
     I8(I8Texture),
+    Ia4(Ia4Texture),
+    Ia8(Ia8Texture),
     Cmpr(CmprTexture),
+}
+
+impl TextureData {
+    #[cfg(feature = "egui-impls")]
+    pub(super) fn draw_ui(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        // Check if the texture has been registered.
+        let dims = self.dimensions();
+
+        let key = ui.id().with("TexturePreview").with(self.content_hash());
+
+        let cached = ui.data(|d| d.get_temp::<egui::TextureHandle>(key));
+        let handle = match cached {
+            Some(tex) => tex,
+            None => {
+                tracing::debug!(
+                    "Generating preview for {}x{} texture (hash {})",
+                    dims.x,
+                    dims.y,
+                    self.content_hash()
+                );
+
+                use std::sync::Arc;
+
+                let key_str = format!("TexturePreview_{}", key.value());
+                let rgba8 = self
+                    .to_rgba8_unorm()
+                    .expect("failed to convert texture to RGBA8 preview");
+
+                let color_img = Arc::new(egui::ColorImage::from_rgba_unmultiplied(
+                    [dims.x as usize, dims.y as usize],
+                    rgba8.bytes(),
+                ));
+
+                let data = egui::ImageData::Color(color_img);
+
+                let handle = ui.load_texture(key_str, data, egui::TextureOptions::NEAREST);
+                ui.data_mut(|d| d.insert_temp(key, handle.clone()));
+                handle
+            }
+        };
+
+        let image = egui::Image::new(&handle).tint(egui::Color32::WHITE);
+
+        ui.add(image).into()
+    }
 }
 
 macro_rules! impl_tex_data {
@@ -71,6 +123,14 @@ macro_rules! impl_tex_data {
                 }
             }
 
+            pub fn dimensions(&self) -> glam::U16Vec2 {
+                match &self {
+                    $(
+                        TextureData::$ident(x) => x.dimensions(),
+                    )*
+                }
+            }
+
             pub fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8UnormTexture> {
                 match &self {
                     $(
@@ -78,17 +138,28 @@ macro_rules! impl_tex_data {
                     )*
                 }
             }
+
+            pub fn content_hash(&self) -> u64 {
+                match &self {
+                    $(
+                        TextureData::$ident(x) => x.content_hash(),
+                    )*
+                }
+            }
         }
     }
 }
 
-impl_tex_data!(I4, I8, Cmpr);
+impl_tex_data!(I4, I8, Ia4, Ia8, Cmpr);
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Texture {
+    #[inspect(tooltip = "The format used for the pixels in the texture")]
+    pub format: TextureFormat,
     #[inspect(tooltip = "Width and height of the texture in pixels")]
     pub size: glam::U16Vec2,
-    #[inspect(ignore)]
+    #[inspect(rename = "Image")]
+    #[inspect(with = "TextureData::draw_ui")]
     pub data: TextureData,
     #[inspect(ignore)]
     #[cfg(feature = "egui-impls")]
@@ -192,28 +263,20 @@ pub fn deserialize(
 
     reader.set_position(subfile_header.get_section_start(0)?);
 
+    let dims = glam::u16vec2(pixel_width, pixel_height);
     let data = match format {
-        TextureFormat::I4 => TextureData::I4(I4Texture::new(
-            reader,
-            glam::u16vec2(pixel_width, pixel_height),
-            mipmap_count,
-        )?),
-        TextureFormat::I8 => TextureData::I8(I8Texture::new(
-            reader,
-            glam::u16vec2(pixel_width, pixel_height),
-            mipmap_count,
-        )?),
-        TextureFormat::Cmpr => TextureData::Cmpr(CmprTexture::new(
-            reader,
-            glam::u16vec2(pixel_width, pixel_height),
-            mipmap_count,
-        )?),
+        TextureFormat::I4 => TextureData::I4(I4Texture::new(reader, dims, mipmap_count)?),
+        TextureFormat::I8 => TextureData::I8(I8Texture::new(reader, dims, mipmap_count)?),
+        TextureFormat::Ia4 => TextureData::Ia4(Ia4Texture::new(reader, dims, mipmap_count)?),
+        TextureFormat::Ia8 => TextureData::Ia8(Ia8Texture::new(reader, dims, mipmap_count)?),
+        TextureFormat::Cmpr => TextureData::Cmpr(CmprTexture::new(reader, dims, mipmap_count)?),
         _ => {
             tracing::error!("Image format {format:?} unimplemented, using an empty image");
             TextureData::I4(I4Texture {
                 dimensions: glam::u16vec2(1, 1),
                 mipmaps: 1,
                 pixels: vec![255; 8 * 8],
+                hash: 0,
             })
         }
     };
@@ -224,6 +287,7 @@ pub fn deserialize(
         parent: Some(parent_id),
         children: Vec::new(),
         contents: ContentSlot::eager(Box::new(Texture {
+            format,
             size: glam::u16vec2(pixel_width, pixel_height),
             data,
 
