@@ -1,10 +1,9 @@
 use byteorder::ReadBytesExt;
+use glam::Vec2Swizzles;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::{
-    img::{EncodedTexture, Rgba8UnormTexture},
-    tex0::TextureFormat,
-};
+use crate::img::{EncodedTexture, Rgba8UnormTexture};
+use crate::tex0::TextureFormat;
 
 /// Single channel 4-bit intensity values.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,7 +12,7 @@ pub struct Ia4Texture {
     pub mipmaps: u32,
     /// Intensity values. The values have already been multiplied by `0x11` compared
     /// to the disk format.
-    pub pixels: Vec<glam::U8Vec2>,
+    pub pixels: Vec<glam::U8Vec2>
 }
 
 impl Ia4Texture {
@@ -21,12 +20,12 @@ impl Ia4Texture {
     #[cfg(feature = "egui-impls")]
     pub const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
 
-    pub const PAIRS_PER_BLOCK: usize = 8 * 8 / 2;
+    pub const PIXELS_PER_BLOCK: usize = 8 * 8;
 
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32,
+        mipmaps: u32
     ) -> SlipstreamResult<Self> {
         let blocks = {
             let blocks_x = dimensions.x.div_ceil(8);
@@ -38,19 +37,19 @@ impl Ia4Texture {
         let mut pixels = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
         for _ in 0..blocks {
             // Decode an 8x8 pixel block.
-            for _ in 0..Self::PAIRS_PER_BLOCK {
-                let pair = reader.read_u8()?;
+            for _ in 0..Self::PIXELS_PER_BLOCK {
+                let byte = reader.read_u8()?;
+                let a = (byte & 0x0F) * 0x11;
+                let rgb = ((byte >> 4) & 0x0F) * 0x11;
 
-                // multiply by 0x11 to map from 4 bit to 8 bit range.
-                pixels.push((pair & 0x0F) * 0x11);
-                pixels.push(((pair >> 4) & 0x0F) * 0x11);
+                pixels.push(glam::u8vec2(rgb, a))
             }
         }
 
         Ok(Self {
             dimensions,
             mipmaps,
-            pixels,
+            pixels
         })
     }
 }
@@ -73,7 +72,7 @@ impl EncodedTexture for Ia4Texture {
             .pixels
             .iter()
             .copied()
-            .map(|i| glam::u8vec4(i, i, i, 0xff))
+            .map(|i| i.xxxy())
             .collect::<Vec<_>>();
 
         Ok(Rgba8UnormTexture::new(self.dimensions, out))
@@ -88,7 +87,7 @@ impl EncodedTexture for Ia4Texture {
 pub struct Ia8Texture {
     dimensions: glam::U16Vec2,
     mipmaps: u32,
-    pixels: Vec<glam::U8Vec2>,
+    pixels: Vec<glam::U8Vec2>
 }
 
 impl Ia8Texture {
@@ -101,7 +100,7 @@ impl Ia8Texture {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32,
+        mipmaps: u32
     ) -> SlipstreamResult<Self> {
         let blocks = {
             let blocks_x = dimensions.x.div_ceil(8);
@@ -114,14 +113,17 @@ impl Ia8Texture {
         for _ in 0..blocks {
             // Decode an 8x8 pixel block.
             for _ in 0..Self::PIXELS_PER_BLOCK {
-                pixels.push(reader.read_u8()?);
+                let a = reader.read_u8()?;
+                let rgb = reader.read_u8()?;
+
+                pixels.push(glam::u8vec2(rgb, a));
             }
         }
 
         Ok(Self {
             dimensions,
             mipmaps,
-            pixels,
+            pixels
         })
     }
 }
@@ -144,7 +146,7 @@ impl EncodedTexture for Ia8Texture {
             .pixels
             .iter()
             .copied()
-            .map(|i| glam::u8vec4(i, i, i, 0xff))
+            .map(|i| i.xxxy())
             .collect::<Vec<_>>();
 
         Ok(Rgba8UnormTexture::new(self.dimensions, out))
