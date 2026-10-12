@@ -2,18 +2,18 @@ use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult, verify};
 
 use crate::img::{
-    EncodedTexture, Rgba8UnormTexture, deserialize_color, detile, hash_pixels, to_rgb565,
+    EncodedTexture, Rgba8Texture, deserialize_color, detile, from_rgb565, hash_pixels,
 };
 use crate::tex0::TextureFormat;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CmprTexture {
-    pub dimensions: glam::U16Vec2,
-    pub mipmaps: u32,
+    pub(super) dimensions: glam::U16Vec2,
+    pub(super) mipmaps: u32,
     // As `wgpu` natively supports this format, we will simply store a reference to the reader
     // instead of deserializing the texture data.
-    pub raw: RefCursor<[u8]>,
-    pub hash: u64,
+    pub(super) raw: RefCursor<[u8]>,
+    pub(super) hash: u64,
 }
 
 impl CmprTexture {
@@ -122,7 +122,7 @@ impl EncodedTexture for CmprTexture {
         blocks * 32
     }
 
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8UnormTexture> {
+    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture> {
         let mut reader = self.raw.clone();
         let reader_start = reader.position();
 
@@ -142,8 +142,8 @@ impl EncodedTexture for CmprTexture {
                     let short0 = reader.read_u16::<BigEndian>()?;
                     let short1 = reader.read_u16::<BigEndian>()?;
 
-                    let color0 = to_rgb565(short0).as_vec4();
-                    let color1 = to_rgb565(short1).as_vec4();
+                    let color0 = from_rgb565(short0).as_vec4();
+                    let color1 = from_rgb565(short1).as_vec4();
 
                     let (color2, color3) = if short0 > short1 {
                         // Remaining palette colours are formed by interpolating a third and then two thirds of the way
@@ -192,7 +192,12 @@ impl EncodedTexture for CmprTexture {
             "incorrectly decompressed CMPR image, expected to read {expected_len} bytes but read {actual_len}"
         );
 
-        Ok(Rgba8UnormTexture::new(self.dimensions(), pixels))
+        Ok(Rgba8Texture {
+            dimensions: self.dimensions,
+            mipmaps: self.mipmaps,
+            hash: self.hash,
+            pixels,
+        })
     }
 
     fn mipmaps(&self) -> u32 {

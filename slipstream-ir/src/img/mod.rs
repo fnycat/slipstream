@@ -5,7 +5,7 @@ mod i;
 mod ia;
 mod rgb565;
 mod rgb5a3;
-mod rgba8unorm;
+mod rgba8;
 mod tpl;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -17,7 +17,7 @@ pub use i::*;
 pub use ia::*;
 pub use rgb5a3::*;
 pub use rgb565::*;
-pub use rgba8unorm::*;
+pub use rgba8::*;
 pub use tpl::*;
 
 use byteorder::{BigEndian, ReadBytesExt};
@@ -40,7 +40,7 @@ pub trait EncodedTexture {
     fn data_len(&self) -> usize;
 
     /// Converts this image to an `RGBA8Unorm` texture.
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8UnormTexture>;
+    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture>;
 
     /// The amount of mipmaps in this texture.
     fn mipmaps(&self) -> u32;
@@ -54,6 +54,13 @@ pub fn hash_pixels(pixels: &[u8]) -> u64 {
     let mut hasher = DefaultHasher::new();
     pixels.hash(&mut hasher);
     hasher.finish()
+}
+
+pub const fn block_count(dimensions: glam::U16Vec2, block_size: glam::USizeVec2) -> usize {
+    let blocks_x = (dimensions.x as usize).div_ceil(block_size.x);
+    let blocks_y = (dimensions.y as usize).div_ceil(block_size.y);
+
+    blocks_x as usize * blocks_y as usize
 }
 
 pub fn detile<
@@ -89,10 +96,10 @@ pub fn detile<
     out
 }
 
-/// Converts a 16-byte integer to an opaque RGB565 colour.
+/// Converts a 16-byte integer representing an RGB565 colour to an RGBA8 colour.
 ///
 /// This is a separate function, as the CMPR format requires both the short and colour value.
-pub fn to_rgb565(short: u16) -> glam::U8Vec4 {
+pub fn from_rgb565(short: u16) -> glam::U8Vec4 {
     let r = ((short & 0xf8_00) >> 11) as u8; // Take 5 bits
     let g = ((short & 0x07_e0) >> 5) as u8; // Then another 6 bits
     let b = (short & 0x00_1f) as u8; // and lastly another 5 bits
@@ -112,7 +119,7 @@ pub fn deserialize_color(
     Ok(match format {
         ColorFormat::Rgb565 => {
             let short = reader.read_u16::<BigEndian>()?;
-            to_rgb565(short)
+            from_rgb565(short)
         }
         ColorFormat::Rgb8 => {
             let triad = reader.read_u24::<BigEndian>()?;

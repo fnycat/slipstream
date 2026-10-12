@@ -2,18 +2,18 @@ use byteorder::ReadBytesExt;
 use glam::Vec2Swizzles;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::img::{EncodedTexture, Rgba8UnormTexture, detile, hash_pixels};
+use crate::img::{EncodedTexture, Rgba8Texture, block_count, detile, hash_pixels};
 use crate::tex0::TextureFormat;
 
 /// Single channel 4-bit intensity values.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ia4Texture {
-    dimensions: glam::U16Vec2,
-    mipmaps: u32,
+    pub(super) dimensions: glam::U16Vec2,
+    pub(super) mipmaps: u32,
     /// Intensity values. The values have already been multiplied by `0x11` compared
     /// to the disk format.
-    pixels: Vec<glam::U8Vec2>,
-    hash: u64,
+    pub(super) pixels: Vec<glam::U8Vec2>,
+    pub(super) hash: u64,
 }
 
 impl Ia4Texture {
@@ -21,24 +21,20 @@ impl Ia4Texture {
     #[cfg(feature = "egui-impls")]
     pub const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
 
-    pub const PIXELS_PER_BLOCK: usize = 8 * 8;
+    pub const BLOCK_W: usize = 8;
+    pub const BLOCK_H: usize = 4;
+    pub const BLOCK_SIZE: glam::USizeVec2 = glam::usizevec2(Self::BLOCK_W, Self::BLOCK_H);
 
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
         mipmaps: u32,
     ) -> SlipstreamResult<Self> {
-        let blocks = {
-            let blocks_x = dimensions.x.div_ceil(8);
-            let blocks_y = dimensions.y.div_ceil(8);
-
-            blocks_x as usize * blocks_y as usize
-        };
+        let blocks = block_count(dimensions, Self::BLOCK_SIZE);
 
         let mut tiles = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
         for _ in 0..blocks {
-            // Decode an 8x8 pixel block.
-            for _ in 0..Self::PIXELS_PER_BLOCK {
+            for _ in 0..(Self::BLOCK_W * Self::BLOCK_H / 2) {
                 let byte = reader.read_u8()?;
                 let a = (byte & 0x0F) * 0x11;
                 let rgb = ((byte >> 4) & 0x0F) * 0x11;
@@ -72,7 +68,7 @@ impl EncodedTexture for Ia4Texture {
         todo!()
     }
 
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8UnormTexture> {
+    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture> {
         let out = self
             .pixels
             .iter()
@@ -80,7 +76,7 @@ impl EncodedTexture for Ia4Texture {
             .map(|i| i.xxxy())
             .collect::<Vec<_>>();
 
-        Ok(Rgba8UnormTexture::new(self.dimensions, out))
+        Ok(Rgba8Texture::from(self))
     }
 
     fn mipmaps(&self) -> u32 {
@@ -94,10 +90,10 @@ impl EncodedTexture for Ia4Texture {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ia8Texture {
-    dimensions: glam::U16Vec2,
-    mipmaps: u32,
-    pixels: Vec<glam::U8Vec2>,
-    hash: u64,
+    pub(super) dimensions: glam::U16Vec2,
+    pub(super) mipmaps: u32,
+    pub(super) pixels: Vec<glam::U8Vec2>,
+    pub(super) hash: u64,
 }
 
 impl Ia8Texture {
@@ -105,32 +101,28 @@ impl Ia8Texture {
     #[cfg(feature = "egui-impls")]
     pub const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
 
-    pub const PIXELS_PER_BLOCK: usize = 8 * 8;
+    pub const BLOCK_W: usize = 4;
+    pub const BLOCK_H: usize = 4;
+    pub const BLOCK_SIZE: glam::USizeVec2 = glam::usizevec2(Self::BLOCK_W, Self::BLOCK_H);
 
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
         mipmaps: u32,
     ) -> SlipstreamResult<Self> {
-        let blocks = {
-            let blocks_x = dimensions.x.div_ceil(8);
-            let blocks_y = dimensions.y.div_ceil(8);
+        let blocks = block_count(dimensions, Self::BLOCK_SIZE);
 
-            blocks_x as usize * blocks_y as usize
-        };
-
-        let mut tiles = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
+        let mut tiled = Vec::with_capacity(dimensions.x as usize * dimensions.y as usize);
         for _ in 0..blocks {
-            // Decode an 8x8 pixel block.
-            for _ in 0..Self::PIXELS_PER_BLOCK {
+            for _ in 0..(Self::BLOCK_W * Self::BLOCK_H) {
                 let a = reader.read_u8()?;
                 let rgb = reader.read_u8()?;
 
-                tiles.push(glam::u8vec2(rgb, a));
+                tiled.push(glam::u8vec2(rgb, a));
             }
         }
 
-        let pixels = detile::<4, 4, 16, _>(&tiles, dimensions);
+        let pixels = detile::<4, 4, 16, _>(&tiled, dimensions);
         let hash = hash_pixels(bytemuck::cast_slice(&pixels));
 
         Ok(Self {
@@ -155,15 +147,8 @@ impl EncodedTexture for Ia8Texture {
         todo!()
     }
 
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8UnormTexture> {
-        let out = self
-            .pixels
-            .iter()
-            .copied()
-            .map(|i| i.xxxy())
-            .collect::<Vec<_>>();
-
-        Ok(Rgba8UnormTexture::new(self.dimensions, out))
+    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture> {
+        Ok(Rgba8Texture::from(self))
     }
 
     fn mipmaps(&self) -> u32 {
