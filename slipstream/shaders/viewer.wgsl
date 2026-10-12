@@ -1,6 +1,7 @@
 struct CameraUniformData {
     /// Size of the viewport.
-    viewport_size: vec2f,
+    viewport_size: vec4f,
+    pos: vec4f,
     view_proj: mat4x4f,
     inv_view_proj: mat4x4f
 }
@@ -49,10 +50,11 @@ struct VertexInput {
 }
 
 struct VertexOutput {
-    @builtin(position) vertex: vec4f,
-    @location(0) normal: vec3f,
-    @location(1) color0: vec4f,
-    @location(2) @interpolate(flat) bone_index: u32
+    @builtin(position) clip_pos: vec4f,
+    @location(0) world_pos: vec3f,
+    @location(1) normal: vec3f,
+    @location(2) color0: vec4f,
+    @location(3) @interpolate(flat) bone_index: u32
 }
 
 @vertex
@@ -70,7 +72,8 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     }
 
     var output: VertexOutput;
-    output.vertex = camera.view_proj * pos;
+    output.clip_pos = camera.view_proj * pos;
+    output.world_pos = pos.xyz;
     output.normal = normalize(nrm);
     output.color0 = input.color0;
     output.bone_index = input.bone_indices[0];
@@ -82,24 +85,27 @@ fn linear_to_srgb(color: vec4f) -> vec4f {
     return vec4f(rgb, color.a);
 }
 
-fn compute_diffuse(normal: vec3f, color: vec4f) -> vec4f {
-    let sunDirection = vec3f(100.0, 100.0, 0.0);
-    let dot = dot(normal, sunDirection.xyz);
+fn compute_color(pos: vec3f, normal: vec3f, albedo: vec4f) -> vec4f {
+    let sunDirection = vec3f(2.0, -5.0, 2.0);
+    let N = normalize(normal);
+    let L = normalize(-sunDirection);
+    let V = normalize(camera.pos.xyz - pos);
+    let H = normalize(L + V);
 
-    return color * dot + vec4f(0.2);
+    let nDotL = max(0.0, dot(N, L));
+    let ambient = 0.2;
+    let diffuse = nDotL;
+
+    let specFactor = 0.5 * pow(max(0.0, dot(N, H)), 8.0);
+
+    return vec4f((ambient + diffuse) * albedo.rgb + vec3f(specFactor), albedo.a);
 }
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4f {
-    let color = compute_diffuse(input.normal, input.color0);
-    // let color = mix(input.color0, diffuse, 0.5);
-    // let color = input.color0;
+    let color = compute_color(input.world_pos, input.normal, input.color0);
+    // return color;
 
-    // let color = compute_diffuse(input.normal, input.color0);
-    // let color = compute_diffuse(input.normal, vec4f(input.normal, 1.0));
-
-    // Convert the linear colours to SRGB.
-    // Without this, the colours will look very washed out in the editor.
     let srgb = linear_to_srgb(color);
     return srgb;
 }

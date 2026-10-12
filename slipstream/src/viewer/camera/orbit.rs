@@ -14,10 +14,14 @@ pub struct OrbitCamera {
     pub last_update: Instant,
     pub orientation: glam::Quat,
     pub lookat: glam::Vec3,
-    pub radius: f32
+    pub radius: f32,
 }
 
 impl CameraController for OrbitCamera {
+    fn position(&self) -> glam::Vec3 {
+        self.lookat + self.orientation * (glam::Vec3::Z * self.radius)
+    }
+
     #[inline]
     fn on_update(&mut self) {
         self.last_update = Instant::now();
@@ -59,12 +63,12 @@ impl CameraController for OrbitCamera {
     fn compute_matrix(&self) -> glam::Mat4 {
         let eye = self.lookat + self.orientation * (glam::Vec3::Z * self.radius);
         let up = self.orientation * WORLD_UP;
-        let view_matrix = glam::camera::lh::view::look_at_mat4(eye, self.lookat, up);
+        let view_matrix = glam::camera::rh::view::look_at_mat4(eye, self.lookat, up);
 
-        let proj_matrix = glam::camera::lh::proj::directx::perspective_infinite_reverse(
+        let proj_matrix = glam::camera::rh::proj::directx::perspective_infinite_reverse(
             self.vertical_fov,
             self.aspect_ratio,
-            NEAR_PLANE
+            NEAR_PLANE,
         );
 
         proj_matrix * view_matrix

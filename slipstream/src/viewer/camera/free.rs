@@ -10,10 +10,14 @@ pub struct FreeCamera {
     pub move_speed: f32,
     pub orientation: glam::Quat,
     pub vertical_fov: f32,
-    pub aspect_ratio: f32
+    pub aspect_ratio: f32,
 }
 
 impl CameraController for FreeCamera {
+    fn position(&self) -> glam::Vec3 {
+        self.position
+    }
+
     #[inline]
     fn on_update(&mut self) {
         self.last_update = Instant::now();
@@ -41,7 +45,7 @@ impl CameraController for FreeCamera {
     }
 
     fn on_drag(&mut self, delta: glam::Vec2) {
-        let yaw_rot = glam::Quat::from_axis_angle(WORLD_UP, delta.x * self.sensitivity);
+        let yaw_rot = glam::Quat::from_axis_angle(WORLD_UP, -delta.x * self.sensitivity);
 
         let right = self.orientation * glam::Vec3::X;
         let pitch_rot = glam::Quat::from_axis_angle(right, delta.y * self.sensitivity);
@@ -58,12 +62,12 @@ impl CameraController for FreeCamera {
         let forward = self.orientation * glam::Vec3::Z;
 
         let up = self.orientation * WORLD_UP;
-        let view_matrix = glam::camera::lh::view::look_to_mat4(self.position, forward, up);
+        let view_matrix = glam::camera::rh::view::look_to_mat4(self.position, forward, up);
 
-        let proj_matrix = glam::camera::lh::proj::directx::perspective_infinite_reverse(
+        let proj_matrix = glam::camera::rh::proj::directx::perspective_infinite_reverse(
             self.vertical_fov,
             self.aspect_ratio,
-            NEAR_PLANE // FAR_PLANE,
+            NEAR_PLANE, // FAR_PLANE,
         );
 
         proj_matrix * view_matrix

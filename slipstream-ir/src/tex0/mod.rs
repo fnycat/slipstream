@@ -208,7 +208,14 @@ pub fn deserialize(
             glam::u16vec2(pixel_width, pixel_height),
             mipmap_count,
         )?),
-        _ => todo!("texture format {format:?}"),
+        _ => {
+            tracing::error!("Image format {format:?} unimplemented, using an empty image");
+            TextureData::I4(I4Texture {
+                dimensions: glam::u16vec2(1, 1),
+                mipmaps: 1,
+                pixels: vec![255; 8 * 8],
+            })
+        }
     };
 
     let key = arena.insert(IrNodeDescriptor {
