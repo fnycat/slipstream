@@ -106,9 +106,37 @@ impl TextureData {
             }
         };
 
-        let image = egui::Image::new(&handle).tint(egui::Color32::WHITE);
+        let image = egui::Image::new(&handle)
+            .tint(egui::Color32::WHITE)
+            .maintain_aspect_ratio(true)
+            .fit_to_exact_size(egui::vec2(256.0, 256.0));
 
-        ui.add(image).into()
+        let egui::InnerResponse { inner, .. } =
+            ui.centered_and_justified(|ui| ui.add(image.clone().sense(egui::Sense::click())));
+
+        let modal_id = ui.id().with("PreviewModal");
+
+        // Draw the modal before checking for clicks in the inspector.
+        //
+        // Otherwise the modal would register this as an outside click and immediately close again.
+        if ui.data(|d| d.get_temp::<bool>(modal_id).unwrap_or(false)) {
+            egui::Modal::new(modal_id)
+                .frame(egui::Frame::new())
+                .show(ui.ctx(), |ui| {
+                    let modal_size = ui.viewport_rect().size() * 0.75;
+
+                    let response = ui.add(image.fit_to_exact_size(modal_size));
+                    if response.clicked_elsewhere() {
+                        ui.data_mut(|d| d.remove_temp::<bool>(modal_id));
+                    }
+                });
+        }
+
+        if inner.clicked() {
+            ui.data_mut(|d| d.insert_temp::<bool>(modal_id, true));
+        }
+
+        inner.into()
     }
 }
 
