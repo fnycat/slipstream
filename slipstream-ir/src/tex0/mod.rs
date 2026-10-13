@@ -13,14 +13,14 @@ use slipstream_shared::{RefCursor, SlipstreamResult, try_unwrap};
 use crate::brres::{BFileHeader, BFileType};
 use crate::encoding::Deserialize;
 use crate::img::{
-    CmprTexture, EncodedTexture, I4Texture, I8Texture, Ia4Texture, Ia8Texture, Rgb565Texture,
-    Rgba8Texture,
+    CmprTexture, EncodedTexture, I4Texture, I8Texture, Ia4Texture, Ia8Texture, Rgb5a3Texture,
+    Rgb565Texture, Rgba8Texture
 };
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut,
+    VisitorContextNodeMut
 };
 
 pub const TEX0_MAGIC: [u8; 4] = [0x54, 0x45, 0x58, 0x30]; // "TEX0"
@@ -49,7 +49,7 @@ pub enum TextureFormat {
     // also no 0x0b, 0x0c and 0x0d
     #[inspect(rename = "CMPR")]
     #[inspect(tooltip = "A compressed texture using DXT1 compression.")]
-    Cmpr = 0x0e,
+    Cmpr = 0x0e
 }
 
 impl Deserialize for TextureFormat {
@@ -65,13 +65,28 @@ pub enum TextureData {
     I8(I8Texture),
     Ia4(Ia4Texture),
     Ia8(Ia8Texture),
+    Rgb5a3(Rgb5a3Texture),
     Rgb565(Rgb565Texture),
-    Cmpr(CmprTexture),
+    Rgba8(Rgba8Texture),
+    Cmpr(CmprTexture)
 }
 
 impl TextureData {
     #[cfg(feature = "egui-impls")]
     pub(super) fn draw_ui(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        if matches!(self, Self::Rgba8(_)) {
+            ui.data_mut(|d| d.insert_temp::<()>(egui::Id::new("RGBA8Found"), ()));
+        }
+
+        if ui
+            .data(|d| d.get_temp::<()>(egui::Id::new("RGBA8Found")))
+            .is_some()
+        {
+            egui::Modal::new(egui::Id::new("RGBA8Modal")).show(ui, |ui| {
+                ui.label("RGBA8 image was found");
+            });
+        }
+
         // Check if the texture has been registered.
         let dims = self.dimensions();
 
@@ -97,7 +112,7 @@ impl TextureData {
 
                 let color_img = Arc::new(egui::ColorImage::from_rgba_unmultiplied(
                     [dims.x as usize, dims.y as usize],
-                    rgba8.bytes(),
+                    rgba8.bytes()
                 ));
 
                 let data = egui::ImageData::Color(color_img);
@@ -180,7 +195,7 @@ macro_rules! impl_tex_data {
     }
 }
 
-impl_tex_data!(I4, I8, Ia4, Ia8, Rgb565, Cmpr);
+impl_tex_data!(I4, I8, Ia4, Ia8, Rgb5a3, Rgb565, Rgba8, Cmpr);
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Texture {
@@ -190,7 +205,7 @@ pub struct Texture {
     pub size: glam::U16Vec2,
     #[inspect(rename = "Image")]
     #[inspect(with = "TextureData::draw_ui")]
-    pub data: TextureData,
+    pub data: TextureData
 }
 
 impl Visitable for Texture {
@@ -201,7 +216,7 @@ impl Visitable for Texture {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> std::ops::ControlFlow<()> {
         visitor.visit_tex0_mut(VisitorContextMut::new(node, self))
     }
@@ -210,9 +225,9 @@ impl Visitable for Texture {
 #[tracing::instrument(skip_all, fields(name, parent_id))]
 pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
-    parent_id: IrNodeKey,
+    parent_id: Option<IrNodeKey>,
     arena: &IrArena,
-    name: String,
+    name: String
 ) -> SlipstreamResult<IrNodeKey> {
     let subfile_header = BFileHeader::deserialize(reader, BFileType::Tex0)?;
 
@@ -220,7 +235,7 @@ pub fn deserialize(
     let pixel_width = reader.read_u16::<BigEndian>()?;
     let pixel_height = reader.read_u16::<BigEndian>()?;
     let format = TextureFormat::deserialize(reader)?;
-    let mipmap_count = reader.read_u32::<BigEndian>()?;
+    let mipmaps = reader.read_u32::<BigEndian>()?;
     let min_mipmap_used = reader.read_f32::<BigEndian>()?;
     let max_mipmap_used = reader.read_f32::<BigEndian>()?;
     let _unused = reader.read_u32::<BigEndian>()?;
@@ -229,21 +244,21 @@ pub fn deserialize(
 
     let dims = glam::u16vec2(pixel_width, pixel_height);
     let data = match format {
-        TextureFormat::I4 => TextureData::I4(I4Texture::new(reader, dims, mipmap_count)?),
-        TextureFormat::I8 => TextureData::I8(I8Texture::new(reader, dims, mipmap_count)?),
-        TextureFormat::Ia4 => TextureData::Ia4(Ia4Texture::new(reader, dims, mipmap_count)?),
-        TextureFormat::Ia8 => TextureData::Ia8(Ia8Texture::new(reader, dims, mipmap_count)?),
-        TextureFormat::Rgb565 => {
-            TextureData::Rgb565(Rgb565Texture::new(reader, dims, mipmap_count)?)
-        }
-        TextureFormat::Cmpr => TextureData::Cmpr(CmprTexture::new(reader, dims, mipmap_count)?),
+        TextureFormat::I4 => TextureData::I4(I4Texture::new(reader, dims, mipmaps)?),
+        TextureFormat::I8 => TextureData::I8(I8Texture::new(reader, dims, mipmaps)?),
+        TextureFormat::Ia4 => TextureData::Ia4(Ia4Texture::new(reader, dims, mipmaps)?),
+        TextureFormat::Ia8 => TextureData::Ia8(Ia8Texture::new(reader, dims, mipmaps)?),
+        TextureFormat::Rgb565 => TextureData::Rgb565(Rgb565Texture::new(reader, dims, mipmaps)?),
+        TextureFormat::Rgb5a3 => TextureData::Rgb5a3(Rgb5a3Texture::new(reader, dims, mipmaps)?),
+        TextureFormat::Rgba8 => TextureData::Rgba8(Rgba8Texture::new(reader, dims, mipmaps)?),
+        TextureFormat::Cmpr => TextureData::Cmpr(CmprTexture::new(reader, dims, mipmaps)?),
         _ => {
             tracing::error!("Image format {format:?} unimplemented, using an empty image");
             TextureData::I4(I4Texture {
                 dimensions: glam::u16vec2(1, 1),
                 mipmaps: 1,
                 pixels: vec![255; 8 * 8],
-                hash: 0,
+                hash: 0
             })
         }
     };
@@ -251,13 +266,13 @@ pub fn deserialize(
     let key = arena.insert(IrNodeDescriptor {
         label: name,
         ty: IrNodeType::Texture,
-        parent: Some(parent_id),
+        parent: parent_id,
         children: Vec::new(),
         contents: ContentSlot::eager(Box::new(Texture {
             format,
             size: glam::u16vec2(pixel_width, pixel_height),
-            data,
-        })),
+            data
+        }))
     });
 
     Ok(key)

@@ -35,13 +35,13 @@ use crate::node::node::{ContentSlot, IrNode, IrNodeType};
 use crate::util::Box3;
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut,
+    VisitorContextNodeMut
 };
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_derive::Inspect;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{
-    CorruptionError, SlipstreamError, SlipstreamResult, UnsupportedError,
+    CorruptionError, SlipstreamError, SlipstreamResult, UnsupportedError
 };
 use slipstream_shared::verify;
 
@@ -53,7 +53,7 @@ pub enum ScalingMode {
     #[inspect(rename = "Autodesk Softimage")]
     Softimage,
     #[inspect(rename = "Autodesk Maya")]
-    Maya,
+    Maya
 }
 
 impl TryFrom<u32> for ScalingMode {
@@ -89,7 +89,7 @@ pub enum TextureMatrixMode {
     #[inspect(rename = "Autodesk Softimage")]
     Softimage,
     #[inspect(rename = "3DS Max")]
-    ThreeDsMax,
+    ThreeDsMax
 }
 
 impl TryFrom<u32> for TextureMatrixMode {
@@ -132,7 +132,7 @@ pub const MDL0_SECTION_NAMES: &[&str] = &[
     "Shapes",
     "Texture links",
     "Palette links",
-    "User data",
+    "User data"
 ];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -151,7 +151,7 @@ pub enum SectionType {
     Shapes,
     TextureLinks,
     PaletteLinks,
-    UserData,
+    UserData
 }
 
 impl TryFrom<u32> for SectionType {
@@ -189,7 +189,7 @@ impl TryFrom<u32> for SectionType {
 pub enum EnvelopeMatrixMode {
     Normal = 0,
     Approximate = 1,
-    Exact = 2,
+    Exact = 2
 }
 
 impl TryFrom<u8> for EnvelopeMatrixMode {
@@ -220,7 +220,7 @@ impl Deserialize for EnvelopeMatrixMode {
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct MatrixTable {
-    pub entries: Vec<i32>,
+    pub entries: Vec<i32>
 }
 
 impl MatrixTable {
@@ -239,7 +239,7 @@ impl MatrixTable {
 pub trait SectionDeserialize: Sized {
     fn deserialize_section(
         reader: &mut RefCursor<[u8]>,
-        header_start: u32,
+        header_start: u32
     ) -> SlipstreamResult<Self>;
 }
 
@@ -261,7 +261,7 @@ pub struct Mdl0Header {
     pub envelope_matrix_mode: EnvelopeMatrixMode,
     pub bounding_volume: Box3,
     #[inspect(opened = false)]
-    pub matrix_table: MatrixTable,
+    pub matrix_table: MatrixTable
 }
 
 impl Mdl0Header {
@@ -310,7 +310,7 @@ impl Mdl0Header {
             enable_bounding_volumes,
             envelope_matrix_mode,
             bounding_volume,
-            matrix_table,
+            matrix_table
         })
     }
 }
@@ -322,7 +322,7 @@ pub struct BoneLinkTable {
     /// Indices of matrices that have multiple bones affecting them.
     pub mixed_bones: Vec<u32>,
     /// Indices of bones that do not deform any geometry.
-    pub unconnected_bones: Vec<u32>,
+    pub unconnected_bones: Vec<u32>
 }
 
 impl BoneLinkTable {
@@ -365,7 +365,7 @@ impl BoneLinkTable {
         Ok(Self {
             rigid_bones: rigid,
             mixed_bones: mixed,
-            unconnected_bones: unconnected,
+            unconnected_bones: unconnected
         })
     }
 }
@@ -374,7 +374,7 @@ impl BoneLinkTable {
 #[inspect(rename = "MDL0 Root")]
 pub struct Mdl0Root {
     pub header: Mdl0Header,
-    pub bone_link_table: BoneLinkTable,
+    pub bone_link_table: BoneLinkTable
 }
 
 impl Visitable for Mdl0Root {
@@ -388,7 +388,7 @@ impl Visitable for Mdl0Root {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
         visitor
             .as_mdl0()
@@ -400,9 +400,9 @@ impl Visitable for Mdl0Root {
 #[tracing::instrument(skip_all, fields(name, parent_id))]
 pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
-    parent_id: IrNodeKey,
+    parent_id: Option<IrNodeKey>,
     arena: &IrArena,
-    name: String,
+    name: String
 ) -> SlipstreamResult<IrNodeKey> {
     tracing::trace!("Opening {name}");
 
@@ -413,7 +413,7 @@ pub fn deserialize(
                 "MDL0 version {} is not supported, only version 11 is",
                 subfile_header.version
             ),
-            location: Some(reader.position()),
+            location: Some(reader.position())
         }
         .into());
     }
@@ -451,67 +451,69 @@ pub fn deserialize(
             SectionType::DrawLists => deserialize_leaf_section::<Definitions>(
                 &mut reader,
                 subfile_header.header_start,
-                parent_id,
-                arena,
+                Some(mdl_root_key),
+                arena
             ),
-            SectionType::Bones => bones::deserialize_skeleton(&mut reader, parent_id, arena),
+            SectionType::Bones => {
+                bones::deserialize_skeleton(&mut reader, Some(mdl_root_key), arena)
+            }
             SectionType::Vertices => deserialize_leaf_section::<VertexBuffer>(
                 &mut reader,
                 subfile_header.header_start,
-                parent_id,
-                arena,
+                Some(mdl_root_key),
+                arena
             ),
             SectionType::Normals => deserialize_leaf_section::<NormalBuffer>(
                 &mut reader,
                 subfile_header.header_start,
-                parent_id,
-                arena,
+                Some(mdl_root_key),
+                arena
             ),
             SectionType::Colors => deserialize_leaf_section::<ColorBuffer>(
                 &mut reader,
                 subfile_header.header_start,
-                parent_id,
-                arena,
+                Some(mdl_root_key),
+                arena
             ),
             SectionType::UvCoordinates => deserialize_leaf_section::<UvBuffer>(
                 &mut reader,
                 subfile_header.header_start,
-                parent_id,
-                arena,
+                Some(mdl_root_key),
+                arena
             ),
             SectionType::Materials => deserialize_leaf_section::<MaterialBuffer>(
                 &mut reader,
                 subfile_header.header_start,
-                parent_id,
-                arena,
+                Some(mdl_root_key),
+                arena
             ),
             SectionType::Tevs => deserialize_leaf_section::<Tev>(
                 &mut reader,
                 subfile_header.header_start,
-                parent_id,
-                arena,
+                Some(mdl_root_key),
+                arena
             ),
             SectionType::Shapes => deserialize_leaf_section::<Polygon>(
                 &mut reader,
                 subfile_header.header_start,
-                parent_id,
-                arena,
+                Some(mdl_root_key),
+                arena
             ),
             SectionType::TextureLinks => deserialize_leaf_section::<TextureLinks>(
                 &mut reader,
                 subfile_header.header_start,
-                parent_id,
-                arena,
+                Some(mdl_root_key),
+                arena
             ),
             SectionType::PaletteLinks => deserialize_leaf_section::<PaletteLinks>(
                 &mut reader,
                 subfile_header.header_start,
-                parent_id,
-                arena,
+                Some(mdl_root_key),
+                arena
             ),
             SectionType::FurLayers => todo!("MDL0 fur layers"),
             SectionType::FurVectors => todo!("MDL0 fur vectors"),
-            SectionType::UserData => todo!("MDL0 user data"),
+            SectionType::UserData => todo!("MDL0 user data")
         }?;
 
         files.push(section_key);
@@ -522,13 +524,13 @@ pub fn deserialize(
         IrNodeDescriptor {
             label: name,
             ty: IrNodeType::Mdl0Root,
-            parent: Some(parent_id),
+            parent: parent_id,
             children: files,
             contents: ContentSlot::eager(Box::new(Mdl0Root {
                 header: mdl0_header,
-                bone_link_table,
-            })),
-        },
+                bone_link_table
+            }))
+        }
     );
 
     Ok(mdl_root_key)
@@ -559,7 +561,7 @@ pub struct SectionHeader {
     pub name_offset: i32,
     /// Index of this section file. This is generally just based on the location within the parent folder.
     #[inspect(tooltip = "Index within the MDL0 subfolder.")]
-    pub index: u32,
+    pub index: u32
 }
 
 impl SectionHeader {
@@ -577,7 +579,7 @@ impl SectionHeader {
             mdl0_offset,
             data_offset,
             name_offset,
-            index,
+            index
         })
     }
 

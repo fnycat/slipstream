@@ -56,6 +56,7 @@ pub fn hash_pixels(pixels: &[u8]) -> u64 {
     hasher.finish()
 }
 
+/// Computes the amount of tiles that are used for the given image.
 pub const fn block_count(dimensions: glam::U16Vec2, block_size: glam::USizeVec2) -> usize {
     let blocks_x = (dimensions.x as usize).div_ceil(block_size.x);
     let blocks_y = (dimensions.y as usize).div_ceil(block_size.y);
@@ -63,14 +64,17 @@ pub const fn block_count(dimensions: glam::U16Vec2, block_size: glam::USizeVec2)
     blocks_x as usize * blocks_y as usize
 }
 
+/// Converts a tiled image into a regular displayable image.
+///
+/// 'This should be ran on any images that use tiles.
 pub fn detile<
     const TILE_W: usize,
     const TILE_H: usize,
     const TILE_SIZE: usize,
-    P: Default + Copy,
+    P: Default + Copy
 >(
     tiled: &[P],
-    dims: glam::U16Vec2,
+    dims: glam::U16Vec2
 ) -> Vec<P> {
     let width = dims.x as usize;
     let height = dims.y as usize;
@@ -96,25 +100,9 @@ pub fn detile<
     out
 }
 
-/// Converts a 16-byte integer representing an RGB565 colour to an RGBA8 colour.
-///
-/// This is a separate function, as the CMPR format requires both the short and colour value.
-pub fn from_rgb565(short: u16) -> glam::U8Vec4 {
-    let r = ((short & 0xf8_00) >> 11) as u8; // Take 5 bits
-    let g = ((short & 0x07_e0) >> 5) as u8; // Then another 6 bits
-    let b = (short & 0x00_1f) as u8; // and lastly another 5 bits
-
-    // rescale the components to the full 0-255 range.
-    let r = (r << 3) | (r >> 2);
-    let g = (g << 2) | (g >> 4);
-    let b = (b << 3) | (b >> 2);
-
-    glam::u8vec4(r, g, b, 255)
-}
-
 pub fn deserialize_color(
     reader: &mut RefCursor<[u8]>,
-    format: ColorFormat,
+    format: ColorFormat
 ) -> SlipstreamResult<glam::U8Vec4> {
     Ok(match format {
         ColorFormat::Rgb565 => {
@@ -176,7 +164,7 @@ pub fn deserialize_color(
         ColorFormat::Invalid => {
             return Err(InvalidInputError {
                 reason: String::from("cannot read color of invalid format"),
-                location: Some(reader.position()),
+                location: Some(reader.position())
             }
             .into());
         }

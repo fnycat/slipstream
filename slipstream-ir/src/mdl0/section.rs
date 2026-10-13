@@ -26,7 +26,7 @@ pub trait SerializeContents {
 pub fn deserialize_leaf_section<T: DeserializeContents>(
     reader: &mut RefCursor<[u8]>,
     _header_start: u32,
-    parent: IrNodeKey,
+    parent: Option<IrNodeKey>,
     arena: &IrArena
 ) -> SlipstreamResult<IrNodeKey> {
     let index = IndexGroup::deserialize(reader)?;
@@ -55,7 +55,7 @@ pub fn deserialize_leaf_section<T: DeserializeContents>(
         IrNodeDescriptor {
             label: T::NAME.to_owned(),
             ty: T::KIND,
-            parent: Some(parent),
+            parent,
             children: entries,
             ..Default::default()
         }

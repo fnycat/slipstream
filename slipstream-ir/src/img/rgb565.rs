@@ -1,17 +1,31 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::{
-    img::{EncodedTexture, Rgba8Texture, block_count, detile, from_rgb565, hash_pixels},
-    tex0::TextureFormat,
-};
+use crate::img::{EncodedTexture, Rgba8Texture, block_count, detile, hash_pixels};
+use crate::tex0::TextureFormat;
+
+/// Converts a 16-byte integer representing an RGB565 colour to an RGBA8 colour.
+///
+/// This is a separate function, as the CMPR format requires both the short and colour value.
+pub const fn from_rgb565(short: u16) -> glam::U8Vec4 {
+    let r = ((short & 0xf8_00) >> 11) as u8; // Take 5 bits
+    let g = ((short & 0x07_e0) >> 5) as u8; // Then another 6 bits
+    let b = (short & 0x00_1f) as u8; // and lastly another 5 bits
+
+    // rescale the components to the full 0-255 range.
+    let r = (r << 3) | (r >> 2);
+    let g = (g << 2) | (g >> 4);
+    let b = (b << 3) | (b >> 2);
+
+    glam::u8vec4(r, g, b, 255)
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Rgb565Texture {
     pub(super) dimensions: glam::U16Vec2,
     pub(super) mipmaps: u32,
     pub(super) hash: u64,
-    pub(super) pixels: Vec<glam::U8Vec4>,
+    pub(super) pixels: Vec<glam::U8Vec4>
 }
 
 impl Rgb565Texture {
@@ -25,7 +39,7 @@ impl Rgb565Texture {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32,
+        mipmaps: u32
     ) -> SlipstreamResult<Self> {
         let blocks = block_count(dimensions, Self::BLOCK_SIZE);
 
@@ -45,7 +59,7 @@ impl Rgb565Texture {
             dimensions,
             mipmaps,
             pixels,
-            hash,
+            hash
         })
     }
 }
