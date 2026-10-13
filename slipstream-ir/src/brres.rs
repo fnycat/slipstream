@@ -235,7 +235,11 @@ pub struct BFileHeader {
 impl BFileHeader {
     /// Deserializes a section of the given type.
     pub fn deserialize(reader: &mut RefCursor<[u8]>, ty: BFileType) -> SlipstreamResult<Self> {
-        let header_start = reader.position() as u32 - 4; // Subtract 4 for magic.
+        let header_start = reader.position() as u32;
+
+        let magic = reader.read_u32::<BigEndian>()?;
+        tracing::debug!("Magic: {}", String::from_utf8_lossy(&magic.to_be_bytes()));
+
         let subfile_length = reader.read_u32::<BigEndian>()?;
         let subfile_version = reader.read_u32::<BigEndian>()?;
         let brres_offset = reader.read_i32::<BigEndian>()?;
@@ -310,13 +314,17 @@ fn deserialize_bfile(
     name: String
 ) -> SlipstreamResult<IrNodeKey> {
     // Check magic
-    let magic = reader.read_u8_array::<4>()?;
+    let magic: [u8; 4] = reader
+        .slice(..4)
+        .try_into()
+        .expect("failed to read file magic");
+
+    tracing::debug!("Magic is {}", String::from_utf8_lossy(&magic));
 
     match magic {
         MDL0_MAGIC => mdl0::deserialize(reader, Some(parent_id), arena, name),
         CHR0_MAGIC => chr0::deserialize(reader, Some(parent_id), arena, name),
         TEX0_MAGIC => tex0::deserialize(reader, Some(parent_id), arena, name),
-        // Chr0Subfile::MAGIC => Chr0Subfile::deserialize_lazy(reader),
         _ => {
             let key = arena.insert(IrNodeDescriptor {
                 label: String::from("<unimplemented>"),
@@ -383,12 +391,6 @@ fn deserialize_nw4r_subdirectories(
         let data_start = index.get_entry_data_start(bfile);
 
         reader.set_position(data_start);
-
-        {
-            let magic = &reader.remaining_slice()[..4];
-            tracing::trace!("Magic is {}", String::from_utf8_lossy(magic));
-        }
-
         bfiles.push(deserialize_bfile(reader, dir_key, arena, label)?);
     }
 

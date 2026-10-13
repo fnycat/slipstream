@@ -37,6 +37,8 @@ pub fn deserialize_unknown_root(
         .try_into()
         .expect("array of size 4 does not have size 4?");
 
+    tracing::trace!("Root file magic is {}", String::from_utf8_lossy(magic));
+
     let contents = match *magic {
         arc::ARC_MAGIC => arc::deserialize(reader, None, arena, name)?,
         brres::BRRES_MAGIC => brres::deserialize(reader, None, arena, name)?,
