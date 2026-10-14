@@ -25,7 +25,7 @@ pub struct CameraUniformData {
     /// The inverse of [`view_proj`].
     ///
     /// [`view_proj`]: CameraUniformData::view_proj
-    pub inverse_view_proj: glam::Mat4,
+    pub inverse_view_proj: glam::Mat4
 }
 
 impl CameraUniformData {
@@ -47,10 +47,10 @@ impl CameraUniformData {
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
-                    min_binding_size: Some(Self::SIZE),
+                    min_binding_size: Some(Self::SIZE)
                 },
-                count: None,
-            }],
+                count: None
+            }]
         }
     }
 }
@@ -61,70 +61,70 @@ pub enum Camera {
     /// An orbital camera that looks at a specific point and rotates around it.
     Orbit(OrbitCamera),
     /// A camera that can freely fly around.
-    Free(FreeCamera),
+    Free(FreeCamera)
 }
 
 impl CameraController for Camera {
     fn position(&self) -> glam::Vec3 {
         match self {
             Self::Orbit(x) => x.position(),
-            Self::Free(x) => x.position(),
+            Self::Free(x) => x.position()
         }
     }
 
     fn on_update(&mut self) {
         match self {
             Self::Orbit(x) => x.on_update(),
-            Self::Free(x) => x.on_update(),
+            Self::Free(x) => x.on_update()
         }
     }
 
     fn delta_time(&self) -> f32 {
         match self {
             Self::Orbit(x) => x.delta_time(),
-            Self::Free(x) => x.delta_time(),
+            Self::Free(x) => x.delta_time()
         }
     }
 
     fn set_fov(&mut self, fov: f32) {
         match self {
             Self::Orbit(x) => x.set_fov(fov),
-            Self::Free(x) => x.set_fov(fov),
+            Self::Free(x) => x.set_fov(fov)
         }
     }
 
     fn set_aspect_ratio(&mut self, aspect_ratio: f32) {
         match self {
             Self::Orbit(x) => x.set_aspect_ratio(aspect_ratio),
-            Self::Free(x) => x.set_aspect_ratio(aspect_ratio),
+            Self::Free(x) => x.set_aspect_ratio(aspect_ratio)
         }
     }
 
     fn on_scroll(&mut self, delta: f32) {
         match self {
             Self::Orbit(x) => x.on_scroll(delta),
-            Self::Free(x) => x.on_scroll(delta),
+            Self::Free(x) => x.on_scroll(delta)
         }
     }
 
     fn on_drag(&mut self, delta: glam::Vec2) {
         match self {
             Self::Orbit(x) => x.on_drag(delta),
-            Self::Free(x) => x.on_drag(delta),
+            Self::Free(x) => x.on_drag(delta)
         }
     }
 
     fn on_move(&mut self, delta: glam::Vec3) {
         match self {
             Self::Orbit(x) => x.on_move(delta),
-            Self::Free(x) => x.on_move(delta),
+            Self::Free(x) => x.on_move(delta)
         }
     }
 
     fn compute_matrix(&self) -> glam::Mat4 {
         match self {
             Self::Orbit(x) => x.compute_matrix(),
-            Self::Free(x) => x.compute_matrix(),
+            Self::Free(x) => x.compute_matrix()
         }
     }
 }

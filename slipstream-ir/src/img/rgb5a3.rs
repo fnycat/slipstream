@@ -1,49 +1,16 @@
+use std::io::{Seek, Write};
+
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::img::{EncodedTexture, Rgba8Texture, block_count, detile, hash_pixels};
+use crate::img::{
+    EncodedTexture, ExportableTexture, Rgba8Texture, block_count, detile, hash_pixels
+};
 use crate::tex0::TextureFormat;
 
 /// Converts a RGB5A3 integer format to RGBA8.
 pub const fn from_rgb5a3(short: u16) -> glam::U8Vec4 {
-    //     let has_alpha = short & 0x8000 == 0;
-    //     if has_alpha {
-    //         #[bitfield(u16)]
-    //         struct ColorBits {
-    //             _has_alpha: bool,
-    //             #[bits(3)]
-    //             pub alpha: u8,
-    //             #[bits(4)]
-    //             pub red: u8,
-    //             #[bits(4)]
-    //             pub green: u8,
-    //             #[bits(4)]
-    //             pub blue: u8
-    //         }
-    //
-    //         let x = ColorBits::from_bits(short);
-    //         glam::u8vec4(
-    //             x.red() * 0x11,
-    //             x.green() * 0x11,
-    //             x.blue() * 0x11,
-    //             x.alpha() * 0x20
-    //         )
-    //     } else {
-    //         #[bitfield(u16)]
-    //         struct ColorBits {
-    //             _has_alpha: bool,
-    //             #[bits(5)]
-    //             pub red: u8,
-    //             #[bits(5)]
-    //             pub green: u8,
-    //             #[bits(5)]
-    //             pub blue: u8
-    //         }
-    //
-    //         let x = ColorBits::from_bits(short);
-    //         glam::u8vec4(x.red() * 0x8, x.green() * 0x8, x.blue() * 0x8, 0xff)
-    //     }
     let has_alpha = short & 0x8000 == 0;
     if has_alpha {
         #[bitfield(u16)]
@@ -145,11 +112,11 @@ impl EncodedTexture for Rgb5a3Texture {
         self.dimensions
     }
 
-    fn data_len(&self) -> usize {
-        todo!()
+    fn bytes(&self) -> Option<&[u8]> {
+        Some(bytemuck::cast_slice(&self.pixels))
     }
 
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture> {
+    fn to_rgba8(&self) -> SlipstreamResult<Rgba8Texture> {
         Ok(Rgba8Texture::from(self))
     }
 
@@ -159,5 +126,28 @@ impl EncodedTexture for Rgb5a3Texture {
 
     fn content_hash(&self) -> u64 {
         self.hash
+    }
+}
+
+impl ExportableTexture for Rgb5a3Texture {
+    fn export<W: Write + Seek>(
+        &self,
+        buffered_writer: &mut W,
+        format: image::ImageFormat
+    ) -> SlipstreamResult<()> {
+        let dims = self.dimensions();
+
+        // The image data is already converted to RGBA8 while reading, so we can simply write it as an Rgba8 image.
+        image::write_buffer_with_format(
+            buffered_writer,
+            self.bytes()
+                .expect("Rgb5a3Texture::bytes should be infallible"),
+            dims.x as u32,
+            dims.y as u32,
+            image::ExtendedColorType::Rgba8,
+            format
+        )?;
+
+        Ok(())
     }
 }

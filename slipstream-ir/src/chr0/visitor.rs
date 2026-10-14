@@ -1,9 +1,7 @@
 use std::ops::ControlFlow;
 
-use crate::{
-    chr0,
-    visitor::{VisitorContext, VisitorContextMut},
-};
+use crate::chr0;
+use crate::visitor::{VisitorContext, VisitorContextMut};
 
 pub trait Chr0Visitor {
     /// Whether to stop traversing the tree when an unimplemented visitor method is encountered.
@@ -24,7 +22,7 @@ pub trait Chr0Visitor {
 
     fn visit_animation(
         &mut self,
-        animation: VisitorContext<'_, chr0::SkeletalAnimation>,
+        animation: VisitorContext<'_, chr0::SkeletalAnimation>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -35,7 +33,7 @@ pub trait Chr0Visitor {
 
     fn visit_chr0_mut(
         &mut self,
-        animation: VisitorContextMut<'_, chr0::Chr0Root>,
+        animation: VisitorContextMut<'_, chr0::Chr0Root>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -46,7 +44,7 @@ pub trait Chr0Visitor {
 
     fn visit_animation_mut(
         &mut self,
-        animation: VisitorContextMut<'_, chr0::SkeletalAnimation>,
+        animation: VisitorContextMut<'_, chr0::SkeletalAnimation>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())

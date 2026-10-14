@@ -1,9 +1,11 @@
+use std::io::{Seek, Write};
+
 use byteorder::ReadBytesExt;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::img::{
-    EncodedTexture, I4Texture, I8Texture, Ia4Texture, Ia8Texture, Rgb5a3Texture, Rgb565Texture,
-    block_count, detile, hash_pixels
+    EncodedTexture, ExportableTexture, L4Texture, L8Texture, La4Texture, La8Texture, Rgb5a3Texture,
+    Rgb565Texture, block_count, detile, hash_pixels
 };
 use crate::tex0::TextureFormat;
 
@@ -59,8 +61,8 @@ impl Rgba8Texture {
         })
     }
 
-    pub fn bytes(&self) -> &[u8] {
-        bytemuck::cast_slice(&self.pixels)
+    pub fn bytes(&self) -> Option<&[u8]> {
+        Some(bytemuck::cast_slice(&self.pixels))
     }
 }
 
@@ -73,11 +75,11 @@ impl EncodedTexture for Rgba8Texture {
         self.dimensions
     }
 
-    fn data_len(&self) -> usize {
-        todo!()
+    fn bytes(&self) -> Option<&[u8]> {
+        Some(bytemuck::cast_slice(&self.pixels))
     }
 
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture> {
+    fn to_rgba8(&self) -> SlipstreamResult<Rgba8Texture> {
         Ok(self.clone())
     }
 
@@ -90,8 +92,30 @@ impl EncodedTexture for Rgba8Texture {
     }
 }
 
-impl From<&I4Texture> for Rgba8Texture {
-    fn from(value: &I4Texture) -> Self {
+impl ExportableTexture for Rgba8Texture {
+    fn export<W: Write + Seek>(
+        &self,
+        buffered_writer: &mut W,
+        format: image::ImageFormat
+    ) -> SlipstreamResult<()> {
+        let dims = self.dimensions();
+
+        image::write_buffer_with_format(
+            buffered_writer,
+            self.bytes()
+                .expect("Rgba8Texture::bytes should be infallible"),
+            dims.x as u32,
+            dims.y as u32,
+            image::ExtendedColorType::Rgba8,
+            format
+        )?;
+
+        Ok(())
+    }
+}
+
+impl From<&L4Texture> for Rgba8Texture {
+    fn from(value: &L4Texture) -> Self {
         Self {
             dimensions: value.dimensions,
             mipmaps: value.mipmaps,
@@ -105,8 +129,8 @@ impl From<&I4Texture> for Rgba8Texture {
     }
 }
 
-impl From<&I8Texture> for Rgba8Texture {
-    fn from(value: &I8Texture) -> Self {
+impl From<&L8Texture> for Rgba8Texture {
+    fn from(value: &L8Texture) -> Self {
         Self {
             dimensions: value.dimensions,
             mipmaps: value.mipmaps,
@@ -120,8 +144,8 @@ impl From<&I8Texture> for Rgba8Texture {
     }
 }
 
-impl From<&Ia4Texture> for Rgba8Texture {
-    fn from(value: &Ia4Texture) -> Self {
+impl From<&La4Texture> for Rgba8Texture {
+    fn from(value: &La4Texture) -> Self {
         Self {
             dimensions: value.dimensions,
             mipmaps: value.mipmaps,
@@ -135,8 +159,8 @@ impl From<&Ia4Texture> for Rgba8Texture {
     }
 }
 
-impl From<&Ia8Texture> for Rgba8Texture {
-    fn from(value: &Ia8Texture) -> Self {
+impl From<&La8Texture> for Rgba8Texture {
+    fn from(value: &La8Texture) -> Self {
         Self {
             dimensions: value.dimensions,
             mipmaps: value.mipmaps,

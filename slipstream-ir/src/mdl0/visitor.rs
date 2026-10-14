@@ -1,9 +1,7 @@
 use std::ops::ControlFlow;
 
-use crate::{
-    mdl0,
-    visitor::{VisitorContext, VisitorContextMut},
-};
+use crate::mdl0;
+use crate::visitor::{VisitorContext, VisitorContextMut};
 
 #[allow(unused_variables)]
 pub trait Mdl0Visitor {
@@ -24,7 +22,7 @@ pub trait Mdl0Visitor {
 
     fn visit_definitions(
         &mut self,
-        definitions: VisitorContext<'_, mdl0::Definitions>,
+        definitions: VisitorContext<'_, mdl0::Definitions>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -43,7 +41,7 @@ pub trait Mdl0Visitor {
 
     fn visit_vertices(
         &mut self,
-        vertex_buf: VisitorContext<'_, mdl0::VertexBuffer>,
+        vertex_buf: VisitorContext<'_, mdl0::VertexBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -54,7 +52,7 @@ pub trait Mdl0Visitor {
 
     fn visit_normals(
         &mut self,
-        normal_buf: VisitorContext<'_, mdl0::NormalBuffer>,
+        normal_buf: VisitorContext<'_, mdl0::NormalBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -65,7 +63,7 @@ pub trait Mdl0Visitor {
 
     fn visit_colors(
         &mut self,
-        color_buf: VisitorContext<'_, mdl0::ColorBuffer>,
+        color_buf: VisitorContext<'_, mdl0::ColorBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -92,7 +90,7 @@ pub trait Mdl0Visitor {
 
     fn visit_material(
         &mut self,
-        material: VisitorContext<'_, mdl0::MaterialBuffer>,
+        material: VisitorContext<'_, mdl0::MaterialBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -111,7 +109,7 @@ pub trait Mdl0Visitor {
 
     fn visit_palette_links(
         &mut self,
-        links: VisitorContext<'_, mdl0::PaletteLinks>,
+        links: VisitorContext<'_, mdl0::PaletteLinks>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -122,7 +120,7 @@ pub trait Mdl0Visitor {
 
     fn visit_texture_links(
         &mut self,
-        links: VisitorContext<'_, mdl0::TextureLinks>,
+        links: VisitorContext<'_, mdl0::TextureLinks>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -144,7 +142,7 @@ pub trait Mdl0Visitor {
 
     fn visit_definitions_mut(
         &mut self,
-        definitions: VisitorContextMut<'_, mdl0::Definitions>,
+        definitions: VisitorContextMut<'_, mdl0::Definitions>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -163,7 +161,7 @@ pub trait Mdl0Visitor {
 
     fn visit_vertices_mut(
         &mut self,
-        vertex_buf: VisitorContextMut<'_, mdl0::VertexBuffer>,
+        vertex_buf: VisitorContextMut<'_, mdl0::VertexBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -174,7 +172,7 @@ pub trait Mdl0Visitor {
 
     fn visit_normals_mut(
         &mut self,
-        normal_buf: VisitorContextMut<'_, mdl0::NormalBuffer>,
+        normal_buf: VisitorContextMut<'_, mdl0::NormalBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -185,7 +183,7 @@ pub trait Mdl0Visitor {
 
     fn visit_colors_mut(
         &mut self,
-        color_buf: VisitorContextMut<'_, mdl0::ColorBuffer>,
+        color_buf: VisitorContextMut<'_, mdl0::ColorBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -204,7 +202,7 @@ pub trait Mdl0Visitor {
 
     fn visit_polygon_mut(
         &mut self,
-        polygon: VisitorContextMut<'_, mdl0::Polygon>,
+        polygon: VisitorContextMut<'_, mdl0::Polygon>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -215,7 +213,7 @@ pub trait Mdl0Visitor {
 
     fn visit_material_mut(
         &mut self,
-        material: VisitorContextMut<'_, mdl0::MaterialBuffer>,
+        material: VisitorContextMut<'_, mdl0::MaterialBuffer>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -234,7 +232,7 @@ pub trait Mdl0Visitor {
 
     fn visit_palette_links_mut(
         &mut self,
-        links: VisitorContextMut<'_, mdl0::PaletteLinks>,
+        links: VisitorContextMut<'_, mdl0::PaletteLinks>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -245,7 +243,7 @@ pub trait Mdl0Visitor {
 
     fn visit_texture_links_mut(
         &mut self,
-        links: VisitorContextMut<'_, mdl0::TextureLinks>,
+        links: VisitorContextMut<'_, mdl0::TextureLinks>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())

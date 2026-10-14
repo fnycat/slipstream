@@ -23,6 +23,7 @@ byteorder.workspace = true
 tracing.workspace = true
 glam.workspace = true
 bitfield-struct.workspace = true
+image.workspace = true
 
 parking_lot = { version = "0.12.5", features = ["arc_lock"] }
 dashmap = "6.2.1"
@@ -33,4 +34,3 @@ nohash-hasher = "0.2.0"
 rayon = "1.12.0"
 parking_lot_core = "0.9.12"
 downcast-rs = "2.0.2"
-image = "0.25.10"

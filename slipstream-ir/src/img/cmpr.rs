@@ -1,8 +1,11 @@
+use std::io::{Seek, Write};
+
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult, verify};
 
 use crate::img::{
-    EncodedTexture, Rgba8Texture, deserialize_color, detile, from_rgb565, hash_pixels,
+    EncodedTexture, ExportableTexture, Rgba8Texture, deserialize_color, detile, from_rgb565,
+    hash_pixels
 };
 use crate::tex0::TextureFormat;
 
@@ -13,7 +16,7 @@ pub struct CmprTexture {
     // As `wgpu` natively supports this format, we will simply store a reference to the reader
     // instead of deserializing the texture data.
     pub(super) raw: RefCursor<[u8]>,
-    pub(super) hash: u64,
+    pub(super) hash: u64
 }
 
 impl CmprTexture {
@@ -43,11 +46,12 @@ impl CmprTexture {
     pub fn create_wgpu_texture(
         &self,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        queue: &wgpu::Queue
     ) -> (wgpu::Texture, wgpu::TextureView) {
         use wgpu::util::DeviceExt;
 
-        let data_len = self.data_len();
+        todo!();
+        let data_len = 0;
         let texture = device.create_texture_with_data(
             queue,
             &wgpu::TextureDescriptor {
@@ -57,15 +61,15 @@ impl CmprTexture {
                 size: wgpu::Extent3d {
                     width: self.dimensions().x as u32,
                     height: self.dimensions().y as u32,
-                    depth_or_array_layers: 1,
+                    depth_or_array_layers: 1
                 },
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[Self::SHADER_FORMAT],
                 mip_level_count: self.mipmaps(),
-                sample_count: 1,
+                sample_count: 1
             },
             wgpu::util::TextureDataOrder::LayerMajor,
-            bytemuck::cast_slice(self.raw.slice(..data_len)),
+            bytemuck::cast_slice(self.raw.slice(..data_len))
         );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
@@ -77,7 +81,7 @@ impl CmprTexture {
             base_mip_level: 0,
             mip_level_count: Some(self.mipmaps()),
             base_array_layer: 0,
-            array_layer_count: None,
+            array_layer_count: None
         });
 
         (texture, view)
@@ -88,7 +92,7 @@ impl CmprTexture {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmap_count: u32,
+        mipmap_count: u32
     ) -> SlipstreamResult<Self> {
         let blocks_x = dimensions.x.div_ceil(8);
         let blocks_y = dimensions.y.div_ceil(8);
@@ -103,7 +107,7 @@ impl CmprTexture {
             dimensions,
             mipmaps: mipmap_count,
             raw: reader.clone(),
-            hash,
+            hash
         })
     }
 }
@@ -117,12 +121,11 @@ impl EncodedTexture for CmprTexture {
         self.dimensions
     }
 
-    fn data_len(&self) -> usize {
-        let blocks = self.subblock_count();
-        blocks * 32
+    fn bytes(&self) -> Option<&[u8]> {
+        None
     }
 
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture> {
+    fn to_rgba8(&self) -> SlipstreamResult<Rgba8Texture> {
         let mut reader = self.raw.clone();
         let reader_start = reader.position();
 
@@ -167,7 +170,7 @@ impl EncodedTexture for CmprTexture {
                         color0.as_u8vec4(),
                         color1.as_u8vec4(),
                         color2.as_u8vec4(),
-                        color3.as_u8vec4(),
+                        color3.as_u8vec4()
                     ];
 
                     let mut indices = reader.read_u32::<BigEndian>()?;
@@ -184,19 +187,11 @@ impl EncodedTexture for CmprTexture {
             }
         }
 
-        let actual_len = reader.position() - reader_start;
-        let expected_len = self.data_len() as u64;
-
-        verify!(
-            actual_len == expected_len,
-            "incorrectly decompressed CMPR image, expected to read {expected_len} bytes but read {actual_len}"
-        );
-
         Ok(Rgba8Texture {
             dimensions: self.dimensions,
             mipmaps: self.mipmaps,
             hash: self.hash,
-            pixels,
+            pixels
         })
     }
 
@@ -206,5 +201,28 @@ impl EncodedTexture for CmprTexture {
 
     fn content_hash(&self) -> u64 {
         self.hash
+    }
+}
+
+impl ExportableTexture for CmprTexture {
+    fn export<W: Write + Seek>(
+        &self,
+        buffered_writer: &mut W,
+        format: image::ImageFormat
+    ) -> SlipstreamResult<()> {
+        let rgba = self.to_rgba8()?;
+        let dims = self.dimensions();
+
+        image::write_buffer_with_format(
+            buffered_writer,
+            rgba.bytes()
+                .expect("Rgba8Texture::bytes should be infallible"),
+            dims.x as u32,
+            dims.y as u32,
+            image::ExtendedColorType::Rgba8,
+            format
+        )?;
+
+        Ok(())
     }
 }

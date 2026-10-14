@@ -11,11 +11,11 @@ use crate::mdl0::SectionHeader;
 use crate::mdl0::section::DeserializeContents;
 use crate::node::node::{IrNode, IrNodeType};
 use crate::util::{
-    Box2, Box3, VectorDivisor, VertexFormat, deserialize_scalar_data, deserialize_vector_data,
+    Box2, Box3, VectorDivisor, VertexFormat, deserialize_scalar_data, deserialize_vector_data
 };
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut,
+    VisitorContextNodeMut
 };
 
 const COMPONENTS_S: u32 = 0x00;
@@ -24,20 +24,20 @@ const COMPONENTS_ST: u32 = 0x01;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum UvDataType {
     S,
-    St,
+    St
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UvBufData {
     S(Vec<f32>),
-    St(Vec<glam::Vec2>),
+    St(Vec<glam::Vec2>)
 }
 
 impl UvBufData {
     pub fn ty(&self) -> UvDataType {
         match self {
             Self::S(_) => UvDataType::S,
-            Self::St(_) => UvDataType::St,
+            Self::St(_) => UvDataType::St
         }
     }
 }
@@ -69,14 +69,14 @@ pub struct UvBuffer {
     /// The raw UV data.
     #[inspect(ignore)]
     pub uvs: UvBufData,
-    pub bounding_volume: Box2,
+    pub bounding_volume: Box2
 }
 
 impl UvBuffer {
     pub fn get_st(&self, index: usize) -> Option<glam::Vec2> {
         match &self.uvs {
             UvBufData::S(x) => x.get(index).map(|x| glam::vec2(*x, 0.0)),
-            UvBufData::St(x) => x.get(index).copied(),
+            UvBufData::St(x) => x.get(index).copied()
         }
     }
 }
@@ -92,7 +92,7 @@ impl Visitable for UvBuffer {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
         visitor
             .as_mdl0()
@@ -124,13 +124,13 @@ impl DeserializeContents for UvBuffer {
                 reader,
                 uv_count as usize,
                 format,
-                VectorDivisor::Custom(divisor),
+                VectorDivisor::Custom(divisor)
             )?),
             COMPONENTS_ST => UvBufData::St(deserialize_vector_data::<2, glam::Vec2>(
                 reader,
                 uv_count as usize,
                 format,
-                VectorDivisor::Custom(divisor),
+                VectorDivisor::Custom(divisor)
             )?),
             _ => {
                 return Err(CorruptionError {
@@ -146,7 +146,7 @@ impl DeserializeContents for UvBuffer {
             format,
             divisor,
             uvs,
-            bounding_volume,
+            bounding_volume
         })
     }
 }

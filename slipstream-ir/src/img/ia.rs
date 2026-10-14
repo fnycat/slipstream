@@ -1,22 +1,26 @@
+use std::io::{Seek, Write};
+
 use byteorder::ReadBytesExt;
 use glam::Vec2Swizzles;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::img::{EncodedTexture, Rgba8Texture, block_count, detile, hash_pixels};
+use crate::img::{
+    EncodedTexture, ExportableTexture, Rgba8Texture, block_count, detile, hash_pixels
+};
 use crate::tex0::TextureFormat;
 
 /// Single channel 4-bit intensity values.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ia4Texture {
+pub struct La4Texture {
     pub(super) dimensions: glam::U16Vec2,
     pub(super) mipmaps: u32,
     /// Intensity values. The values have already been multiplied by `0x11` compared
     /// to the disk format.
     pub(super) pixels: Vec<glam::U8Vec2>,
-    pub(super) hash: u64,
+    pub(super) hash: u64
 }
 
-impl Ia4Texture {
+impl La4Texture {
     /// The format of this texture when uploaded to the GPU.
     #[cfg(feature = "egui-impls")]
     pub const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
@@ -28,7 +32,7 @@ impl Ia4Texture {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32,
+        mipmaps: u32
     ) -> SlipstreamResult<Self> {
         let blocks = block_count(dimensions, Self::BLOCK_SIZE);
 
@@ -50,25 +54,25 @@ impl Ia4Texture {
             dimensions,
             mipmaps,
             pixels,
-            hash,
+            hash
         })
     }
 }
 
-impl EncodedTexture for Ia4Texture {
+impl EncodedTexture for La4Texture {
     fn format(&self) -> TextureFormat {
-        TextureFormat::I4
+        TextureFormat::Luminance4
     }
 
     fn dimensions(&self) -> glam::U16Vec2 {
         self.dimensions
     }
 
-    fn data_len(&self) -> usize {
-        todo!()
+    fn bytes(&self) -> Option<&[u8]> {
+        Some(bytemuck::cast_slice(&self.pixels))
     }
 
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture> {
+    fn to_rgba8(&self) -> SlipstreamResult<Rgba8Texture> {
         let out = self
             .pixels
             .iter()
@@ -88,15 +92,37 @@ impl EncodedTexture for Ia4Texture {
     }
 }
 
+impl ExportableTexture for La4Texture {
+    fn export<W: Write + Seek>(
+        &self,
+        buffered_writer: &mut W,
+        format: image::ImageFormat
+    ) -> SlipstreamResult<()> {
+        let dims = self.dimensions();
+
+        image::write_buffer_with_format(
+            buffered_writer,
+            self.bytes()
+                .expect("La4Texture::bytes should be infallible"),
+            dims.x as u32,
+            dims.y as u32,
+            image::ExtendedColorType::La4,
+            format
+        )?;
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ia8Texture {
+pub struct La8Texture {
     pub(super) dimensions: glam::U16Vec2,
     pub(super) mipmaps: u32,
     pub(super) pixels: Vec<glam::U8Vec2>,
-    pub(super) hash: u64,
+    pub(super) hash: u64
 }
 
-impl Ia8Texture {
+impl La8Texture {
     /// The format of this texture when uploaded to the GPU.
     #[cfg(feature = "egui-impls")]
     pub const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
@@ -108,7 +134,7 @@ impl Ia8Texture {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32,
+        mipmaps: u32
     ) -> SlipstreamResult<Self> {
         let blocks = block_count(dimensions, Self::BLOCK_SIZE);
 
@@ -129,25 +155,25 @@ impl Ia8Texture {
             dimensions,
             mipmaps,
             pixels,
-            hash,
+            hash
         })
     }
 }
 
-impl EncodedTexture for Ia8Texture {
+impl EncodedTexture for La8Texture {
     fn format(&self) -> TextureFormat {
-        TextureFormat::I8
+        TextureFormat::Luminance8
     }
 
     fn dimensions(&self) -> glam::U16Vec2 {
         self.dimensions
     }
 
-    fn data_len(&self) -> usize {
-        todo!()
+    fn bytes(&self) -> Option<&[u8]> {
+        Some(bytemuck::cast_slice(&self.pixels))
     }
 
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture> {
+    fn to_rgba8(&self) -> SlipstreamResult<Rgba8Texture> {
         Ok(Rgba8Texture::from(self))
     }
 
@@ -157,5 +183,27 @@ impl EncodedTexture for Ia8Texture {
 
     fn content_hash(&self) -> u64 {
         self.hash
+    }
+}
+
+impl ExportableTexture for La8Texture {
+    fn export<W: Write + Seek>(
+        &self,
+        buffered_writer: &mut W,
+        format: image::ImageFormat
+    ) -> SlipstreamResult<()> {
+        let dims = self.dimensions();
+
+        image::write_buffer_with_format(
+            buffered_writer,
+            self.bytes()
+                .expect("La8Texture::bytes should be infallible"),
+            dims.x as u32,
+            dims.y as u32,
+            image::ExtendedColorType::La8,
+            format
+        )?;
+
+        Ok(())
     }
 }

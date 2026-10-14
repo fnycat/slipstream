@@ -1,7 +1,11 @@
+use std::io::{Seek, Write};
+
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
-use crate::img::{EncodedTexture, Rgba8Texture, block_count, detile, hash_pixels};
+use crate::img::{
+    EncodedTexture, ExportableTexture, Rgba8Texture, block_count, detile, hash_pixels
+};
 use crate::tex0::TextureFormat;
 
 /// Converts a 16-byte integer representing an RGB565 colour to an RGBA8 colour.
@@ -73,11 +77,11 @@ impl EncodedTexture for Rgb565Texture {
         self.dimensions
     }
 
-    fn data_len(&self) -> usize {
-        todo!()
+    fn bytes(&self) -> Option<&[u8]> {
+        Some(bytemuck::cast_slice(&self.pixels))
     }
 
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture> {
+    fn to_rgba8(&self) -> SlipstreamResult<Rgba8Texture> {
         Ok(Rgba8Texture::from(self))
     }
 
@@ -87,5 +91,28 @@ impl EncodedTexture for Rgb565Texture {
 
     fn content_hash(&self) -> u64 {
         self.hash
+    }
+}
+
+impl ExportableTexture for Rgb565Texture {
+    fn export<W: Write + Seek>(
+        &self,
+        buffered_writer: &mut W,
+        format: image::ImageFormat
+    ) -> SlipstreamResult<()> {
+        let dims = self.dimensions();
+
+        // The image is already converted to RGBA8 format when reading, so we can write it to an image immediately.
+        image::write_buffer_with_format(
+            buffered_writer,
+            self.bytes()
+                .expect("Rgb565Texture::bytes should be infallible"),
+            dims.x as u32,
+            dims.y as u32,
+            image::ExtendedColorType::Rgba8,
+            format
+        )?;
+
+        Ok(())
     }
 }

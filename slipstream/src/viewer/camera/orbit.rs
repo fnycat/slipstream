@@ -14,7 +14,7 @@ pub struct OrbitCamera {
     pub last_update: Instant,
     pub orientation: glam::Quat,
     pub lookat: glam::Vec3,
-    pub radius: f32,
+    pub radius: f32
 }
 
 impl CameraController for OrbitCamera {
@@ -68,7 +68,7 @@ impl CameraController for OrbitCamera {
         let proj_matrix = glam::camera::rh::proj::directx::perspective_infinite_reverse(
             self.vertical_fov,
             self.aspect_ratio,
-            NEAR_PLANE,
+            NEAR_PLANE
         );
 
         proj_matrix * view_matrix

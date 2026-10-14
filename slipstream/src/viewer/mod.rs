@@ -22,13 +22,13 @@ pub struct ViewerPane {
     node: Option<IrNodeKey>,
     arena: Arc<IrArena>,
 
-    render_state: GraphicsState,
+    render_state: GraphicsState
 }
 
 impl ViewerPane {
     pub fn update_graphics<F, T>(&self, update_fn: F) -> SlipstreamResult<T>
     where
-        F: FnOnce(&mut ViewerPipeline) -> SlipstreamResult<T>,
+        F: FnOnce(&mut ViewerPipeline) -> SlipstreamResult<T>
     {
         let mut guard = self.render_state.renderer.write();
         let pipeline = try_unwrap!(
@@ -44,7 +44,7 @@ impl ViewerPane {
         cmd_sender: mpsc::Sender<PaneAction>,
         mdl0_node: Option<IrNodeKey>,
         arena: Arc<IrArena>,
-        render_state: GraphicsState,
+        render_state: GraphicsState
     ) -> SlipstreamResult<Box<dyn Pane>> {
         let model = mdl0_node
             .map(|node| ModelContents::from_root(node, &arena))
@@ -66,7 +66,7 @@ impl ViewerPane {
             cmd_sender,
             node: mdl0_node,
             arena,
-            render_state,
+            render_state
         }))
     }
 }
@@ -84,7 +84,7 @@ impl Pane for ViewerPane {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
-        is_focused: bool,
+        is_focused: bool
     ) -> egui_tiles::UiResponse {
         let response = self.draw_pane_header(ui, is_focused);
         let _ = self.draw_content(ui, tile_id, is_focused);
@@ -95,7 +95,7 @@ impl Pane for ViewerPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        is_focused: bool,
+        is_focused: bool
     ) -> egui_tiles::UiResponse {
         egui::Frame::canvas(ui.style()).show(ui, |ui| {
             let target_size = ui.available_size();
@@ -125,7 +125,7 @@ impl Pane for ViewerPane {
                         &self.render_state.device,
                         &output_view,
                         TEXTURE_FILTER_MODE,
-                        egui_tex_id,
+                        egui_tex_id
                     );
                 }
 
@@ -135,7 +135,7 @@ impl Pane for ViewerPane {
             self.update_graphics(|pipeline| {
                 ui.painter().add(egui_wgpu::Callback::new_paint_callback(
                     panel_bounds,
-                    ViewerCallback,
+                    ViewerCallback
                 ));
 
                 let image_widget = egui::Image::new(egui::load::SizedTexture {

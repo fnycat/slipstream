@@ -1,6 +1,6 @@
 use slipstream_ir::mdl0::{
     Bone, BoneBind, BoneIndex, BoneWeight, DefCommand, Definitions, MatrixId, Mdl0Visitor, Polygon,
-    WeightId,
+    WeightId
 };
 use slipstream_ir::node::arena::IrArena;
 use slipstream_ir::visitor::{Visitor, VisitorContext};
@@ -9,14 +9,14 @@ use std::collections::HashMap;
 use std::ops::ControlFlow;
 
 use crate::viewer::translation::{
-    IntermediateModel, IntermediatePolygon, MAX_BONE_INFLUENCES, ModelContents, VertexKey,
+    IntermediateModel, IntermediatePolygon, MAX_BONE_INFLUENCES, ModelContents, VertexKey
 };
 
 /// Maps bone IDs to matrices in the matrix table
 #[derive(Default, Debug)]
 pub struct BoneMap {
     /// Maps bones to their corresponding matrices.
-    matrix_map: HashMap<BoneIndex, MatrixId>,
+    matrix_map: HashMap<BoneIndex, MatrixId>
 }
 
 impl BoneMap {
@@ -36,7 +36,7 @@ impl BoneMap {
                 DefCommand::MapNode(mapping) => {
                     map.insert(mapping.bone_index, mapping.matrix_index);
                 }
-                _ => tracing::warn!("Unexpected command `{cmd:?}` in `NodeTree`, skipping it"),
+                _ => tracing::warn!("Unexpected command `{cmd:?}` in `NodeTree`, skipping it")
             }
         }
 
@@ -60,7 +60,7 @@ pub struct BoneWeights {
     // Maps a matrix to its corresponding entry in `weights`.
     indices: HashMap<MatrixId, WeightId>,
     // Actual weight data.
-    weights: HashMap<WeightId, Vec<BoneWeight>>,
+    weights: HashMap<WeightId, Vec<BoneWeight>>
 }
 
 impl BoneWeights {
@@ -101,20 +101,20 @@ impl BoneWeights {
                 DefCommand::WeightIndex(index) => {
                     index_map.insert(index.matrix_id, index.weight_id);
                 }
-                _ => tracing::warn!("Unexpected command `{cmd:?}` in `NodeMix`, skipping it"),
+                _ => tracing::warn!("Unexpected command `{cmd:?}` in `NodeMix`, skipping it")
             }
         }
 
         Ok(Self {
             indices: index_map,
-            weights: weight_map,
+            weights: weight_map
         })
     }
 }
 
 pub(super) struct VertexBoneData {
     pub ids: [u32; MAX_BONE_INFLUENCES],
-    pub weights: [f32; MAX_BONE_INFLUENCES],
+    pub weights: [f32; MAX_BONE_INFLUENCES]
 }
 
 impl ModelContents<'_> {
@@ -123,7 +123,7 @@ impl ModelContents<'_> {
         model: &IntermediateModel,
         scratch: &IntermediatePolygon,
         polygon: &Polygon,
-        vertex_key: &VertexKey,
+        vertex_key: &VertexKey
     ) -> SlipstreamResult<VertexBoneData> {
         const WEIGHTS_DEFAULT: [f32; MAX_BONE_INFLUENCES] = {
             let mut def = [0.0; MAX_BONE_INFLUENCES];
@@ -147,7 +147,7 @@ impl ModelContents<'_> {
 
                 VertexBoneData {
                     ids: bone_ids,
-                    weights,
+                    weights
                 }
             }
             BoneBind::Mixed(mixed) => {
@@ -169,7 +169,7 @@ impl ModelContents<'_> {
 
                         VertexBoneData {
                             ids: bone_indices,
-                            weights: [1.0, 0.0, 0.0, -1.0],
+                            weights: [1.0, 0.0, 0.0, -1.0]
                         }
                     }
                     None => {
@@ -182,7 +182,7 @@ impl ModelContents<'_> {
 
                         VertexBoneData {
                             ids: bone_indices,
-                            weights: [1.0, 0.0, 0.0, -2.0],
+                            weights: [1.0, 0.0, 0.0, -2.0]
                         }
                     }
                 }
@@ -193,10 +193,10 @@ impl ModelContents<'_> {
     pub(super) fn populate_primary_influences(
         &self,
         out: &mut IntermediateModel,
-        arena: &IrArena,
+        arena: &IrArena
     ) -> SlipstreamResult<()> {
         struct BoneVisitor<'a> {
-            transforms: &'a mut HashMap<BoneIndex, glam::Mat4>,
+            transforms: &'a mut HashMap<BoneIndex, glam::Mat4>
         }
 
         impl Visitor for BoneVisitor<'_> {
@@ -218,7 +218,7 @@ impl ModelContents<'_> {
 
         let mut transforms = HashMap::new();
         let mut visitor = BoneVisitor {
-            transforms: &mut transforms,
+            transforms: &mut transforms
         };
         arena.walk(skeleton_root, &mut visitor)?;
 

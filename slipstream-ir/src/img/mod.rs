@@ -9,6 +9,7 @@ mod rgba8;
 mod tpl;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io::{Seek, Write};
 
 pub use c::*;
 pub use c14x2::*;
@@ -28,6 +29,15 @@ use crate::encoding::ReadArrayExt;
 use crate::mdl0::ColorFormat;
 use crate::tex0::TextureFormat;
 
+/// This is a separate trait from [`EncodedTexture`] to keep that trait dyn-compatible.
+pub trait ExportableTexture {
+    fn export<W: Write + Seek>(
+        &self,
+        buffered_writer: &mut W,
+        format: image::ImageFormat
+    ) -> SlipstreamResult<()>;
+}
+
 // We use methods instead of associated constants to ensure the trait stays dyn-compatible.
 pub trait EncodedTexture {
     /// The format of this texture.
@@ -36,11 +46,14 @@ pub trait EncodedTexture {
     /// The dimensions of the texture.
     fn dimensions(&self) -> glam::U16Vec2;
 
-    /// The length in bytes of the image's texture.
-    fn data_len(&self) -> usize;
+    /// Returns the inner pixel data as a raw binary buffer.
+    ///
+    /// This function returns `None` when the pixel content is not known yet.
+    /// (Currently this is only the case for `CMPR` images as they need to be decompressed)
+    fn bytes(&self) -> Option<&[u8]>;
 
     /// Converts this image to an `RGBA8Unorm` texture.
-    fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture>;
+    fn to_rgba8(&self) -> SlipstreamResult<Rgba8Texture>;
 
     /// The amount of mipmaps in this texture.
     fn mipmaps(&self) -> u32;

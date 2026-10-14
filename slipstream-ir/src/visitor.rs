@@ -3,7 +3,7 @@ use crate::brres::BrresFile;
 use crate::chr0::{self, Chr0Visitor};
 use crate::mdl0::{
     self, Bone, ColorBuffer, Definitions, MaterialBuffer, Mdl0Visitor, NormalBuffer, PaletteLinks,
-    Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer,
+    Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer
 };
 use crate::node::arena::IrNodeKey;
 use crate::node::node::{IrNode, IrNodeType};
@@ -15,7 +15,7 @@ pub struct VisitorContextNode<'a> {
     pub label: &'a str,
     pub ty: IrNodeType,
     pub key: IrNodeKey,
-    pub children: &'a [IrNodeKey],
+    pub children: &'a [IrNodeKey]
 }
 
 impl<'a> From<&'a IrNode> for VisitorContextNode<'a> {
@@ -25,14 +25,14 @@ impl<'a> From<&'a IrNode> for VisitorContextNode<'a> {
             label: &node.label,
             ty: node.ty,
             key: node.key(),
-            children: &node.children,
+            children: &node.children
         }
     }
 }
 
 pub struct VisitorContext<'a, T> {
     pub meta: VisitorContextNode<'a>,
-    pub content: &'a T,
+    pub content: &'a T
 }
 
 impl<'a, T> VisitorContext<'a, T> {
@@ -40,7 +40,7 @@ impl<'a, T> VisitorContext<'a, T> {
     pub(crate) fn new(node: VisitorContextNode<'a>, content: &'a T) -> Self {
         Self {
             meta: node,
-            content,
+            content
         }
     }
 }
@@ -57,7 +57,7 @@ pub struct VisitorContextNodeMut<'a> {
     pub label: &'a mut String,
     pub ty: IrNodeType,
     pub key: IrNodeKey,
-    pub children: &'a mut [IrNodeKey],
+    pub children: &'a mut [IrNodeKey]
 }
 
 impl<'a> From<&'a mut IrNode> for VisitorContextNodeMut<'a> {
@@ -66,7 +66,7 @@ impl<'a> From<&'a mut IrNode> for VisitorContextNodeMut<'a> {
             key: node.key(),
             label: &mut node.label,
             ty: node.ty,
-            children: &mut node.children,
+            children: &mut node.children
         }
     }
 }
@@ -74,7 +74,7 @@ impl<'a> From<&'a mut IrNode> for VisitorContextNodeMut<'a> {
 /// The contents can be accessed via the deref implementations.
 pub struct VisitorContextMut<'a, T> {
     pub meta: VisitorContextNodeMut<'a>,
-    pub content: &'a mut T,
+    pub content: &'a mut T
 }
 
 impl<'a, T> VisitorContextMut<'a, T> {
@@ -82,7 +82,7 @@ impl<'a, T> VisitorContextMut<'a, T> {
     pub(crate) fn new(node: VisitorContextNodeMut<'a>, content: &'a mut T) -> Self {
         Self {
             meta: node,
-            content,
+            content
         }
     }
 }
@@ -173,7 +173,7 @@ pub trait Visitor {
 
     fn visit_unknown_mut(
         &mut self,
-        unknown: VisitorContextMut<'_, UnknownFile>,
+        unknown: VisitorContextMut<'_, UnknownFile>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -207,7 +207,7 @@ pub trait Visitable: Downcast {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()>;
 }
 impl_downcast!(Visitable);

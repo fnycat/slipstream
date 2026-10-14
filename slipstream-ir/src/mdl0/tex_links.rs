@@ -9,13 +9,13 @@ use crate::mdl0::section::{DeserializeContents, SerializeContents};
 use crate::node::node::{IrNode, IrNodeType};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut,
+    VisitorContextNodeMut
 };
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureLink {
     pub offset1: u32,
-    pub offset2: u32,
+    pub offset2: u32
 }
 
 impl TextureLink {
@@ -36,7 +36,7 @@ impl TextureLink {
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureLinks {
-    pub links: Vec<TextureLink>,
+    pub links: Vec<TextureLink>
 }
 
 impl Visitable for TextureLinks {
@@ -50,7 +50,7 @@ impl Visitable for TextureLinks {
     fn accept_mut(
         &mut self,
         node: VisitorContextNodeMut<'_>,
-        visitor: &mut dyn Visitor,
+        visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
         visitor
             .as_mdl0()

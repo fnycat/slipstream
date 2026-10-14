@@ -1,20 +1,23 @@
+use std::io::{BufWriter, Seek, Write};
 use std::ops::ControlFlow;
+use std::path::Path;
 
 use byteorder::{BigEndian, ReadBytesExt};
 #[cfg(feature = "egui-impls")]
 use eframe::egui_wgpu;
+use image::{ImageBuffer, Rgba};
 use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::error::{InvalidInputError, UnsupportedError};
 use slipstream_shared::inspect::Changes;
 #[cfg(feature = "egui-impls")]
 use slipstream_shared::inspect::FieldConfig;
-use slipstream_shared::{RefCursor, SlipstreamResult, try_unwrap};
+use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult, try_unwrap};
 
 use crate::brres::{BFileHeader, BFileType};
 use crate::encoding::Deserialize;
 use crate::img::{
-    CmprTexture, EncodedTexture, I4Texture, I8Texture, Ia4Texture, Ia8Texture, Rgb5a3Texture,
-    Rgb565Texture, Rgba8Texture
+    CmprTexture, EncodedTexture, ExportableTexture, L4Texture, L8Texture, La4Texture, La8Texture,
+    Rgb5a3Texture, Rgb565Texture, Rgba8Texture
 };
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
@@ -29,12 +32,14 @@ pub const TEX0_MAGIC: [u8; 4] = [0x54, 0x45, 0x58, 0x30]; // "TEX0"
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u32)]
 pub enum TextureFormat {
-    I4 = 0x00,
-    I8 = 0x01,
-    #[inspect(rename = "IA4")]
-    Ia4 = 0x02,
-    #[inspect(rename = "IA8")]
-    Ia8 = 0x03,
+    #[inspect(rename = "4-Bit Luminance")]
+    Luminance4 = 0x00,
+    #[inspect(rename = "8-Bit Luminance")]
+    Luminance8 = 0x01,
+    #[inspect(rename = "4-Bit Luminance + Alpha")]
+    LuminanceAlpha4 = 0x02,
+    #[inspect(rename = "8-Bit Luminance + Alpha")]
+    LuminanceAlpha8 = 0x03,
     #[inspect(rename = "RGB565")]
     Rgb565 = 0x04,
     #[inspect(rename = "RGB5A3")]
@@ -61,10 +66,10 @@ impl Deserialize for TextureFormat {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TextureData {
-    I4(I4Texture),
-    I8(I8Texture),
-    Ia4(Ia4Texture),
-    Ia8(Ia8Texture),
+    Luminance4(L4Texture),
+    Luminance8(L8Texture),
+    LuminanceAlpha4(La4Texture),
+    LuminanceAlpha8(La8Texture),
     Rgb5a3(Rgb5a3Texture),
     Rgb565(Rgb565Texture),
     Rgba8(Rgba8Texture),
@@ -72,21 +77,29 @@ pub enum TextureData {
 }
 
 impl TextureData {
-    pub fn export(&self) -> SlipstreamResult<()> {
-        //         let dims = self.dimensions();
-        //         let Some(img) = image::ImageBuffer::from_raw(dims.x as u32, dims.y as u32, self.bytes()) else {
-        //             return Err(InvalidInputError {
-        //                 reason: format!(
-        //                     "image buffer too small for image of size {}x{}",
-        //                     dims.x, dims.y
-        //                 ),
-        //                 ..Default::default()
-        //             }
-        //             .into());
-        //         };
-        //
-        //         Ok(())
-        todo!()
+    /// The file format is automatically determined from the file extension.
+    ///
+    /// If you want to explicitly set the format, use [`export_to_file_with_format`] instead.
+    pub fn export_to_file<P: AsRef<Path>>(&self, filepath: P) -> SlipstreamResult<()> {
+        let path = filepath.as_ref();
+        let format = image::ImageFormat::from_path(path)?;
+
+        let mut file = std::fs::File::create(path)?;
+        let mut buf_writer = BufWriter::new(&mut file);
+
+        self.export(&mut buf_writer, format)
+    }
+
+    pub fn export_to_file_with_format<P: AsRef<Path>>(
+        &self,
+        filepath: P,
+        format: image::ImageFormat
+    ) -> SlipstreamResult<()> {
+        let path = filepath.as_ref();
+        let mut file = std::fs::File::create(path)?;
+        let mut buf_writer = BufWriter::new(&mut file);
+
+        self.export(&mut buf_writer, format)
     }
 
     #[cfg(feature = "egui-impls")]
@@ -118,12 +131,14 @@ impl TextureData {
 
                 let key_str = format!("TexturePreview_{}", key.value());
                 let rgba8 = self
-                    .to_rgba8_unorm()
+                    .to_rgba8()
                     .expect("failed to convert texture to RGBA8 preview");
 
                 let color_img = Arc::new(egui::ColorImage::from_rgba_unmultiplied(
                     [dims.x as usize, dims.y as usize],
-                    rgba8.bytes()
+                    rgba8
+                        .bytes()
+                        .expect("Rgba8Texture::bytes should be infallible")
                 ));
 
                 let data = egui::ImageData::Color(color_img);
@@ -171,6 +186,21 @@ impl TextureData {
 macro_rules! impl_tex_data {
     ($($ident:ident),*) => {
         impl TextureData {
+            /// Exports the texture to the given image format, writing it into the given writer.
+            ///
+            /// *Assumes the writer is bufferred*.
+            pub fn export<W: Write + Seek>(
+                &self,
+                buf_writer: &mut W,
+                format: image::ImageFormat
+            ) -> SlipstreamResult<()> {
+                match &self {
+                    $(
+                        TextureData::$ident(x) => x.export(buf_writer, format),
+                    )*
+                }
+            }
+
             pub fn mipmaps(&self) -> u32 {
                 match &self {
                     $(
@@ -187,10 +217,10 @@ macro_rules! impl_tex_data {
                 }
             }
 
-            pub fn to_rgba8_unorm(&self) -> SlipstreamResult<Rgba8Texture> {
+            pub fn to_rgba8(&self) -> SlipstreamResult<Rgba8Texture> {
                 match &self {
                     $(
-                        TextureData::$ident(x) => x.to_rgba8_unorm(),
+                        TextureData::$ident(x) => x.to_rgba8(),
                     )*
                 }
             }
@@ -214,7 +244,16 @@ macro_rules! impl_tex_data {
     }
 }
 
-impl_tex_data!(I4, I8, Ia4, Ia8, Rgb5a3, Rgb565, Rgba8, Cmpr);
+impl_tex_data!(
+    Luminance4,
+    Luminance8,
+    LuminanceAlpha4,
+    LuminanceAlpha8,
+    Rgb5a3,
+    Rgb565,
+    Rgba8,
+    Cmpr
+);
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Texture {
@@ -261,17 +300,25 @@ pub fn deserialize(
 
     let dims = glam::u16vec2(pixel_width, pixel_height);
     let data = match format {
-        TextureFormat::I4 => TextureData::I4(I4Texture::new(reader, dims, mipmaps)?),
-        TextureFormat::I8 => TextureData::I8(I8Texture::new(reader, dims, mipmaps)?),
-        TextureFormat::Ia4 => TextureData::Ia4(Ia4Texture::new(reader, dims, mipmaps)?),
-        TextureFormat::Ia8 => TextureData::Ia8(Ia8Texture::new(reader, dims, mipmaps)?),
+        TextureFormat::Luminance4 => {
+            TextureData::Luminance4(L4Texture::new(reader, dims, mipmaps)?)
+        }
+        TextureFormat::Luminance8 => {
+            TextureData::Luminance8(L8Texture::new(reader, dims, mipmaps)?)
+        }
+        TextureFormat::LuminanceAlpha4 => {
+            TextureData::LuminanceAlpha4(La4Texture::new(reader, dims, mipmaps)?)
+        }
+        TextureFormat::LuminanceAlpha8 => {
+            TextureData::LuminanceAlpha8(La8Texture::new(reader, dims, mipmaps)?)
+        }
         TextureFormat::Rgb565 => TextureData::Rgb565(Rgb565Texture::new(reader, dims, mipmaps)?),
         TextureFormat::Rgb5a3 => TextureData::Rgb5a3(Rgb5a3Texture::new(reader, dims, mipmaps)?),
         TextureFormat::Rgba8 => TextureData::Rgba8(Rgba8Texture::new(reader, dims, mipmaps)?),
         TextureFormat::Cmpr => TextureData::Cmpr(CmprTexture::new(reader, dims, mipmaps)?),
         _ => {
             tracing::error!("Image format {format:?} unimplemented, using an empty image");
-            TextureData::I4(I4Texture {
+            TextureData::Luminance4(L4Texture {
                 dimensions: glam::u16vec2(1, 1),
                 mipmaps: 1,
                 pixels: vec![255; 8 * 8],

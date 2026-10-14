@@ -23,7 +23,7 @@ pub fn derive_inspect(input: TokenStream) -> TokenStream {
 }
 
 struct TyAttrArg {
-    ty: syn::Type,
+    ty: syn::Type
 }
 
 impl syn::parse::Parse for TyAttrArg {
@@ -48,7 +48,7 @@ pub fn inspect_bitfield(args: TokenStream, input: TokenStream) -> TokenStream {
     // Read the `#[inspect(..)]` attributes first, while they are still there.
     let inspect_derived = match inspect::Input::from_derive_input(&item) {
         Ok(parsed) => parsed.into_token_stream(true),
-        Err(err) => return TokenStream::from(err.write_errors()),
+        Err(err) => return TokenStream::from(err.write_errors())
     };
 
     // Strip them from the struct and its fields, so the compiler and `#[bitfield]`
@@ -76,14 +76,14 @@ struct FieldVariant {
     pub fields: darling::ast::Fields<()>,
     pub discriminant: Option<syn::Expr>,
     #[darling(default)]
-    pub ignore: bool,
+    pub ignore: bool
 }
 
 #[derive(darling::FromDeriveInput)]
 #[darling(attributes(try_from))]
 struct Input {
     pub ident: syn::Ident,
-    pub data: darling::ast::Data<FieldVariant, ()>,
+    pub data: darling::ast::Data<FieldVariant, ()>
 }
 
 #[proc_macro_attribute]
@@ -93,13 +93,13 @@ pub fn try_from(args: TokenStream, input: TokenStream) -> TokenStream {
     let raw_input = syn::parse_macro_input!(input as syn::DeriveInput);
     let input = match Input::from_derive_input(&raw_input) {
         Ok(i) => i,
-        Err(e) => return TokenStream::from(e.write_errors()),
+        Err(e) => return TokenStream::from(e.write_errors())
     };
 
     let Input { ident, data } = input;
     let darling::ast::Data::Enum(enum_data) = data else {
         return darling::Error::unsupported_shape(
-            "The `from_bytes` attribute is only supported on enums",
+            "The `from_bytes` attribute is only supported on enums"
         )
         .write_errors()
         .into();
@@ -112,7 +112,7 @@ pub fn try_from(args: TokenStream, input: TokenStream) -> TokenStream {
 
     if !is_unit {
         return darling::Error::unsupported_shape(
-            "The `from_bytes` attribute is not supported on enums with non-unit variants",
+            "The `from_bytes` attribute is not supported on enums with non-unit variants"
         )
         .write_errors()
         .into();
@@ -137,7 +137,7 @@ pub fn try_from(args: TokenStream, input: TokenStream) -> TokenStream {
         .map(|(variant, const_ident)| {
             let Some(disc) = &variant.discriminant else {
                 return darling::Error::unsupported_shape(
-                    "every variant must have an explicitly set discriminant",
+                    "every variant must have an explicitly set discriminant"
                 )
                 .write_errors()
                 .into();

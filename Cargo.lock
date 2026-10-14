@@ -3832,6 +3832,7 @@ dependencies = [
  "egui-phosphor",
  "futures",
  "glam",
+ "image",
  "parking_lot",
  "smallvec",
  "thiserror 2.0.21",
