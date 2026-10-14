@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 #[cfg(feature = "egui-impls")]
 use eframe::egui_wgpu;
 use slipstream_derive::{Inspect, try_from};
-use slipstream_shared::error::UnsupportedError;
+use slipstream_shared::error::{InvalidInputError, UnsupportedError};
 use slipstream_shared::inspect::Changes;
 #[cfg(feature = "egui-impls")]
 use slipstream_shared::inspect::FieldConfig;
@@ -72,20 +72,31 @@ pub enum TextureData {
 }
 
 impl TextureData {
+    pub fn export(&self) -> SlipstreamResult<()> {
+        //         let dims = self.dimensions();
+        //         let Some(img) = image::ImageBuffer::from_raw(dims.x as u32, dims.y as u32, self.bytes()) else {
+        //             return Err(InvalidInputError {
+        //                 reason: format!(
+        //                     "image buffer too small for image of size {}x{}",
+        //                     dims.x, dims.y
+        //                 ),
+        //                 ..Default::default()
+        //             }
+        //             .into());
+        //         };
+        //
+        //         Ok(())
+        todo!()
+    }
+
     #[cfg(feature = "egui-impls")]
     pub(super) fn draw_ui(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
-        if matches!(self, Self::Rgba8(_)) {
-            ui.data_mut(|d| d.insert_temp::<()>(egui::Id::new("RGBA8Found"), ()));
-        }
+        use slipstream_shared::inspect::Inspect;
 
-        if ui
-            .data(|d| d.get_temp::<()>(egui::Id::new("RGBA8Found")))
-            .is_some()
-        {
-            egui::Modal::new(egui::Id::new("RGBA8Modal")).show(ui, |ui| {
-                ui.label("RGBA8 image was found");
-            });
-        }
+        ui.horizontal(|ui| {
+            ui.label("Format: ");
+            self.format().draw_inner(ui, cfg);
+        });
 
         // Check if the texture has been registered.
         let dims = self.dimensions();
@@ -184,6 +195,14 @@ macro_rules! impl_tex_data {
                 }
             }
 
+            pub fn format(&self) -> TextureFormat {
+                match &self {
+                    $(
+                        TextureData::$ident(x) => TextureFormat::$ident,
+                    )*
+                }
+            }
+
             pub fn content_hash(&self) -> u64 {
                 match &self {
                     $(
@@ -199,12 +218,10 @@ impl_tex_data!(I4, I8, Ia4, Ia8, Rgb5a3, Rgb565, Rgba8, Cmpr);
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Texture {
-    #[inspect(tooltip = "The format used for the pixels in the texture")]
-    pub format: TextureFormat,
     #[inspect(tooltip = "Width and height of the texture in pixels")]
     pub size: glam::U16Vec2,
     #[inspect(rename = "Image")]
-    #[inspect(with = "TextureData::draw_ui")]
+    #[inspect(with = TextureData::draw_ui, read_only)]
     pub data: TextureData
 }
 
@@ -269,7 +286,6 @@ pub fn deserialize(
         parent: parent_id,
         children: Vec::new(),
         contents: ContentSlot::eager(Box::new(Texture {
-            format,
             size: glam::u16vec2(pixel_width, pixel_height),
             data
         }))

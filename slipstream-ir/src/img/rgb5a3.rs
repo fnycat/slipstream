@@ -7,43 +7,88 @@ use crate::tex0::TextureFormat;
 
 /// Converts a RGB5A3 integer format to RGBA8.
 pub const fn from_rgb5a3(short: u16) -> glam::U8Vec4 {
-    let has_alpha = (short >> 15) & 0x01 == 0;
+    //     let has_alpha = short & 0x8000 == 0;
+    //     if has_alpha {
+    //         #[bitfield(u16)]
+    //         struct ColorBits {
+    //             _has_alpha: bool,
+    //             #[bits(3)]
+    //             pub alpha: u8,
+    //             #[bits(4)]
+    //             pub red: u8,
+    //             #[bits(4)]
+    //             pub green: u8,
+    //             #[bits(4)]
+    //             pub blue: u8
+    //         }
+    //
+    //         let x = ColorBits::from_bits(short);
+    //         glam::u8vec4(
+    //             x.red() * 0x11,
+    //             x.green() * 0x11,
+    //             x.blue() * 0x11,
+    //             x.alpha() * 0x20
+    //         )
+    //     } else {
+    //         #[bitfield(u16)]
+    //         struct ColorBits {
+    //             _has_alpha: bool,
+    //             #[bits(5)]
+    //             pub red: u8,
+    //             #[bits(5)]
+    //             pub green: u8,
+    //             #[bits(5)]
+    //             pub blue: u8
+    //         }
+    //
+    //         let x = ColorBits::from_bits(short);
+    //         glam::u8vec4(x.red() * 0x8, x.green() * 0x8, x.blue() * 0x8, 0xff)
+    //     }
+    let has_alpha = short & 0x8000 == 0;
     if has_alpha {
         #[bitfield(u16)]
-        struct ColorBits {
-            #[bits(3)]
-            pub alpha: u8,
+        struct ColorChannels {
             #[bits(4)]
-            pub red: u8,
+            pub blue: u8,
             #[bits(4)]
             pub green: u8,
             #[bits(4)]
-            pub blue: u8,
-            _has_alpha: bool
+            pub red: u8,
+            #[bits(3)]
+            pub alpha: u8,
+            pub alpha_disabled: bool
         }
 
-        let x = ColorBits::from_bits(short);
+        let channels = ColorChannels::from_bits(short);
+        debug_assert!(!channels.alpha_disabled());
+
         glam::u8vec4(
-            x.red() * 0x11,
-            x.green() * 0x11,
-            x.blue() * 0x11,
-            x.alpha() * 0x20
+            channels.red() * 0x11,
+            channels.green() * 0x11,
+            channels.blue() * 0x11,
+            channels.alpha() * 0x20
         )
     } else {
         #[bitfield(u16)]
-        struct ColorBits {
+        struct ColorChannels {
             #[bits(5)]
-            pub red: u8,
+            pub blue: u8,
             #[bits(5)]
             pub green: u8,
             #[bits(5)]
-            pub blue: u8,
-            #[bits(1)]
-            _has_alpha: bool
+            pub red: u8,
+            pub alpha_disabled: bool
         }
 
-        let x = ColorBits::from_bits(short);
-        glam::u8vec4(x.red() * 0x8, x.green() * 0x8, x.blue() * 0x8, 0xff)
+        let channels = ColorChannels::from_bits(short);
+        debug_assert!(channels.alpha_disabled());
+
+        glam::u8vec4(
+            channels.red() * 0x8,
+            channels.green() * 0x8,
+            channels.blue() * 0x8,
+            0xff
+        )
     }
 }
 
