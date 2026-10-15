@@ -47,7 +47,7 @@ impl CmprTexture {
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue
-    ) -> (wgpu::Texture, wgpu::TextureView) {
+    ) -> SlipstreamResult<(wgpu::Texture, wgpu::TextureView)> {
         use wgpu::util::DeviceExt;
 
         todo!();
@@ -69,7 +69,7 @@ impl CmprTexture {
                 sample_count: 1
             },
             wgpu::util::TextureDataOrder::LayerMajor,
-            bytemuck::cast_slice(self.raw.slice(..data_len))
+            bytemuck::cast_slice(self.raw.slice(..data_len)?)
         );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
@@ -84,7 +84,7 @@ impl CmprTexture {
             array_layer_count: None
         });
 
-        (texture, view)
+        Ok((texture, view))
     }
 
     /// When CMPR images are used as textures on the GPU, you don't need to use this function.
@@ -101,7 +101,7 @@ impl CmprTexture {
         let subblock_count = Self::SUBBLOCKS * block_count;
         let data_len = subblock_count * Self::SUBBLOCK_BYTE_SIZE;
 
-        let hash = hash_pixels(reader.slice(..data_len));
+        let hash = hash_pixels(reader.slice(..data_len)?);
 
         Ok(Self {
             dimensions,

@@ -2,6 +2,8 @@ use std::io::{self, SeekFrom, Write};
 use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
 
+use crate::{SlipstreamResult, verify};
+
 /// Estimates the size of this type when serialized into a buffer.
 /// This is used to preallocate.
 pub trait SizeEstimate {
@@ -104,34 +106,40 @@ impl<T: ?Sized> RefCursor<T> {
 impl<T: AsRef<[u8]> + ?Sized> RefCursor<T> {
     /// Returns the given range of bytes, taking into account the cursor position.
     ///
-    /// This functions clamps the bounds to the size of array, it *does not panic*.
-    pub fn slice<B: RangeBounds<usize>>(&self, range: B) -> &[u8] {
+    /// This function returns an error if the range is out of bounds of the array.
+    pub fn slice<B: RangeBounds<usize>>(&self, range: B) -> SlipstreamResult<&[u8]> {
         let start = range.start_bound();
         let end = range.end_bound();
 
         let rem = self.remaining();
-
-        // Use saturating subtraction so this does not panic when the remaining slice is empty
-        let rem1 = rem.saturating_sub(1);
-        
         let start = match start {
             Bound::Unbounded => 0,
-            Bound::Included(&x) => x.min(rem),
-            Bound::Excluded(&x) => (x + 1).min(rem)
+            Bound::Included(&x) => {
+                verify!(x < rem, "start bound is larger than slice length ({rem} vs. {x})");
+                x
+            },
+            Bound::Excluded(&x) => {
+                verify!(x + 1 < rem, "start bound is larger than slice length ({rem} vs. {x})");
+                x + 1
+            }
         };
 
         let end = match end {
             Bound::Unbounded => rem,
-            Bound::Included(&x) => (x + 1).min(rem),
-            Bound::Excluded(&x) => x.min(rem)
+            Bound::Included(&x) => {
+                verify!(x + 1 < rem, "end bound exceeds slice length ({rem} vs. {x})");
+                x + 1
+            },
+            Bound::Excluded(&x) => {
+                verify!(x < rem, "end bound exceeds slice length ({rem} vs. {x}");
+                x
+            }
         };
 
         // Then ensure the start index does not exceed the end.
-        if start > end {
-            return &[];
-        }
+        verify!(start <= end, "start bound is larger than end bound ({start} vs. {end})");
 
-        &self.remaining_slice()[start..end]
+        Ok(&self.remaining_slice()[start..end])
     }
 
     /// Returns the given range of bytes, ignoring the cursor position.
@@ -304,80 +312,61 @@ where
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
+    use crate::RefCursor;
 
-use crate::RefCursor;
+    const TEST_BUFFER: [u8; 3] = [1, 2, 3];
+    const TEST_SIZE: usize = TEST_BUFFER.len();
 
     #[test]
-    fn cursor_slice() {
-        const TEST_BUFFER: [u8; 3] = [1, 2, 3];
-        const TEST_SIZE: usize = TEST_BUFFER.len();
-
+    fn slice_inclusive() {
         let cursor = RefCursor::new(Arc::from(&TEST_BUFFER));
-        for start in 0..TEST_SIZE + 2 {
-            for end in 0..TEST_SIZE + 2 {
-                let sliced = cursor.slice(start..end);
-                if let Ok(std_sliced) = std::panic::catch_unwind(|| {
-                    &TEST_BUFFER[start..end]
-                }) {
-                    assert_eq!(sliced, std_sliced, "slicing {start}..{end} failed");
-                } else {
-                    if end > TEST_BUFFER.len() {
-                        let start1 = start.min(TEST_SIZE - 1);
-                        assert_eq!(sliced, &TEST_BUFFER[start1..], "slicing {start}..{end} failed");
-                    } else {
-                        assert_eq!(sliced, &[], "slicing {start}..{end} failed");
-                    }
-                }
+        for start in 0..TEST_SIZE {
+            for end in 0..TEST_SIZE - 1 {
+                let start = start.clamp(0, end);
 
-                let sliced = cursor.slice(start..=end);
-                if let Ok(std_sliced) = std::panic::catch_unwind(|| {
-                    &TEST_BUFFER[start..=end]
-                }) {
-                    assert_eq!(sliced, std_sliced, "slicing {start}..={end} failed");
-                } else {
-                    if end >= TEST_BUFFER.len() {
-                        let start1 = start.min(TEST_SIZE - 1);
-                        assert_eq!(sliced, &TEST_BUFFER[start1..], "slicing {start}..={end} failed");
-                    } else {
-                        assert_eq!(sliced, &[], "slicing {start}..={end} failed");
-                    }
-                }
-
-                let sliced = cursor.slice(..end);
-                if let Ok(std_sliced) = std::panic::catch_unwind(|| {
-                    &TEST_BUFFER[..end]
-                }) {
-                    assert_eq!(sliced, std_sliced, "slicing ..{end} failed");
-                } else {
-                    if end > TEST_BUFFER.len() {
-                        assert_eq!(sliced, &TEST_BUFFER, "slicing ..{end} failed");
-                    } else {
-                        assert_eq!(sliced, &[], "slicing ..{end} failed");
-                    }
-                }
-
-                let sliced = cursor.slice(..=end);
-                if let Ok(std_sliced) = std::panic::catch_unwind(|| {
-                    &TEST_BUFFER[..=end]
-                }) {
-                    assert_eq!(sliced, std_sliced, "slicing ..={end} failed");
-                } else {
-                    if end >= TEST_BUFFER.len() {
-                        assert_eq!(sliced, &TEST_BUFFER, "slicing ..={end} failed");
-                    } else {
-                        assert_eq!(sliced, &[], "slicing ..={end} failed");
-                    }
-                }
-
-                let sliced = cursor.slice(start..);
-                if let Ok(std_sliced) = std::panic::catch_unwind(|| {
-                    &TEST_BUFFER[start..]
-                }) {
-                    assert_eq!(sliced, std_sliced, "slicing {start}.. failed");
-                } else {
-                    assert_eq!(sliced, &[], "slicing {start}.. failed");
-                }
+                let sliced = cursor.slice(start..=end).expect("failed to slice cursor");
+                assert_eq!(sliced, &TEST_BUFFER[start..=end]);
             }
+        }
+    }
+
+    #[test]
+    fn slice_exclusive() {
+        let cursor = RefCursor::new(Arc::from(&TEST_BUFFER));
+        for start in 0..TEST_SIZE {
+            for end in 0..TEST_SIZE {
+                let start = start.clamp(0, end);
+
+                let sliced = cursor.slice(start..end).expect("failed to slice cursor");
+                assert_eq!(sliced, &TEST_BUFFER[start..end]);
+            }
+        }
+    }
+
+    #[test]
+    fn slice_end_exclusive() {
+        let cursor = RefCursor::new(Arc::from(&TEST_BUFFER));
+        for end in 0..TEST_SIZE {
+            let sliced = cursor.slice(..end).expect("failed to slice cursor");
+            assert_eq!(sliced, &TEST_BUFFER[..end]);
+        }
+    }
+
+    #[test]
+    fn slice_end_inclusive() {
+        let cursor = RefCursor::new(Arc::from(&TEST_BUFFER));
+        for end in 0..TEST_SIZE - 1 {
+            let sliced = cursor.slice(..=end).expect("failed to slice cursor");
+            assert_eq!(sliced, &TEST_BUFFER[..=end]);
+        }
+    }
+
+    #[test]
+    fn slice_start_exclusive() {
+        let cursor = RefCursor::new(Arc::from(&TEST_BUFFER));
+        for start in 0..TEST_SIZE {
+            let sliced = cursor.slice(start..).expect("failed to slice cursor");
+            assert_eq!(sliced, &TEST_BUFFER[start..]);
         }
     }
 }

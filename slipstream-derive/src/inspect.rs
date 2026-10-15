@@ -76,7 +76,7 @@ const fn default_max_horizontal_elements() -> usize {
 
 #[derive(Debug, darling::FromField)]
 #[darling(attributes(inspect))]
-struct FieldOpt {
+pub struct FieldOpt {
     pub ident: Option<Ident>,
     pub ty: Type,
 
@@ -314,7 +314,7 @@ impl FieldOpt {
 
 #[derive(Debug, darling::FromVariant)]
 #[darling(attributes(inspect))]
-struct FieldVariant {
+pub struct FieldVariant {
     pub ident: Ident,
     pub fields: Fields<FieldOpt>,
 

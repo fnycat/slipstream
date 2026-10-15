@@ -315,7 +315,7 @@ fn deserialize_bfile(
 ) -> SlipstreamResult<IrNodeKey> {
     // Check magic
     let magic: [u8; 4] = reader
-        .slice(..4)
+        .slice(..4)?
         .try_into()
         .expect("failed to read file magic");
 
