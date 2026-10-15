@@ -2,7 +2,8 @@ use std::ops::ControlFlow;
 
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_shared::assert_u8;
+use slipstream_derive::{Inspect, inspect_bitfield, try_from};
+use slipstream_shared::{assert_u8, verify};
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 
@@ -16,23 +17,38 @@ use crate::visitor::{
     VisitorContextNodeMut
 };
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(rename = "Material Flags", summary = MaterialFlags::summary)]
 pub struct MaterialFlags {
+    #[inspect(rename = "Is Transparent")]
     pub xlu_material: bool,
     #[bits(23)]
     _padding: u32,
+    #[inspect(rename = "Do Not Send Texture Matrix")]
     pub dont_send_tex_matrix: bool,
+    #[inspect(rename = "Do Not Send UVs")]
     pub dont_send_uv: bool,
+    #[inspect(rename = "Do Not Send Generator Modes")]
     pub dont_send_generator_mode: bool,
+    #[inspect(rename = "Do Not Send Lighting Channels")]
     pub dont_send_lighting_channel: bool,
+    #[inspect(rename = "Do Not Send Indirect Matrix")]
     pub dont_send_indirect_matrix: bool,
+    #[inspect(rename = "Do Not Send UV Scale")]
     pub dont_send_uv_scale: bool,
+    #[inspect(rename = "Do Not Send TEV Color")]
     pub dont_send_tev_color: bool,
+    #[inspect(rename = "Do Not Send Pixel Display")]
     pub dont_send_pixel_display: bool
 }
 
 impl MaterialFlags {
+    #[inline]
+    pub fn summary(&self) -> String {
+        format!("{:#08x}", self.0)
+    }
+
     #[inline]
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
@@ -46,32 +62,14 @@ impl MaterialFlags {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[try_from(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[inspect(rename = "Cull Mode")]
 pub enum CullMode {
     None = 0x00,
     Front = 0x01,
     Back = 0x02,
     All = 0x03
-}
-
-impl TryFrom<u32> for CullMode {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0x00 => Self::None,
-            0x01 => Self::Front,
-            0x02 => Self::Back,
-            0x03 => Self::All,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid culling mode: {value:#04x} (expected 0-3)"),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
-    }
 }
 
 impl CullMode {
@@ -88,7 +86,8 @@ impl CullMode {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[try_from(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum IndirectMethod {
     Wrap = 0x00,
     NormalMap = 0x01,
@@ -98,30 +97,6 @@ pub enum IndirectMethod {
     Reserved2 = 0x05,
     User0 = 0x06,
     User1 = 0x07
-}
-
-impl TryFrom<u8> for IndirectMethod {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0x00 => Self::Wrap,
-            0x01 => Self::NormalMap,
-            0x02 => Self::NormalMapSpecular,
-            0x03 => Self::Fur,
-            0x04 => Self::Reserved1,
-            0x05 => Self::Reserved2,
-            0x06 => Self::User0,
-            0x07 => Self::User1,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid indirect method: {value:#04x} (expected 0-7)"),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
-    }
 }
 
 impl IndirectMethod {
@@ -138,22 +113,35 @@ impl IndirectMethod {
     }
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(summary = UsedTextureMaps::summary)]
 pub struct UsedTextureMaps {
+    #[inspect(rename = "Texture 1 Used")]
     pub tex0_used: bool,
+    #[inspect(rename = "Texture 2 Used")]
     pub tex1_used: bool,
+    #[inspect(rename = "Texture 3 Used")]
     pub tex2_used: bool,
+    #[inspect(rename = "Texture 4 Used")]
     pub tex3_used: bool,
+    #[inspect(rename = "Texture 5 Used")]
     pub tex4_used: bool,
+    #[inspect(rename = "Texture 6 Used")]
     pub tex5_used: bool,
+    #[inspect(rename = "Texture 7 Used")]
     pub tex6_used: bool,
+    #[inspect(rename = "Texture 8 Used")]
     pub tex7_used: bool,
     #[bits(24)]
     _padding: u32
 }
 
 impl UsedTextureMaps {
+    pub fn summary(&self) -> String {
+        format!("{:#08x}", self.into_bits())
+    }
+
     #[inline]
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
@@ -167,36 +155,49 @@ impl UsedTextureMaps {
     }
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(summary = UsedPalettes::summary)]
 pub struct UsedPalettes {
+    #[inspect(rename = "Palette 1 Used")]
     pub pal0_used: bool,
+    #[inspect(rename = "Palette 2 Used")]
     pub pal1_used: bool,
+    #[inspect(rename = "Palette 3 Used")]
     pub pal2_used: bool,
+    #[inspect(rename = "Palette 4 Used")]
     pub pal3_used: bool,
+    #[inspect(rename = "Palette 5 Used")]
     pub pal4_used: bool,
+    #[inspect(rename = "Palette 6 Used")]
     pub pal5_used: bool,
+    #[inspect(rename = "Palette 7 Used")]
     pub pal6_used: bool,
+    #[inspect(rename = "Palette 8 Used")]
     pub pal7_used: bool,
     #[bits(24)]
     _padding: u32
 }
 
 impl UsedPalettes {
+    pub fn summary(&self) -> String {
+        format!("{:#08x}", self.into_bits())
+    }
+
     #[inline]
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
         Ok(Self::from_bits(word))
     }
 
     #[inline]
-    fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
         writer.write_u32::<BigEndian>(self.into_bits())?;
         Ok(())
     }
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct LayerSettings {
     pub enable_layer: bool,
@@ -221,7 +222,7 @@ impl LayerSettings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct LayerCoordinates {
     pub scale_coordinate: [f32; 2],
     pub rotation_coordinate: f32,
@@ -242,34 +243,18 @@ impl LayerCoordinates {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[try_from(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum TextureMapMode {
+    #[inspect(rename = "Texture Coordinates")]
     Uv = 0x00,
+    #[inspect(rename = "Environment Camera")]
     EnvCamera = 0x01,
     Projection = 0x02,
+    #[inspect(rename = "Environment Light")]
     EnvLight = 0x03,
+    #[inspect(rename = "Environment Specular")]
     EnvSpec = 0x04
-}
-
-impl TryFrom<u8> for TextureMapMode {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0x00 => Self::Uv,
-            0x01 => Self::EnvCamera,
-            0x02 => Self::Projection,
-            0x03 => Self::EnvLight,
-            0x04 => Self::EnvSpec,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid texture map mode: {value} (expected 0-4)"),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
-    }
 }
 
 impl TextureMapMode {
@@ -286,9 +271,11 @@ impl TextureMapMode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureMatrixSettings {
+    #[inspect(rename = "Scene Camera Reference")]
     pub scn0_camera_ref: i8,
+    #[inspect(rename = "Scene Light Reference")]
     pub scn0_light_ref: i8,
     pub map_mode: TextureMapMode,
     pub enable_identity_matrix_effect: bool,
@@ -320,8 +307,9 @@ impl TextureMatrixSettings {
     }
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(summary = LightingChannelFlags::summary)]
 pub struct LightingChannelFlags {
     pub material_color_enabled: bool,
     pub material_alpha_enabled: bool,
@@ -334,6 +322,10 @@ pub struct LightingChannelFlags {
 }
 
 impl LightingChannelFlags {
+    pub fn summary(&self) -> String {
+        format!("{:#08x}", self.into_bits())
+    }
+
     #[inline]
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let word = reader.read_u32::<BigEndian>()?;
@@ -347,7 +339,7 @@ impl LightingChannelFlags {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct LightChannelSettings {
     pub flags: LightingChannelFlags,
     pub material_color: glam::U8Vec4,
@@ -374,8 +366,9 @@ impl LightChannelSettings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct MaterialMode {
+    #[inspect(rename = "Alpha Function")]
     pub alpha_fn: AlphaFunction,
     pub depth_test: DepthTest,
     pub write_mask: u32,
@@ -385,7 +378,7 @@ pub struct MaterialMode {
 
 impl MaterialMode {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        assert_u8!(reader, 0x61, "expected LoadBP opcode");
+        verify!(reader.read_u8()? == 0x61, "expected LoadBP opcode");
         let LoadBpOpCode::AlphaFunction(alpha_fn) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
                 reason: format!("excepted LoadBP opcode of type AlphaFunction (0xf3)"),
@@ -394,7 +387,7 @@ impl MaterialMode {
             .into());
         };
 
-        assert_u8!(reader, 0x61, "expected LoadBP opcode");
+        verify!(reader.read_u8()? == 0x61, "expected LoadBP opcode");
         let LoadBpOpCode::DepthTest(depth_test) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
                 reason: format!("excepted LoadBP opcode of type DepthTest (0x40)"),
@@ -403,7 +396,7 @@ impl MaterialMode {
             .into());
         };
 
-        assert_u8!(reader, 0x61, "expected LoadBP opcode");
+        verify!(reader.read_u8()? == 0x61, "expected LoadBP opcode");
         let LoadBpOpCode::WriteMask(write_mask) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
                 reason: format!("excepted LoadBP opcode of type WriteMask (0xFE)"),
@@ -412,7 +405,7 @@ impl MaterialMode {
             .into());
         };
 
-        assert_u8!(reader, 0x61, "expected LoadBP opcode");
+        verify!(reader.read_u8()? == 0x61, "expected LoadBP opcode");
         let LoadBpOpCode::BlendMode(blend_mode) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
                 reason: format!("excepted LoadBP opcode of type BlendMode (0x41)"),
@@ -421,7 +414,7 @@ impl MaterialMode {
             .into());
         };
 
-        assert_u8!(reader, 0x61, "expected LoadBP opcode");
+        verify!(reader.read_u8()? == 0x61, "expected LoadBP opcode");
         let LoadBpOpCode::ConstantAlpha(constant_alpha) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
                 reason: format!("excepted LoadBP opcode of type ConstantAlpha (0x42)"),
@@ -443,7 +436,8 @@ impl MaterialMode {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[try_from(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum MinificationFilter {
     Nearest = 0x00,
     Linear = 0x01,
@@ -451,28 +445,6 @@ pub enum MinificationFilter {
     LinearMipmapNearest = 0x03,
     NearestMipmapLinear = 0x04,
     LinearMipmapLinear = 0x05
-}
-
-impl TryFrom<u32> for MinificationFilter {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0x00 => Self::Nearest,
-            0x01 => Self::Linear,
-            0x02 => Self::NearestMipmapNearest,
-            0x03 => Self::LinearMipmapNearest,
-            0x04 => Self::NearestMipmapLinear,
-            0x05 => Self::LinearMipmapLinear,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid minification filter: {value:#04x} (expected 0-5)"),
-                    location: None
-                }
-                .into());
-            }
-        })
-    }
 }
 
 impl MinificationFilter {
@@ -489,28 +461,11 @@ impl MinificationFilter {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[try_from(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum MagnificationFilter {
     Nearest = 0x00,
     Linear = 0x01
-}
-
-impl TryFrom<u32> for MagnificationFilter {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0x00 => Self::Nearest,
-            0x01 => Self::Linear,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid magnification filter: {value:#04x} (expected 0, 1)"),
-                    location: None
-                }
-                .into());
-            }
-        })
-    }
 }
 
 impl MagnificationFilter {
@@ -527,30 +482,15 @@ impl MagnificationFilter {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[try_from(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum AnisotropyFiltering {
+    #[inspect(rename = "1X")]
     One = 0x00,
+    #[inspect(rename = "2X")]
     Two = 0x01,
+    #[inspect(rename = "4X")]
     Four = 0x02
-}
-
-impl TryFrom<u32> for AnisotropyFiltering {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0x00 => Self::One,
-            0x01 => Self::Two,
-            0x02 => Self::Four,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid anisotropy filtering: {value:#04x} (expected 0-2)"),
-                    location: None
-                }
-                .into());
-            }
-        })
-    }
 }
 
 impl AnisotropyFiltering {
@@ -567,30 +507,12 @@ impl AnisotropyFiltering {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[try_from(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum WrapMode {
     Clamp = 0x00,
     Repeat = 0x01,
     Mirror = 0x02
-}
-
-impl TryFrom<u32> for WrapMode {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0x00 => Self::Clamp,
-            0x01 => Self::Repeat,
-            0x02 => Self::Mirror,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid wrap mode: {value:#04x} (expected 0-2)"),
-                    location: None
-                }
-                .into());
-            }
-        })
-    }
 }
 
 impl WrapMode {
@@ -607,7 +529,7 @@ impl WrapMode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureReference {
     pub texture_id: i32,
     pub palette_id: i32,
@@ -660,7 +582,7 @@ impl TextureReference {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct MaterialBuffer {
     pub index: u32,
     pub flags: MaterialFlags,
@@ -672,6 +594,7 @@ pub struct MaterialBuffer {
     pub depth_test: u8,
     pub light_set_index: i8,
     pub fog_index: i8,
+    #[inspect(max_horizontal_elements = 2)]
     pub indirect_methods: [IndirectMethod; 4],
     pub light_normal_map_refs: [i8; 4],
     pub shader_offset: i32,
@@ -686,9 +609,13 @@ pub struct MaterialBuffer {
     // pub precompiled_palette_code: [u8; 160],
     pub layer_settings: LayerSettings,
     pub texture_matrix_mode: TextureMatrixMode,
+    #[inspect(max_horizontal_elements = 1)]
     pub layer_coordinates: [LayerCoordinates; 8],
+    #[inspect(max_horizontal_elements = 1)]
     pub texture_matrix_settings: [TextureMatrixSettings; 8],
+    #[inspect(max_horizontal_elements = 1)]
     pub light_channel_settings: [LightChannelSettings; 2],
+    #[inspect(max_horizontal_elements = 1)]
     pub texture_references: Vec<TextureReference>
 }
 

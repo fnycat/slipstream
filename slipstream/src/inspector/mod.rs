@@ -119,7 +119,10 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
         &mut self,
         context: VisitorContextMut<'_, MaterialBuffer>
     ) -> ControlFlow<()> {
-        self.ui.label(format!("{:#?}", context.content));
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
         ControlFlow::Continue(())
     }
 
@@ -212,6 +215,8 @@ impl InspectorPane {
                     ty: node.ty,
                     children: &mut node.children
                 };
+
+                ui.spacing_mut().item_spacing = egui::vec2(2.0, 4.0);
 
                 // Evaluate contents if lazy
                 let contents = node.contents.get_or_try_init_mut()?.unwrap();

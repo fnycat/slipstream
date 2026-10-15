@@ -79,6 +79,9 @@ pub trait Inspect {
 
     /// Draws one grid row per field into the grid of the given `ui`.
     fn draw_rows(&mut self, ui: &mut egui::Ui, id: egui::Id) -> Changes {
+        let err_text = egui::RichText::new("ERROR: You should implement `Inspect::draw_rows`!").color(ui.visuals().error_fg_color);
+        ui.label(err_text);
+        
         Changes::default()
     }
 
@@ -107,29 +110,10 @@ pub struct FieldConfig {
     pub range: Option<RangeInclusive<f64>>,
     pub prefix: Option<&'static str>,
     /// The suffix to add to the drag values.
-    pub suffix: Option<&'static str>
-}
-
-impl FieldConfig {
-    pub const fn label(mut self, label: &'static str) -> Self {
-        self.label = label;
-        self
-    }
-
-    pub const fn category(mut self, category: &'static str) -> Self {
-        self.category = Some(category);
-        self
-    }
-
-    pub const fn read_only(mut self, read_only: bool) -> Self {
-        self.read_only = read_only;
-        self
-    }
-
-    pub fn range<T: Into<f64> + Clone>(mut self, range: RangeInclusive<T>) -> Self {
-        self.range = Some(range.start().clone().into()..=range.end().clone().into());
-        self
-    }
+    pub suffix: Option<&'static str>,
+    /// The maximum amount of elements (in an array) that the inspector will display
+    /// in one row.
+    pub max_horizontal_elements: usize
 }
 
 impl Default for FieldConfig {
@@ -141,7 +125,8 @@ impl Default for FieldConfig {
             label: "<unknown>",
             category: None,
             read_only: false,
-            range: None
+            range: None,
+            max_horizontal_elements: MAX_HORIZONTAL_INPUT_COUNT
         }
     }
 }
@@ -169,6 +154,13 @@ impl Inspect for bool {
             response
         }
         .into()
+    }
+}
+
+impl Inspect for i8 {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        let val = egui::DragValue::new(self);
+        drag_value(val, cfg, ui)
     }
 }
 
@@ -244,6 +236,23 @@ impl_vector!(glam::U16Vec2, y, x);
 impl_vector!(glam::U16Vec3, z, y, x);
 impl_vector!(glam::U16Vec4, w, z, y, x);
 
+impl Inspect for glam::Mat4 {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        // ui.label("TODO: This matrix might have to be transposed before displaying");
+        
+        let vecs: &mut [glam::Vec4; 4] = bytemuck::cast_mut(self);        
+
+        let mut changes = Changes::default();
+
+        // We use a max row size of 1 because a single "entry" is a vec4 which already has 4 inputs.
+        widgets::wrapped(ui, ui.id().with("Mat4"), vecs, 1, |ui, item| {
+            changes |= item.draw_inner(ui, cfg);
+        });
+
+        changes
+    }
+}
+
 impl Inspect for f32 {
     #[inline]
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
@@ -262,11 +271,15 @@ impl<T: Inspect> Inspect for Option<T> {
 }
 
 impl<T: Inspect, const N: usize> Inspect for [T; N] {
+    fn is_nested(&self) -> bool {
+        true
+    }
+
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         let mut changes = Changes::default();
         let id = ui.id().with("Array");
 
-        widgets::wrapped(ui, id, self, MAX_HORIZONTAL_INPUT_COUNT, |ui, item| {
+        widgets::wrapped(ui, id, self, cfg.max_horizontal_elements, |ui, item| {
             changes |= item.draw_inner(ui, cfg);
         });
 
@@ -275,11 +288,15 @@ impl<T: Inspect, const N: usize> Inspect for [T; N] {
 }
 
 impl<T: Inspect> Inspect for Vec<T> {
+    fn is_nested(&self) -> bool {
+        true
+    }
+
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         let mut changes = Changes::default();
         let id = ui.id().with("Array");
 
-        widgets::wrapped(ui, id, self, MAX_HORIZONTAL_INPUT_COUNT, |ui, item| {
+        widgets::wrapped(ui, id, self, cfg.max_horizontal_elements, |ui, item| {
             changes |= item.draw_inner(ui, cfg);
         });
 

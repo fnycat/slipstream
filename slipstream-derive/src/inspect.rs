@@ -69,12 +69,19 @@ const fn default_opened() -> bool {
     true
 }
 
+#[inline]
+const fn default_max_horizontal_elements() -> usize {
+    4
+}
+
 #[derive(Debug, darling::FromField)]
 #[darling(attributes(inspect))]
 struct FieldOpt {
     pub ident: Option<Ident>,
     pub ty: Type,
 
+    #[darling(default = default_max_horizontal_elements)]
+    pub max_horizontal_elements: usize,
     /// A tooltip to display when hovering over the value.
     #[darling(default)]
     pub tooltip: Option<StringAttr>,
@@ -214,6 +221,7 @@ impl FieldOpt {
         let prefix = self.prefix.to_tokens_opt();
         let suffix = self.suffix.to_tokens_opt();
         let tooltip = self.tooltip.to_tokens_opt();
+        let max_horiz_elements = self.max_horizontal_elements;
 
         quote! {
             slipstream_shared::inspect::FieldConfig {
@@ -223,7 +231,8 @@ impl FieldOpt {
                 read_only: #read_only,
                 range: #range,
                 prefix: #prefix,
-                suffix: #suffix
+                suffix: #suffix,
+                max_horizontal_elements: #max_horiz_elements
             }
         }
     }

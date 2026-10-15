@@ -1,5 +1,6 @@
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt};
+use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
@@ -62,8 +63,9 @@ pub struct TextureReadSettings {
     _padding2: u16
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(summary = DepthTest::summary)]
 pub struct DepthTest {
     pub enable_depth_test: bool,
     #[bits(3)]
@@ -73,8 +75,14 @@ pub struct DepthTest {
     _padding: u32
 }
 
+impl DepthTest {
+    pub fn summary(&self) -> String {
+        format!("{:#08x}", self.into_bits())
+    }
+}
+
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum BlendFactor {
     Zero = 0b000,
@@ -85,44 +93,58 @@ pub enum BlendFactor {
     InverseSourceAlpha = 0b101,
     DestinationAlpha = 0b110,
     InverseDestinationAlpha = 0b111,
+    #[inspect(ignore)]
     #[fallback]
     Invalid
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum LogicOp {
     Clear,
+    #[inspect(rename = "AND")]
     And,
+    #[inspect(rename = "Reverse AND")]
     ReverseAnd,
     Copy,
+    #[inspect(rename = "Inverse AND")]
     InverseAnd,
     NoOp,
+    #[inspect(rename = "XOR")]
     Xor,
+    #[inspect(rename = "OR")]
     Or,
+    #[inspect(rename = "NOR")]
     Nor,
     Equivalent,
     Inverse,
+    #[inspect(rename = "Reverse OR")]
     ReverseOr,
     InverseCopy,
+    #[inspect(rename = "Inverse OR")]
     InverseOr,
+    #[inspect(rename = "NAND")]
     Nand,
     Set,
+    #[inspect(ignore)]
     #[fallback]
     Invalid
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(summary = BlendMode::summary)]
 pub struct BlendMode {
     pub enable_blend: bool,
     pub enable_logic: bool,
     pub enable_dither: bool,
     pub update_color: bool,
     pub update_alpha: bool,
+    #[inspect(rename = "Destination Factor")]
     #[bits(3)]
     pub dst_factor: BlendFactor,
+    #[inspect(rename = "Source Factor")]
     #[bits(3)]
     pub src_factor: BlendFactor,
     pub subtract: bool,
@@ -132,8 +154,15 @@ pub struct BlendMode {
     _padding: u16
 }
 
-#[bitfield(u32)]
+impl BlendMode {
+    pub fn summary(&self) -> String {
+        format!("{:#08x}", self.into_bits())
+    }
+}
+
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(summary = ConstantAlpha::summary)]
 pub struct ConstantAlpha {
     #[bits(8)]
     _padding1: u8,
@@ -145,6 +174,12 @@ pub struct ConstantAlpha {
     pub value: u8,
     #[bits(8)]
     _padding3: u8
+}
+
+impl ConstantAlpha {
+    pub fn summary(&self) -> String {
+        format!("{:#08x}", self.into_bits())
+    }
 }
 
 #[bitenum]
@@ -324,7 +359,7 @@ pub struct SwapModeTableSettings {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum AlphaCompare {
     Never = 0x00,
@@ -335,37 +370,55 @@ pub enum AlphaCompare {
     NotEqual = 0x05,
     GreaterOrEqual = 0x06,
     Always = 0x07,
+    #[inspect(ignore)]
     #[fallback]
     Invalid
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum AlphaOp {
+    #[inspect(rename = "AND")]
     And,
+    #[inspect(rename = "OR")]
     Or,
+    #[inspect(rename = "XOR")]
     Xor,
+    #[inspect(rename = "XNOR")]
     Xnor,
+    #[inspect(ignore)]
     #[fallback]
     Invalid
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
+#[inspect(summary = AlphaFunction::summary)]
 pub struct AlphaFunction {
+    #[inspect(rename = "Reference 1")]
     #[bits(8)]
-    pub ref0: u8,
+    pub ref0: i8,
+    #[inspect(rename = "Reference 2")]
     #[bits(8)]
-    pub ref1: u8,
+    pub ref1: i8,
+    #[inspect(rename = "Comparison 1")]
     #[bits(3)]
     pub comp0: AlphaCompare,
+    #[inspect(rename = "Comparison 2")]
     #[bits(3)]
     pub comp1: AlphaCompare,
+    #[inspect(rename = "Logic Operation")]
     #[bits(2)]
     pub logic: AlphaOp,
     #[bits(8)]
     _padding: u8
+}
+
+impl AlphaFunction {
+    pub fn summary(&self) -> String {
+        format!("{:#08x}", self.into_bits())
+    }
 }
 
 #[bitfield(u32)]
