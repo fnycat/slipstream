@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_derive::Inspect;
+use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 use slipstream_shared::verify;
@@ -55,7 +55,8 @@ pub struct BoneIndex(pub u16);
 pub struct WeightId(pub u16);
 
 /// The opcode IDs for the possible commands in the definitions section of an MDL0 file.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, strum::FromRepr)]
+#[try_from(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u8)]
 pub enum DefinitionOpCodeId {
     Nop = 0x00,
@@ -267,13 +268,7 @@ pub struct Definitions {
 impl Definitions {
     fn read_opcode_id(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<DefinitionOpCodeId> {
         let byte = reader.read_u8()?;
-        DefinitionOpCodeId::from_repr(byte).ok_or_else(|| {
-            CorruptionError {
-                reason: String::from("invalid definition opcode ID"),
-                location: Some(reader.position())
-            }
-            .into()
-        })
+        DefinitionOpCodeId::try_from(byte)
     }
 }
 

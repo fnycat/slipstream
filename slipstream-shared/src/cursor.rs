@@ -110,19 +110,28 @@ impl<T: AsRef<[u8]> + ?Sized> RefCursor<T> {
         let end = range.end_bound();
 
         let rem = self.remaining();
+
+        // Use saturating subtraction so this does not panic when the remaining slice is empty
+        let rem1 = rem.saturating_sub(1);
+        
         let start = match start {
             Bound::Unbounded => 0,
-            Bound::Included(&x) => x.min(rem - 1),
-            Bound::Excluded(&x) => (x + 1).min(rem - 1)
+            Bound::Included(&x) => x.min(rem),
+            Bound::Excluded(&x) => (x + 1).min(rem)
         };
 
         let end = match end {
-            Bound::Unbounded => rem - 1,
-            Bound::Included(&x) => x.min(rem - 1),
-            Bound::Excluded(&x) => (x - 1).min(rem - 1)
+            Bound::Unbounded => rem,
+            Bound::Included(&x) => (x + 1).min(rem),
+            Bound::Excluded(&x) => x.min(rem)
         };
 
-        &self.remaining_slice()[start..=end]
+        // Then ensure the start index does not exceed the end.
+        if start > end {
+            return &[];
+        }
+
+        &self.remaining_slice()[start..end]
     }
 
     /// Returns the given range of bytes, ignoring the cursor position.
@@ -289,5 +298,86 @@ where
 
     fn stream_position(&mut self) -> io::Result<u64> {
         Ok(self.position())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+use crate::RefCursor;
+
+    #[test]
+    fn cursor_slice() {
+        const TEST_BUFFER: [u8; 3] = [1, 2, 3];
+        const TEST_SIZE: usize = TEST_BUFFER.len();
+
+        let cursor = RefCursor::new(Arc::from(&TEST_BUFFER));
+        for start in 0..TEST_SIZE + 2 {
+            for end in 0..TEST_SIZE + 2 {
+                let sliced = cursor.slice(start..end);
+                if let Ok(std_sliced) = std::panic::catch_unwind(|| {
+                    &TEST_BUFFER[start..end]
+                }) {
+                    assert_eq!(sliced, std_sliced, "slicing {start}..{end} failed");
+                } else {
+                    if end > TEST_BUFFER.len() {
+                        let start1 = start.min(TEST_SIZE - 1);
+                        assert_eq!(sliced, &TEST_BUFFER[start1..], "slicing {start}..{end} failed");
+                    } else {
+                        assert_eq!(sliced, &[], "slicing {start}..{end} failed");
+                    }
+                }
+
+                let sliced = cursor.slice(start..=end);
+                if let Ok(std_sliced) = std::panic::catch_unwind(|| {
+                    &TEST_BUFFER[start..=end]
+                }) {
+                    assert_eq!(sliced, std_sliced, "slicing {start}..={end} failed");
+                } else {
+                    if end >= TEST_BUFFER.len() {
+                        let start1 = start.min(TEST_SIZE - 1);
+                        assert_eq!(sliced, &TEST_BUFFER[start1..], "slicing {start}..={end} failed");
+                    } else {
+                        assert_eq!(sliced, &[], "slicing {start}..={end} failed");
+                    }
+                }
+
+                let sliced = cursor.slice(..end);
+                if let Ok(std_sliced) = std::panic::catch_unwind(|| {
+                    &TEST_BUFFER[..end]
+                }) {
+                    assert_eq!(sliced, std_sliced, "slicing ..{end} failed");
+                } else {
+                    if end > TEST_BUFFER.len() {
+                        assert_eq!(sliced, &TEST_BUFFER, "slicing ..{end} failed");
+                    } else {
+                        assert_eq!(sliced, &[], "slicing ..{end} failed");
+                    }
+                }
+
+                let sliced = cursor.slice(..=end);
+                if let Ok(std_sliced) = std::panic::catch_unwind(|| {
+                    &TEST_BUFFER[..=end]
+                }) {
+                    assert_eq!(sliced, std_sliced, "slicing ..={end} failed");
+                } else {
+                    if end >= TEST_BUFFER.len() {
+                        assert_eq!(sliced, &TEST_BUFFER, "slicing ..={end} failed");
+                    } else {
+                        assert_eq!(sliced, &[], "slicing ..={end} failed");
+                    }
+                }
+
+                let sliced = cursor.slice(start..);
+                if let Ok(std_sliced) = std::panic::catch_unwind(|| {
+                    &TEST_BUFFER[start..]
+                }) {
+                    assert_eq!(sliced, std_sliced, "slicing {start}.. failed");
+                } else {
+                    assert_eq!(sliced, &[], "slicing {start}.. failed");
+                }
+            }
+        }
     }
 }

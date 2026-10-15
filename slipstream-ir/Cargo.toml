@@ -8,7 +8,7 @@ default = ["egui-impls"]
 
 # Enables all `egui` functionality. Disabling this feature will remove the `egui` and `wgpu` dependencies
 # and any `egui` related code (this includes the `Inspect` implementations)
-egui-impls = ["egui", "egui_extras", "wgpu", "eframe"]
+egui-impls = ["egui", "wgpu", "eframe"]
 
 [dependencies]
 slipstream-derive = { path = "../slipstream-derive" }
@@ -16,7 +16,6 @@ slipstream-shared = { path = "../slipstream-shared" }
 
 wgpu = { workspace = true, optional = true }
 egui = { workspace = true, optional = true }
-egui_extras = { workspace = true, optional = true }
 eframe = { workspace = true, optional = true }
 
 byteorder.workspace = true
@@ -27,8 +26,6 @@ image.workspace = true
 bytemuck.workspace = true
 
 parking_lot = { version = "0.12.5", features = ["arc_lock"] }
-dashmap = "6.2.1"
-strum = { version = "0.28.0", features = ["derive"] }
 paste = "1.0.15"
 nohash-hasher = "0.2.0"
 rayon = "1.12.0"

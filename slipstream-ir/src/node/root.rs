@@ -15,7 +15,7 @@ pub fn deserialize_maybe_compressed(
     name: String
 ) -> SlipstreamResult<IrNodeKey> {
     // Is this file compressed?
-    if reader.remaining_slice()[..4] == YAZ0_MAGIC {
+    if reader.slice(..4) == YAZ0_MAGIC {
         // then decompress it.
         reader = RefCursor::new(Arc::from(yaz0::decompress(&mut reader)?));
     }
@@ -33,7 +33,7 @@ pub fn deserialize_unknown_root(
     arena: &IrArena,
     name: String
 ) -> SlipstreamResult<IrNodeKey> {
-    let magic: &[u8; 4] = reader.remaining_slice()[..4]
+    let magic: &[u8; 4] = reader.slice(..4)
         .try_into()
         .expect("array of size 4 does not have size 4?");
 
