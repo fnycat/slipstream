@@ -3798,6 +3798,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "slipstream-fuzz"
+version = "0.0.0"
+dependencies = [
+ "libfuzzer-sys",
+ "slipstream-ir",
+ "slipstream-shared",
+]
+
+[[package]]
 name = "slipstream-ir"
 version = "0.1.0"
 dependencies = [
