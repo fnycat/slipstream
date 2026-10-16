@@ -327,22 +327,30 @@ pub fn deserialize(
     let node_count = reader.read_u32::<BigEndian>()?;
 
     if node_count > ARC_SAFE_NODE_COUNT as u32 {
-        tracing::warn!("ARC files has an unusually large amount of declared nodes :{node_count}. Preallocated capacity will be capped at {ARC_SAFE_NODE_COUNT}");
+        tracing::warn!(
+            "ARC files has an unusually large amount of declared nodes :{node_count}. Preallocated capacity will be capped at {ARC_SAFE_NODE_COUNT}"
+        );
     }
 
     let mut string_pool = {
-        let Some(Ok(start)): Option<Result<u32, <i64 as TryInto<u32>>::Error>> = (header.node_offset as i64).checked_add(ARC_NODE_SIZE as i64 * node_count as i64).map(|x| x.try_into()) else {
+        let Some(Ok(start)): Option<Result<u32, <i64 as TryInto<u32>>::Error>> =
+            (header.node_offset as i64)
+                .checked_add(ARC_NODE_SIZE as i64 * node_count as i64)
+                .map(|x| x.try_into())
+        else {
             return Err(CorruptionError {
                 reason: format!("string pool start pointer overflows 32-bit integer"),
                 location: Some(reader.position())
-            }.into());
+            }
+            .into());
         };
 
         let Some(end) = header.node_offset.checked_add(header.size) else {
             return Err(CorruptionError {
                 reason: format!("string pool end pointer overflows 32-bit integer"),
                 location: Some(reader.position())
-            }.into());
+            }
+            .into());
         };
 
         tracing::trace!("ARC string pool is in range {start}..{end}");

@@ -1,10 +1,12 @@
 use std::ops::{Deref, DerefMut};
 
 use bitfield_struct::bitfield;
-use byteorder::{BigEndian, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::inspect_bitfield;
+use slipstream_shared::cursor::MutCursor;
+use slipstream_shared::error::InvalidInputError;
 use slipstream_shared::inspect::{FieldConfig, Inspect};
-use slipstream_shared::{RefCursor, SlipstreamResult, verify, widgets};
+use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult, verify, widgets};
 
 /// A 4-byte animation frame.
 #[derive(Debug, Clone, PartialEq)]
@@ -41,6 +43,25 @@ impl I4Frame {
             tangent
         })
     }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        let bits = I4FrameBits::new()
+            .with_index_checked(self.index).map_err(|_| SlipstreamError::from(InvalidInputError {
+                reason: format!("Interpolated4 frame index out of range: {}", self.index),
+                ..Default::default()
+            }))?
+            .with_step_checked(self.step as u16).map_err(|_| SlipstreamError::from(InvalidInputError {
+                reason: format!("Interpolated4 frame step out of range: {}", self.step),
+                ..Default::default()
+            }))?
+            .with_tangent_checked((self.tangent * 32.0) as u16).map_err(|_| SlipstreamError::from(InvalidInputError {
+                reason: format!("Interpolated4 frame tangent out of range: {}", self.tangent),
+                ..Default::default()
+            }))?;
+
+        writer.write_u32::<BigEndian>(bits.into_bits())?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -62,6 +83,14 @@ impl I6Frame {
             tangent
         })
     }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_u16::<BigEndian>((self.index * 32.0) as u16)?;
+        writer.write_u16::<BigEndian>(self.step as u16)?;
+        writer.write_u16::<BigEndian>((self.tangent * 256.0) as u16)?;
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -82,6 +111,14 @@ impl I12Frame {
             value,
             tangent
         })
+    }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_f32::<BigEndian>(self.index)?;
+        writer.write_f32::<BigEndian>(self.value)?;
+        writer.write_f32::<BigEndian>(self.tangent)?;
+
+        Ok(())
     }
 }
 
@@ -126,6 +163,27 @@ impl I4Animation {
             frames
         })
     }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        let frame_count = self.frames.len().try_into().map_err(|_| SlipstreamError::from(InvalidInputError {
+            reason: format!("too many frames in animation ({}), max is 65536", self.frames.len()),
+            ..Default::default()
+        }))?;
+        writer.write_u16::<BigEndian>(frame_count)?;
+
+        // Unknown
+        writer.write_u16::<BigEndian>(0)?;
+
+        writer.write_f32::<BigEndian>(self.frame_scale)?;
+        writer.write_f32::<BigEndian>(self.step)?;
+        writer.write_f32::<BigEndian>(self.base)?;
+
+        for frame in &self.frames {
+            frame.serialize(writer)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -169,6 +227,27 @@ impl I6Animation {
             frames
         })
     }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        let frame_count = self.frames.len().try_into().map_err(|_| SlipstreamError::from(InvalidInputError {
+            reason: format!("too many frames in animation ({}), max is 65536", self.frames.len()),
+            ..Default::default()
+        }))?;
+        writer.write_u16::<BigEndian>(frame_count)?;
+
+        // Unknown
+        writer.write_u16::<BigEndian>(0)?;
+
+        writer.write_f32::<BigEndian>(self.frame_scale)?;
+        writer.write_f32::<BigEndian>(self.step)?;
+        writer.write_f32::<BigEndian>(self.base)?;
+
+        for frame in &self.frames {
+            frame.serialize(writer)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -206,13 +285,31 @@ impl I12Animation {
             frames
         })
     }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        let frame_count = self.frames.len().try_into().map_err(|_| SlipstreamError::from(InvalidInputError {
+            reason: format!("too many frames in animation ({}), max is 65536", self.frames.len()),
+            ..Default::default()
+        }))?;
+        writer.write_u16::<BigEndian>(frame_count)?;
+
+        // Unknown
+        writer.write_u16::<BigEndian>(0)?;
+
+        writer.write_f32::<BigEndian>(self.frame_scale)?;
+        for frame in &self.frames {
+            frame.serialize(writer)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct L1Animation {
     pub step: f32,
     pub base: f32,
-    pub frames: Vec<f32>
+    pub frames: Vec<u8>
 }
 
 impl L1Animation {
@@ -232,10 +329,21 @@ impl L1Animation {
 
         let mut frames = Vec::with_capacity(header_frame_count as usize);
         for _ in 0..header_frame_count {
-            frames.push(reader.read_u8()? as f32);
+            frames.push(reader.read_u8()?);
         }
 
         Ok(Self { step, base, frames })
+    }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_f32::<BigEndian>(self.step)?;
+        writer.write_f32::<BigEndian>(self.base)?;
+        
+        for frame in &self.frames {
+            writer.write_u8(*frame)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -260,5 +368,15 @@ impl L4Animation {
         }
 
         Ok(Self { frames })
+    }
+
+    pub fn serialize(
+        &self, writer: &mut MutCursor
+    ) -> SlipstreamResult<()> {
+        for frame in &self.frames {
+            writer.write_f32::<BigEndian>(*frame)?;
+        }
+
+        Ok(())
     }
 }

@@ -95,7 +95,8 @@ impl EncodedTexture for Rgb565Texture {
 }
 
 impl ExportableTexture for Rgb565Texture {
-    #[tracing::instrument(skip_all, fields(format))] fn export<W: Write + Seek>(
+    #[tracing::instrument(skip_all, fields(format))]
+    fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
         format: image::ImageFormat

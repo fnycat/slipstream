@@ -6,7 +6,7 @@ use slipstream_shared::verify;
 use crate::encoding::ReadStringExt;
 
 /// Maximum amount of BRRES directories that the parser is willing to deserialize.
-/// 
+///
 /// This ensures that malicious BRRES files will not trigger an OOM error by attempting
 /// to allocate terabytes of RAM.
 pub const INDEX_SAFE_COUNT: usize = 10_000;
@@ -172,7 +172,10 @@ impl IndexGroup {
         let header = IndexGroupHeader::deserialize(reader)?;
 
         if header.number > INDEX_SAFE_COUNT as u32 {
-            tracing::warn!("Index group has an unusually large amount of entries: {}. Preallocated capacity will be limited to {INDEX_SAFE_COUNT}", header.number);
+            tracing::warn!(
+                "Index group has an unusually large amount of entries: {}. Preallocated capacity will be limited to {INDEX_SAFE_COUNT}",
+                header.number
+            );
         }
 
         let number_count_cap = (header.number as usize).min(INDEX_SAFE_COUNT);

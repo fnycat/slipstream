@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use libfuzzer_sys::fuzz_target;
-use slipstream_ir::{node::arena::IrArena, tex0};
+use slipstream_ir::node::arena::IrArena;
+use slipstream_ir::tex0;
 use slipstream_shared::RefCursor;
 
 fuzz_target!(|data: &[u8]| {

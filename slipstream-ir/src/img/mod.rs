@@ -32,12 +32,7 @@ use crate::tex0::TextureFormat;
 /// Cap maximum at the size of a 8192x8192 image. That should be more than enough.
 pub const MAX_SAFE_PIXEL_WIDTH: usize = 8192;
 pub const MAX_SAFE_PIXEL_HEIGHT: usize = 8192;
-pub const SUPPORT_EXPORT_FORMATS: &[&str] = &[
-    "png",
-    "jpg",
-    "webp",
-    "tex0"
-];
+pub const SUPPORT_EXPORT_FORMATS: &[&str] = &["png", "jpg", "webp", "tex0"];
 
 /// This is a separate trait from [`EncodedTexture`] to keep that trait dyn-compatible.
 pub trait ExportableTexture {
@@ -107,7 +102,9 @@ pub fn detile<
 
     let (blocks, rem) = tiled.as_chunks::<TILE_SIZE>();
     if !rem.is_empty() {
-        tracing::error!("Image did not split cleanly into proper tiles. The last incomplete tile has been ignored.");
+        tracing::error!(
+            "Image did not split cleanly into proper tiles. The last incomplete tile has been ignored."
+        );
     }
 
     for (tile_idx, tile) in blocks.iter().enumerate() {

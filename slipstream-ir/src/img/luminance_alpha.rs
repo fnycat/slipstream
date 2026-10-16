@@ -7,7 +7,8 @@ use slipstream_shared::error::InvalidInputError;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::img::{
-    EncodedTexture, ExportableTexture, MAX_SAFE_PIXEL_WIDTH, Rgba8Texture, block_count, detile, hash_pixels
+    EncodedTexture, ExportableTexture, MAX_SAFE_PIXEL_WIDTH, Rgba8Texture, block_count, detile,
+    hash_pixels
 };
 use crate::tex0::TextureFormat;
 
@@ -140,7 +141,8 @@ impl ExportableTexture for La4Texture {
     //     todo!();
     // }
 
-    #[tracing::instrument(skip_all, fields(format))] fn export<W: Write + Seek>(
+    #[tracing::instrument(skip_all, fields(format))]
+    fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
         format: image::ImageFormat
@@ -280,7 +282,8 @@ impl ExportableTexture for La8Texture {
     //     todo!();
     // }
 
-    #[tracing::instrument(skip_all, fields(format))] fn export<W: Write + Seek>(
+    #[tracing::instrument(skip_all, fields(format))]
+    fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
         format: image::ImageFormat

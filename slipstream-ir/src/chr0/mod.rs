@@ -7,9 +7,9 @@ pub use frame::*;
 pub use visitor::*;
 
 use bitfield_struct::{bitenum, bitfield};
-use byteorder::{BigEndian, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::{Inspect, inspect_bitfield, try_from};
-use slipstream_shared::cursor::RefCursor;
+use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 use slipstream_shared::verify;
 
@@ -22,70 +22,45 @@ use crate::visitor::{
     VisitorContextNodeMut
 };
 
+#[try_from(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 pub enum AnimationPolicy {
-    OneTime,
-    Loop
-}
-
-impl TryFrom<u32> for AnimationPolicy {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0x00 => Self::OneTime,
-            0x01 => Self::Loop,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid animation policy: {value} (expected 0 or 1)"),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
-    }
+    OneTime = 0x00,
+    Loop = 0x01
 }
 
 impl AnimationPolicy {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let policy = reader.read_u32::<BigEndian>()?;
         Self::try_from(policy)
     }
-}
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
-#[repr(u32)]
-pub enum ScalingRule {
-    Standard,
-    #[inspect(rename = "Autodesk Softimage")]
-    Softimage,
-    #[inspect(rename = "Autodesk Maya")]
-    Maya
-}
-
-impl TryFrom<u32> for ScalingRule {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0x00 => Self::Standard,
-            0x01 => Self::Softimage,
-            0x02 => Self::Maya,
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid scaling rule: {} (expected 0, 1 or 2)", value),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_u32::<BigEndian>(*self as u32)?;
+        Ok(())
     }
 }
 
+#[try_from(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
+#[repr(u32)]
+pub enum ScalingRule {
+    Standard = 0x00,
+    #[inspect(rename = "Autodesk Softimage")]
+    Softimage = 0x01,
+    #[inspect(rename = "Autodesk Maya")]
+    Maya = 0x02
+}
+
 impl ScalingRule {
-    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let rule = reader.read_u32::<BigEndian>()?;
         Self::try_from(rule)
+    }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_u32::<BigEndian>(*self as u32)?;
+        Ok(())
     }
 }
 
@@ -722,9 +697,18 @@ impl SkeletalAnimation {
         let anim_code = AnimationCode::deserialize(reader)?;
 
         // Ensure animation code is valid.
-        verify!(anim_code.translation_format() != AnimationFormat2::Invalid, "invalid translation animation format");
-        verify!(anim_code.rotation_format() != AnimationFormat3::Invalid, "invalid rotation animation format");
-        verify!(anim_code.scale_format() != AnimationFormat2::Invalid, "invalid scale animation format");
+        verify!(
+            anim_code.translation_format() != AnimationFormat2::Invalid,
+            "invalid translation animation format"
+        );
+        verify!(
+            anim_code.rotation_format() != AnimationFormat3::Invalid,
+            "invalid rotation animation format"
+        );
+        verify!(
+            anim_code.scale_format() != AnimationFormat2::Invalid,
+            "invalid scale animation format"
+        );
 
         let anim_data =
             AnimationData::deserialize(reader, anim_data_start, frame_count, &anim_code)?;
@@ -797,6 +781,15 @@ impl Chr0Root {
             anim_policy,
             scaling_rule
         })
+    }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_u16::<BigEndian>(self.frame_count)?;
+        writer.write_u16::<BigEndian>(self.anim_data_count)?;
+        self.anim_policy.serialize(writer)?;
+        self.scaling_rule.serialize(writer)?;
+
+        Ok(())
     }
 }
 

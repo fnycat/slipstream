@@ -2,11 +2,12 @@ use std::io::{BufWriter, Seek, Write};
 use std::ops::ControlFlow;
 use std::path::Path;
 
-use byteorder::{BigEndian, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 #[cfg(feature = "egui-impls")]
 use eframe::egui_wgpu;
 use image::{ImageBuffer, Rgba};
-use slipstream_derive::{Inspect, try_from};
+use slipstream_derive::{Inspect, inspect_bitfield, try_from};
+use slipstream_shared::cursor::MutCursor;
 use slipstream_shared::error::{InvalidInputError, UnsupportedError};
 use slipstream_shared::inspect::Changes;
 #[cfg(feature = "egui-impls")]
@@ -14,10 +15,12 @@ use slipstream_shared::inspect::FieldConfig;
 use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult, try_unwrap};
 
 use crate::brres::{BFileHeader, BFileType};
-use crate::encoding::Deserialize;
+use crate::encoding::{Deserialize, WriteArrayExt};
 use crate::img::{
-    CmprTexture, EncodedTexture, ExportableTexture, L4Texture, L8Texture, La4Texture, La8Texture, MAX_SAFE_PIXEL_HEIGHT, MAX_SAFE_PIXEL_WIDTH, Rgb5a3Texture, Rgb565Texture, Rgba8Texture
+    CmprTexture, EncodedTexture, ExportableTexture, L4Texture, L8Texture, La4Texture, La8Texture,
+    MAX_SAFE_PIXEL_HEIGHT, MAX_SAFE_PIXEL_WIDTH, Rgb5a3Texture, Rgb565Texture, Rgba8Texture
 };
+use crate::mdl0::UvDataType::S;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::visitor::{
@@ -54,6 +57,20 @@ pub enum TextureFormat {
     #[inspect(rename = "CMPR")]
     #[inspect(tooltip = "A compressed texture using DXT1 compression.")]
     Cmpr = 0x0e
+}
+
+impl TextureFormat {
+    pub const fn is_paletted(&self) -> bool {
+        match self {
+            Self::C4 | Self::C8 | Self::C14x2 => true,
+            _ => false
+        }
+    }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_u32::<BigEndian>(*self as u32)?;
+        Ok(())
+    }
 }
 
 impl Deserialize for TextureFormat {
@@ -184,14 +201,17 @@ impl TextureData {
             tracing::trace!("Opening texture export file dialog");
 
             if let Some(export_file) = rfd::FileDialog::new().save_file() {
-                if export_file.extension().map(|ext| {
-                    ext.to_string_lossy().ends_with("tex0")
-                }).unwrap_or(false) {
+                if export_file
+                    .extension()
+                    .map(|ext| ext.to_string_lossy().ends_with("tex0"))
+                    .unwrap_or(false)
+                {
                     // Export as TEX0 file.
                     todo!("export as tex0");
                 } else {
                     // Export as regular image
-                    self.export_to_file(export_file).expect("failed to export image");
+                    self.export_to_file(export_file)
+                        .expect("failed to export image");
                 }
             }
         }
@@ -272,6 +292,26 @@ impl_tex_data!(
     Cmpr
 );
 
+#[inspect_bitfield(u32)]
+#[derive(PartialEq, Eq)]
+pub struct TextureFlags {
+    pub is_paletted: bool,
+    #[bits(31)]
+    _unused: u32
+}
+
+impl TextureFlags {
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_u32::<BigEndian>(self.into_bits())?;
+        Ok(())
+    }
+
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let word = reader.read_u32::<BigEndian>()?;
+        Ok(Self::from_bits(word))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Texture {
     #[inspect(tooltip = "Width and height of the texture in pixels")]
@@ -279,6 +319,39 @@ pub struct Texture {
     #[inspect(rename = "Image")]
     #[inspect(with = TextureData::draw_ui, read_only)]
     pub data: TextureData
+}
+
+impl Texture {
+    pub fn serialize(
+        &self,
+        writer: &mut MutCursor,
+        header: &BFileHeader,
+    ) -> SlipstreamResult<()> {
+        header.serialize(writer)?;
+
+        let format = self.data.format();
+        let flags = TextureFlags::new()
+            .with_is_paletted(format.is_paletted());
+
+        flags.serialize(writer)?;
+
+        let dims = self.data.dimensions();
+        writer.write_u16_array::<2, BigEndian>(dims.to_array())?;
+
+        format.serialize(writer)?;
+        writer.write_u32::<BigEndian>(self.data.mipmaps())?;
+
+        // Minimum mipmap used. This seems to always be zero.
+        writer.write_u32::<BigEndian>(0)?;
+
+        tracing::error!("TODO: DETERMINE MAXIMUM MIPMAP USED");
+        writer.write_u32::<BigEndian>(1)?;
+
+        // Offset to absolute path of intermediate file. Unused.
+        writer.write_u32::<BigEndian>(0)?;
+
+        Ok(())
+    }
 }
 
 impl Visitable for Texture {
@@ -304,7 +377,7 @@ pub fn deserialize(
 ) -> SlipstreamResult<IrNodeKey> {
     let subfile_header = BFileHeader::deserialize(reader, BFileType::Tex0)?;
 
-    let flag = reader.read_u32::<BigEndian>()?;
+    let flags = TextureFlags::deserialize(reader)?;
     let pixel_width = reader.read_u16::<BigEndian>()?;
     let pixel_height = reader.read_u16::<BigEndian>()?;
     let format = TextureFormat::deserialize(reader)?;
@@ -315,16 +388,22 @@ pub fn deserialize(
 
     if pixel_width > MAX_SAFE_PIXEL_WIDTH as u16 {
         return Err(InvalidInputError {
-            reason: format!("image exceeds maximum width of {MAX_SAFE_PIXEL_WIDTH} ({pixel_width})"),
+            reason: format!(
+                "image exceeds maximum width of {MAX_SAFE_PIXEL_WIDTH} ({pixel_width})"
+            ),
             location: Some(reader.position())
-        }.into())
+        }
+        .into());
     }
 
     if pixel_height > MAX_SAFE_PIXEL_HEIGHT as u16 {
         return Err(InvalidInputError {
-            reason: format!("image exceeds maximum height of {MAX_SAFE_PIXEL_HEIGHT} ({pixel_height})"),
+            reason: format!(
+                "image exceeds maximum height of {MAX_SAFE_PIXEL_HEIGHT} ({pixel_height})"
+            ),
             location: Some(reader.position())
-        }.into())
+        }
+        .into());
     }
 
     reader.set_position(subfile_header.get_section_start(0)?);
@@ -378,10 +457,15 @@ mod test {
 
     use slipstream_shared::RefCursor;
 
-    use crate::{node::arena::IrArena, tex0};
+    use crate::node::arena::IrArena;
+    use crate::tex0;
 
     // Found via fuzzing. This corrupted file seemed to cause an impossibly large allocation.
-    const OOM_CORPUS: &[u8] = &[255, 0, 3, 255, 255, 255, 0, 0, 0, 0, 0, 3, 255, 255, 255, 3, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 84, 250, 255, 251, 255, 1, 0, 0, 0, 3, 255, 255, 255, 255, 255, 5, 3, 87, 138, 255, 255, 255, 255, 255, 255, 254, 3, 0, 0, 138, 255, 255, 5, 3, 255, 87];
+    const OOM_CORPUS: &[u8] = &[
+        255, 0, 3, 255, 255, 255, 0, 0, 0, 0, 0, 3, 255, 255, 255, 3, 0, 0, 0, 49, 0, 0, 0, 0, 0,
+        0, 84, 250, 255, 251, 255, 1, 0, 0, 0, 3, 255, 255, 255, 255, 255, 5, 3, 87, 138, 255, 255,
+        255, 255, 255, 255, 254, 3, 0, 0, 138, 255, 255, 5, 3, 255, 87
+    ];
 
     #[test]
     fn oom_corpus() {
