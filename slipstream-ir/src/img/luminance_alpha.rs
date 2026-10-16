@@ -140,7 +140,7 @@ impl ExportableTexture for La4Texture {
     //     todo!();
     // }
 
-    fn export<W: Write + Seek>(
+    #[tracing::instrument(skip_all, fields(format))] fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
         format: image::ImageFormat
@@ -280,7 +280,7 @@ impl ExportableTexture for La8Texture {
     //     todo!();
     // }
 
-    fn export<W: Write + Seek>(
+    #[tracing::instrument(skip_all, fields(format))] fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
         format: image::ImageFormat

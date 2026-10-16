@@ -205,7 +205,7 @@ impl EncodedTexture for CmprTexture {
 }
 
 impl ExportableTexture for CmprTexture {
-    fn export<W: Write + Seek>(
+    #[tracing::instrument(skip_all, fields(format))] fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
         format: image::ImageFormat

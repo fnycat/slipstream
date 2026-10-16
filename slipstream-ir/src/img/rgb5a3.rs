@@ -130,7 +130,7 @@ impl EncodedTexture for Rgb5a3Texture {
 }
 
 impl ExportableTexture for Rgb5a3Texture {
-    fn export<W: Write + Seek>(
+    #[tracing::instrument(skip_all, fields(format))] fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
         format: image::ImageFormat

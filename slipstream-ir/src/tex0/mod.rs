@@ -178,6 +178,24 @@ impl TextureData {
             ui.data_mut(|d| d.insert_temp::<bool>(modal_id, true));
         }
 
+        if ui.button("Export").clicked() {
+            use crate::img;
+
+            tracing::trace!("Opening texture export file dialog");
+
+            if let Some(export_file) = rfd::FileDialog::new().save_file() {
+                if export_file.extension().map(|ext| {
+                    ext.to_string_lossy().ends_with("tex0")
+                }).unwrap_or(false) {
+                    // Export as TEX0 file.
+                    todo!("export as tex0");
+                } else {
+                    // Export as regular image
+                    self.export_to_file(export_file).expect("failed to export image");
+                }
+            }
+        }
+
         inner.into()
     }
 }

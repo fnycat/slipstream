@@ -3803,6 +3803,7 @@ dependencies = [
  "parking_lot_core",
  "paste",
  "rayon",
+ "rfd",
  "slipstream-derive",
  "slipstream-shared",
  "tracing",
