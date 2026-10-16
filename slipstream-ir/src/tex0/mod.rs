@@ -16,8 +16,7 @@ use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult, try_unwrap
 use crate::brres::{BFileHeader, BFileType};
 use crate::encoding::Deserialize;
 use crate::img::{
-    CmprTexture, EncodedTexture, ExportableTexture, L4Texture, L8Texture, La4Texture, La8Texture,
-    Rgb5a3Texture, Rgb565Texture, Rgba8Texture
+    CmprTexture, EncodedTexture, ExportableTexture, L4Texture, L8Texture, La4Texture, La8Texture, MAX_SAFE_PIXEL_HEIGHT, MAX_SAFE_PIXEL_WIDTH, Rgb5a3Texture, Rgb565Texture, Rgba8Texture
 };
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
@@ -296,6 +295,20 @@ pub fn deserialize(
     let max_mipmap_used = reader.read_f32::<BigEndian>()?;
     let _unused = reader.read_u32::<BigEndian>()?;
 
+    if pixel_width > MAX_SAFE_PIXEL_WIDTH as u16 {
+        return Err(InvalidInputError {
+            reason: format!("image exceeds maximum width of {MAX_SAFE_PIXEL_WIDTH} ({pixel_width})"),
+            location: Some(reader.position())
+        }.into())
+    }
+
+    if pixel_height > MAX_SAFE_PIXEL_HEIGHT as u16 {
+        return Err(InvalidInputError {
+            reason: format!("image exceeds maximum height of {MAX_SAFE_PIXEL_HEIGHT} ({pixel_height})"),
+            location: Some(reader.position())
+        }.into())
+    }
+
     reader.set_position(subfile_header.get_section_start(0)?);
 
     let dims = glam::u16vec2(pixel_width, pixel_height);
@@ -339,4 +352,23 @@ pub fn deserialize(
     });
 
     Ok(key)
+}
+
+#[cfg(test)]
+mod test {
+    use std::sync::Arc;
+
+    use slipstream_shared::RefCursor;
+
+    use crate::{node::arena::IrArena, tex0};
+
+    // Found via fuzzing. This corrupted file seemed to cause an impossibly large allocation.
+    const OOM_CORPUS: &[u8] = &[255, 0, 3, 255, 255, 255, 0, 0, 0, 0, 0, 3, 255, 255, 255, 3, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 84, 250, 255, 251, 255, 1, 0, 0, 0, 3, 255, 255, 255, 255, 255, 5, 3, 87, 138, 255, 255, 255, 255, 255, 255, 254, 3, 0, 0, 138, 255, 255, 5, 3, 255, 87];
+
+    #[test]
+    fn oom_corpus() {
+        let mut reader = RefCursor::new(Arc::from(OOM_CORPUS));
+        let arena = IrArena::new();
+        let _ = tex0::deserialize(&mut reader, None, &arena, String::from("oom_corpus"));
+    }
 }

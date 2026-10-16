@@ -1,8 +1,8 @@
 mod c;
 mod c14x2;
 mod cmpr;
-mod i;
-mod ia;
+mod luminance;
+mod luminance_alpha;
 mod rgb565;
 mod rgb5a3;
 mod rgba8;
@@ -14,8 +14,8 @@ use std::io::{Seek, Write};
 pub use c::*;
 pub use c14x2::*;
 pub use cmpr::*;
-pub use i::*;
-pub use ia::*;
+pub use luminance::*;
+pub use luminance_alpha::*;
 pub use rgb5a3::*;
 pub use rgb565::*;
 pub use rgba8::*;
@@ -28,6 +28,10 @@ use slipstream_shared::{RefCursor, SlipstreamResult};
 use crate::encoding::ReadArrayExt;
 use crate::mdl0::ColorFormat;
 use crate::tex0::TextureFormat;
+
+/// Cap maximum at the size of a 8192x8192 image. That should be more than enough.
+pub const MAX_SAFE_PIXEL_WIDTH: usize = 8192;
+pub const MAX_SAFE_PIXEL_HEIGHT: usize = 8192;
 
 /// This is a separate trait from [`EncodedTexture`] to keep that trait dyn-compatible.
 pub trait ExportableTexture {
@@ -96,7 +100,9 @@ pub fn detile<
     let mut out = vec![P::default(); width * height];
 
     let (blocks, rem) = tiled.as_chunks::<TILE_SIZE>();
-    debug_assert!(rem.is_empty());
+    if !rem.is_empty() {
+        tracing::error!("Image did not split cleanly into proper tiles. The last incomplete tile has been ignored.");
+    }
 
     for (tile_idx, tile) in blocks.iter().enumerate() {
         let (tx, ty) = (tile_idx % tiles_x, tile_idx / tiles_x);

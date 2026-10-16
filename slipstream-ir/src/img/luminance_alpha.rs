@@ -1,11 +1,13 @@
+use std::io::ErrorKind::InvalidInput;
 use std::io::{Read, Seek, Write};
 
 use byteorder::ReadBytesExt;
 use glam::Vec2Swizzles;
+use slipstream_shared::error::InvalidInputError;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::img::{
-    EncodedTexture, ExportableTexture, Rgba8Texture, block_count, detile, hash_pixels
+    EncodedTexture, ExportableTexture, MAX_SAFE_PIXEL_WIDTH, Rgba8Texture, block_count, detile, hash_pixels
 };
 use crate::tex0::TextureFormat;
 
@@ -56,50 +58,50 @@ impl La4Texture {
 }
 
 impl EncodedTexture for La4Texture {
-    #[cfg(feature = "egui-impls")]
-    fn create_wgpu_texture(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> (wgpu::Texture, wgpu::TextureView) {
-        use wgpu::util::DeviceExt;
+    // #[cfg(feature = "egui-impls")]
+    // fn create_wgpu_texture(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> (wgpu::Texture, wgpu::TextureView) {
+    //     use wgpu::util::DeviceExt;
 
-        const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
+    //     const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
 
-        let dims = self.dimensions();
-        let rgba = self.to_rgba8().expect("La4 to Rgba8 conversion should not fail");
+    //     let dims = self.dimensions();
+    //     let rgba = self.to_rgba8().expect("La4 to Rgba8 conversion should not fail");
 
-        let texture = device.create_texture_with_data(queue, &wgpu::TextureDescriptor {
-            label: Some("CMPR texture"),
-            size: wgpu::Extent3d {
-                width: dims.x as u32,
-                height: dims.y as u32,
-                depth_or_array_layers: 1
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: SHADER_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[SHADER_FORMAT]
-        }, wgpu::util::TextureDataOrder::LayerMajor, rgba.bytes().expect("Rgba8 always has available bytes"));
+    //     let texture = device.create_texture_with_data(queue, &wgpu::TextureDescriptor {
+    //         label: Some("CMPR texture"),
+    //         size: wgpu::Extent3d {
+    //             width: dims.x as u32,
+    //             height: dims.y as u32,
+    //             depth_or_array_layers: 1
+    //         },
+    //         mip_level_count: 1,
+    //         sample_count: 1,
+    //         dimension: wgpu::TextureDimension::D2,
+    //         format: SHADER_FORMAT,
+    //         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+    //         view_formats: &[SHADER_FORMAT]
+    //     }, wgpu::util::TextureDataOrder::LayerMajor, rgba.bytes().expect("Rgba8 always has available bytes"));
 
-        let view = texture.create_view(&wgpu::TextureViewDescriptor {
-            label: Some("CMPR texture view"),
-            format: Some(SHADER_FORMAT),
-            dimension: Some(wgpu::TextureViewDimension::D2),
-            usage: Some(wgpu::TextureUsages::TEXTURE_BINDING),
-            aspect: wgpu::TextureAspect::All,
-            base_mip_level: 0,
-            mip_level_count: None,
-            base_array_layer: 0,
-            array_layer_count: None,
-            // swizzle: wgpu::TextureComponentSwizzle {
-            //     r: wgpu::ComponentSwizzle::R,
-            //     g: wgpu::ComponentSwizzle::R,
-            //     b: wgpu::ComponentSwizzle::R,
-            //     a: wgpu::ComponentSwizzle::G
-            // }
-        });
+    //     let view = texture.create_view(&wgpu::TextureViewDescriptor {
+    //         label: Some("CMPR texture view"),
+    //         format: Some(SHADER_FORMAT),
+    //         dimension: Some(wgpu::TextureViewDimension::D2),
+    //         usage: Some(wgpu::TextureUsages::TEXTURE_BINDING),
+    //         aspect: wgpu::TextureAspect::All,
+    //         base_mip_level: 0,
+    //         mip_level_count: None,
+    //         base_array_layer: 0,
+    //         array_layer_count: None,
+    //         // swizzle: wgpu::TextureComponentSwizzle {
+    //         //     r: wgpu::ComponentSwizzle::R,
+    //         //     g: wgpu::ComponentSwizzle::R,
+    //         //     b: wgpu::ComponentSwizzle::R,
+    //         //     a: wgpu::ComponentSwizzle::G
+    //         // }
+    //     });
 
-        (texture, view)
-    }
+    //     (texture, view)
+    // }
 
     fn format(&self) -> TextureFormat {
         TextureFormat::Luminance4
@@ -134,9 +136,9 @@ impl EncodedTexture for La4Texture {
 }
 
 impl ExportableTexture for La4Texture {
-    fn import<R: Read>(reader: &mut R) -> SlipstreamResult<Self> {
-        todo!();
-    }
+    // fn import<R: Read>(reader: &mut R) -> SlipstreamResult<Self> {
+    //     todo!();
+    // }
 
     fn export<W: Write + Seek>(
         &self,
@@ -202,51 +204,51 @@ impl La8Texture {
 }
 
 impl EncodedTexture for La8Texture {
-    #[cfg(feature = "egui-impls")]
-    fn create_wgpu_texture(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> (wgpu::Texture, wgpu::TextureView) {
-        use wgpu::util::DeviceExt;
+    // #[cfg(feature = "egui-impls")]
+    // fn create_wgpu_texture(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> (wgpu::Texture, wgpu::TextureView) {
+    //     use wgpu::util::DeviceExt;
 
-        const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
+    //     const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
 
-        let dims = self.dimensions();
-        let rgba = self.to_rgba8().expect("La8 to Rgba8 conversion should not fail");
+    //     let dims = self.dimensions();
+    //     let rgba = self.to_rgba8().expect("La8 to Rgba8 conversion should not fail");
 
-        let texture = device.create_texture_with_data(queue, &wgpu::TextureDescriptor {
-            label: Some("CMPR texture"),
-            size: wgpu::Extent3d {
-                width: dims.x as u32,
-                height: dims.y as u32,
-                depth_or_array_layers: 1
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: SHADER_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[SHADER_FORMAT]
-        }, wgpu::util::TextureDataOrder::LayerMajor, rgba.bytes().expect("Rgba8 always has available bytes"));
+    //     let texture = device.create_texture_with_data(queue, &wgpu::TextureDescriptor {
+    //         label: Some("CMPR texture"),
+    //         size: wgpu::Extent3d {
+    //             width: dims.x as u32,
+    //             height: dims.y as u32,
+    //             depth_or_array_layers: 1
+    //         },
+    //         mip_level_count: 1,
+    //         sample_count: 1,
+    //         dimension: wgpu::TextureDimension::D2,
+    //         format: SHADER_FORMAT,
+    //         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+    //         view_formats: &[SHADER_FORMAT]
+    //     }, wgpu::util::TextureDataOrder::LayerMajor, rgba.bytes().expect("Rgba8 always has available bytes"));
 
-        let view = texture.create_view(&wgpu::TextureViewDescriptor {
-            label: Some("CMPR texture view"),
-            format: Some(SHADER_FORMAT),
-            dimension: Some(wgpu::TextureViewDimension::D2),
-            usage: Some(wgpu::TextureUsages::TEXTURE_BINDING),
-            aspect: wgpu::TextureAspect::All,
-            base_mip_level: 0,
-            mip_level_count: None,
-            base_array_layer: 0,
-            array_layer_count: None,
-            // TODO: Implement using swizzling when it has landed in `wgpu` and `eframe`.
-            // swizzle: wgpu::TextureComponentSwizzle {
-            //     r: wgpu::ComponentSwizzle::R,
-            //     g: wgpu::ComponentSwizzle::R,
-            //     b: wgpu::ComponentSwizzle::R,
-            //     a: wgpu::ComponentSwizzle::G
-            // }
-        });
+    //     let view = texture.create_view(&wgpu::TextureViewDescriptor {
+    //         label: Some("CMPR texture view"),
+    //         format: Some(SHADER_FORMAT),
+    //         dimension: Some(wgpu::TextureViewDimension::D2),
+    //         usage: Some(wgpu::TextureUsages::TEXTURE_BINDING),
+    //         aspect: wgpu::TextureAspect::All,
+    //         base_mip_level: 0,
+    //         mip_level_count: None,
+    //         base_array_layer: 0,
+    //         array_layer_count: None,
+    //         // TODO: Implement using swizzling when it has landed in `wgpu` and `eframe`.
+    //         // swizzle: wgpu::TextureComponentSwizzle {
+    //         //     r: wgpu::ComponentSwizzle::R,
+    //         //     g: wgpu::ComponentSwizzle::R,
+    //         //     b: wgpu::ComponentSwizzle::R,
+    //         //     a: wgpu::ComponentSwizzle::G
+    //         // }
+    //     });
 
-        (texture, view)
-    }
+    //     (texture, view)
+    // }
 
     fn format(&self) -> TextureFormat {
         TextureFormat::Luminance8
@@ -274,9 +276,9 @@ impl EncodedTexture for La8Texture {
 }
 
 impl ExportableTexture for La8Texture {
-    fn import<R: Read>(reader: &mut R) -> SlipstreamResult<Self> {
-        todo!();
-    }
+    // fn import<R: Read>(reader: &mut R) -> SlipstreamResult<Self> {
+    //     todo!();
+    // }
 
     fn export<W: Write + Seek>(
         &self,
