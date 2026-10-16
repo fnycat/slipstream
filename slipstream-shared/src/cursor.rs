@@ -115,11 +115,17 @@ impl<T: AsRef<[u8]> + ?Sized> RefCursor<T> {
         let start = match start {
             Bound::Unbounded => 0,
             Bound::Included(&x) => {
-                verify!(x < rem, "start bound is larger than slice length ({rem} vs. {x})");
+                verify!(
+                    x < rem,
+                    "start bound is larger than slice length ({rem} vs. {x})"
+                );
                 x
-            },
+            }
             Bound::Excluded(&x) => {
-                verify!(x + 1 < rem, "start bound is larger than slice length ({rem} vs. {x})");
+                verify!(
+                    x + 1 < rem,
+                    "start bound is larger than slice length ({rem} vs. {x})"
+                );
                 x + 1
             }
         };
@@ -127,9 +133,12 @@ impl<T: AsRef<[u8]> + ?Sized> RefCursor<T> {
         let end = match end {
             Bound::Unbounded => rem,
             Bound::Included(&x) => {
-                verify!(x + 1 < rem, "end bound exceeds slice length ({rem} vs. {x})");
+                verify!(
+                    x + 1 < rem,
+                    "end bound exceeds slice length ({rem} vs. {x})"
+                );
                 x + 1
-            },
+            }
             Bound::Excluded(&x) => {
                 verify!(x < rem, "end bound exceeds slice length ({rem} vs. {x}");
                 x
@@ -137,7 +146,10 @@ impl<T: AsRef<[u8]> + ?Sized> RefCursor<T> {
         };
 
         // Then ensure the start index does not exceed the end.
-        verify!(start <= end, "start bound is larger than end bound ({start} vs. {end})");
+        verify!(
+            start <= end,
+            "start bound is larger than end bound ({start} vs. {end})"
+        );
 
         Ok(&self.remaining_slice()[start..end])
     }
@@ -311,8 +323,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use crate::RefCursor;
+    use std::sync::Arc;
 
     const TEST_BUFFER: [u8; 3] = [1, 2, 3];
     const TEST_SIZE: usize = TEST_BUFFER.len();

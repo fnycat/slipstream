@@ -7,8 +7,9 @@ use slipstream_ir::node::arena::IrArena;
 use slipstream_shared::RefCursor;
 
 fuzz_target!(|data: &[u8]| {
-    let reader = RefCursor::new(Arc::from(data));
+    let mut reader = RefCursor::new(Arc::from(data));
     let arena = IrArena::new();
 
-    let _ = slipstream_ir::node::root::deserialize_maybe_compressed(reader, &arena, String::from("fuzzed.szs"));
+    let _ =
+        slipstream_ir::brres::deserialize(&mut reader, None, &arena, String::from("fuzzed.brres"));
 });

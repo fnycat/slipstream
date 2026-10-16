@@ -69,7 +69,7 @@ impl RoutablePage for InfoPage {
                                     self.cmd_channel
                                         .try_route(IntroPage::new(
                                             self.cmd_channel.clone(),
-                                            self.render_state.clone(),
+                                            self.render_state.clone()
                                         ))
                                         .unwrap();
                                 }
@@ -80,7 +80,7 @@ impl RoutablePage for InfoPage {
                             self.cmd_channel
                                 .try_route(IntroPage::new(
                                     self.cmd_channel.clone(),
-                                    self.render_state.clone(),
+                                    self.render_state.clone()
                                 ))
                                 .unwrap();
                         }

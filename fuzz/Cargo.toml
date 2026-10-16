@@ -17,8 +17,15 @@ path = "../slipstream-shared"
 path = "../slipstream-ir"
 
 [[bin]]
-name = "fuzz-target-1"
-path = "fuzz_targets/fuzz_target_1.rs"
+name = "full"
+path = "fuzz_targets/full.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "brres"
+path = "fuzz_targets/brres.rs"
 test = false
 doc = false
 bench = false

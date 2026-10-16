@@ -79,9 +79,10 @@ pub trait Inspect {
 
     /// Draws one grid row per field into the grid of the given `ui`.
     fn draw_rows(&mut self, ui: &mut egui::Ui, id: egui::Id) -> Changes {
-        let err_text = egui::RichText::new("ERROR: You should implement `Inspect::draw_rows`!").color(ui.visuals().error_fg_color);
+        let err_text = egui::RichText::new("ERROR: You should implement `Inspect::draw_rows`!")
+            .color(ui.visuals().error_fg_color);
         ui.label(err_text);
-        
+
         Changes::default()
     }
 
@@ -239,8 +240,8 @@ impl_vector!(glam::U16Vec4, w, z, y, x);
 impl Inspect for glam::Mat4 {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         // ui.label("TODO: This matrix might have to be transposed before displaying");
-        
-        let vecs: &mut [glam::Vec4; 4] = bytemuck::cast_mut(self);        
+
+        let vecs: &mut [glam::Vec4; 4] = bytemuck::cast_mut(self);
 
         let mut changes = Changes::default();
 

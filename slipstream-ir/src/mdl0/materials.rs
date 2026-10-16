@@ -3,9 +3,9 @@ use std::ops::ControlFlow;
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::{Inspect, inspect_bitfield, try_from};
-use slipstream_shared::{assert_u8, verify};
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
+use slipstream_shared::{assert_u8, verify};
 
 use crate::encoding::ReadArrayExt;
 use crate::gx::load_bp::{AlphaFunction, BlendMode, ConstantAlpha, DepthTest, LoadBpOpCode};

@@ -365,28 +365,34 @@ impl AnimationData {
         reader: &mut RefCursor<[u8]>,
         bone_data_start: u64,
         frame_count: u16,
-        anim_ty_code: &AnimationCode
+        anim_code: &AnimationCode
     ) -> SlipstreamResult<ComponentData> {
         tracing::trace!(
             "Reading scale animations (iso: {}, x fixed: {}, y fixed: {}, z fixed: {})",
-            anim_ty_code.scale_isotropic(),
-            anim_ty_code.scale_x_fixed(),
-            anim_ty_code.scale_y_fixed(),
-            anim_ty_code.scale_z_fixed()
+            anim_code.scale_isotropic(),
+            anim_code.scale_x_fixed(),
+            anim_code.scale_y_fixed(),
+            anim_code.scale_z_fixed()
         );
 
-        if anim_ty_code.scale_isotropic() {
+        if anim_code.scale_isotropic() {
             let iso_scale;
 
             // Only one piece of data is stored, rather than for each component
-            if anim_ty_code.scale_x_fixed() {
+            if anim_code.scale_x_fixed() {
                 iso_scale = ComponentType::Fixed(reader.read_f32::<BigEndian>()?);
             } else {
+                // Verify that the format is indeed non-fixed.
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The scale animation format is set to `Fixed` while the iso animation is not flagged to be fixed"
+                );
+
                 let frame = Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_ty_code.scale_format().extend()
+                    anim_code.scale_format().extend()
                 )?;
                 iso_scale = ComponentType::Animated(frame);
             }
@@ -397,38 +403,53 @@ impl AnimationData {
                 z: iso_scale
             })
         } else {
-            let x_scale = if anim_ty_code.scale_x_fixed() {
+            let x_scale = if anim_code.scale_x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The scale animation format is set to `Fixed` while the X scale is not fixed."
+                );
+
                 let frame = Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_ty_code.scale_format().extend()
+                    anim_code.scale_format().extend()
                 )?;
                 ComponentType::Animated(frame)
             };
 
-            let y_scale = if anim_ty_code.scale_y_fixed() {
+            let y_scale = if anim_code.scale_y_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The scale animation format is set to `Fixed` while the Y scale is not fixed."
+                );
+
                 let frame = Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_ty_code.scale_format().extend()
+                    anim_code.scale_format().extend()
                 )?;
                 ComponentType::Animated(frame)
             };
 
-            let z_scale = if anim_ty_code.scale_z_fixed() {
+            let z_scale = if anim_code.scale_z_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The scale animation format is set to `Fixed` while the Z scale is not fixed."
+                );
+
                 let frame = Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
                     frame_count,
-                    anim_ty_code.scale_format().extend()
+                    anim_code.scale_format().extend()
                 )?;
                 ComponentType::Animated(frame)
             };
@@ -460,6 +481,11 @@ impl AnimationData {
             let iso_rot = if anim_code.rotation_x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The rotation animation format is set to `Fixed` while the isotropic rotation is not fixed."
+                );
+
                 let frame = Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
@@ -478,6 +504,11 @@ impl AnimationData {
             let x_rot = if anim_code.rotation_x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The rotation animation format is set to `Fixed` while the X rotation is not fixed."
+                );
+
                 let frame = Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
@@ -490,6 +521,11 @@ impl AnimationData {
             let y_rot = if anim_code.rotation_y_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The rotation animation format is set to `Fixed` while the Y rotation is not fixed."
+                );
+
                 let frame = Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
@@ -502,6 +538,11 @@ impl AnimationData {
             let z_rot = if anim_code.rotation_z_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The rotation animation format is set to `Fixed` while the Z rotation is not fixed."
+                );
+
                 let frame = Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
@@ -538,6 +579,11 @@ impl AnimationData {
             let iso_trans = if anim_code.x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The translation animation format is set to `Fixed` while the isotropic translation is not fixed."
+                );
+
                 ComponentType::Animated(Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
@@ -555,6 +601,11 @@ impl AnimationData {
             let trans_x = if anim_code.x_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The translation animation format is set to `Fixed` while the X translation is not fixed."
+                );
+
                 ComponentType::Animated(Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
@@ -566,6 +617,11 @@ impl AnimationData {
             let trans_y = if anim_code.y_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The translation animation format is set to `Fixed` while the Y translation is not fixed."
+                );
+
                 ComponentType::Animated(Self::deserialize_keyframe(
                     reader,
                     bone_data_start,
@@ -577,6 +633,11 @@ impl AnimationData {
             let trans_z = if anim_code.z_fixed() {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
+                verify!(
+                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    "The translation animation format is set to `Fixed` while the Z translation is not fixed."
+                );
+
                 ComponentType::Animated(Self::deserialize_keyframe(
                     reader,
                     bone_data_start,

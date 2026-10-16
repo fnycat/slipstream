@@ -140,7 +140,7 @@ impl Pane for ViewerPane {
 
                 let image_widget = egui::Image::new(egui::load::SizedTexture {
                     id: pipeline.screen_texture_state.egui_texture_id,
-                    size: panel_bounds.size(),
+                    size: panel_bounds.size()
                 })
                 .tint(egui::Color32::WHITE) // some custom themes seem to add a tint to the viewer
                 .sense(egui::Sense::click_and_drag());

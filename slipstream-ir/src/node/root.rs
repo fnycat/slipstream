@@ -33,7 +33,8 @@ pub fn deserialize_unknown_root(
     arena: &IrArena,
     name: String
 ) -> SlipstreamResult<IrNodeKey> {
-    let magic: &[u8; 4] = reader.slice(..4)?
+    let magic: &[u8; 4] = reader
+        .slice(..4)?
         .try_into()
         .expect("array of size 4 does not have size 4?");
 

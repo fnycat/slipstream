@@ -1,6 +1,6 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
-use slipstream_shared::error::SlipstreamResult;
+use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
 use crate::encoding::ReadStringExt;
 
@@ -133,7 +133,13 @@ impl IndexGroup {
         }
 
         // Move cursor to name and then back after reading.
-        let name_start = self.group_start + entry.name_pointer;
+        let Some(name_start) = self.group_start.checked_add(entry.name_pointer) else {
+            return Err(CorruptionError {
+                reason: format!("Index entry name pointer offset corrupted. Offset is larger than 32-bit integer limit (offset is {})", entry.name_pointer),
+                location: Some(reader.position())
+            }.into());
+        };
+
         reader.set_position(name_start as u64 - 4);
 
         let name = reader.read_u32_string::<BigEndian>()?;
@@ -156,11 +162,13 @@ impl IndexGroup {
             entries.push(entry);
         }
 
-        debug_assert_eq!(
-            reader.position() as u32 - group_start,
-            header.length,
-            "an incorrect number of index group entries was read"
-        );
+        let actually_read = reader.position() as u32 - group_start;
+        if actually_read != header.length {
+            tracing::error!(
+                "The length specified in the BRRES index group header did not equal the amount of bytes actually read ({} vs. {actually_read}). This will likely crash on a real console.",
+                header.length
+            );
+        }
 
         Ok(Self {
             group_start,
