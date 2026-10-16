@@ -14,9 +14,8 @@ use crate::encoding::{ReadArrayExt, WriteArrayExt};
 use crate::index::IndexGroup;
 use crate::mdl0::{self, MDL0_MAGIC};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
-use crate::node::node::IrNodeType::Mdl0Root;
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
-use crate::tex0::{self, TEX0_MAGIC, Texture};
+use crate::tex0::{self, TEX0_MAGIC};
 use crate::visitor::{
     Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
     VisitorContextNodeMut
@@ -388,7 +387,7 @@ fn deserialize_nw4r_subdirectories(
     let mut bfiles = Vec::with_capacity(index.entries.len() - 1);
     for bfile in &index.entries[1..] {
         let label = index.get_entry_name(reader, bfile)?;
-        let data_start = index.get_entry_data_start(bfile);
+        let data_start = index.get_entry_data_start(bfile)?;
 
         reader.set_position(data_start);
         bfiles.push(deserialize_bfile(reader, dir_key, arena, label)?);
@@ -427,7 +426,7 @@ fn deserialize_nw4r_directories(
     let mut section_dirs = Vec::with_capacity(index.entries.len() - 1);
     for section_dir in &index.entries[1..] {
         let label = index.get_entry_name(reader, section_dir)?;
-        let data_start = index.get_entry_data_start(section_dir);
+        let data_start = index.get_entry_data_start(section_dir)?;
 
         reader.set_position(data_start);
 

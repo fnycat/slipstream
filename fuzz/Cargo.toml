@@ -29,3 +29,23 @@ path = "fuzz_targets/brres.rs"
 test = false
 doc = false
 bench = false
+[[bin]]
+name = "chr0"
+path = "fuzz_targets/chr0.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "mdl0"
+path = "fuzz_targets/mdl0.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tex0"
+path = "fuzz_targets/tex0.rs"
+test = false
+doc = false
+bench = false

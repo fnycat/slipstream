@@ -720,6 +720,12 @@ impl SkeletalAnimation {
         // so we don't need it.
         let _bone_name_offset = reader.read_u32::<BigEndian>()?;
         let anim_code = AnimationCode::deserialize(reader)?;
+
+        // Ensure animation code is valid.
+        verify!(anim_code.translation_format() != AnimationFormat2::Invalid, "invalid translation animation format");
+        verify!(anim_code.rotation_format() != AnimationFormat3::Invalid, "invalid rotation animation format");
+        verify!(anim_code.scale_format() != AnimationFormat2::Invalid, "invalid scale animation format");
+
         let anim_data =
             AnimationData::deserialize(reader, anim_data_start, frame_count, &anim_code)?;
 
@@ -857,7 +863,7 @@ pub fn deserialize(
                 let index = IndexGroup::deserialize(reader)?;
                 for entry in &index.entries[1..] {
                     let name = index.get_entry_name(reader, entry)?;
-                    let data_start = index.get_entry_data_start(entry);
+                    let data_start = index.get_entry_data_start(entry)?;
 
                     reader.set_position(data_start);
 
@@ -873,7 +879,9 @@ pub fn deserialize(
                     files.push(anim_file);
                 }
             }
-            SectionType::UserData => todo!("CHR0 user data")
+            SectionType::UserData => {
+                tracing::warn!("CHR0 user data is unimplemented and will be ignored");
+            }
         };
     }
 

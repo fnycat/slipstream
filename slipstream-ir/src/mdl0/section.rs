@@ -35,7 +35,7 @@ pub fn deserialize_leaf_section<T: DeserializeContents>(
     let mut entries = Vec::with_capacity(index.entries.len() - 1);
     for entry in &index.entries[1..] {
         let label = index.get_entry_name(reader, entry)?;
-        let data_start = index.get_entry_data_start(entry);
+        let data_start = index.get_entry_data_start(entry)?;
 
         reader.set_position(data_start);
 

@@ -1,11 +1,18 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
+use slipstream_shared::verify;
 
 use crate::encoding::ReadStringExt;
 
+/// Maximum amount of BRRES directories that the parser is willing to deserialize.
+/// 
+/// This ensures that malicious BRRES files will not trigger an OOM error by attempting
+/// to allocate terabytes of RAM.
+pub const SAFE_DIRECTORY_COUNT: usize = 10_000;
+
 /// Header of a BRRES index group.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct IndexGroupHeader {
     /// The length in bytes of the index group.
     pub length: u32,
@@ -38,7 +45,7 @@ impl SizeEstimate for IndexGroupHeader {
 /// A section in an index group.
 ///
 /// These build a tree that enables the Wii to efficiently find files in archives.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct IndexGroupEntry {
     pub entry_id: u16,
     pub flag: u16,
@@ -101,7 +108,7 @@ impl SizeEstimate for IndexGroupEntry {
 /// Describes locations of the subfiles in this BRRES file.
 ///
 /// This is used for any kind of object that might contain subentries.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct IndexGroup {
     /// Index into the BRRES file where this group starts. Generally this is just right after the BRRES header.
     pub group_start: u32,
@@ -148,13 +155,35 @@ impl IndexGroup {
     }
 
     /// Obtains a pointer to the start of the data section of the given entry.
-    pub fn get_entry_data_start(&self, entry: &IndexGroupEntry) -> u64 {
-        (self.group_start + entry.data_pointer) as u64
+    pub fn get_entry_data_start(&self, entry: &IndexGroupEntry) -> SlipstreamResult<u64> {
+        self.group_start.checked_add(entry.data_pointer).map(|x| x as u64).ok_or_else(|| {
+            CorruptionError {
+                reason: format!("invalid index entry data pointer, exceeds 32-bit integer limit (offset {})", entry.data_pointer),
+                ..Default::default()
+            }.into()
+        })
     }
 
+    /// Deserializes a BRRES index group.
+    /// 
+    /// # Errors
+    /// 
+    /// This function can fail if the index size exceeds [`SAFE_DIRECTORY_COUNT`], or
+    /// if the index group is malformed.
+    /// 
+    /// The index size limit exists to prevent malicious BRRES files from crashing the decoder, by
+    /// trigger OOM errors.
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        // let mut this = Inde
+
         let group_start = reader.position() as u32;
         let header = IndexGroupHeader::deserialize(reader)?;
+
+        verify!(
+            header.number <= SAFE_DIRECTORY_COUNT as u32,
+            "Index group exceeded SAFE_DIRECTORY_COUNT ({SAFE_DIRECTORY_COUNT}), attempted to create {} indices. This file is malicious or corrupted and will not be opened",
+            header.number
+        );
 
         let mut entries = Vec::with_capacity(header.number as usize);
         for _ in 0..header.number + 1 {

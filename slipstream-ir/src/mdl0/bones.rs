@@ -393,7 +393,7 @@ pub fn deserialize_skeleton(
 
     for entry in &section_index.entries[1..] {
         let label = section_index.get_entry_name(reader, entry)?;
-        let data_start = section_index.get_entry_data_start(entry);
+        let data_start = section_index.get_entry_data_start(entry)?;
 
         reader.set_position(data_start);
 

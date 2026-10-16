@@ -359,7 +359,7 @@ impl BoneLinkTable {
             // Seems like the mixed entries are extra matrices for the transform storage buffer
             // on the GPU. The Boo model from 17.szs references bone 9, which is not an existing bone.
             // It is however in both the mixed bone link table list and the nodemix weights.
-            todo!("bone link table has mixed or unconnected entries");
+            tracing::warn!("bone link table has mixed or unconnected entries, these are currently not properly supported");
         }
 
         Ok(Self {
