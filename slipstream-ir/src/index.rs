@@ -9,7 +9,7 @@ use crate::encoding::ReadStringExt;
 /// 
 /// This ensures that malicious BRRES files will not trigger an OOM error by attempting
 /// to allocate terabytes of RAM.
-pub const SAFE_DIRECTORY_COUNT: usize = 10_000;
+pub const INDEX_SAFE_COUNT: usize = 10_000;
 
 /// Header of a BRRES index group.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -165,27 +165,18 @@ impl IndexGroup {
     }
 
     /// Deserializes a BRRES index group.
-    /// 
-    /// # Errors
-    /// 
-    /// This function can fail if the index size exceeds [`SAFE_DIRECTORY_COUNT`], or
-    /// if the index group is malformed.
-    /// 
-    /// The index size limit exists to prevent malicious BRRES files from crashing the decoder, by
-    /// trigger OOM errors.
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         // let mut this = Inde
 
         let group_start = reader.position() as u32;
         let header = IndexGroupHeader::deserialize(reader)?;
 
-        verify!(
-            header.number <= SAFE_DIRECTORY_COUNT as u32,
-            "Index group exceeded SAFE_DIRECTORY_COUNT ({SAFE_DIRECTORY_COUNT}), attempted to create {} indices. This file is malicious or corrupted and will not be opened",
-            header.number
-        );
+        if header.number > INDEX_SAFE_COUNT as u32 {
+            tracing::warn!("Index group has an unusually large amount of entries: {}. Preallocated capacity will be limited to {INDEX_SAFE_COUNT}", header.number);
+        }
 
-        let mut entries = Vec::with_capacity(header.number as usize);
+        let number_count_cap = (header.number as usize).min(INDEX_SAFE_COUNT);
+        let mut entries = Vec::with_capacity(number_count_cap);
         for _ in 0..header.number + 1 {
             let entry = IndexGroupEntry::deserialize(reader)?;
             entries.push(entry);

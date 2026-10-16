@@ -24,6 +24,7 @@ use crate::visitor::{
 /// Magic of an ARC file.
 pub const ARC_MAGIC: [u8; 4] = [0x55, 0xAA, 0x38, 0x2D];
 pub const ARC_NODE_SIZE: usize = 0xC;
+pub const ARC_SAFE_NODE_COUNT: usize = 10_000;
 
 /// See [`Custom Mario Kart Wiiki`](https://mkwiiki.org/wiki/ARC_(File_Format)) for more info.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -325,9 +326,24 @@ pub fn deserialize(
     let _data1 = reader.read_u32::<BigEndian>()?;
     let node_count = reader.read_u32::<BigEndian>()?;
 
+    if node_count > ARC_SAFE_NODE_COUNT as u32 {
+        tracing::warn!("ARC files has an unusually large amount of declared nodes :{node_count}. Preallocated capacity will be capped at {ARC_SAFE_NODE_COUNT}");
+    }
+
     let mut string_pool = {
-        let start = header.node_offset as i64 + ARC_NODE_SIZE as i64 * node_count as i64;
-        let end = (header.node_offset + header.size) as u64;
+        let Some(Ok(start)): Option<Result<u32, <i64 as TryInto<u32>>::Error>> = (header.node_offset as i64).checked_add(ARC_NODE_SIZE as i64 * node_count as i64).map(|x| x.try_into()) else {
+            return Err(CorruptionError {
+                reason: format!("string pool start pointer overflows 32-bit integer"),
+                location: Some(reader.position())
+            }.into());
+        };
+
+        let Some(end) = header.node_offset.checked_add(header.size) else {
+            return Err(CorruptionError {
+                reason: format!("string pool end pointer overflows 32-bit integer"),
+                location: Some(reader.position())
+            }.into());
+        };
 
         tracing::trace!("ARC string pool is in range {start}..{end}");
 
@@ -337,7 +353,9 @@ pub fn deserialize(
         pool
     };
 
-    let mut nodes = Vec::with_capacity(node_count as usize);
+    // Cap the capacity to prevent overflows.
+    let node_count_cap = (node_count as usize).min(ARC_SAFE_NODE_COUNT);
+    let mut nodes = Vec::with_capacity(node_count_cap);
     nodes.push(Node {
         name: "<null>".to_owned(),
         data: NodeContent::Directory {
