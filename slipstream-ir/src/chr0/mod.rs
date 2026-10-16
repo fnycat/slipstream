@@ -482,7 +482,7 @@ impl AnimationData {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 verify!(
-                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    anim_code.rotation_format() != AnimationFormat3::Fixed,
                     "The rotation animation format is set to `Fixed` while the isotropic rotation is not fixed."
                 );
 
@@ -505,7 +505,7 @@ impl AnimationData {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 verify!(
-                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    anim_code.rotation_format() != AnimationFormat3::Fixed,
                     "The rotation animation format is set to `Fixed` while the X rotation is not fixed."
                 );
 
@@ -522,7 +522,7 @@ impl AnimationData {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 verify!(
-                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    anim_code.rotation_format() != AnimationFormat3::Fixed,
                     "The rotation animation format is set to `Fixed` while the Y rotation is not fixed."
                 );
 
@@ -539,7 +539,7 @@ impl AnimationData {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 verify!(
-                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    anim_code.rotation_format() != AnimationFormat3::Fixed,
                     "The rotation animation format is set to `Fixed` while the Z rotation is not fixed."
                 );
 
@@ -580,7 +580,7 @@ impl AnimationData {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 verify!(
-                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    anim_code.translation_format() != AnimationFormat2::Fixed,
                     "The translation animation format is set to `Fixed` while the isotropic translation is not fixed."
                 );
 
@@ -602,7 +602,7 @@ impl AnimationData {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 verify!(
-                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    anim_code.translation_format() != AnimationFormat2::Fixed,
                     "The translation animation format is set to `Fixed` while the X translation is not fixed."
                 );
 
@@ -618,7 +618,7 @@ impl AnimationData {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 verify!(
-                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    anim_code.translation_format() != AnimationFormat2::Fixed,
                     "The translation animation format is set to `Fixed` while the Y translation is not fixed."
                 );
 
@@ -634,7 +634,7 @@ impl AnimationData {
                 ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 verify!(
-                    anim_code.scale_format() != AnimationFormat2::Fixed,
+                    anim_code.translation_format() != AnimationFormat2::Fixed,
                     "The translation animation format is set to `Fixed` while the Z translation is not fixed."
                 );
 

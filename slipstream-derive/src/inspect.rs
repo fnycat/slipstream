@@ -26,7 +26,7 @@ impl StringAttrExt for Option<StringAttr> {
 }
 
 #[derive(Debug)]
-struct StringAttr {
+pub struct StringAttr {
     expr: Expr
 }
 
