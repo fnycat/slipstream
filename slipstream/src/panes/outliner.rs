@@ -237,8 +237,11 @@ impl NodeIconsExt for IrNodeType {
             Self::Material => reg_icon!(PALETTE),
             Self::Tevs => reg_icon!(GRAPHICS_CARD),
             Self::Polygon => reg_icon!(CUBE),
+            Self::FurLayers => reg_icon!(PAW_PRINT),
+            Self::FurVectors => reg_icon!(PAW_PRINT),
             Self::TextureLinks => reg_icon!(LINK),
             Self::PaletteLinks => reg_icon!(LINK),
+            Self::UserData => reg_icon!(FOLDER_USER),
 
             Self::Chr0Root => reg_icon!(FILM_SLATE),
             Self::SkeletalAnimation => reg_icon!(BONE),

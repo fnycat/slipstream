@@ -324,8 +324,18 @@ fn build_skeleton_tree(
             continue; // No parent
         }
 
-        let parent_start = bone.data.bone_start as i64 + bone.data.parent_offset as i64;
-        reader.set_position(parent_start as u64 + BONE_INDEX_OFFSET);
+        let parent_start = (bone.data.bone_start as i64)
+            .checked_add(bone.data.parent_offset as i64)
+            .map(|c| c.checked_add(BONE_INDEX_OFFSET as i64))
+            .flatten()
+            .ok_or_else(|| {
+                SlipstreamError::from(CorruptionError {
+                    reason: format!("Parent bone pointer for bone `{i}` exceeds 64-bit integer limit (start: {}, parent_offset: {})", bone.data.bone_start, bone.data.parent_offset),
+                    ..Default::default()
+                })
+            })?;
+
+        reader.set_position(parent_start as u64);
 
         // Index into `virtual_bones` of the parent.
         let parent_index = reader.read_u32::<BigEndian>()?;
@@ -341,25 +351,30 @@ fn build_skeleton_tree(
         }
 
         // Add this bone to its parent's children.
-        let parent_key = virtual_bones[parent_index as usize];
-        try_unwrap!(
-            arena.update(parent_key, |parent_node| {
-                parent_node.ty = IrNodeType::Bone { end: false };
-                parent_node.children.push(curr_key);
-                parent_node.children.len() as u16 - 1
-            }),
-            "parent node {parent_key:?} was not found during skeleton resolution"
-        )?;
+        if let Some(&parent_key) = virtual_bones.get(parent_index as usize) {
+            try_unwrap!(
+                arena.update(parent_key, |parent_node| {
+                    parent_node.ty = IrNodeType::Bone { end: false };
+                    parent_node.children.push(curr_key);
+                    parent_node.children.len() as u16 - 1
+                }),
+                "parent node {parent_key:?} was not found during skeleton resolution"
+            )?;
 
-        // Then update this bone's parent.
-        arena.update(curr_key, |curr_node| {
-            curr_node.parent = Some(parent_key);
-            curr_node.contents = ContentSlot::eager(Box::new(Bone::from_unresolved(
-                &bone.data,
-                None,
-                Some(parent_key)
-            )));
-        });
+            // Then update this bone's parent.
+            arena.update(curr_key, |curr_node| {
+                curr_node.parent = Some(parent_key);
+                curr_node.contents = ContentSlot::eager(Box::new(Bone::from_unresolved(
+                    &bone.data,
+                    None,
+                    Some(parent_key)
+                )));
+            });
+        } else {
+            tracing::error!(
+                "Bone declares parent `{parent_index}`, but this parent does not exist."
+            );
+        }
     }
 
     let Some(root_index) = found_root else {

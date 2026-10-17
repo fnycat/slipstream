@@ -159,8 +159,11 @@ pub enum IrNodeType {
     Material,
     Tevs,
     Polygon,
+    FurLayers,
+    FurVectors,
     TextureLinks,
     PaletteLinks,
+    UserData,
 
     /// A CHR file
     Chr0Root,

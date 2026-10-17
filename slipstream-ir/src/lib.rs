@@ -15,3 +15,8 @@ pub mod tpl;
 pub mod util;
 pub mod visitor;
 pub mod yaz0;
+
+/// The maximum amount of capacity a deserializer will preallocate.
+///
+/// This is used to prevent OOM errors from malformed files.
+pub const SAFE_ALLOCATION_CAPACITY: usize = 1_000;

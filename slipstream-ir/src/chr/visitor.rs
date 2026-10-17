@@ -12,7 +12,10 @@ pub trait Chr0Visitor {
     // CHR visitor methods
     // ==================================================================================================
 
-    fn visit_chr(&mut self, animations: VisitorCtx<'_, chr::Chr0Root>) -> ControlFlow<()> {
+    fn visit_chr(
+        &mut self,
+        animations: VisitorCtx<'_, chr::CharacterAnimation>
+    ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -31,7 +34,10 @@ pub trait Chr0Visitor {
         }
     }
 
-    fn visit_chr_mut(&mut self, animation: VisitorCtxMut<'_, chr::Chr0Root>) -> ControlFlow<()> {
+    fn visit_chr_mut(
+        &mut self,
+        animation: VisitorCtxMut<'_, chr::CharacterAnimation>
+    ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {

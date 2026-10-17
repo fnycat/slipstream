@@ -9,6 +9,7 @@ use slipstream_shared::error::{
     CorruptionError, IncorrectFormat, SlipstreamError, SlipstreamResult
 };
 
+use crate::SAFE_ALLOCATION_CAPACITY;
 use crate::brres::{self, BRRES_MAGIC};
 use crate::encoding::{ReadArrayExt, ReadStringExt, WriteArrayExt};
 use crate::fixup::{DEFER_PLACEHOLDER, DEFER_PLACEHOLDER24, DeferredString, FixupPass, StringPool};
@@ -327,7 +328,7 @@ pub fn deserialize(
 
     if node_count > ARC_SAFE_NODE_COUNT as u32 {
         tracing::warn!(
-            "ARC files has an unusually large amount of declared nodes :{node_count}. Preallocated capacity will be capped at {ARC_SAFE_NODE_COUNT}"
+            "ARC file `{name}` has an unusually large amount of declared nodes :{node_count}. Preallocated capacity will be capped at {ARC_SAFE_NODE_COUNT}"
         );
     }
 
@@ -361,7 +362,15 @@ pub fn deserialize(
     };
 
     // Cap the capacity to prevent overflows.
-    let node_count_cap = (node_count as usize).min(ARC_SAFE_NODE_COUNT);
+    let node_count_cap = if node_count as usize > SAFE_ALLOCATION_CAPACITY {
+        tracing::error!(
+            "ARC `{name}` node count exceeds safe allocation capacity ({node_count} > {SAFE_ALLOCATION_CAPACITY}), the file is likely corrupted."
+        );
+        SAFE_ALLOCATION_CAPACITY
+    } else {
+        node_count as usize
+    };
+
     let mut nodes = Vec::with_capacity(node_count_cap);
     nodes.push(Node {
         name: "<null>".to_owned(),

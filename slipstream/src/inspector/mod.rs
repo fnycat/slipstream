@@ -169,7 +169,10 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
 }
 
 impl Chr0Visitor for InspectorVisitor<'_> {
-    fn visit_chr_mut(&mut self, context: VisitorCtxMut<'_, chr::Chr0Root>) -> ControlFlow<()> {
+    fn visit_chr_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, chr::CharacterAnimation>
+    ) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());

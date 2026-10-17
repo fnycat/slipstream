@@ -180,7 +180,7 @@ impl IndexGroup {
 
         let number_count_cap = (header.number as usize).min(INDEX_SAFE_COUNT);
         let mut entries = Vec::with_capacity(number_count_cap);
-        for _ in 0..header.number + 1 {
+        for _ in 0..=header.number {
             let entry = IndexGroupEntry::deserialize(reader)?;
             entries.push(entry);
         }

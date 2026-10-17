@@ -1,6 +1,8 @@
 mod bones;
 mod colors;
 mod definitions;
+mod fur_layers;
+mod fur_vectors;
 mod materials;
 mod normals;
 mod pal_links;
@@ -8,6 +10,7 @@ mod polygon;
 mod section;
 mod tevs;
 mod tex_links;
+mod user_data;
 mod uvs;
 mod vertices;
 mod visitor;
@@ -15,6 +18,8 @@ mod visitor;
 pub use bones::*;
 pub use colors::*;
 pub use definitions::*;
+pub use fur_layers::*;
+pub use fur_vectors::*;
 pub use materials::*;
 pub use normals::*;
 pub use pal_links::*;
@@ -22,13 +27,15 @@ pub use polygon::*;
 pub use section::*;
 pub use tevs::*;
 pub use tex_links::*;
+pub use user_data::*;
 pub use uvs::*;
 pub use vertices::*;
 pub use visitor::*;
 
 use std::ops::ControlFlow;
 
-use crate::brres::{self, BFileHeader, BFileType};
+use crate::SAFE_ALLOCATION_CAPACITY;
+use crate::brres::{self, SubfileHeader, SubfileType};
 use crate::encoding::{Deserialize, ReadArrayExt};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
@@ -188,9 +195,19 @@ pub struct MatrixTable {
 
 impl MatrixTable {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        let count = reader.read_i32::<BigEndian>()?;
-        let mut entries = Vec::with_capacity(count as usize);
+        let count = reader.read_u32::<BigEndian>()?;
 
+        let count_cap = if count as usize > SAFE_ALLOCATION_CAPACITY {
+            tracing::error!(
+                "MDL matrix table exceeds maximum safe allocation capacity ({} > {SAFE_ALLOCATION_CAPACITY}), the file is likely corrupted.",
+                count
+            );
+            SAFE_ALLOCATION_CAPACITY as u32
+        } else {
+            count
+        };
+
+        let mut entries = Vec::with_capacity(count_cap as usize);
         for _ in 0..count {
             entries.push(reader.read_i32::<BigEndian>()?);
         }
@@ -371,7 +388,7 @@ pub fn deserialize(
 ) -> SlipstreamResult<IrNodeKey> {
     tracing::trace!("Opening {name}");
 
-    let subfile_header = BFileHeader::deserialize(reader, BFileType::Mdl0)?;
+    let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Mdl)?;
     if subfile_header.version != 11 {
         return Err(UnsupportedError {
             reason: format!(
@@ -383,7 +400,7 @@ pub fn deserialize(
         .into());
     }
 
-    let expected_sections = brres::get_section_count(BFileType::Mdl0, subfile_header.version)?;
+    let expected_sections = brres::get_section_count(SubfileType::Mdl, subfile_header.version)?;
     verify!(
         subfile_header.offsets.len() == expected_sections,
         "MDL section count ({}) did not match expected section count ({expected_sections})",
@@ -476,9 +493,24 @@ pub fn deserialize(
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::FurLayers => todo!("MDL fur layers"),
-            SectionType::FurVectors => todo!("MDL fur vectors"),
-            SectionType::UserData => todo!("MDL user data")
+            SectionType::FurLayers => deserialize_leaf_section::<FurLayers>(
+                &mut reader,
+                subfile_header.header_start,
+                Some(mdl_root_key),
+                arena
+            ),
+            SectionType::FurVectors => deserialize_leaf_section::<FurVectors>(
+                &mut reader,
+                subfile_header.header_start,
+                Some(mdl_root_key),
+                arena
+            ),
+            SectionType::UserData => deserialize_leaf_section::<UserData>(
+                &mut reader,
+                subfile_header.header_start,
+                Some(mdl_root_key),
+                arena
+            )
         }?;
 
         files.push(section_key);

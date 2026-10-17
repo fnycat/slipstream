@@ -10,6 +10,7 @@ use slipstream_shared::error::{
 
 use crate::arc::UnknownFile;
 use crate::chr::{self, CHR_MAGIC};
+use crate::clr::{self, CLR_MAGIC};
 use crate::encoding::{ReadArrayExt, WriteArrayExt};
 use crate::index::IndexGroup;
 use crate::mdl::{self, MDL_MAGIC};
@@ -30,10 +31,10 @@ const BE_BOM: [u8; 2] = [0xFE, 0xFF];
 /// Returns the amount of sections a subfile has, which depends on the subfile type and version.
 ///
 /// This info comes from [`BRRES Subfiles (File Format)`](https://mkwiiki.org/wiki/BRRES_Subfiles_(File_Format))
-pub fn get_section_count(ty: BFileType, version: u32) -> SlipstreamResult<usize> {
+pub fn get_section_count(ty: SubfileType, version: u32) -> SlipstreamResult<usize> {
     Ok(match ty {
-        BFileType::Root => 0,
-        BFileType::Mdl0 => match version {
+        SubfileType::Root => 0,
+        SubfileType::Mdl => match version {
             8 => 11,
             11 => 14,
             _ => {
@@ -44,7 +45,7 @@ pub fn get_section_count(ty: BFileType, version: u32) -> SlipstreamResult<usize>
                 .into());
             }
         },
-        BFileType::Tex0 => match version {
+        SubfileType::Tex => match version {
             1 => 1,
             2 => 2,
             3 => 1,
@@ -56,7 +57,7 @@ pub fn get_section_count(ty: BFileType, version: u32) -> SlipstreamResult<usize>
                 .into());
             }
         },
-        BFileType::Chr0 => match version {
+        SubfileType::Chr => match version {
             // 3 => 1,
             3 => {
                 return Err(UnsupportedError {
@@ -74,11 +75,21 @@ pub fn get_section_count(ty: BFileType, version: u32) -> SlipstreamResult<usize>
                 .into());
             }
         },
-        BFileType::Pat0 => match version {
+        SubfileType::Pat => match version {
             4 => 6,
             _ => {
                 return Err(CorruptionError {
                     reason: format!("invalid PAT0 version: {version} (must be 4)"),
+                    ..Default::default()
+                }
+                .into());
+            }
+        },
+        SubfileType::Clr => match version {
+            4 => 2,
+            _ => {
+                return Err(CorruptionError {
+                    reason: format!("invalid CLR0 version: {version} (must be 4)"),
                     ..Default::default()
                 }
                 .into());
@@ -210,30 +221,39 @@ impl BFile for RootSection {
 }
 
 /// The header of a BRRES subfile.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BFileHeader {
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
+pub struct SubfileHeader {
     /// Start position of this header. This is used to compute subfile section positions using their
     /// offsets.
+    #[inspect(ignore)] // This is computed at serialization time.
     pub header_start: u32,
     /// Length of this subfile.
+    #[inspect(rename = "Length")]
+    #[inspect(tooltip = "Length of this file in bytes.")]
     pub subfile_length: u32,
     /// Version of ths subfile. For MDL this is either 8 or 11.
+    #[inspect(tooltip = "Version of this file.")]
     pub version: u32,
     /// The offset to the outer BRRES file.
+    #[inspect(rename = "BRRES offset")]
+    #[inspect(tooltip = "Offset to the start of the outer BRRES file.")]
     pub brres_offset: i32,
     /// Offsets within this BRRES file. The number of offsets is implied by the version.
     /// The number can be obtained using the [`get_section_count`] function.
+    #[inspect(rename = "Section Offsets")]
+    #[inspect(tooltip = "Offsets to the sections within this file")]
     pub offsets: Vec<i32>,
     /// String offset to the name of this subfile.
     /// This offset is relative to [`header_start`](Self::header_start).
     ///
     /// Note that the offset points to the start of the string data, the length prefix is 4 bytes ahead of it.
+    #[inspect(ignore)] // This is computed at serialization time
     pub name_offset: i32
 }
 
-impl BFileHeader {
+impl SubfileHeader {
     /// Deserializes a section of the given type.
-    pub fn deserialize(reader: &mut RefCursor<[u8]>, ty: BFileType) -> SlipstreamResult<Self> {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>, ty: SubfileType) -> SlipstreamResult<Self> {
         let header_start = reader.position() as u32;
 
         let magic = reader.read_u32::<BigEndian>()?;
@@ -294,19 +314,20 @@ impl BFileHeader {
 
 /// The filetype of a bfile.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum BFileType {
+pub enum SubfileType {
     /// The root file only contains metadata about the size of the entire BRRES file.
     Root,
     /// Contains model data, this includes everything from vertices to bones, normals, etc.
-    Mdl0,
+    Mdl,
     /// Character animations controlling the bones of a mesh.
-    Chr0,
-    Pat0,
-    Tex0
+    Chr,
+    Pat,
+    Tex,
+    Clr
 }
 
 #[tracing::instrument(skip_all, fields(name))]
-fn deserialize_bfile(
+fn deserialize_subfile(
     reader: &mut RefCursor<[u8]>,
     parent_id: IrNodeKey,
     arena: &IrArena,
@@ -324,6 +345,7 @@ fn deserialize_bfile(
         MDL_MAGIC => mdl::deserialize(reader, Some(parent_id), arena, name),
         CHR_MAGIC => chr::deserialize(reader, Some(parent_id), arena, name),
         TEX_MAGIC => tex::deserialize(reader, Some(parent_id), arena, name),
+        // CLR_MAGIC => clr::deserialize(reader, Some(parent_id), arena, name),
         _ => {
             let key = arena.insert(IrNodeDescriptor {
                 label: String::from("<unimplemented>"),
@@ -390,7 +412,7 @@ fn deserialize_nw4r_subdirectories(
         let data_start = index.get_entry_data_start(bfile)?;
 
         reader.set_position(data_start);
-        bfiles.push(deserialize_bfile(reader, dir_key, arena, label)?);
+        bfiles.push(deserialize_subfile(reader, dir_key, arena, label)?);
     }
 
     arena.insert_at(

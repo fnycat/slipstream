@@ -2,19 +2,19 @@ use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::SlipstreamResult;
 
-use crate::brres::{BFile, BFileHeader, BFileType};
+use crate::brres::{SubfileHeader, SubfileType};
 use crate::encoding::ReadStringExt;
 use crate::index::IndexGroup;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Pat0Header {
+pub struct PatHeader {
     pub frame_count: u16,
     pub base_number: u16,
     pub string_number: u16,
     pub cyclic: bool
 }
 
-impl Pat0Header {
+impl PatHeader {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let _unknown12 = reader.read_u32::<BigEndian>()?; // 2 + 2 unknown bytes
         let frame_count = reader.read_u16::<BigEndian>()?;
@@ -53,15 +53,15 @@ impl U32Section {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Pat0Subfile {
-    pub subfile_header: BFileHeader,
-    pub pat0_header: Pat0Header
+pub struct PatternAnimation {
+    pub subfile_header: SubfileHeader,
+    pub pat0_header: PatHeader
 }
 
-impl Pat0Subfile {
+impl PatternAnimation {
     fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        let subfile_header = BFileHeader::deserialize(reader, BFileType::Pat0)?;
-        let pat0_header = Pat0Header::deserialize(reader)?;
+        let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Pat)?;
+        let pat0_header = PatHeader::deserialize(reader)?;
 
         let name_start = subfile_header.header_start as i64 + subfile_header.name_offset as i64;
         reader.set_position(name_start as u64);
@@ -77,8 +77,4 @@ impl Pat0Subfile {
 
         todo!();
     }
-}
-
-impl BFile for Pat0Subfile {
-    const MAGIC: [u8; 4] = [0x50, 0x41, 0x54, 0x30]; // "PAT0"
 }

@@ -14,7 +14,7 @@ use slipstream_shared::inspect::Changes;
 use slipstream_shared::inspect::FieldConfig;
 use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult, try_unwrap};
 
-use crate::brres::{BFileHeader, BFileType};
+use crate::brres::{SubfileHeader, SubfileType};
 use crate::encoding::{Deserialize, WriteArrayExt};
 use crate::mdl::UvDataType::S;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
@@ -51,15 +51,18 @@ impl TextureFlags {
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Texture {
-    #[inspect(tooltip = "Width and height of the texture in pixels")]
-    pub size: glam::U16Vec2,
+    pub header: TexHeader,
     #[inspect(rename = "Image")]
     #[inspect(with = ImageData::draw_ui, read_only)]
     pub data: ImageData
 }
 
 impl Texture {
-    pub fn serialize(&self, writer: &mut MutCursor, header: &BFileHeader) -> SlipstreamResult<()> {
+    pub fn serialize(
+        &self,
+        writer: &mut MutCursor,
+        header: &SubfileHeader
+    ) -> SlipstreamResult<()> {
         header.serialize(writer)?;
 
         let format = self.data.format();
@@ -100,6 +103,44 @@ impl Visitable for Texture {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Inspect)]
+#[inspect(rename = "Texture Header")]
+pub struct TexHeader {
+    #[inspect(rename = "BRRES Header")]
+    pub brres_header: SubfileHeader,
+    pub dimensions: glam::U16Vec2,
+    pub format: ImageFormat,
+    pub mipmaps: u32,
+    pub min_mipmap_used: f32,
+    pub max_mipmap_used: f32
+}
+
+impl TexHeader {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let brres_header = SubfileHeader::deserialize(reader, SubfileType::Tex)?;
+
+        let flags = TextureFlags::deserialize(reader)?;
+        let pixel_width = reader.read_u16::<BigEndian>()?;
+        let pixel_height = reader.read_u16::<BigEndian>()?;
+        let format = ImageFormat::deserialize(reader)?;
+        let mipmaps = reader.read_u32::<BigEndian>()?;
+        let min_mipmap_used = reader.read_f32::<BigEndian>()?;
+        let max_mipmap_used = reader.read_f32::<BigEndian>()?;
+        let _unused = reader.read_u32::<BigEndian>()?;
+
+        let dimensions = glam::u16vec2(pixel_width, pixel_height);
+
+        Ok(Self {
+            brres_header,
+            dimensions,
+            format,
+            mipmaps,
+            min_mipmap_used,
+            max_mipmap_used
+        })
+    }
+}
+
 #[tracing::instrument(skip_all, fields(name, parent_id))]
 pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
@@ -107,51 +148,40 @@ pub fn deserialize(
     arena: &IrArena,
     name: String
 ) -> SlipstreamResult<IrNodeKey> {
-    let subfile_header = BFileHeader::deserialize(reader, BFileType::Tex0)?;
+    let header = TexHeader::deserialize(reader)?;
 
-    let flags = TextureFlags::deserialize(reader)?;
-    let pixel_width = reader.read_u16::<BigEndian>()?;
-    let pixel_height = reader.read_u16::<BigEndian>()?;
-    let format = ImageFormat::deserialize(reader)?;
-    let mipmaps = reader.read_u32::<BigEndian>()?;
-    let min_mipmap_used = reader.read_f32::<BigEndian>()?;
-    let max_mipmap_used = reader.read_f32::<BigEndian>()?;
-    let _unused = reader.read_u32::<BigEndian>()?;
-
-    if pixel_width > MAX_SAFE_PIXEL_WIDTH as u16 {
+    if header.dimensions.x > MAX_SAFE_PIXEL_WIDTH as u16 {
         return Err(InvalidInputError {
             reason: format!(
-                "image exceeds maximum width of {MAX_SAFE_PIXEL_WIDTH} ({pixel_width})"
+                "image exceeds maximum width of {MAX_SAFE_PIXEL_WIDTH} ({})",
+                header.dimensions.x
             ),
             location: Some(reader.position())
         }
         .into());
     }
 
-    if pixel_height > MAX_SAFE_PIXEL_HEIGHT as u16 {
+    if header.dimensions.y > MAX_SAFE_PIXEL_HEIGHT as u16 {
         return Err(InvalidInputError {
             reason: format!(
-                "image exceeds maximum height of {MAX_SAFE_PIXEL_HEIGHT} ({pixel_height})"
+                "image exceeds maximum height of {MAX_SAFE_PIXEL_HEIGHT} ({})",
+                header.dimensions.y
             ),
             location: Some(reader.position())
         }
         .into());
     }
 
-    reader.set_position(subfile_header.get_section_start(0)?);
+    reader.set_position(header.brres_header.get_section_start(0)?);
 
-    let dims = glam::u16vec2(pixel_width, pixel_height);
-    let data = ImageData::deserialize(reader, dims, mipmaps, format)?;
+    let data = ImageData::deserialize(reader, header.dimensions, header.mipmaps, header.format)?;
 
     let key = arena.insert(IrNodeDescriptor {
         label: name,
         ty: IrNodeType::Texture,
         parent: parent_id,
         children: Vec::new(),
-        contents: ContentSlot::eager(Box::new(Texture {
-            size: glam::u16vec2(pixel_width, pixel_height),
-            data
-        }))
+        contents: ContentSlot::eager(Box::new(Texture { header, data }))
     });
 
     Ok(key)

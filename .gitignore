@@ -2,6 +2,7 @@
 /.zed
 /.idea
 /target
+/coverage_html
 brres.txt
 dump.bin
 model.txt

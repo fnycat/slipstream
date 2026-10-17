@@ -13,7 +13,7 @@ use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 use slipstream_shared::verify;
 
-use crate::brres::{self, BFile, BFileHeader, BFileType};
+use crate::brres::{self, BFile, SubfileHeader, SubfileType};
 use crate::index::IndexGroup;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
@@ -751,7 +751,7 @@ pub enum SectionType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 #[inspect(rename = "CHR File")]
-pub struct Chr0Root {
+pub struct CharacterAnimation {
     /// The amount of animation frames stored in this file.
     #[inspect(rename = "Keyframe Count")]
     #[inspect(tooltip = "The amount of frames this animation has.")]
@@ -767,7 +767,7 @@ pub struct Chr0Root {
     pub scaling_rule: ScalingRule
 }
 
-impl Chr0Root {
+impl CharacterAnimation {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         let anim_data_count = reader.read_u16::<BigEndian>()?;
@@ -792,7 +792,7 @@ impl Chr0Root {
     }
 }
 
-impl Visitable for Chr0Root {
+impl Visitable for CharacterAnimation {
     fn accept(&self, node: VisitorCtxMeta, visitor: &mut dyn Visitor) -> ControlFlow<()> {
         visitor
             .as_chr()
@@ -819,20 +819,20 @@ pub fn deserialize(
     arena: &IrArena,
     name: String
 ) -> SlipstreamResult<IrNodeKey> {
-    let subfile_header = BFileHeader::deserialize(reader, BFileType::Chr0)?;
+    let subfile_header = SubfileHeader::deserialize(reader, SubfileType::Chr)?;
     reader.set_position(reader.position() + 4); // there are 4 bytes of padding between the headers
 
     // CHR v3 has a single section. Only the animation data appears here.
     // CHR v5 instead has two where presumably the second section is user data.
 
-    let expected_sections = brres::get_section_count(BFileType::Chr0, subfile_header.version)?;
+    let expected_sections = brres::get_section_count(SubfileType::Chr, subfile_header.version)?;
     verify!(
         subfile_header.offsets.len() == expected_sections,
         "CHR section count ({}) did not match expected section count ({expected_sections})",
         subfile_header.offsets.len()
     );
 
-    let chr_header = Chr0Root::deserialize(reader)?;
+    let chr_header = CharacterAnimation::deserialize(reader)?;
 
     let chr_root_key = arena.reserve_key();
 
