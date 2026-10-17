@@ -108,6 +108,8 @@ impl PaletteHeader {
     }
 }
 
+pub const UNUSUAL_TPL_IMAGE_COUNT: u32 = 100;
+
 pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
     parent: Option<IrNodeKey>,
@@ -123,7 +125,17 @@ pub fn deserialize(
 
     let root_key = arena.reserve_key();
 
-    let mut images = Vec::with_capacity(header.image_count as usize);
+    // All known TPL files have either 1 or 2 images. So we just cap the capacity
+    // at something like 10. If a user-made TPL file has more images, the capacity will grow by itself.
+
+    if header.image_count > UNUSUAL_TPL_IMAGE_COUNT {
+        tracing::error!(
+            "The TPL file has an unusually large amount of declared images: {}",
+            header.image_count
+        );
+    }
+
+    let mut images = Vec::with_capacity(header.image_count.min(10) as usize);
     for i in 0..header.image_count {
         reader.set_position(next_block_start);
         let image_offset = reader.read_i32::<BigEndian>()?;
