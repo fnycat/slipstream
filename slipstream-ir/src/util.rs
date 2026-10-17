@@ -9,7 +9,7 @@ use slipstream_shared::error::{
 };
 
 use crate::encoding::ReadArrayExt;
-use crate::mdl0::NormalFormat;
+use crate::mdl::NormalFormat;
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Inspect)]
 #[inspect(summary = "Box2::summary")]
@@ -65,7 +65,7 @@ impl Box3 {
 /// The [`NormalFormat`] is a subset of this enum and can be infallibly converted into
 /// this.
 ///
-/// [`NormalFormat`]: crate::format::mdl0::normals::NormalFormat
+/// [`NormalFormat`]: crate::format::mdl::normals::NormalFormat
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 #[repr(u8)]

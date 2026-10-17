@@ -50,7 +50,7 @@ impl OutlinerPane {
             todo!("rename");
         }
 
-        // Only draw the open in 3D viewer button for MDL0 roots.
+        // Only draw the open in 3D viewer button for MDL roots.
         if node.ty == IrNodeType::Mdl0Root {
             if ui.button("Open in 3D viewer").clicked() {
                 self.cmd_sender
@@ -161,7 +161,7 @@ impl Pane for OutlinerPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        is_focused: bool
+        _is_focused: bool
     ) -> egui_tiles::UiResponse {
         ui.set_min_size(ui.available_size());
 
@@ -242,6 +242,9 @@ impl NodeIconsExt for IrNodeType {
 
             Self::Chr0Root => reg_icon!(FILM_SLATE),
             Self::SkeletalAnimation => reg_icon!(BONE),
+
+            Self::Tpl => reg_icon!(IMAGES),
+            Self::TplImage => reg_icon!(IMAGE),
 
             Self::Texture => reg_icon!(IMAGES),
 

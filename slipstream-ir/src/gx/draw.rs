@@ -4,8 +4,8 @@ use slipstream_shared::error::SlipstreamResult;
 
 use crate::encoding::ReadArrayExt;
 use crate::gx::load_cp::VectorStorage;
-use crate::img::deserialize_color;
-use crate::mdl0::GxVertexDeclaration;
+use crate::mdl::GxVertexDeclaration;
+use crate::tpl::deserialize_color;
 use crate::util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector};
 
 /// Position data that is stored directly inside of a draw call.
@@ -52,13 +52,13 @@ pub enum PositionData {
     ///
     /// The source vertex buffer is listed in the [`Shape`] header.
     ///
-    /// [`Shape`]: crate::format::mdl0::shape::Shape
+    /// [`Shape`]: crate::format::mdl::shape::Shape
     Index8(u8),
     /// This vertex is located at the given 16-bit index into a vertex buffer.
     ///
     /// The source vertex buffer is listed in the [`Shape`] header.
     ///
-    /// [`Shape`]: crate::format::mdl0::shape::Shape
+    /// [`Shape`]: crate::format::mdl::shape::Shape
     Index16(u16),
     /// The data for this vertex is stored directly inside of the draw call.
     Direct(InlinePosition)

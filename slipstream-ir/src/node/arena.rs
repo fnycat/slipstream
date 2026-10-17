@@ -5,7 +5,7 @@ use slipstream_shared::{SlipstreamError, SlipstreamResult};
 
 use crate::node::guard::ContentReadGuard;
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
-use crate::visitor::{Visitor, VisitorContextNode};
+use crate::visitor::{Visitor, VisitorCtxMeta};
 
 use std::collections::HashMap;
 use std::num::NonZeroU64;
@@ -161,7 +161,7 @@ impl IrArena {
             .map(|lock| {
                 let guard = lock.read();
                 if let Some(content) = guard.contents.get_or_try_init()? {
-                    let _ = content.accept(VisitorContextNode::from(&*guard), visitor);
+                    let _ = content.accept(VisitorCtxMeta::from(&*guard), visitor);
                 }
 
                 Ok::<_, SlipstreamError>(())
@@ -190,7 +190,7 @@ impl IrArena {
 
         let guard = root.read();
         if visit_root && let Some(content) = guard.contents.get_or_try_init()? {
-            let _ = content.accept(VisitorContextNode::from(&*guard), visitor);
+            let _ = content.accept(VisitorCtxMeta::from(&*guard), visitor);
         }
 
         let guard = root.read();
@@ -200,7 +200,7 @@ impl IrArena {
                 .inspect(child, |child| {
                     if let Some(contents) = child.contents.get_or_try_init()? {
                         return Ok::<_, SlipstreamError>(
-                            contents.accept(VisitorContextNode::from(child), visitor)
+                            contents.accept(VisitorCtxMeta::from(child), visitor)
                         );
                     }
 

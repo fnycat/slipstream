@@ -1,0 +1,345 @@
+use std::ops::ControlFlow;
+
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::{Inspect, try_from};
+use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
+use slipstream_shared::error::{CorruptionError, SlipstreamResult};
+use slipstream_shared::verify;
+
+use crate::mdl::section::{DeserializeContents, SerializeContents};
+use crate::node::node::{IrNode, IrNodeType};
+use crate::visitor::{
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+};
+
+pub const NODE_TREE_NAME: &str = "NodeTree";
+pub const NODE_MIX_NAME: &str = "NodeMix";
+pub const DRAW_OPA_NAME: &str = "DrawOpa";
+pub const DRAW_XLU_NAME: &str = "DrawXlu";
+
+/// Simple newtype that makes types with many IDs a lot clearer.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
+pub struct MatrixId(pub u16);
+
+impl MatrixId {
+    pub const EMPTY: MatrixId = MatrixId(u16::MAX);
+
+    #[inline]
+    pub const fn is_empty(&self) -> bool {
+        self.0 == u16::MAX
+    }
+}
+
+impl Default for MatrixId {
+    #[inline]
+    fn default() -> Self {
+        Self::EMPTY
+    }
+}
+
+/// Simple newtype that makes types with many IDs a lot clearer.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct BoneId(pub u16);
+
+/// Simple newtype that makes types with many IDs a lot clearer.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct BoneIndex(pub u16);
+
+/// Simple newtype that makes types with many IDs a lot clearer.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct WeightId(pub u16);
+
+/// The opcode IDs for the possible commands in the definitions section of an MDL file.
+#[try_from(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u8)]
+pub enum DefinitionOpCodeId {
+    Nop = 0x00,
+    End = 0x01,
+    MapNode = 0x02,
+    /// Also referred to as `NodeMix`.
+    Weights = 0x03,
+    Draw = 0x04,
+    WeightIndex = 0x05,
+    DuplicateMatrix = 0x06
+}
+
+/// Maps a bone index to a matrix index.
+///
+/// This is contained in the bytecode section of the file. It assigns a transformation
+/// matrix to each of the bones.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MapNode {
+    pub bone_index: BoneIndex,
+    pub matrix_index: MatrixId
+}
+
+impl MapNode {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let bone_index = BoneIndex(reader.read_u16::<BigEndian>()?);
+        let matrix_index = MatrixId(reader.read_u16::<BigEndian>()?);
+
+        Ok(Self {
+            bone_index,
+            matrix_index
+        })
+    }
+
+    fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.reserve(4);
+
+        writer.write_u16::<BigEndian>(self.bone_index.0)?;
+        writer.write_u16::<BigEndian>(self.matrix_index.0)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BoneWeight {
+    /// The matrix that this weight affects.
+    pub matrix_id: MatrixId,
+    /// A value between 0.0 and 1.0 that determines how much geometry "sticks" to this bone
+    /// when moving. A vertex can be affected by multiple bones. The weights must add up to 1.0.
+    pub weight: f32
+}
+
+impl BoneWeight {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let matrix_id = MatrixId(reader.read_u16::<BigEndian>()?);
+        let weight = reader.read_f32::<BigEndian>()?;
+
+        Ok(Self { matrix_id, weight })
+    }
+
+    fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        // memory is reserved in `Weights` instead.
+        writer.write_u16::<BigEndian>(self.matrix_id.0)?;
+        writer.write_f32::<BigEndian>(self.weight)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Weights {
+    pub id: WeightId,
+    pub weights: Vec<BoneWeight>
+}
+
+impl Weights {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let id = WeightId(reader.read_u16::<BigEndian>()?);
+        let weight_count = reader.read_u8()?;
+
+        let mut weights = Vec::with_capacity(weight_count as usize);
+        for _ in 0..weight_count {
+            weights.push(BoneWeight::deserialize(reader)?);
+        }
+
+        Ok(Self { id, weights })
+    }
+
+    fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        let weights_len = self.weights.len();
+        verify!(
+            weights_len < u8::MAX as usize,
+            "Weight count {weights_len} exceeds maximum of 255"
+        );
+
+        writer.reserve(2 + 1 + weights_len * 6);
+
+        writer.write_u16::<BigEndian>(self.id.0)?;
+        writer.write_u8(self.weights.len() as u8)?;
+        for weight in &self.weights {
+            weight.serialize(writer)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Draw {
+    pub material_index: u16,
+    pub polygon_index: u16,
+    pub bone_index: BoneIndex,
+    pub z_index: u8
+}
+
+impl Draw {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let material_index = reader.read_u16::<BigEndian>()?;
+        let polygon_index = reader.read_u16::<BigEndian>()?;
+        let bone_index = BoneIndex(reader.read_u16::<BigEndian>()?);
+        let z_index = reader.read_u8()?;
+
+        Ok(Self {
+            material_index,
+            polygon_index,
+            bone_index,
+            z_index
+        })
+    }
+
+    fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.reserve(7);
+
+        writer.write_u16::<BigEndian>(self.material_index)?;
+        writer.write_u16::<BigEndian>(self.polygon_index)?;
+        writer.write_u16::<BigEndian>(self.bone_index.0)?;
+        writer.write_u8(self.z_index)?;
+
+        Ok(())
+    }
+}
+
+/// Maps a matrix to its corresponding weights.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WeightIndex {
+    pub matrix_id: MatrixId,
+    pub weight_id: WeightId
+}
+
+impl WeightIndex {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let matrix_id = MatrixId(reader.read_u16::<BigEndian>()?);
+        let weight_id = WeightId(reader.read_u16::<BigEndian>()?);
+
+        Ok(Self {
+            matrix_id,
+            weight_id
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DuplicateMatrix {
+    pub dest: u16,
+    pub src: u16
+}
+
+impl DuplicateMatrix {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let dest = reader.read_u16::<BigEndian>()?;
+        let src = reader.read_u16::<BigEndian>()?;
+
+        Ok(Self { dest, src })
+    }
+
+    fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.reserve(4);
+
+        let dest = writer.write_u16::<BigEndian>(self.dest)?;
+        let src = writer.write_u16::<BigEndian>(self.src)?;
+
+        Ok(())
+    }
+}
+
+/// All possible commands in a [`Definitions`] file.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DefCommand {
+    MapNode(MapNode),
+    Weights(Weights),
+    Draw(Draw),
+    WeightIndex(WeightIndex),
+    DuplicateMatrix(DuplicateMatrix)
+}
+
+/// Model-wide setup code.
+///
+/// `Definitions` contains the model weights, top-level polygon draw commands and mappings
+/// between bones and matrix IDs.
+///
+/// There are a few different types of `Definitions` files with their own contents.
+/// - `DrawOpa` generally contains only draw commands that delegate further drawing to the model's polygons.
+/// - `DrawXlu` TODO
+/// - `NodeTree` consists of only [`MapNode`] entries.
+/// - `NodeMix`: if the model uses weights, this file contains all of them.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Definitions {
+    pub commands: Vec<DefCommand>
+}
+
+impl Definitions {
+    fn read_opcode_id(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<DefinitionOpCodeId> {
+        let byte = reader.read_u8()?;
+        DefinitionOpCodeId::try_from(byte)
+    }
+}
+
+impl Visitable for Definitions {
+    fn accept(&self, node: VisitorCtxMeta<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
+        visitor
+            .as_mdl()
+            .map(|vis| vis.visit_definitions(VisitorCtx::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
+    }
+
+    fn accept_mut(
+        &mut self,
+        node: VisitorCtxMetaMut<'_>,
+        visitor: &mut dyn Visitor
+    ) -> ControlFlow<()> {
+        visitor
+            .as_mdl()
+            .map(|vis| vis.visit_definitions_mut(VisitorCtxMut::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
+    }
+}
+
+impl DeserializeContents for Definitions {
+    const NAME: &str = "Definitions";
+    const KIND: IrNodeType = IrNodeType::Definitions;
+
+    #[tracing::instrument(skip_all)]
+    fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let mut commands = Vec::new();
+
+        let mut opcode = Self::read_opcode_id(reader)?;
+        while opcode != DefinitionOpCodeId::End {
+            let command = match opcode {
+                DefinitionOpCodeId::Nop => {
+                    opcode = Self::read_opcode_id(reader)?;
+
+                    continue;
+                }
+                DefinitionOpCodeId::MapNode => DefCommand::MapNode(MapNode::deserialize(reader)?),
+                DefinitionOpCodeId::Weights => DefCommand::Weights(Weights::deserialize(reader)?),
+                DefinitionOpCodeId::Draw => DefCommand::Draw(Draw::deserialize(reader)?),
+                DefinitionOpCodeId::WeightIndex => {
+                    DefCommand::WeightIndex(WeightIndex::deserialize(reader)?)
+                }
+                DefinitionOpCodeId::DuplicateMatrix => {
+                    DefCommand::DuplicateMatrix(DuplicateMatrix::deserialize(reader)?)
+                }
+                _ => unreachable!()
+            };
+
+            commands.push(command);
+            opcode = Self::read_opcode_id(reader)?;
+        }
+
+        Ok(Self { commands })
+    }
+}
+
+impl SerializeContents for Definitions {
+    fn serialize_contents(
+        &self,
+        writer: &mut slipstream_shared::cursor::MutCursor
+    ) -> SlipstreamResult<()> {
+        todo!()
+    }
+}
+
+impl SizeEstimate for Definitions {
+    #[inline]
+    fn estimate_size(&self) -> usize {
+        // I chose 5 bytes as a reasonable average size for commands.
+        self.commands.len() * 5
+    }
+}

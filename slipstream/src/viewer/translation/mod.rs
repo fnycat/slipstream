@@ -2,7 +2,7 @@ mod skeleton;
 mod vertex;
 
 pub use skeleton::*;
-use slipstream_ir::mdl0::{
+use slipstream_ir::mdl::{
     Bone, ColorBuffer, DRAW_OPA_NAME, DRAW_XLU_NAME, Definitions, MatrixId, Mdl0Header, Mdl0Root,
     Mdl0Visitor, NODE_MIX_NAME, NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer
 };
@@ -10,7 +10,7 @@ use slipstream_ir::util::Box3;
 pub use vertex::*;
 
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
-use slipstream_ir::visitor::{Visitable, Visitor, VisitorContext};
+use slipstream_ir::visitor::{Visitable, Visitor, VisitorCtx};
 use slipstream_shared::{SlipstreamResult, try_unwrap};
 use std::ops::ControlFlow;
 
@@ -87,7 +87,7 @@ impl<'a> ModelContents<'a> {
         }
 
         impl Visitor for DefinitionVisitor {
-            fn as_mdl0(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+            fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
                 Some(self)
             }
         }
@@ -95,7 +95,7 @@ impl<'a> ModelContents<'a> {
         impl Mdl0Visitor for DefinitionVisitor {
             fn visit_definitions(
                 &mut self,
-                context: VisitorContext<'_, Definitions>
+                context: VisitorCtx<'_, Definitions>
             ) -> ControlFlow<()> {
                 tracing::trace!("Translating definition `{}`", context.meta.label);
                 self.result = BoneMap::from_definitions(context.content);
@@ -127,7 +127,7 @@ impl<'a> ModelContents<'a> {
         }
 
         impl Visitor for DefinitionVisitor<'_> {
-            fn as_mdl0(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+            fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
                 Some(self)
             }
         }
@@ -135,7 +135,7 @@ impl<'a> ModelContents<'a> {
         impl Mdl0Visitor for DefinitionVisitor<'_> {
             fn visit_definitions(
                 &mut self,
-                context: VisitorContext<'_, Definitions>
+                context: VisitorCtx<'_, Definitions>
             ) -> ControlFlow<()> {
                 tracing::trace!("Translating definition `{}`", context.meta.label);
                 self.result = BoneWeights::from_definitions(context.content);
@@ -169,13 +169,13 @@ impl<'a> ModelContents<'a> {
         }
 
         impl Visitor for PolygonVisitor<'_> {
-            fn as_mdl0(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+            fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
                 Some(self)
             }
         }
 
         impl Mdl0Visitor for PolygonVisitor<'_> {
-            fn visit_polygon(&mut self, context: VisitorContext<'_, Polygon>) -> ControlFlow<()> {
+            fn visit_polygon(&mut self, context: VisitorCtx<'_, Polygon>) -> ControlFlow<()> {
                 tracing::trace!("Translating polygon `{}`", context.meta.label);
                 self.result = self
                     .input
@@ -245,22 +245,19 @@ impl<'a> ModelContents<'a> {
 }
 
 impl Visitor for ModelContents<'_> {
-    fn as_mdl0(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+    fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
         Some(self)
     }
 }
 
 impl Mdl0Visitor for ModelContents<'_> {
-    fn visit_mdl0(&mut self, model: VisitorContext<'_, Mdl0Root>) -> ControlFlow<()> {
+    fn visit_mdl(&mut self, model: VisitorCtx<'_, Mdl0Root>) -> ControlFlow<()> {
         self.bounding_volume = model.header.bounding_volume;
 
         ControlFlow::Continue(())
     }
 
-    fn visit_definitions(
-        &mut self,
-        definitions: VisitorContext<'_, Definitions>
-    ) -> ControlFlow<()> {
+    fn visit_definitions(&mut self, definitions: VisitorCtx<'_, Definitions>) -> ControlFlow<()> {
         match definitions.meta.label {
             DRAW_OPA_NAME => self.draw_opaque = Some(definitions.meta.key),
             DRAW_XLU_NAME => self.draw_xlu = Some(definitions.meta.key),
@@ -272,7 +269,7 @@ impl Mdl0Visitor for ModelContents<'_> {
         ControlFlow::Break(())
     }
 
-    fn visit_bone(&mut self, bone: VisitorContext<'_, Bone>) -> ControlFlow<()> {
+    fn visit_bone(&mut self, bone: VisitorCtx<'_, Bone>) -> ControlFlow<()> {
         // First bone we find should be the root, but still verify
         if bone.parent.is_some() {
             tracing::error!(
@@ -284,27 +281,27 @@ impl Mdl0Visitor for ModelContents<'_> {
         ControlFlow::Break(())
     }
 
-    fn visit_vertices(&mut self, vertices: VisitorContext<'_, VertexBuffer>) -> ControlFlow<()> {
+    fn visit_vertices(&mut self, vertices: VisitorCtx<'_, VertexBuffer>) -> ControlFlow<()> {
         self.vertices.push(vertices.meta.key);
         ControlFlow::Break(())
     }
 
-    fn visit_normals(&mut self, normals: VisitorContext<'_, NormalBuffer>) -> ControlFlow<()> {
+    fn visit_normals(&mut self, normals: VisitorCtx<'_, NormalBuffer>) -> ControlFlow<()> {
         self.normals.push(normals.meta.key);
         ControlFlow::Break(())
     }
 
-    fn visit_colors(&mut self, colors: VisitorContext<'_, ColorBuffer>) -> ControlFlow<()> {
+    fn visit_colors(&mut self, colors: VisitorCtx<'_, ColorBuffer>) -> ControlFlow<()> {
         self.colors.push(colors.meta.key);
         ControlFlow::Break(())
     }
 
-    fn visit_uvs(&mut self, uvs: VisitorContext<'_, UvBuffer>) -> ControlFlow<()> {
+    fn visit_uvs(&mut self, uvs: VisitorCtx<'_, UvBuffer>) -> ControlFlow<()> {
         self.uvs.push(uvs.meta.key);
         ControlFlow::Break(())
     }
 
-    fn visit_polygon(&mut self, polygon: VisitorContext<'_, Polygon>) -> ControlFlow<()> {
+    fn visit_polygon(&mut self, polygon: VisitorCtx<'_, Polygon>) -> ControlFlow<()> {
         self.polygons.push(polygon.meta.key);
         ControlFlow::Break(())
     }

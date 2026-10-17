@@ -5,7 +5,7 @@ use slipstream_shared::error::{SlipstreamResult, UnsupportedError};
 
 use crate::node::arena::{IrArena, IrNodeKey};
 use crate::yaz0::{self, YAZ0_MAGIC};
-use crate::{arc, brres, chr0, mdl0, tex0};
+use crate::{arc, brres, chr, mdl, tex, tpl};
 /// Deserializes a possibly YAZ0-compressed file.
 ///
 /// After decompressing, this forwards the call to [`deserialize_unknown_root`]
@@ -43,9 +43,10 @@ pub fn deserialize_unknown_root(
     let contents = match *magic {
         arc::ARC_MAGIC => arc::deserialize(reader, None, arena, name)?,
         brres::BRRES_MAGIC => brres::deserialize(reader, None, arena, name)?,
-        mdl0::MDL0_MAGIC => mdl0::deserialize(reader, None, arena, name)?,
-        chr0::CHR0_MAGIC => chr0::deserialize(reader, None, arena, name)?,
-        tex0::TEX0_MAGIC => tex0::deserialize(reader, None, arena, name)?,
+        mdl::MDL_MAGIC => mdl::deserialize(reader, None, arena, name)?,
+        chr::CHR_MAGIC => chr::deserialize(reader, None, arena, name)?,
+        tex::TEX_MAGIC => tex::deserialize(reader, None, arena, name)?,
+        tpl::TPL_MAGIC => tpl::deserialize(reader, None, arena, name)?,
         _ => {
             return Err(UnsupportedError {
                 reason: format!(

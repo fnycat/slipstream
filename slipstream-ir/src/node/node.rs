@@ -140,20 +140,20 @@ pub enum IrNodeType {
     BrresFile,
     /// The directories prefixed with `NW4R`.
     Nw4rDirectory,
-    /// The root of an MDL0 model. This should contain the section directories `Vertices`, `Normals`.
+    /// The root of an MDL model. This should contain the section directories `Vertices`, `Normals`.
     Mdl0Root,
-    /// The bytecode section of an MDL0 file.
+    /// The bytecode section of an MDL file.
     Definitions,
-    /// The bone section of an MDL0 file.
+    /// The bone section of an MDL file.
     Bone {
         /// Whether this is the end bone of a limb. This makes sure it is not displayed as a folder.
         end: bool
     },
-    /// A vertex buffer in an MDL0 file.
+    /// A vertex buffer in an MDL file.
     VertexBuffer,
-    /// A normal buffer in an MDL0 file.
+    /// A normal buffer in an MDL file.
     NormalBuffer,
-    /// A color buffer in an MDL0 file.
+    /// A color buffer in an MDL file.
     ColorBuffer,
     UvBuffer,
     Material,
@@ -162,12 +162,17 @@ pub enum IrNodeType {
     TextureLinks,
     PaletteLinks,
 
-    /// A CHR0 file
+    /// A CHR file
     Chr0Root,
-    /// A CHR0 animation
+    /// A CHR animation
     SkeletalAnimation,
 
-    /// A TEX0 texture
+    /// A TPL file header
+    Tpl,
+    /// A TPL image
+    TplImage,
+
+    /// A TEX texture
     Texture,
     /// An unknown file format. The object simply stores the raw bytes of the file.
     Unknown

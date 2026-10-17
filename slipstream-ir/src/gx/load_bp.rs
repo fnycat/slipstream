@@ -47,7 +47,7 @@ pub struct TextureReadSettings {
     _unknown1: u8,
     #[bits(3)]
     _unknown2: u8,
-    pub tex0_e: bool,
+    pub tex_e: bool,
     #[bits(3)]
     pub ras0_value: RasConstant,
     #[bits(2)]

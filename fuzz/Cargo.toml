@@ -30,22 +30,22 @@ test = false
 doc = false
 bench = false
 [[bin]]
-name = "chr0"
-path = "fuzz_targets/chr0.rs"
+name = "chr"
+path = "fuzz_targets/chr.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "mdl0"
-path = "fuzz_targets/mdl0.rs"
+name = "mdl"
+path = "fuzz_targets/mdl.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "tex0"
-path = "fuzz_targets/tex0.rs"
+name = "tex"
+path = "fuzz_targets/tex.rs"
 test = false
 doc = false
 bench = false

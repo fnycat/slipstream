@@ -10,7 +10,7 @@ use crate::gx::load_bp::LoadBpOpCode;
 use crate::gx::load_cp::LoadCpOpCode;
 use crate::gx::load_indexed::IndexedLoad;
 use crate::gx::load_xf::LoadXfOpCode;
-use crate::mdl0::GxVertexDeclaration;
+use crate::mdl::GxVertexDeclaration;
 
 pub mod call;
 pub mod draw;

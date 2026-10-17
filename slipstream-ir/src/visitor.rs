@@ -1,24 +1,25 @@
 use crate::arc::{ArcDirectory, UnknownFile};
 use crate::brres::BrresFile;
-use crate::chr0::{self, Chr0Visitor};
-use crate::mdl0::{
+use crate::chr::{self, Chr0Visitor};
+use crate::mdl::{
     self, Bone, ColorBuffer, Definitions, MaterialBuffer, Mdl0Visitor, NormalBuffer, PaletteLinks,
     Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer
 };
 use crate::node::arena::IrNodeKey;
 use crate::node::node::{IrNode, IrNodeType};
-use crate::tex0::Texture;
+use crate::tex::Texture;
+use crate::tpl::{TplHeader, TplImage};
 use downcast_rs::{Downcast, impl_downcast};
 use std::ops::{ControlFlow, Deref, DerefMut};
 
-pub struct VisitorContextNode<'a> {
+pub struct VisitorCtxMeta<'a> {
     pub label: &'a str,
     pub ty: IrNodeType,
     pub key: IrNodeKey,
     pub children: &'a [IrNodeKey]
 }
 
-impl<'a> From<&'a IrNode> for VisitorContextNode<'a> {
+impl<'a> From<&'a IrNode> for VisitorCtxMeta<'a> {
     #[inline]
     fn from(node: &'a IrNode) -> Self {
         Self {
@@ -30,14 +31,14 @@ impl<'a> From<&'a IrNode> for VisitorContextNode<'a> {
     }
 }
 
-pub struct VisitorContext<'a, T> {
-    pub meta: VisitorContextNode<'a>,
+pub struct VisitorCtx<'a, T> {
+    pub meta: VisitorCtxMeta<'a>,
     pub content: &'a T
 }
 
-impl<'a, T> VisitorContext<'a, T> {
+impl<'a, T> VisitorCtx<'a, T> {
     #[inline]
-    pub(crate) fn new(node: VisitorContextNode<'a>, content: &'a T) -> Self {
+    pub(crate) fn new(node: VisitorCtxMeta<'a>, content: &'a T) -> Self {
         Self {
             meta: node,
             content
@@ -45,7 +46,7 @@ impl<'a, T> VisitorContext<'a, T> {
     }
 }
 
-impl<'a, T> Deref for VisitorContext<'a, T> {
+impl<'a, T> Deref for VisitorCtx<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -53,14 +54,14 @@ impl<'a, T> Deref for VisitorContext<'a, T> {
     }
 }
 
-pub struct VisitorContextNodeMut<'a> {
+pub struct VisitorCtxMetaMut<'a> {
     pub label: &'a mut String,
     pub ty: IrNodeType,
     pub key: IrNodeKey,
     pub children: &'a mut [IrNodeKey]
 }
 
-impl<'a> From<&'a mut IrNode> for VisitorContextNodeMut<'a> {
+impl<'a> From<&'a mut IrNode> for VisitorCtxMetaMut<'a> {
     fn from(node: &'a mut IrNode) -> Self {
         Self {
             key: node.key(),
@@ -72,14 +73,14 @@ impl<'a> From<&'a mut IrNode> for VisitorContextNodeMut<'a> {
 }
 
 /// The contents can be accessed via the deref implementations.
-pub struct VisitorContextMut<'a, T> {
-    pub meta: VisitorContextNodeMut<'a>,
+pub struct VisitorCtxMut<'a, T> {
+    pub meta: VisitorCtxMetaMut<'a>,
     pub content: &'a mut T
 }
 
-impl<'a, T> VisitorContextMut<'a, T> {
+impl<'a, T> VisitorCtxMut<'a, T> {
     #[inline]
-    pub(crate) fn new(node: VisitorContextNodeMut<'a>, content: &'a mut T) -> Self {
+    pub(crate) fn new(node: VisitorCtxMetaMut<'a>, content: &'a mut T) -> Self {
         Self {
             meta: node,
             content
@@ -87,7 +88,7 @@ impl<'a, T> VisitorContextMut<'a, T> {
     }
 }
 
-impl<'a, T: 'static> Deref for VisitorContextMut<'a, T> {
+impl<'a, T: 'static> Deref for VisitorCtxMut<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -95,7 +96,7 @@ impl<'a, T: 'static> Deref for VisitorContextMut<'a, T> {
     }
 }
 
-impl<'a, T: 'static> DerefMut for VisitorContextMut<'a, T> {
+impl<'a, T: 'static> DerefMut for VisitorCtxMut<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.content
     }
@@ -118,20 +119,20 @@ pub trait Visitor {
         false
     }
 
-    /// Turns this visitor into an MDL0 visitor.
-    fn as_mdl0(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+    /// Turns this visitor into an MDL visitor.
+    fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
         None
     }
 
-    /// Turns this visitor into a CHR0 visitor.
-    fn as_chr0(&mut self) -> Option<&mut dyn Chr0Visitor> {
+    /// Turns this visitor into a CHR visitor.
+    fn as_chr(&mut self) -> Option<&mut dyn Chr0Visitor> {
         None
     }
 
     // Trivial files
     // ===================================================================================================
 
-    fn visit_arc(&mut self, arc: VisitorContext<'_, ArcDirectory>) -> ControlFlow<()> {
+    fn visit_arc(&mut self, arc: VisitorCtx<'_, ArcDirectory>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -139,7 +140,7 @@ pub trait Visitor {
         }
     }
 
-    fn visit_arc_mut(&mut self, arc: VisitorContextMut<'_, ArcDirectory>) -> ControlFlow<()> {
+    fn visit_arc_mut(&mut self, arc: VisitorCtxMut<'_, ArcDirectory>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -147,7 +148,7 @@ pub trait Visitor {
         }
     }
 
-    fn visit_brres(&mut self, brres: VisitorContext<'_, BrresFile>) -> ControlFlow<()> {
+    fn visit_brres(&mut self, brres: VisitorCtx<'_, BrresFile>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -155,7 +156,7 @@ pub trait Visitor {
         }
     }
 
-    fn visit_brres_mut(&mut self, brres: VisitorContextMut<'_, BrresFile>) -> ControlFlow<()> {
+    fn visit_brres_mut(&mut self, brres: VisitorCtxMut<'_, BrresFile>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -163,7 +164,8 @@ pub trait Visitor {
         }
     }
 
-    fn visit_unknown(&mut self, unknown: VisitorContext<'_, UnknownFile>) -> ControlFlow<()> {
+    /// Immutably visits the header of a TPL file.
+    fn visit_tpl(&mut self, tpl: VisitorCtx<'_, TplHeader>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -171,10 +173,8 @@ pub trait Visitor {
         }
     }
 
-    fn visit_unknown_mut(
-        &mut self,
-        unknown: VisitorContextMut<'_, UnknownFile>
-    ) -> ControlFlow<()> {
+    /// Mutably visits the header of a TPL file.
+    fn visit_tpl_mut(&mut self, tpl: VisitorCtxMut<'_, TplHeader>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -182,10 +182,44 @@ pub trait Visitor {
         }
     }
 
-    // TEX0 methods
+    /// Immutably visits an image in a TPL file.
+    fn visit_tpl_image(&mut self, image: VisitorCtx<'_, TplImage>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    /// Mutably visits an image in a TPL file.
+    fn visit_tpl_image_mut(&mut self, image: VisitorCtxMut<'_, TplImage>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_unknown(&mut self, unknown: VisitorCtx<'_, UnknownFile>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_unknown_mut(&mut self, unknown: VisitorCtxMut<'_, UnknownFile>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    // TEX methods
     // ==================================================================================================
 
-    fn visit_tex0(&mut self, texture: VisitorContext<'_, Texture>) -> ControlFlow<()> {
+    fn visit_tex(&mut self, texture: VisitorCtx<'_, Texture>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -193,7 +227,7 @@ pub trait Visitor {
         }
     }
 
-    fn visit_tex0_mut(&mut self, texture: VisitorContextMut<'_, Texture>) -> ControlFlow<()> {
+    fn visit_tex_mut(&mut self, texture: VisitorCtxMut<'_, Texture>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -203,11 +237,8 @@ pub trait Visitor {
 }
 
 pub trait Visitable: Downcast {
-    fn accept(&self, node: VisitorContextNode, visitor: &mut dyn Visitor) -> ControlFlow<()>;
-    fn accept_mut(
-        &mut self,
-        node: VisitorContextNodeMut,
-        visitor: &mut dyn Visitor
-    ) -> ControlFlow<()>;
+    fn accept(&self, node: VisitorCtxMeta, visitor: &mut dyn Visitor) -> ControlFlow<()>;
+    fn accept_mut(&mut self, node: VisitorCtxMetaMut, visitor: &mut dyn Visitor)
+    -> ControlFlow<()>;
 }
 impl_downcast!(Visitable);

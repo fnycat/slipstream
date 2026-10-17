@@ -1,14 +1,15 @@
 use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
 use slipstream_ir::arc::ArcDirectory;
 use slipstream_ir::brres::BrresFile;
-use slipstream_ir::chr0::{self, Chr0Visitor, SkeletalAnimation};
-use slipstream_ir::mdl0::{
+use slipstream_ir::chr::{self, Chr0Visitor, SkeletalAnimation};
+use slipstream_ir::mdl::{
     Bone, ColorBuffer, Definitions, MaterialBuffer, Mdl0Root, Mdl0Visitor, NormalBuffer,
     PaletteLinks, Polygon, TextureLinks, UvBuffer, VertexBuffer
 };
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
-use slipstream_ir::tex0::Texture;
-use slipstream_ir::visitor::{Visitor, VisitorContextMut, VisitorContextNodeMut};
+use slipstream_ir::tex::Texture;
+use slipstream_ir::tpl::{TplHeader, TplImage};
+use slipstream_ir::visitor::{Visitor, VisitorCtxMetaMut, VisitorCtxMut};
 use slipstream_shared::inspect::{FieldConfig, Inspect};
 use slipstream_shared::{SlipstreamError, SlipstreamResult};
 use std::ops::ControlFlow;
@@ -19,15 +20,15 @@ struct InspectorVisitor<'ui> {
 }
 
 impl Visitor for InspectorVisitor<'_> {
-    fn as_mdl0(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+    fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
         Some(self)
     }
 
-    fn as_chr0(&mut self) -> Option<&mut dyn Chr0Visitor> {
+    fn as_chr(&mut self) -> Option<&mut dyn Chr0Visitor> {
         Some(self)
     }
 
-    fn visit_arc_mut(&mut self, context: VisitorContextMut<'_, ArcDirectory>) -> ControlFlow<()> {
+    fn visit_arc_mut(&mut self, context: VisitorCtxMut<'_, ArcDirectory>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -35,7 +36,7 @@ impl Visitor for InspectorVisitor<'_> {
         ControlFlow::Continue(())
     }
 
-    fn visit_brres_mut(&mut self, context: VisitorContextMut<'_, BrresFile>) -> ControlFlow<()> {
+    fn visit_brres_mut(&mut self, context: VisitorCtxMut<'_, BrresFile>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -43,7 +44,23 @@ impl Visitor for InspectorVisitor<'_> {
         ControlFlow::Continue(())
     }
 
-    fn visit_tex0_mut(&mut self, context: VisitorContextMut<'_, Texture>) -> ControlFlow<()> {
+    fn visit_tex_mut(&mut self, context: VisitorCtxMut<'_, Texture>) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_tpl_mut(&mut self, context: VisitorCtxMut<'_, TplHeader>) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_tpl_image_mut(&mut self, context: VisitorCtxMut<'_, TplImage>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -53,7 +70,7 @@ impl Visitor for InspectorVisitor<'_> {
 }
 
 impl Mdl0Visitor for InspectorVisitor<'_> {
-    fn visit_mdl0_mut(&mut self, context: VisitorContextMut<'_, Mdl0Root>) -> ControlFlow<()> {
+    fn visit_mdl_mut(&mut self, context: VisitorCtxMut<'_, Mdl0Root>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -63,13 +80,13 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
 
     fn visit_definitions_mut(
         &mut self,
-        context: VisitorContextMut<'_, Definitions>
+        context: VisitorCtxMut<'_, Definitions>
     ) -> ControlFlow<()> {
         self.ui.label(format!("{:#?}", context.content));
         ControlFlow::Continue(())
     }
 
-    fn visit_bone_mut(&mut self, context: VisitorContextMut<'_, Bone>) -> ControlFlow<()> {
+    fn visit_bone_mut(&mut self, context: VisitorCtxMut<'_, Bone>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -77,10 +94,7 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
         ControlFlow::Continue(())
     }
 
-    fn visit_vertices_mut(
-        &mut self,
-        context: VisitorContextMut<'_, VertexBuffer>
-    ) -> ControlFlow<()> {
+    fn visit_vertices_mut(&mut self, context: VisitorCtxMut<'_, VertexBuffer>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -88,10 +102,7 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
         ControlFlow::Continue(())
     }
 
-    fn visit_normals_mut(
-        &mut self,
-        context: VisitorContextMut<'_, NormalBuffer>
-    ) -> ControlFlow<()> {
+    fn visit_normals_mut(&mut self, context: VisitorCtxMut<'_, NormalBuffer>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -99,7 +110,7 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
         ControlFlow::Continue(())
     }
 
-    fn visit_colors_mut(&mut self, context: VisitorContextMut<'_, ColorBuffer>) -> ControlFlow<()> {
+    fn visit_colors_mut(&mut self, context: VisitorCtxMut<'_, ColorBuffer>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -107,7 +118,7 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
         ControlFlow::Continue(())
     }
 
-    fn visit_uvs_mut(&mut self, context: VisitorContextMut<'_, UvBuffer>) -> ControlFlow<()> {
+    fn visit_uvs_mut(&mut self, context: VisitorCtxMut<'_, UvBuffer>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -117,7 +128,7 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
 
     fn visit_material_mut(
         &mut self,
-        context: VisitorContextMut<'_, MaterialBuffer>
+        context: VisitorCtxMut<'_, MaterialBuffer>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -126,7 +137,7 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
         ControlFlow::Continue(())
     }
 
-    fn visit_polygon_mut(&mut self, context: VisitorContextMut<'_, Polygon>) -> ControlFlow<()> {
+    fn visit_polygon_mut(&mut self, context: VisitorCtxMut<'_, Polygon>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -136,7 +147,7 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
 
     fn visit_texture_links_mut(
         &mut self,
-        context: VisitorContextMut<'_, TextureLinks>
+        context: VisitorCtxMut<'_, TextureLinks>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -147,7 +158,7 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
 
     fn visit_palette_links_mut(
         &mut self,
-        context: VisitorContextMut<'_, PaletteLinks>
+        context: VisitorCtxMut<'_, PaletteLinks>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -158,10 +169,7 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
 }
 
 impl Chr0Visitor for InspectorVisitor<'_> {
-    fn visit_chr0_mut(
-        &mut self,
-        context: VisitorContextMut<'_, chr0::Chr0Root>
-    ) -> ControlFlow<()> {
+    fn visit_chr_mut(&mut self, context: VisitorCtxMut<'_, chr::Chr0Root>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -171,7 +179,7 @@ impl Chr0Visitor for InspectorVisitor<'_> {
 
     fn visit_animation_mut(
         &mut self,
-        context: VisitorContextMut<'_, SkeletalAnimation>
+        context: VisitorCtxMut<'_, SkeletalAnimation>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -209,7 +217,7 @@ impl InspectorPane {
 
         self.arena
             .update(self.inspected, |node| {
-                let context = VisitorContextNodeMut {
+                let context = VisitorCtxMetaMut {
                     key: node.key(),
                     label: &mut node.label,
                     ty: node.ty,

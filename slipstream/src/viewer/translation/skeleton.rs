@@ -1,9 +1,9 @@
-use slipstream_ir::mdl0::{
+use slipstream_ir::mdl::{
     Bone, BoneBind, BoneIndex, BoneWeight, DefCommand, Definitions, MatrixId, Mdl0Visitor, Polygon,
     WeightId
 };
 use slipstream_ir::node::arena::IrArena;
-use slipstream_ir::visitor::{Visitor, VisitorContext};
+use slipstream_ir::visitor::{Visitor, VisitorCtx};
 use slipstream_shared::{SlipstreamResult, try_unwrap};
 use std::collections::HashMap;
 use std::ops::ControlFlow;
@@ -28,7 +28,7 @@ impl BoneMap {
     /// Generates a bone map from a `Definitions` entry. All commands other than
     /// [`MapNode`] will be ignored.
     ///
-    /// [`MapNode`]: slipstream_ir::mdl0::definitions::BytecodeCommand
+    /// [`MapNode`]: slipstream_ir::mdl::definitions::BytecodeCommand
     pub fn from_definitions(definitions: &Definitions) -> SlipstreamResult<Self> {
         let mut map = HashMap::with_capacity(definitions.commands.len());
         for cmd in &definitions.commands {
@@ -52,9 +52,9 @@ impl BoneMap {
 ///
 /// The method is similar to how vertex buffers and index buffers work in graphics APIs.
 ///
-/// [`Definitions`]: slipstream_ir::mdl0::definitions::Definitions
-/// [`Weights`]: slipstream_ir::mdl0::definitions::Weights
-/// [`WeightIndex`]: slipstream_ir::mdl0::definitions::WeightIndex
+/// [`Definitions`]: slipstream_ir::mdl::definitions::Definitions
+/// [`Weights`]: slipstream_ir::mdl::definitions::Weights
+/// [`WeightIndex`]: slipstream_ir::mdl::definitions::WeightIndex
 #[derive(Default, Debug)]
 pub struct BoneWeights {
     // Maps a matrix to its corresponding entry in `weights`.
@@ -78,8 +78,8 @@ impl BoneWeights {
     /// Generates `BoneWeights` from a `Definitions` entry. All commands other than
     /// [`Weights`] and [`WeightIndex`] will be ignored.
     ///
-    /// [`Weights`]: slipstream_ir::mdl0::definitions::Weights
-    /// [`WeightIndex`]: slipstream_ir::mdl0::definitions::WeightIndex
+    /// [`Weights`]: slipstream_ir::mdl::definitions::Weights
+    /// [`WeightIndex`]: slipstream_ir::mdl::definitions::WeightIndex
     pub fn from_definitions(definitions: &Definitions) -> SlipstreamResult<Self> {
         let mut index_map = HashMap::new();
         let mut weight_map = HashMap::new();
@@ -200,13 +200,13 @@ impl ModelContents<'_> {
         }
 
         impl Visitor for BoneVisitor<'_> {
-            fn as_mdl0(&mut self) -> Option<&mut dyn slipstream_ir::mdl0::Mdl0Visitor> {
+            fn as_mdl(&mut self) -> Option<&mut dyn slipstream_ir::mdl::Mdl0Visitor> {
                 Some(self)
             }
         }
 
         impl Mdl0Visitor for BoneVisitor<'_> {
-            fn visit_bone(&mut self, bone: VisitorContext<'_, Bone>) -> ControlFlow<()> {
+            fn visit_bone(&mut self, bone: VisitorCtx<'_, Bone>) -> ControlFlow<()> {
                 self.transforms
                     .insert(BoneIndex(bone.id as u16), bone.transform_matrix);
 

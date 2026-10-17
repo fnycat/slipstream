@@ -39,14 +39,14 @@ impl ViewerPane {
         update_fn(pipeline)
     }
 
-    /// `mdl0_node` should be the ID of an MDL0 file.
+    /// `mdl_node` should be the ID of an MDL file.
     pub fn new(
         cmd_sender: mpsc::Sender<PaneAction>,
-        mdl0_node: Option<IrNodeKey>,
+        mdl_node: Option<IrNodeKey>,
         arena: Arc<IrArena>,
         render_state: GraphicsState
     ) -> SlipstreamResult<Box<dyn Pane>> {
-        let model = mdl0_node
+        let model = mdl_node
             .map(|node| ModelContents::from_root(node, &arena))
             .transpose()?
             .map(|model| model.to_intermediate(&arena))
@@ -64,7 +64,7 @@ impl ViewerPane {
 
         Ok(Box::new(Self {
             cmd_sender,
-            node: mdl0_node,
+            node: mdl_node,
             arena,
             render_state
         }))

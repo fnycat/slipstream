@@ -10,15 +10,13 @@ use slipstream_shared::error::{
 };
 
 use crate::brres::{self, BRRES_MAGIC};
-use crate::deferred_pass::{
-    DEFER_PLACEHOLDER, DEFER_PLACEHOLDER24, DeferredPass, DeferredString, StringPool
-};
 use crate::encoding::{ReadArrayExt, ReadStringExt, WriteArrayExt};
+use crate::fixup::{DEFER_PLACEHOLDER, DEFER_PLACEHOLDER24, DeferredString, FixupPass, StringPool};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
+use crate::tpl::{self, TPL_MAGIC};
 use crate::visitor::{
-    Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
 };
 
 /// Magic of an ARC file.
@@ -171,16 +169,16 @@ pub struct UnknownFile {
 }
 
 impl Visitable for UnknownFile {
-    fn accept(&self, node: VisitorContextNode<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
-        visitor.visit_unknown(VisitorContext::new(node, self))
+    fn accept(&self, node: VisitorCtxMeta<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
+        visitor.visit_unknown(VisitorCtx::new(node, self))
     }
 
     fn accept_mut(
         &mut self,
-        node: VisitorContextNodeMut<'_>,
+        node: VisitorCtxMetaMut<'_>,
         visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
-        visitor.visit_unknown_mut(VisitorContextMut::new(node, self))
+        visitor.visit_unknown_mut(VisitorCtxMut::new(node, self))
     }
 }
 
@@ -197,6 +195,7 @@ fn parse_leaf_node(
     match magic {
         ARC_MAGIC => deserialize(reader, Some(parent_id), arena, label),
         BRRES_MAGIC => brres::deserialize(reader, Some(parent_id), arena, label),
+        TPL_MAGIC => tpl::deserialize(reader, Some(parent_id), arena, label),
         _ => {
             let key = arena.insert(IrNodeDescriptor {
                 label,
@@ -220,16 +219,16 @@ pub struct ArcDirectory {
 }
 
 impl Visitable for ArcDirectory {
-    fn accept(&self, node: VisitorContextNode<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
-        visitor.visit_arc(VisitorContext::new(node, self))
+    fn accept(&self, node: VisitorCtxMeta<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
+        visitor.visit_arc(VisitorCtx::new(node, self))
     }
 
     fn accept_mut(
         &mut self,
-        node: VisitorContextNodeMut<'_>,
+        node: VisitorCtxMetaMut<'_>,
         visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
-        visitor.visit_arc_mut(VisitorContextMut::new(node, self))
+        visitor.visit_arc_mut(VisitorCtxMut::new(node, self))
     }
 }
 
@@ -399,7 +398,7 @@ pub fn serialize_inner(
     node: IrNodeKey,
     writer: &mut MutCursor,
     string_pool: &mut StringPool,
-    pass: &mut DeferredPass,
+    pass: &mut FixupPass,
     id_counter: &mut u32,
     parent: u32
 ) -> SlipstreamResult<()> {
@@ -458,7 +457,7 @@ pub fn serialize(
     arena: &IrArena,
     node: IrNodeKey,
     writer: &mut MutCursor,
-    pass: &mut DeferredPass
+    pass: &mut FixupPass
 ) -> SlipstreamResult<()> {
     tracing::trace!("Serializing ARC file");
 
@@ -493,4 +492,17 @@ pub fn serialize(
     writer.write_all(&string_pool.into_inner())?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::node::arena::IrArena;
+
+    #[test]
+    fn basic_write() {
+        let arena = IrArena::new();
+
+        todo!();
+        // arena.
+    }
 }

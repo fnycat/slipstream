@@ -1,0 +1,93 @@
+use std::ops::ControlFlow;
+
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::Inspect;
+use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
+use slipstream_shared::error::SlipstreamResult;
+
+use crate::mdl::section::{DeserializeContents, SerializeContents};
+use crate::node::node::{IrNode, IrNodeType};
+use crate::visitor::{
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+};
+
+#[derive(Debug, Clone, PartialEq, Inspect)]
+pub struct PaletteLink {
+    pub offset1: u32,
+    pub offset2: u32
+}
+
+impl PaletteLink {
+    fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let offset1 = reader.read_u32::<BigEndian>()?;
+        let offset2 = reader.read_u32::<BigEndian>()?;
+
+        Ok(Self { offset1, offset2 })
+    }
+
+    fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_u32::<BigEndian>(self.offset1)?;
+        writer.write_u32::<BigEndian>(self.offset2)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Inspect)]
+pub struct PaletteLinks {
+    pub links: Vec<PaletteLink>
+}
+
+impl Visitable for PaletteLinks {
+    fn accept(&self, node: VisitorCtxMeta<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
+        visitor
+            .as_mdl()
+            .map(|vis| vis.visit_palette_links(VisitorCtx::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
+    }
+
+    fn accept_mut(
+        &mut self,
+        node: VisitorCtxMetaMut<'_>,
+        visitor: &mut dyn Visitor
+    ) -> ControlFlow<()> {
+        visitor
+            .as_mdl()
+            .map(|vis| vis.visit_palette_links_mut(VisitorCtxMut::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
+    }
+}
+
+impl DeserializeContents for PaletteLinks {
+    const NAME: &str = "Palette links";
+    const KIND: IrNodeType = IrNodeType::PaletteLinks;
+
+    #[tracing::instrument(skip_all)]
+    fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let link_count = reader.read_u32::<BigEndian>()?;
+
+        let mut links = Vec::with_capacity(link_count as usize);
+        for _ in 0..link_count {
+            links.push(PaletteLink::deserialize(reader)?);
+        }
+
+        Ok(Self { links })
+    }
+}
+
+impl SerializeContents for PaletteLinks {
+    fn serialize_contents(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_u32::<BigEndian>(self.links.len() as u32)?;
+
+        for link in &self.links {
+            link.serialize(writer)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl SizeEstimate for PaletteLinks {
+    fn estimate_size(&self) -> usize {
+        4 + self.links.len() * 8
+    }
+}

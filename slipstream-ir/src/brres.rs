@@ -9,16 +9,16 @@ use slipstream_shared::error::{
 };
 
 use crate::arc::UnknownFile;
-use crate::chr0::{self, CHR0_MAGIC};
+use crate::chr::{self, CHR_MAGIC};
 use crate::encoding::{ReadArrayExt, WriteArrayExt};
 use crate::index::IndexGroup;
-use crate::mdl0::{self, MDL0_MAGIC};
+use crate::mdl::{self, MDL_MAGIC};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
-use crate::tex0::{self, TEX0_MAGIC};
+use crate::tex::{self, TEX_MAGIC};
+use crate::tpl::{self, TPL_MAGIC};
 use crate::visitor::{
-    Visitable, Visitor, VisitorContext, VisitorContextMut, VisitorContextNode,
-    VisitorContextNodeMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
 };
 
 /// Equals "bres". This is always at the start of a BRRES file.
@@ -38,7 +38,7 @@ pub fn get_section_count(ty: BFileType, version: u32) -> SlipstreamResult<usize>
             11 => 14,
             _ => {
                 return Err(CorruptionError {
-                    reason: format!("invalid MDL0 version: {version} (must be 8, 11)"),
+                    reason: format!("invalid MDL version: {version} (must be 8, 11)"),
                     ..Default::default()
                 }
                 .into());
@@ -50,7 +50,7 @@ pub fn get_section_count(ty: BFileType, version: u32) -> SlipstreamResult<usize>
             3 => 1,
             _ => {
                 return Err(CorruptionError {
-                    reason: format!("invalid TEX0 version: {version} (must be 1, 2 or 3)"),
+                    reason: format!("invalid TEX version: {version} (must be 1, 2 or 3)"),
                     ..Default::default()
                 }
                 .into());
@@ -60,7 +60,7 @@ pub fn get_section_count(ty: BFileType, version: u32) -> SlipstreamResult<usize>
             // 3 => 1,
             3 => {
                 return Err(UnsupportedError {
-                    reason: "CHR0 version 3".to_owned(),
+                    reason: "CHR version 3".to_owned(),
                     ..Default::default()
                 }
                 .into());
@@ -68,7 +68,7 @@ pub fn get_section_count(ty: BFileType, version: u32) -> SlipstreamResult<usize>
             5 => 2,
             _ => {
                 return Err(CorruptionError {
-                    reason: format!("invalid CHR0 version: {version} (must be 3, 5)"),
+                    reason: format!("invalid CHR version: {version} (must be 3, 5)"),
                     ..Default::default()
                 }
                 .into());
@@ -217,7 +217,7 @@ pub struct BFileHeader {
     pub header_start: u32,
     /// Length of this subfile.
     pub subfile_length: u32,
-    /// Version of ths subfile. For MDL0 this is either 8 or 11.
+    /// Version of ths subfile. For MDL this is either 8 or 11.
     pub version: u32,
     /// The offset to the outer BRRES file.
     pub brres_offset: i32,
@@ -321,9 +321,9 @@ fn deserialize_bfile(
     tracing::debug!("Magic is {}", String::from_utf8_lossy(&magic));
 
     match magic {
-        MDL0_MAGIC => mdl0::deserialize(reader, Some(parent_id), arena, name),
-        CHR0_MAGIC => chr0::deserialize(reader, Some(parent_id), arena, name),
-        TEX0_MAGIC => tex0::deserialize(reader, Some(parent_id), arena, name),
+        MDL_MAGIC => mdl::deserialize(reader, Some(parent_id), arena, name),
+        CHR_MAGIC => chr::deserialize(reader, Some(parent_id), arena, name),
+        TEX_MAGIC => tex::deserialize(reader, Some(parent_id), arena, name),
         _ => {
             let key = arena.insert(IrNodeDescriptor {
                 label: String::from("<unimplemented>"),
@@ -346,11 +346,11 @@ fn serialize_bfile(writer: &mut MutCursor, node: &IrNode) -> SlipstreamResult<()
     //     }
     //
     //     impl Visitor for BFileVisitor<'_> {
-    //         fn visit_mdl0(&mut self, bfile: VisitorContext<'_, mdl0::Mdl0Root>) -> ControlFlow<()> {
+    //         fn visit_mdl(&mut self, bfile: VisitorContext<'_, mdl::Mdl0Root>) -> ControlFlow<()> {
     //             todo!()
     //         }
     //
-    //         fn visit_tex0(&mut self, bfile: VisitorContext<'_, tex0::Texture>) -> ControlFlow<()> {
+    //         fn visit_tex(&mut self, bfile: VisitorContext<'_, tex::Texture>) -> ControlFlow<()> {
     //             todo!()
     //         }
     //     }
@@ -372,7 +372,7 @@ fn serialize_bfile(writer: &mut MutCursor, node: &IrNode) -> SlipstreamResult<()
 
 /// Deserializes the contents of NW4R directories.
 ///
-/// These are the actual roots of MDL0, CHR0, ßetc files.
+/// These are the actual roots of MDL, CHR, ßetc files.
 #[tracing::instrument(skip_all, fields(label))]
 fn deserialize_nw4r_subdirectories(
     reader: &mut RefCursor<[u8]>,
@@ -447,16 +447,16 @@ pub struct BrresFile {
 }
 
 impl Visitable for BrresFile {
-    fn accept(&self, node: VisitorContextNode, visitor: &mut dyn Visitor) -> ControlFlow<()> {
-        visitor.visit_brres(VisitorContext::new(node, self))
+    fn accept(&self, node: VisitorCtxMeta, visitor: &mut dyn Visitor) -> ControlFlow<()> {
+        visitor.visit_brres(VisitorCtx::new(node, self))
     }
 
     fn accept_mut(
         &mut self,
-        node: VisitorContextNodeMut,
+        node: VisitorCtxMetaMut,
         visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
-        visitor.visit_brres_mut(VisitorContextMut::new(node, self))
+        visitor.visit_brres_mut(VisitorCtxMut::new(node, self))
     }
 }
 

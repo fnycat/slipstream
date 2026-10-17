@@ -7,7 +7,7 @@ use slipstream_ir::gx::draw::{
     PositionData, UvData
 };
 use slipstream_ir::gx::load_indexed::IndexedLoad;
-use slipstream_ir::mdl0::{
+use slipstream_ir::mdl::{
     ColorBuffer, MatrixId, NormalBuffer, Polygon, UvBufData, UvBuffer, VertexBuffer
 };
 use slipstream_shared::{SlipstreamResult, try_unwrap, verify};

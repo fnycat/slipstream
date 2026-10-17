@@ -5,25 +5,25 @@ use slipstream_shared::cursor::MutCursor;
 use slipstream_shared::error::UnsupportedError;
 
 use crate::arc::{self, ArcDirectory};
-use crate::deferred_pass::DeferredPass;
-use crate::mdl0::{
+use crate::fixup::FixupPass;
+use crate::mdl::{
     ColorBuffer, Definitions, DeserializeContents, MaterialBuffer, NormalBuffer, PaletteLinks,
     Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer
 };
 use crate::node::arena::IrArena;
 use crate::node::lazy::{DeferPayload, DynContent};
 use crate::node::node::{IrNode, IrNodeType};
-use crate::visitor::{Visitor, VisitorContext};
+use crate::visitor::{Visitor, VisitorCtx};
 
 pub struct SerializeVisitor<'a> {
     arena: &'a IrArena,
-    pass: &'a mut DeferredPass,
+    pass: &'a mut FixupPass,
     writer: &'a mut MutCursor,
     result: SlipstreamResult<()>
 }
 
 impl Visitor for SerializeVisitor<'_> {
-    fn visit_arc(&mut self, arc: VisitorContext<'_, ArcDirectory>) -> ControlFlow<()> {
+    fn visit_arc(&mut self, arc: VisitorCtx<'_, ArcDirectory>) -> ControlFlow<()> {
         // Only serialize the root ARC directory. It will serialize all its children with it.
         match arc.meta.ty {
             IrNodeType::ArcDirectory { is_root: true, .. } => {
@@ -47,7 +47,7 @@ pub fn serialize_node(
 ) -> SlipstreamResult<()> {
     tracing::trace!("Serializing node {:?}", node.key());
 
-    let mut pass = DeferredPass::new();
+    let mut pass = FixupPass::new();
     let mut visitor = SerializeVisitor {
         arena,
         writer,

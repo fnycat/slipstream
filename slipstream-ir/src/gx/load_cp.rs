@@ -4,7 +4,7 @@ use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
-use crate::mdl0::{ColorFormat, NormalFormat};
+use crate::mdl::{ColorFormat, NormalFormat};
 use crate::util::VertexFormat;
 
 pub const FORMAT_DIVISOR_TOOLTIP: &str = "Determines how to scale lower quality formats back up to floats. \

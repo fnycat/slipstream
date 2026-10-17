@@ -24,7 +24,7 @@ var<storage, read> bone_transformations: array<mat4x4f>;
 var<uniform> material: Material;
 
 // Texture bindings
-@group(2) @binding(0) var tex0: texture_2d<f32>;
+@group(2) @binding(0) var tex: texture_2d<f32>;
 @group(2) @binding(1) var tex1: texture_2d<f32>;
 @group(2) @binding(2) var tex2: texture_2d<f32>;
 @group(2) @binding(3) var tex3: texture_2d<f32>;
