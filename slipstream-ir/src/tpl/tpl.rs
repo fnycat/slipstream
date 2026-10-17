@@ -152,7 +152,18 @@ pub fn deserialize(
         reader.set_position(image_header_start as u64);
         let image_header = ImageHeader::deserialize(reader)?;
 
-        let mipmaps_used = image_header.max_lod.saturating_sub(image_header.min_lod) + 1;
+        let mipmaps_used = image_header
+            .max_lod
+            .saturating_sub(image_header.min_lod)
+            .checked_add(1)
+            .ok_or_else(|| {
+                SlipstreamError::from(CorruptionError {
+                    reason: format!(
+                        "TPL file `{label}`, image #{i} mipmap count exceeds 32-bit integer limit"
+                    ),
+                    location: Some(reader.position())
+                })
+            })?;
 
         reader.set_position(image_header.get_data_start(tpl_start)?);
         let image = ImageData::deserialize(
