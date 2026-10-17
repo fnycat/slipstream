@@ -118,6 +118,10 @@ impl DeserializeContents for UvBuffer {
 
         reader.set_position(header.get_data_start());
 
+        tracing::debug!(
+            "Reading UV buffer with {uv_count} coordinates of format `{format:?}` with {component_count} components"
+        );
+
         let uvs = match component_count {
             COMPONENTS_S => UvBufData::S(deserialize_scalar_data(
                 reader,

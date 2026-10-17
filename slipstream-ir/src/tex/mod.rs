@@ -149,6 +149,12 @@ pub fn deserialize(
     name: String
 ) -> SlipstreamResult<IrNodeKey> {
     let header = TexHeader::deserialize(reader)?;
+    tracing::debug!(
+        "Found TEX0 texture `{name}` of size {}x{} with {} mipmaps",
+        header.dimensions.x,
+        header.dimensions.y,
+        header.mipmaps
+    );
 
     if header.dimensions.x > MAX_SAFE_PIXEL_WIDTH as u16 {
         return Err(InvalidInputError {

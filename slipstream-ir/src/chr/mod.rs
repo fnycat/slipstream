@@ -833,6 +833,11 @@ pub fn deserialize(
     );
 
     let chr_header = CharacterAnimation::deserialize(reader)?;
+    tracing::debug!(
+        "Parsing animation with {} frames ({} explicitly stored)",
+        chr_header.frame_count,
+        chr_header.anim_data_count
+    );
 
     let chr_root_key = arena.reserve_key();
 

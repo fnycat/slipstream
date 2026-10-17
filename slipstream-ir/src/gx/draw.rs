@@ -416,6 +416,8 @@ impl DrawOpCode {
     ) -> SlipstreamResult<Self> {
         let vertex_count = reader.read_u16::<BigEndian>()?;
 
+        tracing::trace!("Reading draw opcode with {vertex_count} vertices");
+
         let mut vertices = Vec::with_capacity(vertex_count as usize);
         for _ in 0..vertex_count {
             vertices.push(OpVertex::deserialize(reader, cp_opcodes)?);

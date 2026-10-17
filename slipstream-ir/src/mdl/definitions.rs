@@ -299,6 +299,8 @@ impl DeserializeContents for Definitions {
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let mut commands = Vec::new();
 
+        let mut def_count = 0;
+
         let mut opcode = Self::read_opcode_id(reader)?;
         while opcode != DefinitionOpCodeId::End {
             let command = match opcode {
@@ -320,8 +322,12 @@ impl DeserializeContents for Definitions {
             };
 
             commands.push(command);
+
+            def_count += 1;
             opcode = Self::read_opcode_id(reader)?;
         }
+
+        tracing::debug!("Read {def_count} definition entries");
 
         Ok(Self { commands })
     }

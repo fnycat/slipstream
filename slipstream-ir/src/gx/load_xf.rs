@@ -124,6 +124,8 @@ impl LoadXfOpCode {
         let transfer_size = reader.read_u16::<BigEndian>()?;
         let address = reader.read_u16::<BigEndian>()?;
 
+        tracing::trace!("Processing {} XF load opcodes", transfer_size + 1);
+
         let mut loads = Vec::with_capacity(transfer_size as usize + 1);
         for _ in 0..transfer_size + 1 {
             let load = match address {

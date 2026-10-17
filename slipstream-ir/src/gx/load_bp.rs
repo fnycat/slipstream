@@ -475,6 +475,8 @@ impl LoadBpOpCode {
         let address = reader.read_u8()?;
         let value = reader.read_u24::<BigEndian>()?;
 
+        tracing::debug!("Processing blitting processor GX opcode");
+
         Ok(match address {
             0x27 => Self::IndirectTexture(SetIndirectTexture::from_bits(value)),
             0x28..=0x2f => {

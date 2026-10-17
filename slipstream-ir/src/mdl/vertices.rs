@@ -152,7 +152,9 @@ impl DeserializeContents for VertexBuffer {
         let vertex_count = reader.read_u16::<BigEndian>()?;
         let bounding_volume = Box3::deserialize(reader)?;
 
-        tracing::trace!("Reading {vertex_count} vertices");
+        tracing::trace!(
+            "Reading {vertex_count} vertices of format `{format:?}` with {component_count} components."
+        );
 
         reader.set_position(header.get_data_start());
 

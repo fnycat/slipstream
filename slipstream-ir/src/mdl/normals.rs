@@ -190,6 +190,10 @@ impl DeserializeContents for NormalBuffer {
         let _stride = reader.read_u8()?;
         let normal_count = reader.read_u16::<BigEndian>()?;
 
+        tracing::debug!(
+            "Normal buffer has {normal_count} normals in format `{format:?}` with {component_count} components"
+        );
+
         reader.set_position(header.get_data_start());
 
         let normals = match component_count {

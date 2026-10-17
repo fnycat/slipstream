@@ -242,6 +242,10 @@ impl DeserializeContents for ColorBuffer {
 
         reader.set_position(header.get_data_start());
 
+        tracing::debug!(
+            "Reading color buffer with {color_count} colors of format `{format:?}` with `{components:?}` components"
+        );
+
         let mut colors = Vec::with_capacity(color_count as usize);
         for _ in 0..color_count {
             let color = deserialize_color(reader, format)?;

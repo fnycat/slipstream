@@ -34,6 +34,8 @@ impl BoneTable {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let entry_count = reader.read_u32::<BigEndian>()?;
 
+        tracing::trace!("Reading bone table with {entry_count} entries");
+
         let mut entries = Vec::with_capacity(entry_count as usize);
         for _ in 0..entry_count {
             entries.push(reader.read_u16::<BigEndian>()?);

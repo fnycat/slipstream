@@ -4,6 +4,7 @@ use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
+use crate::gx::GxOpCodeId;
 use crate::mdl::{ColorFormat, NormalFormat};
 use crate::util::VertexFormat;
 
@@ -384,6 +385,8 @@ impl LoadCpOpCode {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let byte = reader.read_u8()?;
         let word = reader.read_u32::<BigEndian>()?;
+
+        tracing::debug!("Parsing GX opcode `{:?}`", GxOpCodeId::try_from(byte)?);
 
         Ok(match byte {
             VCD_LO_OPCODE => Self::VcdLo(CpVcdLo::from_bits(word)),

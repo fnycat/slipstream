@@ -89,7 +89,7 @@ impl Yaz0File {
         let header = Header::deserialize(reader)?;
 
         tracing::trace!(
-            "Decompressing Yaz0 archive ({} -> {})",
+            "Decompressing Yaz0 archive ({} bytes -> {} bytes)",
             reader.len(),
             header.uncompressed_size
         );

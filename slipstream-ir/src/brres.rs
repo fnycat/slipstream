@@ -193,6 +193,8 @@ pub struct RootSection {
 
 impl RootSection {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        tracing::trace!("Deserializing BRRES root section");
+
         let magic = reader.read_u8_array::<4>()?;
         if magic != Self::MAGIC {
             return Err(IncorrectFormat {
@@ -254,10 +256,10 @@ pub struct SubfileHeader {
 impl SubfileHeader {
     /// Deserializes a section of the given type.
     pub fn deserialize(reader: &mut RefCursor<[u8]>, ty: SubfileType) -> SlipstreamResult<Self> {
-        let header_start = reader.position() as u32;
+        tracing::trace!("Deserializing BRRES subfile of type {ty:?}");
 
-        let magic = reader.read_u32::<BigEndian>()?;
-        tracing::debug!("Magic: {}", String::from_utf8_lossy(&magic.to_be_bytes()));
+        let header_start = reader.position() as u32;
+        let _magic = reader.read_u32::<BigEndian>()?;
 
         let subfile_length = reader.read_u32::<BigEndian>()?;
         let subfile_version = reader.read_u32::<BigEndian>()?;
@@ -339,8 +341,6 @@ fn deserialize_subfile(
         .try_into()
         .expect("failed to read file magic");
 
-    tracing::debug!("Magic is {}", String::from_utf8_lossy(&magic));
-
     match magic {
         MDL_MAGIC => mdl::deserialize(reader, Some(parent_id), arena, name),
         CHR_MAGIC => chr::deserialize(reader, Some(parent_id), arena, name),
@@ -406,6 +406,7 @@ fn deserialize_nw4r_subdirectories(
 
     let dir_key = arena.reserve_key();
 
+    tracing::trace!("Deserializing {} NW4R directories", index.entries.len() - 1);
     let mut bfiles = Vec::with_capacity(index.entries.len() - 1);
     for bfile in &index.entries[1..] {
         let label = index.get_entry_name(reader, bfile)?;
@@ -490,6 +491,8 @@ pub fn deserialize(
     arena: &IrArena,
     label: String
 ) -> SlipstreamResult<IrNodeKey> {
+    tracing::trace!("Deserializing BRRES file `{label}`");
+
     let header = BrresHeader::deserialize(reader)?;
     reader.set_position(header.brres_start + header.root_offset as u64); // Skip to root start
 
