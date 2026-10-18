@@ -249,6 +249,9 @@ impl NodeIconsExt for IrNodeType {
             Self::Tpl => reg_icon!(IMAGES),
             Self::TplImage => reg_icon!(IMAGE),
 
+            Self::Clr0Root => reg_icon!(PALETTE),
+            Self::ColorAnimation => reg_icon!(PALETTE),
+
             Self::Texture => reg_icon!(IMAGES),
 
             Self::Unknown => reg_icon!(FILE)

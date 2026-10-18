@@ -1,10 +1,8 @@
 mod frame;
-mod visitor;
 
 use std::ops::ControlFlow;
 
 pub use frame::*;
-pub use visitor::*;
 
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -722,10 +720,7 @@ impl SkeletalAnimation {
 
 impl Visitable for SkeletalAnimation {
     fn accept(&self, node: VisitorCtxMeta, visitor: &mut dyn Visitor) -> ControlFlow<()> {
-        visitor
-            .as_chr()
-            .map(|vis| vis.visit_animation(VisitorCtx::new(node, self)))
-            .unwrap_or(ControlFlow::Break(()))
+        visitor.visit_skeletal_animation(VisitorCtx::new(node, self))
     }
 
     fn accept_mut(
@@ -733,10 +728,7 @@ impl Visitable for SkeletalAnimation {
         node: VisitorCtxMetaMut,
         visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
-        visitor
-            .as_chr()
-            .map(|vis| vis.visit_animation_mut(VisitorCtxMut::new(node, self)))
-            .unwrap_or(ControlFlow::Break(()))
+        visitor.visit_skeletal_animation_mut(VisitorCtxMut::new(node, self))
     }
 }
 
@@ -751,7 +743,7 @@ pub enum SectionType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 #[inspect(rename = "CHR File")]
-pub struct CharacterAnimation {
+pub struct ChrHeader {
     /// The amount of animation frames stored in this file.
     #[inspect(rename = "Keyframe Count")]
     #[inspect(tooltip = "The amount of frames this animation has.")]
@@ -767,7 +759,7 @@ pub struct CharacterAnimation {
     pub scaling_rule: ScalingRule
 }
 
-impl CharacterAnimation {
+impl ChrHeader {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let frame_count = reader.read_u16::<BigEndian>()?;
         let anim_data_count = reader.read_u16::<BigEndian>()?;
@@ -792,12 +784,9 @@ impl CharacterAnimation {
     }
 }
 
-impl Visitable for CharacterAnimation {
+impl Visitable for ChrHeader {
     fn accept(&self, node: VisitorCtxMeta, visitor: &mut dyn Visitor) -> ControlFlow<()> {
-        visitor
-            .as_chr()
-            .map(|vis| vis.visit_chr(VisitorCtx::new(node, self)))
-            .unwrap_or(ControlFlow::Break(()))
+        visitor.visit_chr(VisitorCtx::new(node, self))
     }
 
     fn accept_mut(
@@ -805,10 +794,7 @@ impl Visitable for CharacterAnimation {
         node: VisitorCtxMetaMut,
         visitor: &mut dyn Visitor
     ) -> ControlFlow<()> {
-        visitor
-            .as_chr()
-            .map(|vis| vis.visit_chr_mut(VisitorCtxMut::new(node, self)))
-            .unwrap_or(ControlFlow::Break(()))
+        visitor.visit_chr_mut(VisitorCtxMut::new(node, self))
     }
 }
 
@@ -832,7 +818,7 @@ pub fn deserialize(
         subfile_header.offsets.len()
     );
 
-    let chr_header = CharacterAnimation::deserialize(reader)?;
+    let chr_header = ChrHeader::deserialize(reader)?;
     tracing::debug!(
         "Parsing animation with {} frames ({} explicitly stored)",
         chr_header.frame_count,

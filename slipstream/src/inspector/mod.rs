@@ -1,7 +1,8 @@
 use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
 use slipstream_ir::arc::ArcDirectory;
 use slipstream_ir::brres::BrresFile;
-use slipstream_ir::chr::{self, Chr0Visitor, SkeletalAnimation};
+use slipstream_ir::chr::{self, ChrHeader, SkeletalAnimation};
+use slipstream_ir::clr::{ClrHeader, ColorAnimation};
 use slipstream_ir::mdl::{
     Bone, ColorBuffer, Definitions, MaterialBuffer, Mdl0Root, Mdl0Visitor, NormalBuffer,
     PaletteLinks, Polygon, TextureLinks, UvBuffer, VertexBuffer
@@ -24,10 +25,6 @@ impl Visitor for InspectorVisitor<'_> {
         Some(self)
     }
 
-    fn as_chr(&mut self) -> Option<&mut dyn Chr0Visitor> {
-        Some(self)
-    }
-
     fn visit_arc_mut(&mut self, context: VisitorCtxMut<'_, ArcDirectory>) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -37,6 +34,25 @@ impl Visitor for InspectorVisitor<'_> {
     }
 
     fn visit_brres_mut(&mut self, context: VisitorCtxMut<'_, BrresFile>) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_chr_mut(&mut self, context: VisitorCtxMut<'_, ChrHeader>) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_skeletal_animation_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, SkeletalAnimation>
+    ) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -61,6 +77,25 @@ impl Visitor for InspectorVisitor<'_> {
     }
 
     fn visit_tpl_image_mut(&mut self, context: VisitorCtxMut<'_, TplImage>) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_clr_mut(&mut self, context: VisitorCtxMut<'_, ClrHeader>) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_color_animation_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, ColorAnimation>
+    ) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -159,30 +194,6 @@ impl Mdl0Visitor for InspectorVisitor<'_> {
     fn visit_palette_links_mut(
         &mut self,
         context: VisitorCtxMut<'_, PaletteLinks>
-    ) -> ControlFlow<()> {
-        let _changes = context
-            .content
-            .draw_properties(self.ui, &FieldConfig::default());
-
-        ControlFlow::Continue(())
-    }
-}
-
-impl Chr0Visitor for InspectorVisitor<'_> {
-    fn visit_chr_mut(
-        &mut self,
-        context: VisitorCtxMut<'_, chr::CharacterAnimation>
-    ) -> ControlFlow<()> {
-        let _changes = context
-            .content
-            .draw_properties(self.ui, &FieldConfig::default());
-
-        ControlFlow::Continue(())
-    }
-
-    fn visit_animation_mut(
-        &mut self,
-        context: VisitorCtxMut<'_, SkeletalAnimation>
     ) -> ControlFlow<()> {
         let _changes = context
             .content

@@ -1,6 +1,7 @@
 use crate::arc::{ArcDirectory, UnknownFile};
 use crate::brres::BrresFile;
-use crate::chr::{self, Chr0Visitor};
+use crate::chr;
+use crate::clr::{ClrHeader, ColorAnimation};
 use crate::mdl::{
     self, Bone, ColorBuffer, Definitions, MaterialBuffer, Mdl0Visitor, NormalBuffer, PaletteLinks,
     Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer
@@ -124,11 +125,6 @@ pub trait Visitor {
         None
     }
 
-    /// Turns this visitor into a CHR visitor.
-    fn as_chr(&mut self) -> Option<&mut dyn Chr0Visitor> {
-        None
-    }
-
     // Trivial files
     // ===================================================================================================
 
@@ -200,6 +196,45 @@ pub trait Visitor {
         }
     }
 
+    /// Immutably visits a color animation file header.
+    fn visit_clr(&self, clr: VisitorCtx<'_, ClrHeader>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    /// Mutably visits a color animation file header.
+    fn visit_clr_mut(&mut self, clr: VisitorCtxMut<'_, ClrHeader>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    /// Immutably visits a color animation.
+    fn visit_color_animation(&self, anim: VisitorCtx<'_, ColorAnimation>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    /// Mutably visits a color animation
+    fn visit_color_animation_mut(
+        &mut self,
+        anim: VisitorCtxMut<'_, ColorAnimation>
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
     fn visit_unknown(&mut self, unknown: VisitorCtx<'_, UnknownFile>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -209,6 +244,47 @@ pub trait Visitor {
     }
 
     fn visit_unknown_mut(&mut self, unknown: VisitorCtxMut<'_, UnknownFile>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    // CHR visitor methods
+    // ==================================================================================================
+
+    fn visit_chr(&mut self, animations: VisitorCtx<'_, chr::ChrHeader>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_chr_mut(&mut self, animation: VisitorCtxMut<'_, chr::ChrHeader>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_skeletal_animation(
+        &mut self,
+        animation: VisitorCtx<'_, chr::SkeletalAnimation>
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_skeletal_animation_mut(
+        &mut self,
+        animation: VisitorCtxMut<'_, chr::SkeletalAnimation>
+    ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {

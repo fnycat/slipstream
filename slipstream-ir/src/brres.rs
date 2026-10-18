@@ -345,7 +345,7 @@ fn deserialize_subfile(
         MDL_MAGIC => mdl::deserialize(reader, Some(parent_id), arena, name),
         CHR_MAGIC => chr::deserialize(reader, Some(parent_id), arena, name),
         TEX_MAGIC => tex::deserialize(reader, Some(parent_id), arena, name),
-        // CLR_MAGIC => clr::deserialize(reader, Some(parent_id), arena, name),
+        CLR_MAGIC => clr::deserialize(reader, Some(parent_id), arena, name),
         _ => {
             let key = arena.insert(IrNodeDescriptor {
                 label: String::from("<unimplemented>"),

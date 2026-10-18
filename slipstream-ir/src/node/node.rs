@@ -175,6 +175,10 @@ pub enum IrNodeType {
     /// A TPL image
     TplImage,
 
+    /// A CLR file
+    Clr0Root,
+    ColorAnimation,
+
     /// A TEX texture
     Texture,
     /// An unknown file format. The object simply stores the raw bytes of the file.

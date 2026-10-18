@@ -150,9 +150,10 @@ pub fn deserialize(
 ) -> SlipstreamResult<IrNodeKey> {
     let header = TexHeader::deserialize(reader)?;
     tracing::debug!(
-        "Found TEX0 texture `{name}` of size {}x{} with {} mipmaps",
+        "Found TEX0 texture `{name}` of size {}x{} and format `{:?}` with {} mipmaps",
         header.dimensions.x,
         header.dimensions.y,
+        header.format,
         header.mipmaps
     );
 
