@@ -6,8 +6,8 @@ use slipstream_shared::error::UnsupportedError;
 
 use crate::arc::{self, ArcDirectory};
 use crate::brres::{
-    ColorBuffer, Definitions, DeserializeContents, MaterialBuffer, NormalBuffer, PaletteLinks,
-    Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer
+    ColorBuffer, Definitions, DeserializeContents, Material, NormalBuffer, PaletteLinks, Polygon,
+    Tev, TextureLinks, UvBuffer, VertexBuffer
 };
 use crate::fixup::FixupPass;
 use crate::node::arena::IrArena;
@@ -74,9 +74,7 @@ pub fn deserialize_node(mut payload: DeferPayload) -> SlipstreamResult<Box<DynCo
             Box::new(ColorBuffer::deserialize_contents(&mut payload.reader)?)
         }
         IrNodeType::UvBuffer => Box::new(UvBuffer::deserialize_contents(&mut payload.reader)?),
-        IrNodeType::Material => {
-            Box::new(MaterialBuffer::deserialize_contents(&mut payload.reader)?)
-        }
+        IrNodeType::Material => Box::new(Material::deserialize_contents(&mut payload.reader)?),
         IrNodeType::Tevs => Box::new(Tev::deserialize_contents(&mut payload.reader)?),
         IrNodeType::Polygon => Box::new(Polygon::deserialize_contents(&mut payload.reader)?),
         IrNodeType::TextureLinks => {

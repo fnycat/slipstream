@@ -872,7 +872,7 @@ pub fn deserialize(
         chr_root_key,
         IrNodeDescriptor {
             label: name,
-            ty: IrNodeType::Chr0Root,
+            ty: IrNodeType::ChrHeader,
             parent: parent_id,
             children: files,
             contents: ContentSlot::eager(Box::new(chr_header))

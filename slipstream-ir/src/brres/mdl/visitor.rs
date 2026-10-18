@@ -1,8 +1,8 @@
 use std::ops::ControlFlow;
 
 use crate::brres::{
-    Bone, ColorBuffer, Definitions, MaterialBuffer, MdlHeader, NormalBuffer, PaletteLinks, Polygon,
-    Tev, TextureLinks, UvBuffer, VertexBuffer
+    Bone, ColorBuffer, Definitions, Material, MdlHeader, NormalBuffer, PaletteLinks, Polygon, Tev,
+    TextureLinks, UvBuffer, VertexBuffer
 };
 use crate::visitor::{VisitorCtx, VisitorCtxMut};
 
@@ -79,7 +79,7 @@ pub trait MdlVisitor {
         }
     }
 
-    fn visit_material(&mut self, material: VisitorCtx<'_, MaterialBuffer>) -> ControlFlow<()> {
+    fn visit_material(&mut self, material: VisitorCtx<'_, Material>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -187,10 +187,7 @@ pub trait MdlVisitor {
         }
     }
 
-    fn visit_material_mut(
-        &mut self,
-        material: VisitorCtxMut<'_, MaterialBuffer>
-    ) -> ControlFlow<()> {
+    fn visit_material_mut(&mut self, material: VisitorCtxMut<'_, Material>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {

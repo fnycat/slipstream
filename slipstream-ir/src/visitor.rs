@@ -2,6 +2,7 @@ use crate::arc::{ArcDirectory, UnknownFile};
 use crate::brres::{
     BrresFile, ChrHeader, ClrHeader, ColorAnimation, MdlVisitor, SkeletalAnimation, Texture
 };
+use crate::kmp::KmpVisitor;
 use crate::node::arena::IrNodeKey;
 use crate::node::node::{IrNode, IrNodeType};
 use crate::tpl::{TplHeader, TplImage};
@@ -120,6 +121,11 @@ pub trait Visitor {
         None
     }
 
+    /// Turns this visitor in a KMP visitor
+    fn as_kmp(&mut self) -> Option<&mut dyn KmpVisitor> {
+        None
+    }
+
     // Trivial files
     // ===================================================================================================
 
@@ -192,7 +198,7 @@ pub trait Visitor {
     }
 
     /// Immutably visits a color animation file header.
-    fn visit_clr(&self, clr: VisitorCtx<'_, ClrHeader>) -> ControlFlow<()> {
+    fn visit_clr(&mut self, clr: VisitorCtx<'_, ClrHeader>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -210,7 +216,7 @@ pub trait Visitor {
     }
 
     /// Immutably visits a color animation.
-    fn visit_color_animation(&self, anim: VisitorCtx<'_, ColorAnimation>) -> ControlFlow<()> {
+    fn visit_color_animation(&mut self, anim: VisitorCtx<'_, ColorAnimation>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {

@@ -243,16 +243,18 @@ impl NodeIconsExt for IrNodeType {
             Self::PaletteLinks => reg_icon!(LINK),
             Self::UserData => reg_icon!(FOLDER_USER),
 
-            Self::Chr0Root => reg_icon!(FILM_SLATE),
+            Self::ChrHeader => reg_icon!(FILM_SLATE),
             Self::SkeletalAnimation => reg_icon!(BONE),
 
             Self::Tpl => reg_icon!(IMAGES),
             Self::TplImage => reg_icon!(IMAGE),
 
-            Self::Clr0Root => reg_icon!(PALETTE),
+            Self::ClrHeader => reg_icon!(PALETTE),
             Self::ColorAnimation => reg_icon!(PALETTE),
 
             Self::Texture => reg_icon!(IMAGES),
+
+            Self::KmpHeader => reg_icon!(PATH),
 
             Self::Unknown => reg_icon!(FILE)
         }

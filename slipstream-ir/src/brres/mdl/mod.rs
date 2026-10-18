@@ -463,7 +463,7 @@ pub fn deserialize(
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::Materials => deserialize_leaf_section::<MaterialBuffer>(
+            SectionType::Materials => deserialize_leaf_section::<Material>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),

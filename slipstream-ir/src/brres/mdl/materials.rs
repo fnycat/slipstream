@@ -580,7 +580,7 @@ impl TextureReference {
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
-pub struct MaterialBuffer {
+pub struct Material {
     pub index: u32,
     pub flags: MaterialFlags,
     pub texture_gen_count: u8,
@@ -616,7 +616,7 @@ pub struct MaterialBuffer {
     pub texture_references: Vec<TextureReference>
 }
 
-impl Visitable for MaterialBuffer {
+impl Visitable for Material {
     fn accept(&self, node: VisitorCtxMeta<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
         visitor
             .as_mdl()
@@ -636,7 +636,7 @@ impl Visitable for MaterialBuffer {
     }
 }
 
-impl DeserializeContents for MaterialBuffer {
+impl DeserializeContents for Material {
     const NAME: &str = "Materials";
     const KIND: IrNodeType = IrNodeType::Material;
 

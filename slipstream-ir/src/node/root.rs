@@ -3,9 +3,13 @@ use std::sync::Arc;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{SlipstreamResult, UnsupportedError};
 
+use crate::arc::ARC_MAGIC;
+use crate::brres::{BRRES_MAGIC, CHR_MAGIC, CLR_MAGIC, MDL_MAGIC, TEX_MAGIC};
 use crate::compression::{self, YAZ0_MAGIC};
+use crate::kmp::KMP_MAGIC;
 use crate::node::arena::{IrArena, IrNodeKey};
-use crate::{arc, brres, tpl};
+use crate::tpl::TPL_MAGIC;
+use crate::{arc, brres, kmp, tpl};
 /// Deserializes a possibly YAZ0-compressed file.
 ///
 /// After decompressing, this forwards the call to [`deserialize_unknown_root`]
@@ -41,13 +45,14 @@ pub fn deserialize_unknown_root(
     tracing::trace!("Root file magic is {}", String::from_utf8_lossy(magic));
 
     let contents = match *magic {
-        arc::ARC_MAGIC => arc::deserialize(reader, None, arena, name)?,
-        brres::BRRES_MAGIC => brres::deserialize(reader, None, arena, name)?,
-        brres::MDL_MAGIC => brres::mdl::deserialize(reader, None, arena, name)?,
-        brres::CHR_MAGIC => brres::chr::deserialize(reader, None, arena, name)?,
-        brres::CLR_MAGIC => brres::clr::deserialize(reader, None, arena, name)?,
-        brres::TEX_MAGIC => brres::tex::deserialize(reader, None, arena, name)?,
-        tpl::TPL_MAGIC => tpl::deserialize(reader, None, arena, name)?,
+        ARC_MAGIC => arc::deserialize(reader, None, arena, name)?,
+        BRRES_MAGIC => brres::deserialize(reader, None, arena, name)?,
+        MDL_MAGIC => brres::mdl::deserialize(reader, None, arena, name)?,
+        CHR_MAGIC => brres::chr::deserialize(reader, None, arena, name)?,
+        CLR_MAGIC => brres::clr::deserialize(reader, None, arena, name)?,
+        TEX_MAGIC => brres::tex::deserialize(reader, None, arena, name)?,
+        TPL_MAGIC => tpl::deserialize(reader, None, arena, name)?,
+        KMP_MAGIC => kmp::deserialize(reader, None, arena, name)?,
         _ => {
             return Err(UnsupportedError {
                 reason: format!(

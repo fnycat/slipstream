@@ -273,7 +273,7 @@ pub fn deserialize(
         clr_key,
         IrNodeDescriptor {
             label: name,
-            ty: IrNodeType::Clr0Root,
+            ty: IrNodeType::ClrHeader,
             parent: parent_id,
             children,
             contents: ContentSlot::eager(Box::new(clr_header))

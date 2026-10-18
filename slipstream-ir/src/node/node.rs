@@ -166,7 +166,7 @@ pub enum IrNodeType {
     UserData,
 
     /// A CHR file
-    Chr0Root,
+    ChrHeader,
     /// A CHR animation
     SkeletalAnimation,
 
@@ -176,11 +176,15 @@ pub enum IrNodeType {
     TplImage,
 
     /// A CLR file
-    Clr0Root,
+    ClrHeader,
     ColorAnimation,
 
     /// A TEX texture
     Texture,
+
+    /// A KMP header
+    KmpHeader,
+
     /// An unknown file format. The object simply stores the raw bytes of the file.
     Unknown
 }

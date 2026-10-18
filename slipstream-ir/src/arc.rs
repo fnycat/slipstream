@@ -9,16 +9,17 @@ use slipstream_shared::error::{
     CorruptionError, IncorrectFormat, SlipstreamError, SlipstreamResult
 };
 
-use crate::SAFE_ALLOCATION_CAPACITY;
 use crate::brres::{self, BRRES_MAGIC};
 use crate::encoding::{ReadArrayExt, ReadStringExt, WriteArrayExt};
 use crate::fixup::{DEFER_PLACEHOLDER, DEFER_PLACEHOLDER24, DeferredString, FixupPass, StringPool};
+use crate::kmp::KMP_MAGIC;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
 use crate::tpl::{self, TPL_MAGIC};
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
 };
+use crate::{SAFE_ALLOCATION_CAPACITY, kmp};
 
 /// Magic of an ARC file.
 pub const ARC_MAGIC: [u8; 4] = [0x55, 0xAA, 0x38, 0x2D];
@@ -197,6 +198,7 @@ fn parse_leaf_node(
         ARC_MAGIC => deserialize(reader, Some(parent_id), arena, label),
         BRRES_MAGIC => brres::deserialize(reader, Some(parent_id), arena, label),
         TPL_MAGIC => tpl::deserialize(reader, Some(parent_id), arena, label),
+        KMP_MAGIC => kmp::deserialize(reader, Some(parent_id), arena, label),
         _ => {
             let key = arena.insert(IrNodeDescriptor {
                 label,
