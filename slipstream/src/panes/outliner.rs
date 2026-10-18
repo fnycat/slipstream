@@ -51,7 +51,7 @@ impl OutlinerPane {
         }
 
         // Only draw the open in 3D viewer button for MDL roots.
-        if node.ty == IrNodeType::Mdl0Root {
+        if node.ty == IrNodeType::MdlHeader {
             if ui.button("Open in 3D viewer").clicked() {
                 self.cmd_sender
                     .send(PaneAction::RequestNewPane(RequestNewPane::Viewer {
@@ -226,7 +226,7 @@ impl NodeIconsExt for IrNodeType {
             Self::ArcDirectory { empty: true, .. } => reg_icon!(FOLDER_DASHED),
             Self::BrresFile => reg_icon!(FOLDER),
 
-            Self::Mdl0Root => reg_icon!(PERSON_SIMPLE),
+            Self::MdlHeader => reg_icon!(PERSON_SIMPLE),
             Self::Definitions => reg_icon!(FILE_CODE),
             Self::Bone { end: false } => reg_icon!(BONE),
             Self::Bone { end: true } => fill_icon!(BONE),

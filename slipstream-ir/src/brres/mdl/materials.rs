@@ -1,17 +1,15 @@
 use std::ops::ControlFlow;
 
-use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::{Inspect, inspect_bitfield, try_from};
 use slipstream_shared::cursor::{MutCursor, RefCursor};
-use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
-use slipstream_shared::{assert_u8, verify};
+use slipstream_shared::error::{CorruptionError, SlipstreamResult};
+use slipstream_shared::verify;
 
+use crate::brres::load_bp::{AlphaFunction, BlendMode, ConstantAlpha, DepthTest, LoadBpOpCode};
+use crate::brres::{DeserializeContents, TextureMatrixMode};
 use crate::encoding::ReadArrayExt;
-use crate::gx::load_bp::{AlphaFunction, BlendMode, ConstantAlpha, DepthTest, LoadBpOpCode};
-use crate::mdl::TextureMatrixMode;
-use crate::mdl::section::DeserializeContents;
-use crate::node::node::{IrNode, IrNodeType};
+use crate::node::node::IrNodeType;
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
 };

@@ -2,9 +2,9 @@ mod skeleton;
 mod vertex;
 
 pub use skeleton::*;
-use slipstream_ir::mdl::{
-    Bone, ColorBuffer, DRAW_OPA_NAME, DRAW_XLU_NAME, Definitions, MatrixId, Mdl0Header, Mdl0Root,
-    Mdl0Visitor, NODE_MIX_NAME, NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer
+use slipstream_ir::brres::{
+    Bone, ColorBuffer, DRAW_OPA_NAME, DRAW_XLU_NAME, Definitions, MdlHeader, MdlVisitor,
+    NODE_MIX_NAME, NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer
 };
 use slipstream_ir::util::Box3;
 pub use vertex::*;
@@ -87,12 +87,12 @@ impl<'a> ModelContents<'a> {
         }
 
         impl Visitor for DefinitionVisitor {
-            fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+            fn as_mdl(&mut self) -> Option<&mut dyn MdlVisitor> {
                 Some(self)
             }
         }
 
-        impl Mdl0Visitor for DefinitionVisitor {
+        impl MdlVisitor for DefinitionVisitor {
             fn visit_definitions(
                 &mut self,
                 context: VisitorCtx<'_, Definitions>
@@ -127,12 +127,12 @@ impl<'a> ModelContents<'a> {
         }
 
         impl Visitor for DefinitionVisitor<'_> {
-            fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+            fn as_mdl(&mut self) -> Option<&mut dyn MdlVisitor> {
                 Some(self)
             }
         }
 
-        impl Mdl0Visitor for DefinitionVisitor<'_> {
+        impl MdlVisitor for DefinitionVisitor<'_> {
             fn visit_definitions(
                 &mut self,
                 context: VisitorCtx<'_, Definitions>
@@ -169,12 +169,12 @@ impl<'a> ModelContents<'a> {
         }
 
         impl Visitor for PolygonVisitor<'_> {
-            fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+            fn as_mdl(&mut self) -> Option<&mut dyn MdlVisitor> {
                 Some(self)
             }
         }
 
-        impl Mdl0Visitor for PolygonVisitor<'_> {
+        impl MdlVisitor for PolygonVisitor<'_> {
             fn visit_polygon(&mut self, context: VisitorCtx<'_, Polygon>) -> ControlFlow<()> {
                 tracing::trace!("Translating polygon `{}`", context.meta.label);
                 self.result = self
@@ -245,13 +245,13 @@ impl<'a> ModelContents<'a> {
 }
 
 impl Visitor for ModelContents<'_> {
-    fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+    fn as_mdl(&mut self) -> Option<&mut dyn MdlVisitor> {
         Some(self)
     }
 }
 
-impl Mdl0Visitor for ModelContents<'_> {
-    fn visit_mdl(&mut self, model: VisitorCtx<'_, Mdl0Root>) -> ControlFlow<()> {
+impl MdlVisitor for ModelContents<'_> {
+    fn visit_mdl(&mut self, model: VisitorCtx<'_, MdlHeader>) -> ControlFlow<()> {
         self.bounding_volume = model.header.bounding_volume;
 
         ControlFlow::Continue(())

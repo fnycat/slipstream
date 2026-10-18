@@ -4,14 +4,14 @@ use std::ops::ControlFlow;
 
 pub use frame::*;
 
-use bitfield_struct::{bitenum, bitfield};
+use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::{Inspect, inspect_bitfield, try_from};
 use slipstream_shared::cursor::{MutCursor, RefCursor};
-use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
+use slipstream_shared::error::SlipstreamResult;
 use slipstream_shared::verify;
 
-use crate::brres::{self, BFile, SubfileHeader, SubfileType};
+use crate::brres::{self, SubfileHeader, SubfileType};
 use crate::index::IndexGroup;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};

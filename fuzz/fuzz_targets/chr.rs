@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use libfuzzer_sys::fuzz_target;
-use slipstream_ir::chr;
+use slipstream_ir::brres::chr;
 use slipstream_ir::node::arena::IrArena;
 use slipstream_shared::RefCursor;
 

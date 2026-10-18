@@ -5,8 +5,8 @@ use slipstream_derive::Inspect;
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
 use slipstream_shared::error::SlipstreamResult;
 
-use crate::mdl::section::{DeserializeContents, SerializeContents};
-use crate::node::node::{IrNode, IrNodeType};
+use crate::brres::{DeserializeContents, SerializeContents};
+use crate::node::node::IrNodeType;
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
 };

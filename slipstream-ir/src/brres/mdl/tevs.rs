@@ -1,10 +1,9 @@
 use std::ops::ControlFlow;
 
+use crate::brres::{DeserializeContents, GxBytecode};
 use crate::encoding::ReadArrayExt;
-use crate::gx::GxBytecode;
 
-use crate::mdl::section::DeserializeContents;
-use crate::node::node::{IrNode, IrNodeType};
+use crate::node::node::IrNodeType;
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
 };

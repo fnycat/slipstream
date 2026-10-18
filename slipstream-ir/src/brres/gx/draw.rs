@@ -2,9 +2,9 @@ use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::SlipstreamResult;
 
+use crate::brres::GxVertexDeclaration;
+use crate::brres::load_cp::VectorStorage;
 use crate::encoding::ReadArrayExt;
-use crate::gx::load_cp::VectorStorage;
-use crate::mdl::GxVertexDeclaration;
 use crate::tpl::deserialize_color;
 use crate::util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector};
 

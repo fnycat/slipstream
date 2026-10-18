@@ -1,20 +1,16 @@
 pub mod arc;
 pub mod brres;
-pub mod chr;
-pub mod clr;
+pub mod compression;
 pub mod encoding;
 pub mod fixup;
-pub mod gx;
 pub mod index;
+pub mod kcl;
+pub mod kmp;
 pub mod layout;
-pub mod mdl;
 pub mod node;
-pub mod pat0;
-pub mod tex;
 pub mod tpl;
 pub mod util;
 pub mod visitor;
-pub mod yaz0;
 
 /// The maximum amount of capacity a deserializer will preallocate.
 ///

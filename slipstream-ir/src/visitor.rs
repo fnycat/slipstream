@@ -1,14 +1,9 @@
 use crate::arc::{ArcDirectory, UnknownFile};
-use crate::brres::BrresFile;
-use crate::chr;
-use crate::clr::{ClrHeader, ColorAnimation};
-use crate::mdl::{
-    self, Bone, ColorBuffer, Definitions, MaterialBuffer, Mdl0Visitor, NormalBuffer, PaletteLinks,
-    Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer
+use crate::brres::{
+    BrresFile, ChrHeader, ClrHeader, ColorAnimation, MdlVisitor, SkeletalAnimation, Texture
 };
 use crate::node::arena::IrNodeKey;
 use crate::node::node::{IrNode, IrNodeType};
-use crate::tex::Texture;
 use crate::tpl::{TplHeader, TplImage};
 use downcast_rs::{Downcast, impl_downcast};
 use std::ops::{ControlFlow, Deref, DerefMut};
@@ -121,7 +116,7 @@ pub trait Visitor {
     }
 
     /// Turns this visitor into an MDL visitor.
-    fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+    fn as_mdl(&mut self) -> Option<&mut dyn MdlVisitor> {
         None
     }
 
@@ -254,7 +249,7 @@ pub trait Visitor {
     // CHR visitor methods
     // ==================================================================================================
 
-    fn visit_chr(&mut self, animations: VisitorCtx<'_, chr::ChrHeader>) -> ControlFlow<()> {
+    fn visit_chr(&mut self, animations: VisitorCtx<'_, ChrHeader>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -262,7 +257,7 @@ pub trait Visitor {
         }
     }
 
-    fn visit_chr_mut(&mut self, animation: VisitorCtxMut<'_, chr::ChrHeader>) -> ControlFlow<()> {
+    fn visit_chr_mut(&mut self, animation: VisitorCtxMut<'_, ChrHeader>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -272,7 +267,7 @@ pub trait Visitor {
 
     fn visit_skeletal_animation(
         &mut self,
-        animation: VisitorCtx<'_, chr::SkeletalAnimation>
+        animation: VisitorCtx<'_, SkeletalAnimation>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -283,7 +278,7 @@ pub trait Visitor {
 
     fn visit_skeletal_animation_mut(
         &mut self,
-        animation: VisitorCtxMut<'_, chr::SkeletalAnimation>
+        animation: VisitorCtxMut<'_, SkeletalAnimation>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())

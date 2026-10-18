@@ -141,7 +141,7 @@ pub enum IrNodeType {
     /// The directories prefixed with `NW4R`.
     Nw4rDirectory,
     /// The root of an MDL model. This should contain the section directories `Vertices`, `Normals`.
-    Mdl0Root,
+    MdlHeader,
     /// The bytecode section of an MDL file.
     Definitions,
     /// The bone section of an MDL file.

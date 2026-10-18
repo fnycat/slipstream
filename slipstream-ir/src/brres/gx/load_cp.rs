@@ -1,11 +1,10 @@
-use bitfield_struct::{bitenum, bitfield};
+use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::{Inspect, inspect_bitfield, try_from};
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
-use slipstream_shared::error::{CorruptionError, SlipstreamResult};
+use slipstream_shared::error::SlipstreamResult;
 
-use crate::gx::GxOpCodeId;
-use crate::mdl::{ColorFormat, NormalFormat};
+use crate::brres::{ColorFormat, NormalFormat};
 use crate::util::VertexFormat;
 
 pub const FORMAT_DIVISOR_TOOLTIP: &str = "Determines how to scale lower quality formats back up to floats. \

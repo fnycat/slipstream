@@ -1,14 +1,11 @@
 use std::ops::ControlFlow;
 
-use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use egui::accesskit::Role::SectionHeader;
 use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{
     CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult
 };
-use slipstream_shared::inspect::{FieldConfig, Inspect};
 use slipstream_shared::try_unwrap;
 
 use crate::encoding::ReadArrayExt;

@@ -36,9 +36,9 @@ use std::ops::ControlFlow;
 
 use crate::SAFE_ALLOCATION_CAPACITY;
 use crate::brres::{self, SubfileHeader, SubfileType};
-use crate::encoding::{Deserialize, ReadArrayExt};
+use crate::encoding::Deserialize;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
-use crate::node::node::{ContentSlot, IrNode, IrNodeType};
+use crate::node::node::{ContentSlot, IrNodeType};
 use crate::util::Box3;
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
@@ -354,12 +354,12 @@ impl BoneLinkTable {
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 #[inspect(rename = "MDL Root")]
-pub struct Mdl0Root {
+pub struct MdlHeader {
     pub header: Mdl0Header,
     pub bone_link_table: BoneLinkTable
 }
 
-impl Visitable for Mdl0Root {
+impl Visitable for MdlHeader {
     fn accept(&self, node: VisitorCtxMeta<'_>, visitor: &mut dyn Visitor) -> ControlFlow<()> {
         visitor
             .as_mdl()
@@ -520,10 +520,10 @@ pub fn deserialize(
         mdl_root_key,
         IrNodeDescriptor {
             label: name,
-            ty: IrNodeType::Mdl0Root,
+            ty: IrNodeType::MdlHeader,
             parent: parent_id,
             children: files,
-            contents: ContentSlot::eager(Box::new(Mdl0Root {
+            contents: ContentSlot::eager(Box::new(MdlHeader {
                 header: mdl_header,
                 bone_link_table
             }))

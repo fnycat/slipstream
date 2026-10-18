@@ -4,14 +4,11 @@ use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::Inspect;
 use slipstream_shared::cursor::{MutCursor, RefCursor};
-use slipstream_shared::error::{
-    CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult
-};
+use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 use slipstream_shared::verify;
 
-use crate::mdl::SectionHeader;
-use crate::mdl::section::DeserializeContents;
-use crate::node::node::{IrNode, IrNodeType};
+use crate::brres::{DeserializeContents, SectionHeader};
+use crate::node::node::IrNodeType;
 use crate::tpl::deserialize_color;
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut

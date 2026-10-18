@@ -1,12 +1,8 @@
-use std::ops::{Deref, DerefMut};
-
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_derive::inspect_bitfield;
 use slipstream_shared::cursor::MutCursor;
 use slipstream_shared::error::InvalidInputError;
-use slipstream_shared::inspect::{FieldConfig, Inspect};
-use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult, verify, widgets};
+use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult, verify};
 
 /// A 4-byte animation frame.
 #[derive(Debug, Clone, PartialEq)]

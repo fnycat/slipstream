@@ -1,3 +1,17 @@
+pub mod chr;
+pub mod clr;
+pub mod gx;
+pub mod mdl;
+pub mod pat;
+pub mod tex;
+
+pub use chr::*;
+pub use clr::*;
+pub use gx::*;
+pub use mdl::*;
+pub use pat::*;
+pub use tex::*;
+
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -9,15 +23,10 @@ use slipstream_shared::error::{
 };
 
 use crate::arc::UnknownFile;
-use crate::chr::{self, CHR_MAGIC};
-use crate::clr::{self, CLR_MAGIC};
 use crate::encoding::{ReadArrayExt, WriteArrayExt};
 use crate::index::IndexGroup;
-use crate::mdl::{self, MDL_MAGIC};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
-use crate::tex::{self, TEX_MAGIC};
-use crate::tpl::{self, TPL_MAGIC};
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
 };
@@ -368,7 +377,7 @@ fn serialize_bfile(writer: &mut MutCursor, node: &IrNode) -> SlipstreamResult<()
     //     }
     //
     //     impl Visitor for BFileVisitor<'_> {
-    //         fn visit_mdl(&mut self, bfile: VisitorContext<'_, mdl::Mdl0Root>) -> ControlFlow<()> {
+    //         fn visit_mdl(&mut self, bfile: VisitorContext<'_, mdl::MdlHeader>) -> ControlFlow<()> {
     //             todo!()
     //         }
     //

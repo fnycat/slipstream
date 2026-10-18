@@ -1,27 +1,17 @@
-use std::io::{BufWriter, Seek, Write};
 use std::ops::ControlFlow;
-use std::path::Path;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-#[cfg(feature = "egui-impls")]
-use eframe::egui_wgpu;
-use image::{ImageBuffer, Rgba};
-use slipstream_derive::{Inspect, inspect_bitfield, try_from};
+use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::cursor::MutCursor;
-use slipstream_shared::error::{InvalidInputError, UnsupportedError};
-use slipstream_shared::inspect::Changes;
-#[cfg(feature = "egui-impls")]
-use slipstream_shared::inspect::FieldConfig;
-use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult, try_unwrap};
+use slipstream_shared::error::InvalidInputError;
+use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::brres::{SubfileHeader, SubfileType};
 use crate::encoding::{Deserialize, WriteArrayExt};
-use crate::mdl::UvDataType::S;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::tpl::{
-    CmprImage, EncodedImage, ExportableImage, ImageData, ImageFormat, L4Image, L8Image, La4Image,
-    La8Image, MAX_SAFE_PIXEL_HEIGHT, MAX_SAFE_PIXEL_WIDTH, Rgb5a3Image, Rgb565Image, Rgba8Image
+    EncodedImage, ImageData, ImageFormat, MAX_SAFE_PIXEL_HEIGHT, MAX_SAFE_PIXEL_WIDTH
 };
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
@@ -200,8 +190,8 @@ mod test {
 
     use slipstream_shared::RefCursor;
 
+    use crate::brres::tex;
     use crate::node::arena::IrArena;
-    use crate::tex;
 
     // Found via fuzzing. This corrupted file seemed to cause an impossibly large allocation.
     const OOM_CORPUS: &[u8] = &[

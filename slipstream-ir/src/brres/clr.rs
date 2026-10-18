@@ -2,8 +2,7 @@ use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_derive::{Inspect, inspect_bitfield};
-use slipstream_shared::error::CorruptionError;
-use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult};
+use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::brres::{SubfileHeader, SubfileType};
 use crate::index::IndexGroup;

@@ -27,8 +27,8 @@ use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::error::InvalidInputError;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
+use crate::brres::ColorFormat;
 use crate::encoding::ReadArrayExt;
-use crate::mdl::ColorFormat;
 
 /// Cap maximum at the size of a 8192x8192 image. That should be more than enough.
 pub const MAX_SAFE_PIXEL_WIDTH: usize = 8192;

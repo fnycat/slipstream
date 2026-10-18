@@ -2,14 +2,14 @@ use std::fmt;
 
 use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt};
-use slipstream_derive::Inspect;
+use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{
     CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult
 };
 
+use crate::brres::NormalFormat;
 use crate::encoding::ReadArrayExt;
-use crate::mdl::NormalFormat;
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Inspect)]
 #[inspect(summary = "Box2::summary")]
@@ -66,6 +66,7 @@ impl Box3 {
 /// this.
 ///
 /// [`NormalFormat`]: crate::format::mdl::normals::NormalFormat
+#[try_from(u32)]
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Inspect)]
 #[repr(u8)]
@@ -89,27 +90,6 @@ impl From<NormalFormat> for VertexFormat {
             NormalFormat::Float32 => Self::Float32,
             NormalFormat::Invalid => Self::Invalid
         }
-    }
-}
-
-impl TryFrom<u32> for VertexFormat {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0 => Self::Uint8,
-            1 => Self::Int8,
-            2 => Self::Uint16,
-            3 => Self::Int16,
-            4 => Self::Float32,
-            v => {
-                return Err(CorruptionError {
-                    reason: format!("invalid vertex format: {v} (expected 0-4)"),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
     }
 }
 

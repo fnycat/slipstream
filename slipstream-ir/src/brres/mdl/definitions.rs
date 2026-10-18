@@ -1,13 +1,13 @@
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_derive::{Inspect, try_from};
+use slipstream_derive::try_from;
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
-use slipstream_shared::error::{CorruptionError, SlipstreamResult};
+use slipstream_shared::error::SlipstreamResult;
 use slipstream_shared::verify;
 
-use crate::mdl::section::{DeserializeContents, SerializeContents};
-use crate::node::node::{IrNode, IrNodeType};
+use crate::brres::DeserializeContents;
+use crate::node::node::IrNodeType;
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
 };
@@ -232,8 +232,8 @@ impl DuplicateMatrix {
     fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
         writer.reserve(4);
 
-        let dest = writer.write_u16::<BigEndian>(self.dest)?;
-        let src = writer.write_u16::<BigEndian>(self.src)?;
+        writer.write_u16::<BigEndian>(self.dest)?;
+        writer.write_u16::<BigEndian>(self.src)?;
 
         Ok(())
     }
@@ -330,15 +330,6 @@ impl DeserializeContents for Definitions {
         tracing::debug!("Read {def_count} definition entries");
 
         Ok(Self { commands })
-    }
-}
-
-impl SerializeContents for Definitions {
-    fn serialize_contents(
-        &self,
-        writer: &mut slipstream_shared::cursor::MutCursor
-    ) -> SlipstreamResult<()> {
-        todo!()
     }
 }
 

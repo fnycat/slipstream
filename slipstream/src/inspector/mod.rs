@@ -1,14 +1,11 @@
-use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
+use crate::panes::{Pane, PaneAction, PaneId};
 use slipstream_ir::arc::ArcDirectory;
-use slipstream_ir::brres::BrresFile;
-use slipstream_ir::chr::{self, ChrHeader, SkeletalAnimation};
-use slipstream_ir::clr::{ClrHeader, ColorAnimation};
-use slipstream_ir::mdl::{
-    Bone, ColorBuffer, Definitions, MaterialBuffer, Mdl0Root, Mdl0Visitor, NormalBuffer,
-    PaletteLinks, Polygon, TextureLinks, UvBuffer, VertexBuffer
+use slipstream_ir::brres::{
+    Bone, BrresFile, ChrHeader, ClrHeader, ColorAnimation, ColorBuffer, Definitions,
+    MaterialBuffer, MdlHeader, MdlVisitor, NormalBuffer, PaletteLinks, Polygon, SkeletalAnimation,
+    Texture, TextureLinks, UvBuffer, VertexBuffer
 };
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
-use slipstream_ir::tex::Texture;
 use slipstream_ir::tpl::{TplHeader, TplImage};
 use slipstream_ir::visitor::{Visitor, VisitorCtxMetaMut, VisitorCtxMut};
 use slipstream_shared::inspect::{FieldConfig, Inspect};
@@ -21,7 +18,7 @@ struct InspectorVisitor<'ui> {
 }
 
 impl Visitor for InspectorVisitor<'_> {
-    fn as_mdl(&mut self) -> Option<&mut dyn Mdl0Visitor> {
+    fn as_mdl(&mut self) -> Option<&mut dyn MdlVisitor> {
         Some(self)
     }
 
@@ -104,8 +101,8 @@ impl Visitor for InspectorVisitor<'_> {
     }
 }
 
-impl Mdl0Visitor for InspectorVisitor<'_> {
-    fn visit_mdl_mut(&mut self, context: VisitorCtxMut<'_, Mdl0Root>) -> ControlFlow<()> {
+impl MdlVisitor for InspectorVisitor<'_> {
+    fn visit_mdl_mut(&mut self, context: VisitorCtxMut<'_, MdlHeader>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());

@@ -5,8 +5,8 @@ use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::error::{CorruptionError, IncorrectFormat};
 use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult};
 
+use crate::brres::{MagnificationFilter, MinificationFilter, WrapMode};
 use crate::encoding::{Deserialize, ReadArrayExt};
-use crate::mdl::{MagnificationFilter, MinificationFilter, WrapMode};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::tpl::{ImageData, ImageFormat};

@@ -1,14 +1,12 @@
 //! Translates between Wii models and wgpu ones.
 
 use crate::viewer::translation::{IntermediateModel, ModelContents, VertexBoneData};
-use slipstream_ir::gx::GxOpCode;
-use slipstream_ir::gx::draw::{
-    ColorData, DrawOpCode, InlineNormal, InlinePosition, NormalData, NormalIndex, OpVertex,
-    PositionData, UvData
+use slipstream_ir::brres::draw::{
+    ColorData, DrawOpCode, NormalData, NormalIndex, OpVertex, PositionData, UvData
 };
-use slipstream_ir::gx::load_indexed::IndexedLoad;
-use slipstream_ir::mdl::{
-    ColorBuffer, MatrixId, NormalBuffer, Polygon, UvBufData, UvBuffer, VertexBuffer
+use slipstream_ir::brres::load_indexed::IndexedLoad;
+use slipstream_ir::brres::{
+    ColorBuffer, GxOpCode, MatrixId, NormalBuffer, Polygon, UvBuffer, VertexBuffer
 };
 use slipstream_shared::{SlipstreamResult, try_unwrap, verify};
 use std::collections::HashMap;

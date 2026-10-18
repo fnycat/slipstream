@@ -8,11 +8,10 @@ use slipstream_shared::error::{
 };
 use slipstream_shared::verify;
 
+use crate::brres::load_cp::{CpVatA, CpVatB, CpVatC, CpVcdHi, CpVcdLo, LoadCpOpCode};
+use crate::brres::load_xf::{LoadXfOpCode, LoadXfPayload};
+use crate::brres::{DeserializeContents, GxBytecode, GxOpCode};
 use crate::encoding::ReadArrayExt;
-use crate::gx::load_cp::{CpVatA, CpVatB, CpVatC, CpVcdHi, CpVcdLo, LoadCpOpCode};
-use crate::gx::load_xf::{LoadXfOpCode, LoadXfPayload};
-use crate::gx::{GxBytecode, GxOpCode};
-use crate::mdl::section::DeserializeContents;
 use crate::node::node::IrNodeType;
 use crate::visitor::{Visitable, Visitor};
 

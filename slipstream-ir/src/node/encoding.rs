@@ -5,11 +5,11 @@ use slipstream_shared::cursor::MutCursor;
 use slipstream_shared::error::UnsupportedError;
 
 use crate::arc::{self, ArcDirectory};
-use crate::fixup::FixupPass;
-use crate::mdl::{
+use crate::brres::{
     ColorBuffer, Definitions, DeserializeContents, MaterialBuffer, NormalBuffer, PaletteLinks,
     Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer
 };
+use crate::fixup::FixupPass;
 use crate::node::arena::IrArena;
 use crate::node::lazy::{DeferPayload, DynContent};
 use crate::node::node::{IrNode, IrNodeType};

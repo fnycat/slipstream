@@ -1,5 +1,5 @@
-use slipstream_ir::mdl::{
-    Bone, BoneBind, BoneIndex, BoneWeight, DefCommand, Definitions, MatrixId, Mdl0Visitor, Polygon,
+use slipstream_ir::brres::{
+    Bone, BoneBind, BoneIndex, BoneWeight, DefCommand, Definitions, MatrixId, MdlVisitor, Polygon,
     WeightId
 };
 use slipstream_ir::node::arena::IrArena;
@@ -121,7 +121,7 @@ impl ModelContents<'_> {
     pub(super) fn translate_bones(
         &self,
         model: &IntermediateModel,
-        scratch: &IntermediatePolygon,
+        _scratch: &IntermediatePolygon,
         polygon: &Polygon,
         vertex_key: &VertexKey
     ) -> SlipstreamResult<VertexBoneData> {
@@ -200,12 +200,12 @@ impl ModelContents<'_> {
         }
 
         impl Visitor for BoneVisitor<'_> {
-            fn as_mdl(&mut self) -> Option<&mut dyn slipstream_ir::mdl::Mdl0Visitor> {
+            fn as_mdl(&mut self) -> Option<&mut dyn MdlVisitor> {
                 Some(self)
             }
         }
 
-        impl Mdl0Visitor for BoneVisitor<'_> {
+        impl MdlVisitor for BoneVisitor<'_> {
             fn visit_bone(&mut self, bone: VisitorCtx<'_, Bone>) -> ControlFlow<()> {
                 self.transforms
                     .insert(BoneIndex(bone.id as u16), bone.transform_matrix);

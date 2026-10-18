@@ -1,16 +1,15 @@
 use byteorder::ReadBytesExt;
-use slipstream_derive::Inspect;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 use slipstream_shared::verify;
 
-use crate::gx::call::CallDisplayList;
-use crate::gx::draw::DrawOpCode;
-use crate::gx::load_bp::LoadBpOpCode;
-use crate::gx::load_cp::LoadCpOpCode;
-use crate::gx::load_indexed::IndexedLoad;
-use crate::gx::load_xf::LoadXfOpCode;
-use crate::mdl::GxVertexDeclaration;
+use crate::brres::GxVertexDeclaration;
+use crate::brres::call::CallDisplayList;
+use crate::brres::draw::DrawOpCode;
+use crate::brres::load_bp::LoadBpOpCode;
+use crate::brres::load_cp::LoadCpOpCode;
+use crate::brres::load_indexed::IndexedLoad;
+use crate::brres::load_xf::LoadXfOpCode;
 
 pub mod call;
 pub mod draw;

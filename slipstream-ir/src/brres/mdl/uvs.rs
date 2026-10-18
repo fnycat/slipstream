@@ -5,13 +5,11 @@ use slipstream_derive::Inspect;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
-use crate::encoding::ReadArrayExt;
-use crate::gx::load_cp::FORMAT_DIVISOR_TOOLTIP;
-use crate::mdl::SectionHeader;
-use crate::mdl::section::DeserializeContents;
-use crate::node::node::{IrNode, IrNodeType};
+use crate::brres::load_cp::FORMAT_DIVISOR_TOOLTIP;
+use crate::brres::{DeserializeContents, SectionHeader};
+use crate::node::node::IrNodeType;
 use crate::util::{
-    Box2, Box3, VectorDivisor, VertexFormat, deserialize_scalar_data, deserialize_vector_data
+    Box2, VectorDivisor, VertexFormat, deserialize_scalar_data, deserialize_vector_data
 };
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
