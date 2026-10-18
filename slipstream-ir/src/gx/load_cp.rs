@@ -1,6 +1,6 @@
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_derive::{Inspect, inspect_bitfield};
+use slipstream_derive::{Inspect, inspect_bitfield, try_from};
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
@@ -375,55 +375,64 @@ pub enum LoadCpOpCode {
     VatC(CpVatC)
 }
 
-const VCD_LO_OPCODE: u8 = 0x50;
-const VCD_HI_OPCODE: u8 = 0x60;
-const VAT_A_OPCODE: u8 = 0x70;
-const VAT_B_OPCODE: u8 = 0x80;
-const VAT_C_OPCODE: u8 = 0x90;
+#[try_from(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum LoadCpOpCodeId {
+    VcdLo = 0x50,
+    VcdHi = 0x60,
+    VatA = 0x70,
+    VatB = 0x80,
+    VatC = 0x90
+}
+
+impl LoadCpOpCodeId {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let byte = reader.read_u8()?;
+        Self::try_from(byte)
+    }
+
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        writer.write_u8(*self as u8)?;
+        Ok(())
+    }
+}
 
 impl LoadCpOpCode {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        let byte = reader.read_u8()?;
+        let opcode = LoadCpOpCodeId::deserialize(reader)?;
         let word = reader.read_u32::<BigEndian>()?;
 
-        tracing::debug!("Parsing GX opcode `{:?}`", GxOpCodeId::try_from(byte)?);
+        tracing::debug!("Parsing LoadCP opcode `{opcode:?}`");
 
-        Ok(match byte {
-            VCD_LO_OPCODE => Self::VcdLo(CpVcdLo::from_bits(word)),
-            VCD_HI_OPCODE => Self::VcdHi(CpVcdHi::from_bits(word)),
-            VAT_A_OPCODE => Self::VatA(CpVatA::from_bits(word)),
-            VAT_B_OPCODE => Self::VatB(CpVatB::from_bits(word)),
-            VAT_C_OPCODE => Self::VatC(CpVatC::from_bits(word)),
-            _ => {
-                return Err(CorruptionError {
-                    reason: format!("invalid LoadCP subcommand: {byte:#04x}"),
-                    ..Default::default()
-                }
-                .into());
-            }
+        Ok(match opcode {
+            LoadCpOpCodeId::VcdLo => Self::VcdLo(CpVcdLo::from_bits(word)),
+            LoadCpOpCodeId::VcdHi => Self::VcdHi(CpVcdHi::from_bits(word)),
+            LoadCpOpCodeId::VatA => Self::VatA(CpVatA::from_bits(word)),
+            LoadCpOpCodeId::VatB => Self::VatB(CpVatB::from_bits(word)),
+            LoadCpOpCodeId::VatC => Self::VatC(CpVatC::from_bits(word))
         })
     }
 
     pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
         match self {
             Self::VcdLo(x) => {
-                writer.write_u8(VCD_LO_OPCODE)?;
+                LoadCpOpCodeId::VcdLo.serialize(writer)?;
                 writer.write_u32::<BigEndian>(x.into_bits())?;
             }
             Self::VcdHi(x) => {
-                writer.write_u8(VCD_HI_OPCODE)?;
+                LoadCpOpCodeId::VcdHi.serialize(writer)?;
                 writer.write_u32::<BigEndian>(x.into_bits())?;
             }
             Self::VatA(x) => {
-                writer.write_u8(VAT_A_OPCODE)?;
+                LoadCpOpCodeId::VatA.serialize(writer)?;
                 writer.write_u32::<BigEndian>(x.into_bits())?;
             }
             Self::VatB(x) => {
-                writer.write_u8(VAT_B_OPCODE)?;
+                LoadCpOpCodeId::VatB.serialize(writer)?;
                 writer.write_u32::<BigEndian>(x.into_bits())?;
             }
             Self::VatC(x) => {
-                writer.write_u8(VAT_C_OPCODE)?;
+                LoadCpOpCodeId::VatC.serialize(writer)?;
                 writer.write_u32::<BigEndian>(x.into_bits())?;
             }
         }
