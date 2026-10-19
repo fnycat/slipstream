@@ -263,7 +263,7 @@ impl NodeIconsExt for IrNodeType {
                 KmpSectionType::Cameras => reg_icon!(VIDEO_CAMERA),
                 KmpSectionType::CannonTargetPositions => reg_icon!(ROCKET_LAUNCH),
                 KmpSectionType::Checkpoints => reg_icon!(SHIELD_CHECK),
-                KmpSectionType::CheckpointPaths => reg_icon!(PATH),
+                KmpSectionType::CheckpointGroups => reg_icon!(PATH),
                 KmpSectionType::MissionSuccessPoints => reg_icon!(FLAG_CHECKERED),
                 KmpSectionType::EnemyRoute => reg_icon!(PATH),
                 KmpSectionType::EnemyRoutePoints => reg_icon!(MAP_PIN),

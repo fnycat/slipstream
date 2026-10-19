@@ -2,7 +2,9 @@ use std::ops::ControlFlow;
 
 use crate::kmp::enph::EnemyRoutes;
 use crate::kmp::enpt::EnemyRoutePoints;
-use crate::kmp::{ItemRoutePoints, KmpHeader, StartingPositions};
+use crate::kmp::{
+    CheckpointGroups, Checkpoints, ItemRoutePoints, ItemRoutes, KmpHeader, StartingPositions
+};
 use crate::visitor::{VisitorCtx, VisitorCtxMut};
 
 #[allow(unused_variables)]
@@ -49,7 +51,7 @@ pub trait KmpVisitor {
         }
     }
 
-    fn visit_enemy_route(&self, context: VisitorCtx<'_, EnemyRoutes>) -> ControlFlow<()> {
+    fn visit_enemy_routes(&self, context: VisitorCtx<'_, EnemyRoutes>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -57,7 +59,7 @@ pub trait KmpVisitor {
         }
     }
 
-    fn visit_enemy_route_mut(
+    fn visit_enemy_routes_mut(
         &mut self,
         context: VisitorCtxMut<'_, EnemyRoutes>
     ) -> ControlFlow<()> {
@@ -101,6 +103,63 @@ pub trait KmpVisitor {
     fn visit_item_route_points_mut(
         &mut self,
         context: VisitorCtxMut<'_, ItemRoutePoints>
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_item_routes(&mut self, context: VisitorCtx<'_, ItemRoutes>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_item_routes_mut(&mut self, context: VisitorCtxMut<'_, ItemRoutes>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_checkpoints(&mut self, context: VisitorCtx<'_, Checkpoints>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_checkpoints_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, Checkpoints>
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_checkpoint_groups(
+        &mut self,
+        context: VisitorCtx<'_, CheckpointGroups>
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_checkpoint_groups_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, CheckpointGroups>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())

@@ -7,7 +7,7 @@ use slipstream_ir::brres::{
     TextureLinks, UvBuffer, VertexBuffer
 };
 use slipstream_ir::kmp::{
-    EnemyRoutePoints, EnemyRoutes, ItemRoutePoints, KmpHeader, KmpVisitor, StartingPositions
+    self, EnemyRoutePoints, EnemyRoutes, ItemRoutePoints, KmpHeader, KmpVisitor, StartingPositions
 };
 use slipstream_ir::tpl::{TplHeader, TplImage};
 use slipstream_ir::visitor::{Visitor, VisitorCtxMut};
@@ -202,7 +202,7 @@ impl MdlVisitor for InspectorVisitor<'_> {
 }
 
 impl KmpVisitor for InspectorVisitor<'_> {
-    fn visit_kmp_mut(&mut self, context: VisitorCtxMut<'_, KmpHeader>) -> ControlFlow<()> {
+    fn visit_kmp_mut(&mut self, context: VisitorCtxMut<'_, kmp::KmpHeader>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -212,7 +212,7 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_starting_positions_mut(
         &mut self,
-        context: VisitorCtxMut<'_, StartingPositions>
+        context: VisitorCtxMut<'_, kmp::StartingPositions>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -221,9 +221,9 @@ impl KmpVisitor for InspectorVisitor<'_> {
         ControlFlow::Continue(())
     }
 
-    fn visit_enemy_route_mut(
+    fn visit_enemy_routes_mut(
         &mut self,
-        context: VisitorCtxMut<'_, EnemyRoutes>
+        context: VisitorCtxMut<'_, kmp::EnemyRoutes>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -234,7 +234,7 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_enemy_route_points_mut(
         &mut self,
-        context: VisitorCtxMut<'_, EnemyRoutePoints>
+        context: VisitorCtxMut<'_, kmp::EnemyRoutePoints>
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -245,7 +245,40 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_item_route_points_mut(
         &mut self,
-        context: VisitorCtxMut<'_, ItemRoutePoints>
+        context: VisitorCtxMut<'_, kmp::ItemRoutePoints>
+    ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_item_routes_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, kmp::ItemRoutes>
+    ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_checkpoints_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, kmp::Checkpoints>
+    ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_checkpoint_groups_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, kmp::CheckpointGroups>
     ) -> ControlFlow<()> {
         let _changes = context
             .content

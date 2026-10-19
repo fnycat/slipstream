@@ -1,11 +1,17 @@
+mod ckph;
+mod ckpt;
 mod enph;
 mod enpt;
+mod itph;
 mod itpt;
 mod ktpt;
 mod visitor;
 
+pub use ckph::*;
+pub use ckpt::*;
 pub use enph::*;
 pub use enpt::*;
+pub use itph::*;
 pub use itpt::*;
 pub use ktpt::*;
 pub use visitor::*;
@@ -64,7 +70,7 @@ pub enum KmpSectionType {
     ItemRoutePoints = 0x49545054,
     ItemRoute = 0x49545048,
     Checkpoints = 0x434b5054,
-    CheckpointPaths = 0x434b5048,
+    CheckpointGroups = 0x434b5048,
     GeoObjects = 0x474f424a,
     Routes = 0x504f5449,
     Areas = 0x41524541,
@@ -286,6 +292,12 @@ pub fn deserialize(
             }
             KmpSectionType::ItemRoutePoints => {
                 Box::new(ItemRoutePoints::deserialize(reader, section_header)?)
+            }
+            KmpSectionType::Checkpoints => {
+                Box::new(Checkpoints::deserialize(reader, section_header)?)
+            }
+            KmpSectionType::CheckpointGroups => {
+                Box::new(CheckpointGroups::deserialize(reader, section_header)?)
             }
             _ => {
                 tracing::warn!("unimplemented section type: {:?}", section_header.ty);

@@ -84,7 +84,7 @@ impl Visitable for EnemyRoutes {
     fn accept(&self, meta: VisitorCtxMeta, visitor: &mut dyn Visitor) -> ControlFlow<()> {
         visitor
             .as_kmp()
-            .map(|v| v.visit_enemy_route(VisitorCtx::new(meta, self)))
+            .map(|v| v.visit_enemy_routes(VisitorCtx::new(meta, self)))
             .unwrap_or(ControlFlow::Break(()))
     }
 
@@ -95,7 +95,7 @@ impl Visitable for EnemyRoutes {
     ) -> ControlFlow<()> {
         visitor
             .as_kmp()
-            .map(|v| v.visit_enemy_route_mut(VisitorCtxMut::new(meta, self)))
+            .map(|v| v.visit_enemy_routes_mut(VisitorCtxMut::new(meta, self)))
             .unwrap_or(ControlFlow::Break(()))
     }
 }
