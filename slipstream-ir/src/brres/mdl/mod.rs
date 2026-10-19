@@ -8,7 +8,7 @@ mod normals;
 mod pal_links;
 mod polygon;
 mod section;
-mod tevs;
+mod shader;
 mod tex_links;
 mod user_data;
 mod uvs;
@@ -25,7 +25,7 @@ pub use normals::*;
 pub use pal_links::*;
 pub use polygon::*;
 pub use section::*;
-pub use tevs::*;
+pub use shader::*;
 pub use tex_links::*;
 pub use user_data::*;
 pub use uvs::*;
@@ -107,8 +107,8 @@ pub const MDL_SECTION_NAMES: &[&str] = &[
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum SectionType {
-    DrawLists,
+pub enum MdlSectionType {
+    Definitions,
     Bones,
     Vertices,
     Normals,
@@ -116,20 +116,20 @@ pub enum SectionType {
     UvCoordinates,
     FurVectors,
     FurLayers,
-    Materials,
-    Tevs,
-    Shapes,
+    Material,
+    Shader,
+    Polygon,
     TextureLinks,
     PaletteLinks,
     UserData
 }
 
-impl TryFrom<u32> for SectionType {
+impl TryFrom<u32> for MdlSectionType {
     type Error = SlipstreamError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         Ok(match value {
-            0 => Self::DrawLists,
+            0 => Self::Definitions,
             1 => Self::Bones,
             2 => Self::Vertices,
             3 => Self::Normals,
@@ -137,9 +137,9 @@ impl TryFrom<u32> for SectionType {
             5 => Self::UvCoordinates,
             6 => Self::FurVectors,
             7 => Self::FurLayers,
-            8 => Self::Materials,
-            9 => Self::Tevs,
-            10 => Self::Shapes,
+            8 => Self::Material,
+            9 => Self::Shader,
+            10 => Self::Polygon,
             11 => Self::TextureLinks,
             12 => Self::PaletteLinks,
             13 => Self::UserData,
@@ -422,7 +422,7 @@ pub fn deserialize(
             continue;
         }
 
-        let section_ty = SectionType::try_from(i as u32)?;
+        let section_ty = MdlSectionType::try_from(i as u32)?;
 
         let mut reader = reader.clone();
 
@@ -430,82 +430,82 @@ pub fn deserialize(
         reader.set_position(section_start as u64);
 
         let section_key = match section_ty {
-            SectionType::DrawLists => deserialize_leaf_section::<Definitions>(
+            MdlSectionType::Definitions => deserialize_leaf_section::<Definitions>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::Bones => {
+            MdlSectionType::Bones => {
                 bones::deserialize_skeleton(&mut reader, Some(mdl_root_key), arena)
             }
-            SectionType::Vertices => deserialize_leaf_section::<VertexBuffer>(
+            MdlSectionType::Vertices => deserialize_leaf_section::<VertexBuffer>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::Normals => deserialize_leaf_section::<NormalBuffer>(
+            MdlSectionType::Normals => deserialize_leaf_section::<NormalBuffer>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::Colors => deserialize_leaf_section::<ColorBuffer>(
+            MdlSectionType::Colors => deserialize_leaf_section::<ColorBuffer>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::UvCoordinates => deserialize_leaf_section::<UvBuffer>(
+            MdlSectionType::UvCoordinates => deserialize_leaf_section::<UvBuffer>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::Materials => deserialize_leaf_section::<Material>(
+            MdlSectionType::Material => deserialize_leaf_section::<Material>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::Tevs => deserialize_leaf_section::<Tev>(
+            MdlSectionType::Shader => deserialize_leaf_section::<Tev>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::Shapes => deserialize_leaf_section::<Polygon>(
+            MdlSectionType::Polygon => deserialize_leaf_section::<Polygon>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::TextureLinks => deserialize_leaf_section::<TextureLinks>(
+            MdlSectionType::TextureLinks => deserialize_leaf_section::<TextureLinks>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::PaletteLinks => deserialize_leaf_section::<PaletteLinks>(
+            MdlSectionType::PaletteLinks => deserialize_leaf_section::<PaletteLinks>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::FurLayers => deserialize_leaf_section::<FurLayers>(
+            MdlSectionType::FurLayers => deserialize_leaf_section::<FurLayers>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::FurVectors => deserialize_leaf_section::<FurVectors>(
+            MdlSectionType::FurVectors => deserialize_leaf_section::<FurVectors>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),
                 arena
             ),
-            SectionType::UserData => deserialize_leaf_section::<UserData>(
+            MdlSectionType::UserData => deserialize_leaf_section::<UserData>(
                 &mut reader,
                 subfile_header.header_start,
                 Some(mdl_root_key),

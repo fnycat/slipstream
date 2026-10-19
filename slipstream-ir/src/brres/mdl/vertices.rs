@@ -6,7 +6,7 @@ use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
 use crate::brres::load_cp::FORMAT_DIVISOR_TOOLTIP;
-use crate::brres::{DeserializeContents, SectionHeader};
+use crate::brres::{DeserializeContents, MdlSectionType, SectionHeader};
 use crate::node::node::IrNodeType;
 use crate::util::{Box3, VectorDivisor, VertexFormat, deserialize_vector_data};
 use crate::visitor::{
@@ -137,7 +137,9 @@ impl Visitable for VertexBuffer {
 
 impl DeserializeContents for VertexBuffer {
     const NAME: &str = "Vertices";
-    const KIND: IrNodeType = IrNodeType::VertexBuffer;
+    const KIND: IrNodeType = IrNodeType::MdlSection {
+        ty: MdlSectionType::Vertices
+    };
 
     #[tracing::instrument(skip_all, fields(header_start))]
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {

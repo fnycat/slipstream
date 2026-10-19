@@ -8,7 +8,7 @@ use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResul
 use slipstream_shared::verify;
 
 use crate::brres::load_cp::FORMAT_DIVISOR_TOOLTIP;
-use crate::brres::{DeserializeContents, SectionHeader};
+use crate::brres::{DeserializeContents, MdlSectionType, SectionHeader};
 use crate::node::node::IrNodeType;
 use crate::util::{VectorDivisor, VertexFormat, deserialize_vector, deserialize_vector_data};
 use crate::visitor::{
@@ -176,7 +176,9 @@ impl Visitable for NormalBuffer {
 
 impl DeserializeContents for NormalBuffer {
     const NAME: &str = "Normals";
-    const KIND: IrNodeType = IrNodeType::NormalBuffer;
+    const KIND: IrNodeType = IrNodeType::MdlSection {
+        ty: MdlSectionType::Normals
+    };
 
     #[tracing::instrument(skip_all)]
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {

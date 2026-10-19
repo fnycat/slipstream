@@ -5,7 +5,7 @@ use slipstream_derive::Inspect;
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
 use slipstream_shared::error::SlipstreamResult;
 
-use crate::brres::{DeserializeContents, SerializeContents};
+use crate::brres::{DeserializeContents, MdlSectionType, SerializeContents};
 use crate::node::node::IrNodeType;
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
@@ -59,7 +59,9 @@ impl Visitable for PaletteLinks {
 
 impl DeserializeContents for PaletteLinks {
     const NAME: &str = "Palette links";
-    const KIND: IrNodeType = IrNodeType::PaletteLinks;
+    const KIND: IrNodeType = IrNodeType::MdlSection {
+        ty: MdlSectionType::PaletteLinks
+    };
 
     #[tracing::instrument(skip_all)]
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {

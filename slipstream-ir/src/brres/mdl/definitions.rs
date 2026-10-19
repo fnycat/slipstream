@@ -6,7 +6,7 @@ use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
 use slipstream_shared::error::SlipstreamResult;
 use slipstream_shared::verify;
 
-use crate::brres::DeserializeContents;
+use crate::brres::{DeserializeContents, MdlSectionType};
 use crate::node::node::IrNodeType;
 use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
@@ -293,7 +293,9 @@ impl Visitable for Definitions {
 
 impl DeserializeContents for Definitions {
     const NAME: &str = "Definitions";
-    const KIND: IrNodeType = IrNodeType::Definitions;
+    const KIND: IrNodeType = IrNodeType::MdlSection {
+        ty: MdlSectionType::Definitions
+    };
 
     #[tracing::instrument(skip_all)]
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {

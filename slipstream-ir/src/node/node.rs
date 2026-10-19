@@ -3,6 +3,8 @@ use std::fmt::Debug;
 use slipstream_shared::SlipstreamResult;
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 
+use crate::brres::MdlSectionType;
+use crate::kmp::KmpSectionType;
 use crate::node::arena::IrNodeKey;
 use crate::node::lazy::LazyContent;
 use crate::visitor::Visitable;
@@ -142,28 +144,10 @@ pub enum IrNodeType {
     Nw4rDirectory,
     /// The root of an MDL model. This should contain the section directories `Vertices`, `Normals`.
     MdlHeader,
-    /// The bytecode section of an MDL file.
-    Definitions,
-    /// The bone section of an MDL file.
-    Bone {
-        /// Whether this is the end bone of a limb. This makes sure it is not displayed as a folder.
-        end: bool
+    /// A section in an MDL model.
+    MdlSection {
+        ty: MdlSectionType
     },
-    /// A vertex buffer in an MDL file.
-    VertexBuffer,
-    /// A normal buffer in an MDL file.
-    NormalBuffer,
-    /// A color buffer in an MDL file.
-    ColorBuffer,
-    UvBuffer,
-    Material,
-    Tevs,
-    Polygon,
-    FurLayers,
-    FurVectors,
-    TextureLinks,
-    PaletteLinks,
-    UserData,
 
     /// A CHR file
     ChrHeader,
@@ -184,6 +168,10 @@ pub enum IrNodeType {
 
     /// A KMP header
     KmpHeader,
+    /// A section in a KMP file
+    KmpSection {
+        ty: KmpSectionType
+    },
 
     /// An unknown file format. The object simply stores the raw bytes of the file.
     Unknown

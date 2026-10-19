@@ -1,5 +1,7 @@
 use std::sync::{Arc, mpsc};
 
+use slipstream_ir::brres::MdlSectionType;
+use slipstream_ir::kmp::KmpSectionType;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::node::{IrNode, IrNodeType};
 use slipstream_shared::error::{SlipstreamError, SlipstreamResult};
@@ -227,21 +229,22 @@ impl NodeIconsExt for IrNodeType {
             Self::BrresFile => reg_icon!(FOLDER),
 
             Self::MdlHeader => reg_icon!(PERSON_SIMPLE),
-            Self::Definitions => reg_icon!(FILE_CODE),
-            Self::Bone { end: false } => reg_icon!(BONE),
-            Self::Bone { end: true } => fill_icon!(BONE),
-            Self::VertexBuffer => reg_icon!(POLYGON),
-            Self::NormalBuffer => reg_icon!(ARROW_ELBOW_RIGHT),
-            Self::ColorBuffer => reg_icon!(PAINT_BRUSH_HOUSEHOLD),
-            Self::UvBuffer => reg_icon!(BOUNDING_BOX),
-            Self::Material => reg_icon!(PALETTE),
-            Self::Tevs => reg_icon!(GRAPHICS_CARD),
-            Self::Polygon => reg_icon!(CUBE),
-            Self::FurLayers => reg_icon!(PAW_PRINT),
-            Self::FurVectors => reg_icon!(PAW_PRINT),
-            Self::TextureLinks => reg_icon!(LINK),
-            Self::PaletteLinks => reg_icon!(LINK),
-            Self::UserData => reg_icon!(FOLDER_USER),
+            Self::MdlSection { ty } => match ty {
+                MdlSectionType::Definitions => reg_icon!(FILE_CODE),
+                MdlSectionType::Bones => reg_icon!(BONE),
+                MdlSectionType::Vertices => reg_icon!(POLYGON),
+                MdlSectionType::Normals => reg_icon!(ARROW_ELBOW_RIGHT),
+                MdlSectionType::Colors => reg_icon!(PAINT_BRUSH_HOUSEHOLD),
+                MdlSectionType::UvCoordinates => reg_icon!(BOUNDING_BOX),
+                MdlSectionType::Material => reg_icon!(PALETTE),
+                MdlSectionType::Shader => reg_icon!(GRAPHICS_CARD),
+                MdlSectionType::Polygon => reg_icon!(CUBE),
+                MdlSectionType::FurLayers => reg_icon!(PAW_PRINT),
+                MdlSectionType::FurVectors => reg_icon!(PAW_PRINT),
+                MdlSectionType::TextureLinks => reg_icon!(LINK),
+                MdlSectionType::PaletteLinks => reg_icon!(LINK),
+                MdlSectionType::UserData => reg_icon!(FOLDER_USER)
+            },
 
             Self::ChrHeader => reg_icon!(FILM_SLATE),
             Self::SkeletalAnimation => reg_icon!(BONE),
@@ -255,6 +258,23 @@ impl NodeIconsExt for IrNodeType {
             Self::Texture => reg_icon!(IMAGES),
 
             Self::KmpHeader => reg_icon!(PATH),
+            Self::KmpSection { ty } => match ty {
+                KmpSectionType::Areas => reg_icon!(SELECTION),
+                KmpSectionType::Cameras => reg_icon!(VIDEO_CAMERA),
+                KmpSectionType::CannonTargetPositions => reg_icon!(ROCKET_LAUNCH),
+                KmpSectionType::Checkpoints => reg_icon!(SHIELD_CHECK),
+                KmpSectionType::CheckpointPaths => reg_icon!(PATH),
+                KmpSectionType::MissionSuccessPoints => reg_icon!(FLAG_CHECKERED),
+                KmpSectionType::EnemyRoute => reg_icon!(PATH),
+                KmpSectionType::EnemyRoutePoints => reg_icon!(MAP_PIN),
+                KmpSectionType::GeoObjects => reg_icon!(CUBE),
+                KmpSectionType::ItemRoute => reg_icon!(PATH),
+                KmpSectionType::ItemRoutePoints => reg_icon!(MAP_PIN),
+                KmpSectionType::RespawnPositions => reg_icon!(LIFEBUOY),
+                KmpSectionType::Routes => reg_icon!(PATH),
+                KmpSectionType::StageInformation => reg_icon!(INFO),
+                KmpSectionType::StartingPositions => reg_icon!(FLAG_BANNER)
+            },
 
             Self::Unknown => reg_icon!(FILE)
         }

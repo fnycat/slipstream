@@ -10,7 +10,7 @@ use slipstream_shared::verify;
 
 use crate::brres::load_cp::{CpVatA, CpVatB, CpVatC, CpVcdHi, CpVcdLo, LoadCpOpCode};
 use crate::brres::load_xf::{LoadXfOpCode, LoadXfPayload};
-use crate::brres::{DeserializeContents, GxBytecode, GxOpCode};
+use crate::brres::{DeserializeContents, GxBytecode, GxOpCode, MdlSectionType};
 use crate::encoding::ReadArrayExt;
 use crate::node::node::IrNodeType;
 use crate::visitor::{Visitable, Visitor};
@@ -275,7 +275,9 @@ impl Visitable for Polygon {
 
 impl DeserializeContents for Polygon {
     const NAME: &str = "Polygons";
-    const KIND: IrNodeType = IrNodeType::Polygon;
+    const KIND: IrNodeType = IrNodeType::MdlSection {
+        ty: MdlSectionType::Polygon
+    };
 
     #[tracing::instrument(skip_all)]
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {

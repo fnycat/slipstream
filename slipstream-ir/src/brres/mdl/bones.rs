@@ -8,6 +8,7 @@ use slipstream_shared::error::{
 };
 use slipstream_shared::try_unwrap;
 
+use crate::brres::MdlSectionType;
 use crate::encoding::ReadArrayExt;
 use crate::index::IndexGroup;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
@@ -296,7 +297,9 @@ fn build_skeleton_tree(
         .map(|bone| {
             arena.insert(IrNodeDescriptor {
                 label: bone.label.clone(),
-                ty: IrNodeType::Bone { end: true },
+                ty: IrNodeType::MdlSection {
+                    ty: MdlSectionType::Bones
+                },
                 parent: None,
                 ..Default::default()
             })
@@ -313,7 +316,9 @@ fn build_skeleton_tree(
             found_root = Some(i);
 
             arena.update(curr_key, |bone_node| {
-                bone_node.ty = IrNodeType::Bone { end: false };
+                bone_node.ty = IrNodeType::MdlSection {
+                    ty: MdlSectionType::Bones
+                };
                 bone_node.contents =
                     ContentSlot::eager(Box::new(Bone::from_unresolved(&bone.data, None, None)));
             });
@@ -351,7 +356,9 @@ fn build_skeleton_tree(
         if let Some(&parent_key) = virtual_bones.get(parent_index as usize) {
             try_unwrap!(
                 arena.update(parent_key, |parent_node| {
-                    parent_node.ty = IrNodeType::Bone { end: false };
+                    parent_node.ty = IrNodeType::MdlSection {
+                        ty: MdlSectionType::Bones
+                    };
                     parent_node.children.push(curr_key);
                     parent_node.children.len() as u16 - 1
                 }),
@@ -415,7 +422,9 @@ pub fn deserialize_skeleton(
     let node = build_skeleton_tree(reader, bones, arena)?;
     let root_key = arena.insert(IrNodeDescriptor {
         label: "Bones".to_owned(),
-        ty: IrNodeType::Bone { end: false },
+        ty: IrNodeType::MdlSection {
+            ty: MdlSectionType::Bones
+        },
         parent: parent_id,
         children: vec![node],
         ..Default::default()

@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use crate::brres::{DeserializeContents, GxBytecode};
+use crate::brres::{DeserializeContents, GxBytecode, MdlSectionType};
 use crate::encoding::ReadArrayExt;
 
 use crate::node::node::IrNodeType;
@@ -39,7 +39,9 @@ impl Visitable for Tev {
 
 impl DeserializeContents for Tev {
     const NAME: &str = "Shaders";
-    const KIND: IrNodeType = IrNodeType::Tevs;
+    const KIND: IrNodeType = IrNodeType::MdlSection {
+        ty: MdlSectionType::Shader
+    };
 
     #[tracing::instrument(skip_all)]
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {

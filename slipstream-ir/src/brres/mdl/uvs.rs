@@ -6,7 +6,7 @@ use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
 use crate::brres::load_cp::FORMAT_DIVISOR_TOOLTIP;
-use crate::brres::{DeserializeContents, SectionHeader};
+use crate::brres::{DeserializeContents, MdlSectionType, SectionHeader};
 use crate::node::node::IrNodeType;
 use crate::util::{
     Box2, VectorDivisor, VertexFormat, deserialize_scalar_data, deserialize_vector_data
@@ -100,7 +100,9 @@ impl Visitable for UvBuffer {
 
 impl DeserializeContents for UvBuffer {
     const NAME: &str = "UVs";
-    const KIND: IrNodeType = IrNodeType::UvBuffer;
+    const KIND: IrNodeType = IrNodeType::MdlSection {
+        ty: MdlSectionType::UvCoordinates
+    };
 
     #[tracing::instrument(skip_all)]
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {

@@ -7,7 +7,7 @@ use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 use slipstream_shared::verify;
 
-use crate::brres::{DeserializeContents, SectionHeader};
+use crate::brres::{DeserializeContents, MdlSectionType, SectionHeader};
 use crate::node::node::IrNodeType;
 use crate::tpl::deserialize_color;
 use crate::visitor::{
@@ -225,7 +225,9 @@ impl Visitable for ColorBuffer {
 
 impl DeserializeContents for ColorBuffer {
     const NAME: &str = "Colors";
-    const KIND: IrNodeType = IrNodeType::ColorBuffer;
+    const KIND: IrNodeType = IrNodeType::MdlSection {
+        ty: MdlSectionType::Colors
+    };
 
     #[tracing::instrument(skip_all)]
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {

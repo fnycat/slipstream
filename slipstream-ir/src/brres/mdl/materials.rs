@@ -7,7 +7,7 @@ use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 use slipstream_shared::verify;
 
 use crate::brres::load_bp::{AlphaFunction, BlendMode, ConstantAlpha, DepthTest, LoadBpOpCode};
-use crate::brres::{DeserializeContents, TextureMatrixMode};
+use crate::brres::{DeserializeContents, MdlSectionType, TextureMatrixMode};
 use crate::encoding::ReadArrayExt;
 use crate::node::node::IrNodeType;
 use crate::visitor::{
@@ -638,7 +638,9 @@ impl Visitable for Material {
 
 impl DeserializeContents for Material {
     const NAME: &str = "Materials";
-    const KIND: IrNodeType = IrNodeType::Material;
+    const KIND: IrNodeType = IrNodeType::MdlSection {
+        ty: MdlSectionType::Material
+    };
 
     #[tracing::instrument(skip_all)]
     fn deserialize_contents(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {

@@ -6,8 +6,8 @@ use slipstream_shared::error::UnsupportedError;
 
 use crate::arc::{self, ArcDirectory};
 use crate::brres::{
-    ColorBuffer, Definitions, DeserializeContents, Material, NormalBuffer, PaletteLinks, Polygon,
-    Tev, TextureLinks, UvBuffer, VertexBuffer
+    ColorBuffer, Definitions, DeserializeContents, Material, MdlSectionType, NormalBuffer,
+    PaletteLinks, Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer
 };
 use crate::fixup::FixupPass;
 use crate::node::arena::IrArena;
@@ -61,28 +61,46 @@ pub fn serialize_node(
 #[cold]
 pub fn deserialize_node(mut payload: DeferPayload) -> SlipstreamResult<Box<DynContent>> {
     Ok(match payload.ty {
-        IrNodeType::Definitions => {
-            Box::new(Definitions::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::VertexBuffer => {
-            Box::new(VertexBuffer::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::NormalBuffer => {
-            Box::new(NormalBuffer::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::ColorBuffer => {
-            Box::new(ColorBuffer::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::UvBuffer => Box::new(UvBuffer::deserialize_contents(&mut payload.reader)?),
-        IrNodeType::Material => Box::new(Material::deserialize_contents(&mut payload.reader)?),
-        IrNodeType::Tevs => Box::new(Tev::deserialize_contents(&mut payload.reader)?),
-        IrNodeType::Polygon => Box::new(Polygon::deserialize_contents(&mut payload.reader)?),
-        IrNodeType::TextureLinks => {
-            Box::new(TextureLinks::deserialize_contents(&mut payload.reader)?)
-        }
-        IrNodeType::PaletteLinks => {
-            Box::new(PaletteLinks::deserialize_contents(&mut payload.reader)?)
-        }
+        IrNodeType::MdlSection { ty } => match ty {
+            MdlSectionType::Definitions => {
+                Box::new(Definitions::deserialize_contents(&mut payload.reader)?)
+            }
+            MdlSectionType::Vertices => {
+                Box::new(VertexBuffer::deserialize_contents(&mut payload.reader)?)
+            }
+            MdlSectionType::Normals => {
+                Box::new(NormalBuffer::deserialize_contents(&mut payload.reader)?)
+            }
+            MdlSectionType::Colors => {
+                Box::new(ColorBuffer::deserialize_contents(&mut payload.reader)?)
+            }
+            MdlSectionType::UvCoordinates => {
+                Box::new(UvBuffer::deserialize_contents(&mut payload.reader)?)
+            }
+            MdlSectionType::Material => {
+                Box::new(Material::deserialize_contents(&mut payload.reader)?)
+            }
+            MdlSectionType::Shader => Box::new(Tev::deserialize_contents(&mut payload.reader)?),
+            MdlSectionType::Polygon => {
+                Box::new(Polygon::deserialize_contents(&mut payload.reader)?)
+            }
+            MdlSectionType::TextureLinks => {
+                Box::new(TextureLinks::deserialize_contents(&mut payload.reader)?)
+            }
+            MdlSectionType::PaletteLinks => {
+                Box::new(PaletteLinks::deserialize_contents(&mut payload.reader)?)
+            }
+            _ => {
+                return Err(UnsupportedError {
+                    reason: format!(
+                        "lazily parsing a node of MDL section {:?} is not supported",
+                        ty
+                    ),
+                    location: Some(payload.reader.position())
+                }
+                .into());
+            }
+        },
         _ => {
             return Err(UnsupportedError {
                 reason: format!(
