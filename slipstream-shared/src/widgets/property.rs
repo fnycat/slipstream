@@ -121,12 +121,12 @@ pub fn wrapped<T>(
     mut add: impl FnMut(&mut egui::Ui, &mut T)
 ) {
     ui.vertical(|ui| {
-        for (row, chunk) in items.chunks_mut(per_row.max(1)).enumerate() {
-            value_cell(ui, id.with(row), |ui| {
-                for item in chunk.iter_mut().rev() {
-                    add(ui, item);
+        for (i, chunk) in items.chunks_mut(per_row.max(1)).enumerate() {
+            value_cell(ui, id.with(i), |ui| {
+                for (i, item) in chunk.iter_mut().rev().enumerate() {
+                    ui.push_id(i, |ui| add(ui, item));
                 }
-            })
+            });
         }
     });
 }
