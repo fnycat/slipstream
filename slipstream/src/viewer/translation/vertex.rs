@@ -527,7 +527,6 @@ impl ModelContents<'_> {
                     self.resolve_triangle_strip(model, scratch, polygon, vertices)?
                 }
                 GxOpCode::DrawTriangleFan(DrawOpCode { vertices }) => {
-                    tracing::info!("Resolving triangle fan");
                     self.resolve_triangle_fan(model, scratch, polygon, vertices)?
                 }
                 GxOpCode::LoadIndexedPosition(load) => {

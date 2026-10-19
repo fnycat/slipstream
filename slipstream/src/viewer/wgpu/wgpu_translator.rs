@@ -1,5 +1,6 @@
 //! Translates an intermediate model to a wgpu-compatible one.
 
+use slipstream_ir::tpl::{EncodedImage, Rgba8Image};
 use slipstream_shared::SlipstreamResult;
 use wgpu::util::DeviceExt;
 
@@ -12,12 +13,15 @@ pub struct WgpuModel {
     bind_pose_group: wgpu::BindGroup,
 
     pipelines: PipelineRegistry,
+
+    textures: Vec<WgpuTexture>,
     polygons: Vec<WgpuPolygon>
 }
 
 impl WgpuModel {
     pub fn from_intermediate(
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         camera_state: &CameraState,
         ir: IntermediateModel
     ) -> SlipstreamResult<Self> {
@@ -58,6 +62,11 @@ impl WgpuModel {
 
         let mut pipelines = PipelineRegistry::new(device.clone());
 
+        let mut textures = Vec::with_capacity(ir.textures.len());
+        for texture in ir.textures {
+            textures.push(WgpuTexture::from_intermediate(device, queue, texture)?);
+        }
+
         let mut polygons = Vec::with_capacity(ir.polygons.len());
         for polygon in ir.polygons {
             polygons.push(WgpuPolygon::from_intermediate(
@@ -73,6 +82,7 @@ impl WgpuModel {
             camera_bind_group: camera_state.bind_group.clone(),
             bind_pose_group: transform_matrix_group,
             pipelines,
+            textures,
             polygons
         })
     }
@@ -86,6 +96,55 @@ impl WgpuModel {
                 render_pass
             );
         }
+    }
+}
+
+pub struct WgpuTexture {
+    texture: wgpu::Texture,
+    view: wgpu::TextureView
+}
+
+impl WgpuTexture {
+    pub fn from_intermediate(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        rgba8: Rgba8Image
+    ) -> SlipstreamResult<Self> {
+        let dims = rgba8.dimensions();
+
+        let texture = device.create_texture_with_data(
+            queue,
+            &wgpu::TextureDescriptor {
+                label: Some("translated model texture"),
+                size: wgpu::Extent3d {
+                    width: dims.x as u32,
+                    height: dims.y as u32,
+                    depth_or_array_layers: 1
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[wgpu::TextureFormat::Rgba8Unorm]
+            },
+            wgpu::util::TextureDataOrder::LayerMajor,
+            rgba8.bytes().expect("Rgba8Image::bytes never fails")
+        );
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("translated model texture view"),
+            format: Some(wgpu::TextureFormat::Rgba8Unorm),
+            dimension: Some(wgpu::TextureViewDimension::D2),
+            usage: Some(wgpu::TextureUsages::TEXTURE_BINDING),
+            aspect: wgpu::TextureAspect::All,
+            base_mip_level: 0,
+            mip_level_count: None,
+            base_array_layer: 0,
+            array_layer_count: None
+        });
+
+        Ok(Self { texture, view })
     }
 }
 

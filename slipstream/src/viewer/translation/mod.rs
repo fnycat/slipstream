@@ -1,10 +1,9 @@
 mod skeleton;
-mod texture;
 mod vertex;
 
 pub use skeleton::*;
 use slipstream_ir::brres::{
-    Bone, ColorBuffer, DRAW_OPA_NAME, DRAW_XLU_NAME, Definitions, MdlHeader, MdlVisitor,
+    self, Bone, ColorBuffer, DRAW_OPA_NAME, DRAW_XLU_NAME, Definitions, MdlHeader, MdlVisitor,
     NODE_MIX_NAME, NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer
 };
 use slipstream_ir::tpl::Rgba8Image;
@@ -27,8 +26,9 @@ pub struct IntermediateModel {
 
     pub bone_translations: Vec<glam::Mat4>,
     pub polygons: Vec<IntermediatePolygon>,
+
     /// All textures are converted to RGBA8 images.
-    pub textures: Vec<IrNodeKey>
+    pub textures: Vec<Rgba8Image>
 }
 
 #[derive(Clone)]
@@ -43,6 +43,8 @@ pub struct ModelContents<'a> {
     draw_opaque: Option<IrNodeKey>,
 
     skeleton_root: Option<IrNodeKey>,
+
+    textures: Vec<IrNodeKey>,
 
     vertices: Vec<IrNodeKey>,
     normals: Vec<IrNodeKey>,
@@ -160,6 +162,41 @@ impl<'a> ModelContents<'a> {
         Ok(())
     }
 
+    fn translate_textures(
+        &self,
+        model: &mut IntermediateModel,
+        arena: &IrArena
+    ) -> SlipstreamResult<()> {
+        struct TextureVisitor<'a> {
+            out: &'a mut IntermediateModel,
+            result: SlipstreamResult<()>
+        }
+
+        impl Visitor for TextureVisitor<'_> {
+            fn visit_tex(&mut self, texture: VisitorCtx<'_, brres::Texture>) -> ControlFlow<()> {
+                tracing::trace!("Translating texture `{}`", texture.meta.label);
+
+                self.result = texture.data.to_rgba8().map(|img| {
+                    self.out.textures.push(img);
+                });
+
+                ControlFlow::Break(())
+            }
+        }
+
+        model.textures.reserve(self.textures.len());
+        for &texture in &self.textures {
+            let mut visitor = TextureVisitor {
+                out: model,
+                result: Ok(())
+            };
+            arena.visit(texture, &mut visitor)?;
+            visitor.result?;
+        }
+
+        Ok(())
+    }
+
     fn translate_polygons(
         &self,
         out: &mut IntermediateModel,
@@ -179,7 +216,10 @@ impl<'a> ModelContents<'a> {
         }
 
         impl MdlVisitor for PolygonVisitor<'_> {
-            fn visit_polygon(&mut self, context: VisitorCtx<'_, Polygon>) -> ControlFlow<()> {
+            fn visit_polygon(
+                &mut self,
+                context: VisitorCtx<'_, brres::Polygon>
+            ) -> ControlFlow<()> {
                 tracing::trace!("Translating polygon `{}`", context.meta.label);
                 self.result = self
                     .input
@@ -198,7 +238,7 @@ impl<'a> ModelContents<'a> {
                 scratch: &mut intermediate,
                 result: Ok(())
             };
-            let _ = arena.visit(polygon, &mut visitor)?;
+            arena.visit(polygon, &mut visitor)?;
             visitor.result?;
 
             out.polygons.push(intermediate);
@@ -218,6 +258,7 @@ impl<'a> ModelContents<'a> {
         self.translate_node_tree(&mut model, arena)?;
         self.translate_node_mix(&mut model, arena)?;
         self.populate_primary_influences(&mut model, arena)?;
+        self.translate_textures(&mut model, arena)?;
         self.translate_polygons(&mut model, arena)?;
 
         Ok(model)
@@ -236,6 +277,8 @@ impl<'a> ModelContents<'a> {
 
             skeleton_root: None,
 
+            textures: Vec::new(),
+
             vertices: Vec::new(),
             normals: Vec::new(),
             colors: Vec::new(),
@@ -251,6 +294,11 @@ impl<'a> ModelContents<'a> {
 impl Visitor for ModelContents<'_> {
     fn as_mdl(&mut self) -> Option<&mut dyn MdlVisitor> {
         Some(self)
+    }
+
+    fn visit_tex(&mut self, texture: VisitorCtx<'_, brres::Texture>) -> ControlFlow<()> {
+        self.textures.push(texture.meta.key);
+        ControlFlow::Break(())
     }
 }
 

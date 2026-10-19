@@ -501,7 +501,14 @@ impl ViewerPipeline {
         let screen_texture_state = ScreenTextureState::new(&graphics_state, viewport_size);
         // let pipeline_state = PipelineState::new(&graphics_state, &camera_state);
         let model_state = intermediate_model
-            .map(|model| WgpuModel::from_intermediate(&graphics_state.device, &camera_state, model))
+            .map(|model| {
+                WgpuModel::from_intermediate(
+                    &graphics_state.device,
+                    &graphics_state.queue,
+                    &camera_state,
+                    model
+                )
+            })
             .transpose()?;
 
         let grid = GridPipeline::new(&graphics_state.device, &camera_state.bind_group_layout);
