@@ -1,12 +1,8 @@
 use std::ops::ControlFlow;
 
-use crate::brres::{
-    Bone, ColorBuffer, Definitions, Material, MdlHeader, NormalBuffer, PaletteLinks, Polygon, Tev,
-    TextureLinks, UvBuffer, VertexBuffer
-};
-use crate::kmp::enph::EnemyRoute;
+use crate::kmp::enph::EnemyRoutes;
 use crate::kmp::enpt::EnemyRoutePoints;
-use crate::kmp::{KmpHeader, StartingPositions};
+use crate::kmp::{ItemRoutePoints, KmpHeader, StartingPositions};
 use crate::visitor::{VisitorCtx, VisitorCtxMut};
 
 #[allow(unused_variables)]
@@ -53,7 +49,7 @@ pub trait KmpVisitor {
         }
     }
 
-    fn visit_enemy_route(&self, context: VisitorCtx<'_, EnemyRoute>) -> ControlFlow<()> {
+    fn visit_enemy_route(&self, context: VisitorCtx<'_, EnemyRoutes>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -61,7 +57,10 @@ pub trait KmpVisitor {
         }
     }
 
-    fn visit_enemy_route_mut(&mut self, context: VisitorCtxMut<'_, EnemyRoute>) -> ControlFlow<()> {
+    fn visit_enemy_route_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, EnemyRoutes>
+    ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
@@ -83,6 +82,25 @@ pub trait KmpVisitor {
     fn visit_enemy_route_points_mut(
         &mut self,
         context: VisitorCtxMut<'_, EnemyRoutePoints>
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_item_route_points(&self, context: VisitorCtx<'_, ItemRoutePoints>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_item_route_points_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, ItemRoutePoints>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())

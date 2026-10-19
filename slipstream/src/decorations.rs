@@ -40,6 +40,9 @@ impl WindowState {
 /// a fitting icon. The icon is drawn manually using egui's painter.
 ///
 /// This should only be called when the window is maximized.
+///
+/// This does not exist on WASM platforms.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn draw_unmaximize(ui: &mut egui::Ui) -> egui::Response {
     let padding = ui.style().spacing.button_padding;
     let icon_size = egui::vec2(10.0, 10.0);
@@ -127,7 +130,10 @@ pub fn draw_background(bg_image: &egui::Image, ui: &mut egui::Ui) {
     ui.painter().rect_filled(viewport_rect, 0.0, bg_overlay);
 }
 
-/// Draws the title buttons (close, minimize, maximize)
+/// Draws the title buttons (close, minimize, maximize).
+///
+/// This does not exist on WASM.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn draw_title_buttons(ui: &mut egui::Ui) {
     let layout_bg = ui.style().visuals.panel_fill;
 
@@ -184,6 +190,9 @@ pub fn draw_title_buttons(ui: &mut egui::Ui) {
 ///
 /// This function reimplements resizing by emulating its behaviour when the cursor is near
 /// the borders of the window.
+///
+/// This does not exist on WASM platforms.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn handle_frameless_resize(ctx: &egui::Context) {
     let border_width = 6.0;
     let screen_rect = ctx.viewport_rect();
@@ -241,6 +250,9 @@ pub fn handle_frameless_resize(ctx: &egui::Context) {
 }
 
 /// Draws a basic title bar with the window title and title buttons.
+///
+/// This does not exist on WASM platforms.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
     let layout_bg = ui.style().visuals.panel_fill;
     let decorations_id = egui::Id::new("titlebar_panel");

@@ -15,6 +15,8 @@ use crate::tpl::{
     Rgb565Image, Rgba8Image
 };
 
+pub const SUPPORTED_EXPORT_FORMATS: [&str; 4] = ["png", "jpeg", "jpg", "webp"];
+
 #[try_from(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u32)]
@@ -183,19 +185,65 @@ impl ImageData {
         if ui.button("Export").clicked() {
             tracing::trace!("Opening texture export file dialog");
 
-            if let Some(export_file) = rfd::FileDialog::new().save_file() {
-                if export_file
-                    .extension()
-                    .map(|ext| ext.to_string_lossy().ends_with("tex"))
-                    .unwrap_or(false)
-                {
-                    // Export as TEX file.
-                    todo!("export as tex");
-                } else {
-                    // Export as regular image
-                    self.export_to_file(export_file)
-                        .expect("failed to export image");
-                }
+            let rgba_image = self
+                .to_rgba8()
+                .expect("failed to convert image to RGBA8 for export");
+
+            // Creates the file dialog to export a file.
+            //
+            // On native this is polled within a separate thread to prevent blocking the UI thread.
+            // On WASM this future will return immediately and the file dialog will only open when the
+            // editor attempts to write to the file.
+            let fut = rfd::AsyncFileDialog::new()
+                // .set_title("Export image")
+                // .add_filter("", &SUPPORTED_EXPORT_FORMATS)
+                .save_file();
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                // Poll in a new thread so the UI thread isn't blocked.
+                //
+                // We copy the RGBA8 image data into the new thread because the thread
+                // will last multiple frames and cannot hold a reference into the node.
+                std::thread::spawn(move || {
+                    tracing::trace!("Export thread started");
+
+                    if let Some(file) = futures::executor::block_on(fut) {
+                        tracing::info!("Exporting image to `{:?}`", file.path());
+
+                        rgba_image
+                            .export_to_file(file.path())
+                            .expect("failed to export file");
+                    }
+                });
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            {
+                use std::io::Cursor;
+
+                wasm_bindgen_futures::spawn_local(async move {
+                    tracing::trace!("Export future started");
+
+                    if let Some(file) = fut.await {
+                        let filename = file.file_name();
+                        tracing::info!("WASM file dialog returned with file: `{filename}`");
+
+                        let Ok(format) = image::ImageFormat::from_path(filename) else {
+                            tracing::error!("Failed to guess export format from file path");
+                            return;
+                        };
+
+                        let mut writer = BufWriter::new(Cursor::new(Vec::new()));
+                        rgba_image.export(&mut writer, format);
+
+                        writer
+                            .flush()
+                            .expect("Failed to flush image export buf writer");
+
+                        file.write(writer.buffer()).await;
+                    }
+                });
             }
         }
 
@@ -239,7 +287,7 @@ macro_rules! impl_img_data {
         impl ImageData {
             /// Exports the texture to the given image format, writing it into the given writer.
             ///
-            /// *Assumes the writer is bufferred*.
+            /// *Assumes the writer is buffered*.
             pub fn export<W: Write + Seek>(
                 &self,
                 buf_writer: &mut W,

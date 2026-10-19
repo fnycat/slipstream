@@ -6,7 +6,9 @@ use slipstream_ir::brres::{
     MdlHeader, MdlVisitor, NormalBuffer, PaletteLinks, Polygon, SkeletalAnimation, Texture,
     TextureLinks, UvBuffer, VertexBuffer
 };
-use slipstream_ir::kmp::{EnemyRoute, EnemyRoutePoints, KmpHeader, KmpVisitor, StartingPositions};
+use slipstream_ir::kmp::{
+    EnemyRoutePoints, EnemyRoutes, ItemRoutePoints, KmpHeader, KmpVisitor, StartingPositions
+};
 use slipstream_ir::tpl::{TplHeader, TplImage};
 use slipstream_ir::visitor::{Visitor, VisitorCtxMut};
 use slipstream_shared::inspect::{FieldConfig, Inspect};
@@ -219,7 +221,10 @@ impl KmpVisitor for InspectorVisitor<'_> {
         ControlFlow::Continue(())
     }
 
-    fn visit_enemy_route_mut(&mut self, context: VisitorCtxMut<'_, EnemyRoute>) -> ControlFlow<()> {
+    fn visit_enemy_route_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, EnemyRoutes>
+    ) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());
@@ -230,6 +235,17 @@ impl KmpVisitor for InspectorVisitor<'_> {
     fn visit_enemy_route_points_mut(
         &mut self,
         context: VisitorCtxMut<'_, EnemyRoutePoints>
+    ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_item_route_points_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, ItemRoutePoints>
     ) -> ControlFlow<()> {
         let _changes = context
             .content

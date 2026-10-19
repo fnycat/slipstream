@@ -6,7 +6,7 @@ use eframe::egui_wgpu;
 
 use crate::cmd::{AppCommand, AppCommandChannel};
 use crate::config::{configure_dark_style, configure_light_style};
-use crate::decorations::handle_frameless_resize;
+use crate::decorations;
 use crate::pages::RoutablePage;
 use crate::pages::splash::SplashPage;
 use crate::shared::GraphicsState;
@@ -99,7 +99,9 @@ impl App {
 
     /// Draws the main app UI.
     fn draw_ui(&mut self, ui: &mut egui::Ui) {
-        handle_frameless_resize(ui);
+        // We don't need resizing or the title bar on WASM platforms.
+        #[cfg(not(target_arch = "wasm32"))]
+        decorations::handle_frameless_resize(ui);
 
         // Draw panic modal if a panic occurred
         if self.panic_info.is_some() {
@@ -135,11 +137,11 @@ impl eframe::App for App {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        // if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        //     self.draw_ui(ui);
-        // })) {
-        //     self.panic_info = Some(err);
-        // }
-        self.draw_ui(ui);
+        if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
+            self.draw_ui(ui);
+        })) {
+            self.panic_info = Some(err);
+        }
+        // self.draw_ui(ui);
     }
 }

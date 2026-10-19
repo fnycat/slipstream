@@ -4,7 +4,7 @@ use crate::viewer::camera::{CameraController, FAR_PLANE, NEAR_PLANE, WORLD_UP};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FreeCamera {
-    pub last_update: Instant,
+    // pub last_update: Instant,
     pub position: glam::Vec3,
     pub sensitivity: f32,
     pub move_speed: f32,
@@ -20,13 +20,15 @@ impl CameraController for FreeCamera {
 
     #[inline]
     fn on_update(&mut self) {
-        self.last_update = Instant::now();
+        unimplemented!();
+        // self.last_update = Instant::now();
     }
 
     #[inline]
     fn delta_time(&self) -> f32 {
-        let now = Instant::now();
-        now.duration_since(self.last_update).as_secs_f32()
+        unimplemented!();
+        // let now = Instant::now();
+        // now.duration_since(self.last_update).as_secs_f32()
     }
 
     #[inline]

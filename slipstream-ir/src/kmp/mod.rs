@@ -1,10 +1,12 @@
 mod enph;
 mod enpt;
+mod itpt;
 mod ktpt;
 mod visitor;
 
 pub use enph::*;
 pub use enpt::*;
+pub use itpt::*;
 pub use ktpt::*;
 pub use visitor::*;
 
@@ -27,6 +29,8 @@ pub const KMP_MAGIC: [u8; 4] = [0x52, 0x4b, 0x4d, 0x44]; // "RKMD"
 pub const DEFAULT_KMP_VERSION: u32 = 0x9d8;
 /// The maximum amount of possible KMP files.
 pub const MAX_KMP_SECTION_COUNT: u32 = 15;
+/// A KMP section cannot have more than 255 entries, otherwise the Wii crashes.
+pub const MAX_KMP_SECTION_ENTRY_COUNT: u16 = 255;
 
 pub const KMP_READABLE_SECTION_NAMES: [&str; 15] = [
     "Starting Positions",
@@ -35,22 +39,27 @@ pub const KMP_READABLE_SECTION_NAMES: [&str; 15] = [
     "Item Route Points",
     "Item Route",
     "Checkpoints",
-    "Checkpoint Groups",
+    "Checkpoint Paths",
     "Geo Objects",
     "Routes",
     "Areas",
     "Cameras",
     "Respawn Positions",
     "Cannon Target Positions",
-    "End Battle Positions",
+    "Mission Success Points",
     "Stage Information"
 ];
 
+/// These are just four letter magics for each of the files, but converted to an `u32` for easier
+/// reading.
 #[try_from(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum KmpSectionType {
+    /// Magic: KTPT
     StartingPositions = 0x4b545054,
+    /// Magic: ENPT
     EnemyRoutePoints = 0x454e5054,
+    /// Magic: ENPH
     EnemyRoute = 0x454e5048,
     ItemRoutePoints = 0x49545054,
     ItemRoute = 0x49545048,
@@ -59,7 +68,7 @@ pub enum KmpSectionType {
     GeoObjects = 0x474f424a,
     Routes = 0x504f5449,
     Areas = 0x41524541,
-    Cameras = 0x41414d45,
+    Cameras = 0x43414d45,
     RespawnPositions = 0x4a475054,
     CannonTargetPositions = 0x434e5054,
     MissionSuccessPoints = 0x4d535054,
@@ -259,17 +268,30 @@ pub fn deserialize(
         let section_header = KmpSectionHeader::deserialize(reader)?;
         let section_ty = section_header.ty; // copy it because `section_header` moves
 
+        if section_header.entry_count > MAX_KMP_SECTION_ENTRY_COUNT {
+            tracing::warn!(
+                "KMP section {section_ty:?} has more than {MAX_KMP_SECTION_ENTRY_COUNT} entries, this will crash a real console"
+            );
+        }
+
         let content: Box<dyn Visitable + Send + Sync> = match section_ty {
-            KmpSectionType::StartingPositions => Box::new(StartingPositions::deserialize(reader)?),
-            KmpSectionType::EnemyRoutePoints => Box::new(EnemyRoutePoints::deserialize(reader)?),
-            KmpSectionType::EnemyRoute => Box::new(EnemyRoute::deserialize(reader)?),
+            KmpSectionType::StartingPositions => {
+                Box::new(StartingPositions::deserialize(reader, section_header)?)
+            }
+            KmpSectionType::EnemyRoutePoints => {
+                Box::new(EnemyRoutePoints::deserialize(reader, section_header)?)
+            }
+            KmpSectionType::EnemyRoute => {
+                Box::new(EnemyRoutes::deserialize(reader, section_header)?)
+            }
+            KmpSectionType::ItemRoutePoints => {
+                Box::new(ItemRoutePoints::deserialize(reader, section_header)?)
+            }
             _ => {
                 tracing::warn!("unimplemented section type: {:?}", section_header.ty);
                 continue;
             }
         };
-
-        dbg!(section_header);
 
         let child_key = arena.insert(IrNodeDescriptor {
             label: format!("{:?}", section_ty),

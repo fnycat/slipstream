@@ -35,6 +35,9 @@ impl RoutablePage for IntroPage {
     fn draw(&mut self, ui: &mut egui::Ui) -> SlipstreamResult<()> {
         decorations::draw_version_details(ui);
         decorations::draw_background(&egui::Image::from_texture(self.bg_image), ui);
+
+        // Don't need these in the browser.
+        #[cfg(not(target_arch = "wasm32"))]
         decorations::draw_basic_title_bar(ui);
 
         let window_bg = ui.visuals().panel_fill;

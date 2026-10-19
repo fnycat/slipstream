@@ -33,7 +33,11 @@ impl RoutablePage for SettingsPage {
 
     fn draw(&mut self, ui: &mut egui::Ui) -> SlipstreamResult<()> {
         decorations::draw_background(&egui::Image::from_texture(self.bg_image), ui);
+
+        // Don't need these in the browser.
+        #[cfg(not(target_arch = "wasm32"))]
         decorations::draw_basic_title_bar(ui);
+
         decorations::draw_tool_buttons(&mut self.cmd_channel, &self.render_state, ui)?;
 
         let window_bg = ui.visuals().panel_fill;

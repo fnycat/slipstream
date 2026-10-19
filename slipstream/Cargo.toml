@@ -37,6 +37,7 @@ egui-phosphor.workspace = true
 tracing.workspace = true
 byteorder.workspace = true
 bitfield-struct.workspace = true
+futures.workspace = true
 
 bytemuck = "1.25.2"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
@@ -44,7 +45,6 @@ tracing-tree = "0.4.1"
 winit = "0.30.13"
 rfd = "0.17.2"
 paste = "1.0.15"
-futures = { version = "0.3.34", features = ["executor"] }
 parking_lot = { version = "0.12.5", features = ["arc_lock"] }
 egui_tiles = "0.17.1"
 strum = { version = "0.28.0", features = ["derive"] }

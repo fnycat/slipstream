@@ -1,6 +1,4 @@
-use std::ops::{BitOr, BitOrAssign, Range, RangeBounds, RangeInclusive};
-
-use egui::emath;
+use std::ops::{BitOr, BitOrAssign, RangeInclusive};
 
 use crate::widgets::{self, drag_value};
 
@@ -78,9 +76,14 @@ pub trait Inspect {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes;
 
     /// Draws one grid row per field into the grid of the given `ui`.
-    fn draw_rows(&mut self, ui: &mut egui::Ui, id: egui::Id) -> Changes {
+    #[expect(
+        unused_variables,
+        reason = "Default impl does not use the variables, but they are needed by downstream impls"
+    )]
+    fn draw_rows(&mut self, ui: &mut egui::Ui, id: egui::Id, cfg: &FieldConfig) -> Changes {
         let err_text = egui::RichText::new("ERROR: You should implement `Inspect::draw_rows`!")
             .color(ui.visuals().error_fg_color);
+
         ui.label(err_text);
 
         Changes::default()
@@ -210,7 +213,6 @@ impl Inspect for u64 {
 macro_rules! impl_vector {
     ($ty:ty, $($ident:ident),*) => {
         impl Inspect for $ty {
-            #[inline]
             fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
                 let mut response = Changes::default();
                 $(
@@ -276,9 +278,28 @@ impl<T: Inspect, const N: usize> Inspect for [T; N] {
         true
     }
 
-    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+    //     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+    //         let mut changes = Changes::default();
+    //         let id = ui.id().with("Array");
+    //
+    //         widgets::wrapped(ui, id, self, cfg.max_horizontal_elements, |ui, item| {
+    //             changes |= item.draw_inner(ui, cfg);
+    //         });
+    //
+    //         changes
+    //     }
+
+    fn draw_inner(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
+        let err_text = egui::RichText::new("ERROR: You should use `Inspect::draw_rows` instead of `Inspect::draw_inner` for array types!")
+            .color(ui.visuals().error_fg_color);
+
+        ui.label(err_text);
+
+        Changes::default()
+    }
+
+    fn draw_rows(&mut self, ui: &mut egui::Ui, id: egui::Id, cfg: &FieldConfig) -> Changes {
         let mut changes = Changes::default();
-        let id = ui.id().with("Array");
 
         widgets::wrapped(ui, id, self, cfg.max_horizontal_elements, |ui, item| {
             changes |= item.draw_inner(ui, cfg);
@@ -293,9 +314,17 @@ impl<T: Inspect> Inspect for Vec<T> {
         true
     }
 
-    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+    fn draw_inner(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
+        let err_text = egui::RichText::new("ERROR: You should use `Inspect::draw_rows` instead of `Inspect::draw_inner` for array types!")
+            .color(ui.visuals().error_fg_color);
+
+        ui.label(err_text);
+
+        Changes::default()
+    }
+
+    fn draw_rows(&mut self, ui: &mut egui::Ui, id: egui::Id, cfg: &FieldConfig) -> Changes {
         let mut changes = Changes::default();
-        let id = ui.id().with("Array");
 
         widgets::wrapped(ui, id, self, cfg.max_horizontal_elements, |ui, item| {
             changes |= item.draw_inner(ui, cfg);

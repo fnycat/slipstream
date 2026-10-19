@@ -291,7 +291,7 @@ impl FieldOpt {
                                 #name,
                                 summary.as_deref().unwrap_or(""),
                                 #default_open,
-                                |ui| slipstream_shared::inspect::Inspect::draw_rows(&mut *value, ui, field_id),
+                                |ui| slipstream_shared::inspect::Inspect::draw_rows(&mut *value, ui, field_id, &CONFIG),
                             );
 
                             // `None` while the body is fully closed.
@@ -425,7 +425,7 @@ impl Input {
                     ui.scope(|ui| {
                         // Gives the right aligned value cells a definite right edge.
                         ui.set_min_width(ui.available_width());
-                        changes |= slipstream_shared::inspect::Inspect::draw_rows(self, ui, root_id);
+                        changes |= slipstream_shared::inspect::Inspect::draw_rows(self, ui, root_id, cfg);
                     });
 
                     changes
@@ -437,7 +437,7 @@ impl Input {
                     let id = ui.id().with(concat!("InspectNested_", #name));
 
                     ui.vertical(|ui| {
-                        changes |= slipstream_shared::inspect::Inspect::draw_rows(self, ui, id);
+                        changes |= slipstream_shared::inspect::Inspect::draw_rows(self, ui, id, cfg);
                     });
 
                     changes
@@ -445,7 +445,7 @@ impl Input {
 
                 /// Draws one row per field into `ui`. `id` is unique to this struct instance and
                 /// is the base for the ids of its fields.
-                fn draw_rows(&mut self, ui: &mut egui::Ui, id: egui::Id) -> slipstream_shared::inspect::Changes {
+                fn draw_rows(&mut self, ui: &mut egui::Ui, id: egui::Id, _cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
                     use slipstream_shared::widgets;
 
                     let mut changes = slipstream_shared::inspect::Changes::default();

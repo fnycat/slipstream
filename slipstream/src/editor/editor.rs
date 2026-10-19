@@ -384,6 +384,8 @@ impl Editor {
                     });
                     inner?;
 
+                    // Don't need need these in the browser.
+                    #[cfg(not(target_arch = "wasm32"))]
                     decorations::draw_title_buttons(ui);
 
                     Ok::<_, SlipstreamError>(())

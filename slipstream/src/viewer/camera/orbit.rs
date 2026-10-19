@@ -11,7 +11,7 @@ pub struct OrbitCamera {
     pub vertical_fov: f32,
     pub aspect_ratio: f32,
 
-    pub last_update: Instant,
+    // pub last_update: Instant,
     pub orientation: glam::Quat,
     pub lookat: glam::Vec3,
     pub radius: f32
@@ -24,13 +24,15 @@ impl CameraController for OrbitCamera {
 
     #[inline]
     fn on_update(&mut self) {
-        self.last_update = Instant::now();
+        unimplemented!();
+        // self.last_update = Instant::now();
     }
 
     #[inline]
     fn delta_time(&self) -> f32 {
-        let now = Instant::now();
-        now.duration_since(self.last_update).as_secs_f32()
+        unimplemented!();
+        // let now = Instant::now();
+        // now.duration_since(self.last_update).as_secs_f32()
     }
 
     #[inline]

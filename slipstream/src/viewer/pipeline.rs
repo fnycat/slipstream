@@ -488,7 +488,7 @@ impl ViewerPipeline {
         // });
 
         let camera = Camera::Free(FreeCamera {
-            last_update: Instant::now(),
+            // last_update: Instant::now(),
             position: glam::Vec3::ZERO,
             sensitivity: 0.01,
             move_speed: camera_move_speed,

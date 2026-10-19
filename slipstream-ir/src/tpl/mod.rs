@@ -10,7 +10,8 @@ mod rgba8;
 mod tpl;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::io::{Seek, Write};
+use std::io::{BufWriter, Seek, Write};
+use std::path::Path;
 
 pub use c::*;
 pub use c14x2::*;
@@ -42,6 +43,33 @@ pub trait ExportableImage {
         buffered_writer: &mut W,
         format: image::ImageFormat
     ) -> SlipstreamResult<()>;
+
+    /// The file format is automatically determined from the file extension.
+    ///
+    /// If you want to explicitly set the format, use [`export_to_file_with_format`] instead.
+    fn export_to_file<P: AsRef<Path>>(&self, filepath: P) -> SlipstreamResult<()> {
+        let path = filepath.as_ref();
+        let format = image::ImageFormat::from_path(path)?;
+
+        tracing::debug!("Exporting {} -> {format:?}", std::any::type_name::<Self>());
+
+        let mut file = std::fs::File::create(path)?;
+        let mut buf_writer = BufWriter::new(&mut file);
+
+        self.export(&mut buf_writer, format)
+    }
+
+    fn export_to_file_with_format<P: AsRef<Path>>(
+        &self,
+        filepath: P,
+        format: image::ImageFormat
+    ) -> SlipstreamResult<()> {
+        let path = filepath.as_ref();
+        let mut file = std::fs::File::create(path)?;
+        let mut buf_writer = BufWriter::new(&mut file);
+
+        self.export(&mut buf_writer, format)
+    }
 }
 
 // We use methods instead of associated constants to ensure the trait stays dyn-compatible.
