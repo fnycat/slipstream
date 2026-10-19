@@ -1,4 +1,5 @@
 mod skeleton;
+mod texture;
 mod vertex;
 
 pub use skeleton::*;
@@ -6,6 +7,7 @@ use slipstream_ir::brres::{
     Bone, ColorBuffer, DRAW_OPA_NAME, DRAW_XLU_NAME, Definitions, MdlHeader, MdlVisitor,
     NODE_MIX_NAME, NODE_TREE_NAME, NormalBuffer, Polygon, UvBuffer, VertexBuffer
 };
+use slipstream_ir::tpl::Rgba8Image;
 use slipstream_ir::util::Box3;
 pub use vertex::*;
 
@@ -24,7 +26,9 @@ pub struct IntermediateModel {
     pub bounding_volume: Box3,
 
     pub bone_translations: Vec<glam::Mat4>,
-    pub polygons: Vec<IntermediatePolygon>
+    pub polygons: Vec<IntermediatePolygon>,
+    /// All textures are converted to RGBA8 images.
+    pub textures: Vec<IrNodeKey>
 }
 
 #[derive(Clone)]

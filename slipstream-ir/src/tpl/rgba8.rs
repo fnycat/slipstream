@@ -1,4 +1,6 @@
 use std::io::{Seek, Write};
+use std::ops::Deref;
+use std::sync::Arc;
 
 use byteorder::ReadBytesExt;
 use slipstream_shared::{RefCursor, SlipstreamResult};
@@ -11,7 +13,7 @@ use crate::tpl::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rgba8Image {
     pub(super) dimensions: glam::U16Vec2,
-    pub(super) pixels: Vec<glam::U8Vec4>,
+    pub(super) pixels: Arc<[glam::U8Vec4]>,
     pub(super) mipmaps: u32,
     pub(super) hash: u64
 }
@@ -49,7 +51,7 @@ impl Rgba8Image {
             tiled.extend_from_slice(&curr_block);
         }
 
-        let pixels = detile::<4, 4, 16, _>(&tiled, dimensions);
+        let pixels = Arc::from(detile::<4, 4, 16, _>(&tiled, dimensions));
         let hash = hash_pixels(bytemuck::cast_slice(&pixels));
 
         Ok(Self {

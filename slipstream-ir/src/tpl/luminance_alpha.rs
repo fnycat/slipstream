@@ -1,5 +1,6 @@
 use std::io::ErrorKind::InvalidInput;
 use std::io::{Read, Seek, Write};
+use std::sync::Arc;
 
 use byteorder::ReadBytesExt;
 use glam::Vec2Swizzles;
@@ -18,7 +19,7 @@ pub struct La4Image {
     pub(super) mipmaps: u32,
     /// Intensity values. The values have already been multiplied by `0x11` compared
     /// to the disk format.
-    pub(super) pixels: Vec<glam::U8Vec2>,
+    pub(super) pixels: Arc<[glam::U8Vec2]>,
     pub(super) hash: u64
 }
 
@@ -45,7 +46,7 @@ impl La4Image {
             }
         }
 
-        let pixels = detile::<8, 4, 32, _>(&tiles, dimensions);
+        let pixels = Arc::from(detile::<8, 4, 32, _>(&tiles, dimensions));
         let hash = hash_pixels(bytemuck::cast_slice(&pixels));
 
         Ok(Self {
@@ -116,13 +117,6 @@ impl EncodedImage for La4Image {
     }
 
     fn to_rgba8(&self) -> SlipstreamResult<Rgba8Image> {
-        let out = self
-            .pixels
-            .iter()
-            .copied()
-            .map(|i| i.xxxy())
-            .collect::<Vec<_>>();
-
         Ok(Rgba8Image::from(self))
     }
 
@@ -166,7 +160,7 @@ impl ExportableImage for La4Image {
 pub struct La8Image {
     pub(super) dimensions: glam::U16Vec2,
     pub(super) mipmaps: u32,
-    pub(super) pixels: Vec<glam::U8Vec2>,
+    pub(super) pixels: Arc<[glam::U8Vec2]>,
     pub(super) hash: u64
 }
 
@@ -192,7 +186,7 @@ impl La8Image {
             }
         }
 
-        let pixels = detile::<4, 4, 16, _>(&tiled, dimensions);
+        let pixels = Arc::from(detile::<4, 4, 16, _>(&tiled, dimensions));
         let hash = hash_pixels(bytemuck::cast_slice(&pixels));
 
         Ok(Self {

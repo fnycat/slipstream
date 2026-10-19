@@ -1,4 +1,5 @@
 use std::io::{Seek, Write};
+use std::sync::Arc;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult, verify};
@@ -190,7 +191,7 @@ impl EncodedImage for CmprImage {
             dimensions: self.dimensions,
             mipmaps: self.mipmaps,
             hash: self.hash,
-            pixels
+            pixels: Arc::from(pixels)
         })
     }
 

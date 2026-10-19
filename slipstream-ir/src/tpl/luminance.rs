@@ -1,5 +1,6 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::{Read, Seek, Write};
+use std::sync::Arc;
 
 use byteorder::ReadBytesExt;
 
@@ -16,7 +17,7 @@ pub struct L4Image {
     pub mipmaps: u32,
     /// Intensity values. The values have already been multiplied by `0x11` compared
     /// to the disk format.
-    pub pixels: Vec<u8>,
+    pub pixels: Arc<[u8]>,
 
     /// A hash of the pixel's contents.
     pub hash: u64
@@ -48,7 +49,7 @@ impl L4Image {
         }
 
         // Then remove the tile pattern
-        let pixels = detile::<8, 8, 64, _>(&tiles, dimensions);
+        let pixels = Arc::from(detile::<8, 8, 64, _>(&tiles, dimensions));
         let hash = hash_pixels(&pixels);
 
         Ok(Self {
@@ -162,7 +163,7 @@ impl ExportableImage for L4Image {
 pub struct L8Image {
     pub(super) dimensions: glam::U16Vec2,
     pub(super) mipmaps: u32,
-    pub(super) pixels: Vec<u8>,
+    pub(super) pixels: Arc<[u8]>,
     pub(super) hash: u64
 }
 
@@ -186,7 +187,7 @@ impl L8Image {
             }
         }
 
-        let pixels = detile::<8, 4, 32, _>(&tiles, dimensions);
+        let pixels = Arc::from(detile::<8, 4, 32, _>(&tiles, dimensions));
         let hash = hash_pixels(&pixels);
 
         Ok(Self {

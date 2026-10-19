@@ -12,6 +12,7 @@ mod tpl;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::{BufWriter, Seek, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 pub use c::*;
 pub use c14x2::*;

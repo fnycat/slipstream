@@ -1,5 +1,6 @@
 use std::io::{BufWriter, Seek, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::{Inspect, try_from};
@@ -274,7 +275,7 @@ impl ImageData {
                 ImageData::Luminance4(L4Image {
                     dimensions: glam::u16vec2(1, 1),
                     mipmaps: 1,
-                    pixels: vec![255; 8 * 8],
+                    pixels: Arc::from(vec![255; 8 * 8]),
                     hash: 0
                 })
             }

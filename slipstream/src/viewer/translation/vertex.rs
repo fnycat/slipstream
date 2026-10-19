@@ -459,17 +459,11 @@ impl ModelContents<'_> {
             // We have no vertices
             return Ok(());
         };
-        let mut v1 = (*v1).clone();
-
-        v1.color0 = ColorData::Direct(DirectColor::AlphaDisabled(glam::u8vec4(255, 0, 0, 255)));
 
         let r1 = self.resolve_vertex(model, scratch, polygon, &v1)?;
 
         scratch.indices.reserve(expanded_len);
-        for [mut v2, mut v3] in vertices.array_windows().cloned() {
-            v2.color0 = ColorData::Direct(DirectColor::AlphaDisabled(glam::u8vec4(0, 255, 0, 255)));
-            v3.color0 = ColorData::Direct(DirectColor::AlphaDisabled(glam::u8vec4(0, 0, 255, 255)));
-
+        for [v2, v3] in vertices.array_windows() {
             let r2 = self.resolve_vertex(model, scratch, polygon, &v2)?;
             let r3 = self.resolve_vertex(model, scratch, polygon, &v3)?;
 
