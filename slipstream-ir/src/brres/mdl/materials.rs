@@ -1,5 +1,6 @@
 use std::ops::ControlFlow;
 
+use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::{Inspect, inspect_bitfield, try_from};
 use slipstream_shared::cursor::{MutCursor, RefCursor};
@@ -105,7 +106,7 @@ impl IndirectMethod {
 
     #[inline]
     fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
-        writer.write_u32::<BigEndian>(*self as u32)?;
+        writer.write_u8(*self as u8)?;
         Ok(())
     }
 }
@@ -341,8 +342,8 @@ pub struct LightChannelSettings {
     pub flags: LightingChannelFlags,
     pub material_color: glam::U8Vec4,
     pub ambient_color: glam::U8Vec4,
-    pub color_light_channel_control: u32,
-    pub alpha_light_channel_control: u32
+    pub color_light: LightChannelControl,
+    pub alpha_light: LightChannelControl
 }
 
 impl LightChannelSettings {
@@ -350,15 +351,15 @@ impl LightChannelSettings {
         let flags = LightingChannelFlags::deserialize(reader)?;
         let material_color = glam::U8Vec4::from_array(reader.read_u8_array::<4>()?);
         let ambient_color = glam::U8Vec4::from_array(reader.read_u8_array::<4>()?);
-        let color_light_channel_control = reader.read_u32::<BigEndian>()?;
-        let alpha_light_channel_control = reader.read_u32::<BigEndian>()?;
+        let color_light = LightChannelControl::deserialize(reader)?;
+        let alpha_light = LightChannelControl::deserialize(reader)?;
 
         Ok(Self {
             flags,
             material_color,
             ambient_color,
-            color_light_channel_control,
-            alpha_light_channel_control
+            color_light,
+            alpha_light
         })
     }
 }
@@ -526,16 +527,87 @@ impl WrapMode {
     }
 }
 
+#[bitenum]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[repr(u8)]
+pub enum ColorSource {
+    Register,
+    Vertex,
+    #[inspect(ignore)]
+    #[fallback]
+    Invalid
+}
+
+#[bitenum]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[repr(u8)]
+pub enum DiffuseFunction {
+    Disabled,
+    Enabled,
+    Clamped,
+    #[inspect(ignore)]
+    #[fallback]
+    Invalid
+}
+
+#[bitenum]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[repr(u8)]
+pub enum AttenuationFunction {
+    Specular,
+    Spotlight,
+    None,
+    #[inspect(ignore)]
+    #[fallback]
+    Invalid
+}
+
+#[inspect_bitfield(u32)]
+#[derive(PartialEq, Eq)]
+pub struct LightChannelControl {
+    #[bits(1)]
+    pub material_source: ColorSource,
+    pub light_enabled: bool,
+    pub light_0: bool,
+    pub light_1: bool,
+    pub light_2: bool,
+    pub light_3: bool,
+    #[bits(1)]
+    pub ambient_source: ColorSource,
+    #[bits(2)]
+    pub diffuse_func: DiffuseFunction,
+    pub enable_attenuation: bool,
+    #[bits(1)]
+    pub attenuation_function: AttenuationFunction,
+    pub light_4: bool,
+    pub light_5: bool,
+    pub light_6: bool,
+    pub light_7: bool,
+    #[bits(17)]
+    _unused: u32
+}
+
+impl LightChannelControl {
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let word = reader.read_u32::<BigEndian>()?;
+        Ok(Self::from_bits(word))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureReference {
     pub texture_id: i32,
     pub palette_id: i32,
     pub texture_data_id: u32,
     pub palette_data_id: u32,
-    pub uwrap: WrapMode,
-    pub vwrap: WrapMode,
+    pub wrapping: [WrapMode; 2],
+    #[inspect(rename = "Minification Filter")]
+    #[inspect(tooltip = "How should the texture be sampled if the GPU must downscale it.")]
     pub min_filter: MinificationFilter,
+    #[inspect(rename = "Magnification Filter")]
+    #[inspect(tooltip = "How should the texture be sampled if the GPU must upscale it.")]
     pub mag_filter: MagnificationFilter,
+    #[inspect(rename = "LOD Bias")]
     pub lod_bias: f32,
     pub max_anisotropy_filtering: AnisotropyFiltering,
     pub clamp_bias: u8,
@@ -552,6 +624,7 @@ impl TextureReference {
         let palette_data_id = reader.read_u32::<BigEndian>()?;
         let uwrap = WrapMode::deserialize(reader)?;
         let vwrap = WrapMode::deserialize(reader)?;
+        let wrapping = [uwrap, vwrap];
         let min_filter = MinificationFilter::deserialize(reader)?;
         let mag_filter = MagnificationFilter::deserialize(reader)?;
         let lod_bias = reader.read_f32::<BigEndian>()?;
@@ -567,8 +640,7 @@ impl TextureReference {
             palette_id,
             texture_data_id,
             palette_data_id,
-            uwrap,
-            vwrap,
+            wrapping,
             min_filter,
             mag_filter,
             lod_bias,
@@ -674,15 +746,22 @@ impl DeserializeContents for Material {
         let mode_offset = reader.read_i32::<BigEndian>()?; // does not exist in v9 MDL or lower.
 
         let used_texture_maps = UsedTextureMaps::deserialize(reader)?;
-        let _precompiled_texture_code = reader.read_u8_array::<160>()?;
+        // let _precompiled_texture_code = reader.read_u8_array::<1>()?;
+
+        // Precompiled texture code
+        reader.set_position(reader.position() + 8 * 32);
+
         let used_palettes = UsedPalettes::deserialize(reader)?;
-        let _precompiled_palette_code = reader.read_u8_array::<160>()?;
+        // let _precompiled_palette_code = reader.read_u8_array::<160>()?;
+
+        // Precompiled palette code
+        reader.set_position(reader.position() + 8 * 12);
+
         let layer_settings = LayerSettings::deserialize(reader)?;
         let texture_matrix_mode = TextureMatrixMode::deserialize(reader)?;
-        let light_channel_settings = [
-            LightChannelSettings::deserialize(reader)?,
-            LightChannelSettings::deserialize(reader)?
-        ];
+
+        // Incorrect from here onwards
+
         let layer_coordinates = [
             LayerCoordinates::deserialize(reader)?,
             LayerCoordinates::deserialize(reader)?,
@@ -703,6 +782,11 @@ impl DeserializeContents for Material {
             TextureMatrixSettings::deserialize(reader)?,
             TextureMatrixSettings::deserialize(reader)?,
             TextureMatrixSettings::deserialize(reader)?
+        ];
+
+        let light_channel_settings = [
+            LightChannelSettings::deserialize(reader)?,
+            LightChannelSettings::deserialize(reader)?
         ];
 
         let material_bytecode = {
