@@ -2,7 +2,8 @@ use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_derive::{Inspect, inspect_bitfield, try_from};
-use slipstream_shared::{RefCursor, SlipstreamResult};
+use slipstream_shared::error::InvalidInputError;
+use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult};
 
 use crate::encoding::ReadArrayExt;
 use crate::kmp::{KmpSectionHeader, MAX_KMP_SECTION_ENTRY_COUNT};
@@ -10,38 +11,90 @@ use crate::visitor::{
     Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Inspect)]
-pub enum GeoObjectId {
+macro_rules! geo_objects {
+   (
+       $(
+           $(#[$meta:meta])*
+           $id:literal => $name:ident $({
+               $(
+                   $(#[$field_meta:meta])*
+                   $field:ident : $slot:literal
+               ),*
+           })?
+       ),*
+   ) => {
+       #[derive(Debug, Clone, PartialEq)]
+       pub enum GeoObjectId {
+           $(
+               $name $({
+                   $($field: u16),*
+               })?
+           ),*
+       }
+
+       impl GeoObjectId {
+           pub fn from_raw(id: u16, settings: [u16; 8]) -> SlipstreamResult<Self> {
+               Ok(match id {
+                   $(
+                       $id => Self::$name $({
+                           $($field: settings[$slot]),*
+                       })?,
+                   )*
+                   _ => return Err(SlipstreamError::from(InvalidInputError {
+                       reason: format!("Invalid Geo Object id: {id}"),
+                       ..Default::default()
+                   }))
+               })
+           }
+
+           pub fn to_raw(&self) -> (u16, [u16; 8]) {
+               match self {
+                   $(
+                       Self::$name $({ $($field),* })? => {
+                           #[allow(unused_mut)]
+                           let mut settings = [0u16; 8];
+                           $($( settings[$slot] = *$field; )*)?
+                           ($id, settings)
+                       }
+                   ),*
+               }
+           }
+       }
+   }
+}
+
+geo_objects! {
     /// Invisible wall above barriers.
     ///
     /// ## Note:
     /// The Y and Z scale axes are swapped for this object!
     ///
     /// See the [wiki](https://szs.wiimm.de/cgi/mkw/track-ref/object/airblock)
-    AirBlock = 0x001,
+    0x001 => AirBlock,
     /// The sea on GCN Peach Beach.
     ///
     /// See the [wiki](https://szs.wiimm.de/cgi/mkw/track-ref/object/Psea)
-    PeachBeachSea = 0x002,
+    0x002 => PSea,
     /// Generates a lens flare object when looking at the sun.
     ///
     /// See the [wiki](https://szs.wiimm.de/cgi/mkw/track-ref/object/lensFX)
-    LensFx = 0x003,
+    0x003 => LensFx,
     /// The rising and dropping sea on Delfino Pier. The `pocha` object is required if the player
     /// can interact with it.
     ///
     /// See the [wiki](https://szs.wiimm.de/cgi/mkw/track-ref/object/venice_nami)
-    VeniceNami {
-        /// Rising speed in odd stages.
-        odd_rising_speed: u16,
-        stage5_target_height: u16,
-        stage1_target_height: u16,
-        stage2_frame_count: u16,
-        stage3_target_height: u16,
-        stage4_frame_count: u16,
-        /// Rising speed in even stages.
-        even_rising_speed: u16
-    },
+    0x004 => VeniceNami
+    // {
+    //     // Rising speed in odd stages.
+    //     odd_rising_speed: 0,
+    //     stage5_target_height: 1,
+    //     stage1_target_height: 2,
+    //     stage2_frame_count: 3,
+    //     stage3_target_height: 4,
+    //     stage4_frame_count: 5,
+    //     // Rising speed in even stages.
+    //     even_rising_speed: 6,
+    // },
     /// Generates a river sound effect.
     ///
     /// Only works on slots 3.2, 4.2, 5.2 and 7.3.
@@ -374,28 +427,6 @@ pub enum GeoObjectId {
     EnvKarehaUp,
     MObjKanbanY,
     DkFalls
-}
-
-impl GeoObjectId {
-    pub fn try_from(id: u16, settings: [u16; 8]) -> SlipstreamResult<Self> {
-        use GeoObjectId::*;
-
-        Ok(match id {
-            0x00 => AirBlock,
-            0x01 => PeachBeachSea,
-            0x02 => LensFx,
-            0x03 => VeniceNami {
-                odd_rising_speed: settings[0],
-                stage5_target_height: settings[1],
-                stage1_target_height: settings[2],
-                stage2_frame_count: settings[3],
-                stage3_target_height: settings[4],
-                stage4_frame_count: settings[5],
-                even_rising_speed: settings[6]
-            },
-            0x04
-        })
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
