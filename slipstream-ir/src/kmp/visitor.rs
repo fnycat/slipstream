@@ -3,7 +3,8 @@ use std::ops::ControlFlow;
 use crate::kmp::enph::EnemyRoutes;
 use crate::kmp::enpt::EnemyRoutePoints;
 use crate::kmp::{
-    CheckpointGroups, Checkpoints, ItemRoutePoints, ItemRoutes, KmpHeader, StartingPositions
+    CheckpointGroups, Checkpoints, GeoObjects, ItemRoutePoints, ItemRoutes, KmpHeader,
+    StartingPositions
 };
 use crate::visitor::{VisitorCtx, VisitorCtxMut};
 
@@ -161,6 +162,22 @@ pub trait KmpVisitor {
         &mut self,
         context: VisitorCtxMut<'_, CheckpointGroups>
     ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_geo_objects(&mut self, context: VisitorCtx<'_, GeoObjects>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_geo_objects_mut(&mut self, context: VisitorCtxMut<'_, GeoObjects>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {

@@ -286,4 +286,15 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
         ControlFlow::Continue(())
     }
+
+    fn visit_geo_objects_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, kmp::GeoObjects>
+    ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
 }

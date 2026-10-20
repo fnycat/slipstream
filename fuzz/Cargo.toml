@@ -29,6 +29,7 @@ path = "fuzz_targets/brres.rs"
 test = false
 doc = false
 bench = false
+
 [[bin]]
 name = "chr"
 path = "fuzz_targets/chr.rs"
@@ -46,6 +47,13 @@ bench = false
 [[bin]]
 name = "tex"
 path = "fuzz_targets/tex.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "kmp"
+path = "fuzz_targets/kmp.rs"
 test = false
 doc = false
 bench = false

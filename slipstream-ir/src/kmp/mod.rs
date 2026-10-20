@@ -2,6 +2,7 @@ mod ckph;
 mod ckpt;
 mod enph;
 mod enpt;
+mod gobj;
 mod itph;
 mod itpt;
 mod ktpt;
@@ -11,6 +12,7 @@ pub use ckph::*;
 pub use ckpt::*;
 pub use enph::*;
 pub use enpt::*;
+pub use gobj::*;
 pub use itph::*;
 pub use itpt::*;
 pub use ktpt::*;
@@ -298,6 +300,9 @@ pub fn deserialize(
             }
             KmpSectionType::CheckpointGroups => {
                 Box::new(CheckpointGroups::deserialize(reader, section_header)?)
+            }
+            KmpSectionType::GeoObjects => {
+                Box::new(GeoObjects::deserialize(reader, section_header)?)
             }
             _ => {
                 tracing::warn!("unimplemented section type: {:?}", section_header.ty);
