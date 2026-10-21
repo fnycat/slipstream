@@ -5,13 +5,15 @@ use heck::ToShoutySnakeCase;
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 
+use crate::inspect::ContainerType;
+
 mod inspect;
 
 /// Separate function because you cannot call proc macro functions directly.
-fn derive_inspect_inner(input: TokenStream, is_bitfield: bool) -> proc_macro::TokenStream {
+fn derive_inspect_inner(input: TokenStream, ty: ContainerType) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
     let parsed = inspect::Input::from_derive_input(&input).expect("failed to parse input");
-    TokenStream::from(parsed.into_token_stream(is_bitfield))
+    TokenStream::from(parsed.into_token_stream(ty))
 }
 
 /// Fields not marked with `pub` will not be shown in the property window by default.
@@ -19,7 +21,7 @@ fn derive_inspect_inner(input: TokenStream, is_bitfield: bool) -> proc_macro::To
 /// visibility.
 #[proc_macro_derive(Inspect, attributes(inspect))]
 pub fn derive_inspect(input: TokenStream) -> TokenStream {
-    derive_inspect_inner(input, false)
+    derive_inspect_inner(input, ContainerType::Struct)
 }
 
 struct TyAttrArg {
@@ -47,7 +49,7 @@ pub fn inspect_bitfield(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // Read the `#[inspect(..)]` attributes first, while they are still there.
     let inspect_derived = match inspect::Input::from_derive_input(&item) {
-        Ok(parsed) => parsed.into_token_stream(true),
+        Ok(parsed) => parsed.into_token_stream(ContainerType::Bitfield),
         Err(err) => return TokenStream::from(err.write_errors())
     };
 
