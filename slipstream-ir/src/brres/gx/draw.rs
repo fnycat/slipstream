@@ -140,7 +140,7 @@ impl InlineNormal {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Inspect)]
-pub enum NormalIndex<T> {
+pub enum NormalIndex<T: Default> {
     /// If NBT mode is set, all three normal vectors are read consecutively.
     /// Otherwise only a single normal vector is read.
     Single(T),
