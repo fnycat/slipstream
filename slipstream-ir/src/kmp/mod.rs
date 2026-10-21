@@ -1,3 +1,4 @@
+mod area;
 mod ckph;
 mod ckpt;
 mod enph;
@@ -9,6 +10,7 @@ mod ktpt;
 mod poti;
 mod visitor;
 
+pub use area::*;
 pub use ckph::*;
 pub use ckpt::*;
 pub use enph::*;
@@ -242,6 +244,10 @@ pub fn deserialize(
             KmpSectionType::GeoObjects => {
                 Box::new(GeoObjects::deserialize(reader, section_header)?)
             }
+            KmpSectionType::Routes => {
+                Box::new(PointInformationPaths::deserialize(reader, section_header)?)
+            }
+            KmpSectionType::Areas => Box::new(Areas::deserialize(reader, section_header)?),
             _ => {
                 tracing::warn!("unimplemented section type: {:?}", section_header.ty);
                 continue;

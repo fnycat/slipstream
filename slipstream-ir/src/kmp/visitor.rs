@@ -3,8 +3,8 @@ use std::ops::ControlFlow;
 use crate::kmp::enph::EnemyRoutes;
 use crate::kmp::enpt::EnemyRoutePoints;
 use crate::kmp::{
-    CheckpointGroups, Checkpoints, GeoObjects, ItemRoutePoints, ItemRoutes, KmpHeader,
-    StartingPositions
+    Areas, CheckpointGroups, Checkpoints, GeoObjects, ItemRoutePoints, ItemRoutes, KmpHeader,
+    PointInformationPaths, StartingPositions
 };
 use crate::visitor::{VisitorCtx, VisitorCtxMut};
 
@@ -178,6 +178,44 @@ pub trait KmpVisitor {
     }
 
     fn visit_geo_objects_mut(&mut self, context: VisitorCtxMut<'_, GeoObjects>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_point_information(
+        &mut self,
+        context: VisitorCtx<'_, PointInformationPaths>
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_point_information_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, PointInformationPaths>
+    ) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_areas(&mut self, context: VisitorCtx<'_, Areas>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_areas_mut(&mut self, context: VisitorCtxMut<'_, Areas>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {

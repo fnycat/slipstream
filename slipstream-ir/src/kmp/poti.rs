@@ -1,9 +1,16 @@
+use std::ops::ControlFlow;
+
 use byteorder::{BigEndian, ReadBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::encoding::ReadArrayExt;
 use crate::kmp::{KmpSectionHeader, MAX_KMP_SECTION_ENTRY_COUNT};
+use crate::visitor::{
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+};
 
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PointInformation {
     pub position: glam::Vec3,
     pub settings: u16,
@@ -24,6 +31,7 @@ impl PointInformation {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PointInformationPath {
     pub enable_smoothing: bool,
     pub cyclic: bool,
@@ -57,11 +65,14 @@ impl PointInformationPath {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PointInformationPaths {
     pub paths: Vec<PointInformationPath>
 }
 
 impl PointInformationPaths {
+    pub const NAME: &str = "POTI";
+
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
         header: KmpSectionHeader
@@ -76,5 +87,25 @@ impl PointInformationPaths {
         }
 
         Ok(Self { paths })
+    }
+}
+
+impl Visitable for PointInformationPaths {
+    fn accept(&self, node: VisitorCtxMeta, visitor: &mut dyn Visitor) -> ControlFlow<()> {
+        visitor
+            .as_kmp()
+            .map(|v| v.visit_point_information(VisitorCtx::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
+    }
+
+    fn accept_mut(
+        &mut self,
+        node: VisitorCtxMetaMut,
+        visitor: &mut dyn Visitor
+    ) -> ControlFlow<()> {
+        visitor
+            .as_kmp()
+            .map(|v| v.visit_point_information_mut(VisitorCtxMut::new(node, self)))
+            .unwrap_or(ControlFlow::Break(()))
     }
 }
