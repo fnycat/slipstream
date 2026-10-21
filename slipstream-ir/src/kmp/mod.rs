@@ -6,6 +6,7 @@ mod gobj;
 mod itph;
 mod itpt;
 mod ktpt;
+mod poti;
 mod visitor;
 
 pub use ckph::*;
@@ -16,6 +17,7 @@ pub use gobj::*;
 pub use itph::*;
 pub use itpt::*;
 pub use ktpt::*;
+pub use poti::*;
 pub use visitor::*;
 
 use std::ops::ControlFlow;
@@ -97,36 +99,7 @@ pub struct KmpHeader {
     #[inspect(tooltip = "The length in bytes of the entire KMP file.")]
     pub length: u32,
     #[inspect(tooltip = "Offsets to the subsections within the KMP file.")]
-    pub offsets: Vec<u32> // #[inspect(rename = "KTPT Offset")]
-                          // pub ktpt_offset: u32,
-                          // #[inspect(rename = "ENPT Offset")]
-                          // pub enpt_offset: u32,
-                          // #[inspect(rename = "ENPH Offset")]
-                          // pub enph_offset: u32,
-                          // #[inspect(rename = "ITPT Offset")]
-                          // pub itpt_offset: u32,
-                          // #[inspect(rename = "ITPH Offset")]
-                          // pub itph_offset: u32,
-                          // #[inspect(rename = "CKPT Offset")]
-                          // pub ckpt_offset: u32,
-                          // #[inspect(rename = "CKPH Offset")]
-                          // pub ckph_offset: u32,
-                          // #[inspect(rename = "GOBJ Offset")]
-                          // pub gobj_offset: u32,
-                          // #[inspect(rename = "POTI Offset")]
-                          // pub poti_offset: u32,
-                          // #[inspect(rename = "AREA Offset")]
-                          // pub area_offset: u32,
-                          // #[inspect(rename = "CAME Offset")]
-                          // pub came_offset: u32,
-                          // #[inspect(rename = "JGPT Offset")]
-                          // pub jgpt_offset: u32,
-                          // #[inspect(rename = "CNPT Offset")]
-                          // pub cnpt_offset: u32,
-                          // #[inspect(rename = "MSPT Offset")]
-                          // pub mspt_offset: u32,
-                          // #[inspect(rename = "STGI Offset")]
-                          // pub stgi_offset: u32
+    pub offsets: Vec<u32>
 }
 
 impl KmpHeader {
@@ -167,41 +140,6 @@ impl KmpHeader {
             length,
             offsets
         })
-
-        //         let ktpt_offset = reader.read_u32::<BigEndian>()?;
-        //         let enpt_offset = reader.read_u32::<BigEndian>()?;
-        //         let enph_offset = reader.read_u32::<BigEndian>()?;
-        //         let itpt_offset = reader.read_u32::<BigEndian>()?;
-        //         let itph_offset = reader.read_u32::<BigEndian>()?;
-        //         let ckpt_offset = reader.read_u32::<BigEndian>()?;
-        //         let ckph_offset = reader.read_u32::<BigEndian>()?;
-        //         let gobj_offset = reader.read_u32::<BigEndian>()?;
-        //         let poti_offset = reader.read_u32::<BigEndian>()?;
-        //         let area_offset = reader.read_u32::<BigEndian>()?;
-        //         let came_offset = reader.read_u32::<BigEndian>()?;
-        //         let jgpt_offset = reader.read_u32::<BigEndian>()?;
-        //         let cnpt_offset = reader.read_u32::<BigEndian>()?;
-        //         let mspt_offset = reader.read_u32::<BigEndian>()?;
-        //         let stgi_offset = reader.read_u32::<BigEndian>()?;
-        //
-        //         Ok(Self {
-        //             length,
-        //             ktpt_offset,
-        //             enpt_offset,
-        //             enph_offset,
-        //             itpt_offset,
-        //             itph_offset,
-        //             ckpt_offset,
-        //             ckph_offset,
-        //             gobj_offset,
-        //             poti_offset,
-        //             area_offset,
-        //             came_offset,
-        //             jgpt_offset,
-        //             cnpt_offset,
-        //             mspt_offset,
-        //             stgi_offset
-        //         })
     }
 }
 
