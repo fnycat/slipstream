@@ -2,6 +2,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_derive::Inspect;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::SlipstreamResult;
+use slipstream_shared::inspect::Inspect;
 
 use crate::brres::GxVertexDeclaration;
 use crate::brres::load_cp::VectorStorage;
@@ -140,7 +141,7 @@ impl InlineNormal {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Inspect)]
-pub enum NormalIndex<T: Default> {
+pub enum NormalIndex<T: Default + Inspect> {
     /// If NBT mode is set, all three normal vectors are read consecutively.
     /// Otherwise only a single normal vector is read.
     Single(T),
@@ -149,7 +150,7 @@ pub enum NormalIndex<T: Default> {
     Triple([T; 3])
 }
 
-impl<T: Default> Default for NormalIndex<T> {
+impl<T: Default + Inspect> Default for NormalIndex<T> {
     fn default() -> Self {
         Self::Single(T::default())
     }

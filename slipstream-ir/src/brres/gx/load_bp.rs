@@ -4,7 +4,7 @@ use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct SetIndirectTexture {
     #[bits(3)]
@@ -28,7 +28,7 @@ pub struct SetIndirectTexture {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum RasConstant {
     Col0 = 0b000,
@@ -40,7 +40,7 @@ pub enum RasConstant {
     Invalid
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct TextureReadSettings {
     #[bits(3)]
@@ -183,7 +183,7 @@ impl ConstantAlpha {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum LayerBlendDest {
     FragmentOutput = 0b00,
@@ -195,7 +195,7 @@ pub enum LayerBlendDest {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum LayerBlendShift {
     One = 0b00,
@@ -207,7 +207,7 @@ pub enum LayerBlendShift {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum ColorBlendArgument {
     FragmentOutput = 0b0000,
@@ -231,7 +231,7 @@ pub enum ColorBlendArgument {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum LayerBlendBias {
     Zero = 0b00,
@@ -243,7 +243,7 @@ pub enum LayerBlendBias {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum LayerBlendOp {
     Add = 0b0,
@@ -255,7 +255,7 @@ pub enum LayerBlendOp {
 /// The command performed on each layer by the graphics obeys the format:
 ///
 /// `dest = shift * (argument_d op lerp(argument_a, argument_b, argument_c) + bias)`.
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct ColorLayerBlendSettings {
     #[bits(4)]
@@ -280,7 +280,7 @@ pub struct ColorLayerBlendSettings {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum AlphaBlendArgument {
     FragmentOutput = 0b000,
@@ -298,7 +298,7 @@ pub enum AlphaBlendArgument {
 /// The command performed on each layer by the graphics card obeys the format:
 ///
 /// `dest = shift * (argument_d op lerp(argument_a, argument_b, argument_c) + bias)`.
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct AlphaLayerBlendSettings {
     #[bits(2)]
@@ -327,7 +327,7 @@ pub struct AlphaLayerBlendSettings {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum SwapComponent {
     Red = 0b00,
@@ -339,7 +339,7 @@ pub enum SwapComponent {
 }
 
 /// Controls how the swap mode table is accessed when rendering a texture on a polygon.
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct SwapModeTableSettings {
     #[bits(2)]
@@ -421,7 +421,7 @@ impl AlphaFunction {
     }
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct MaterialAddressRange {
     #[bits(11)]

@@ -1,10 +1,10 @@
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt};
-use slipstream_derive::Inspect;
+use slipstream_derive::{Inspect, inspect_bitfield};
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct XfSizePayload {
     #[bits(2)]
@@ -25,7 +25,7 @@ impl XfSizePayload {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum XfProjectionType {
     St,
@@ -35,7 +35,7 @@ pub enum XfProjectionType {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum XfInputForm {
     /// Generally used with ST projection.
@@ -47,7 +47,7 @@ pub enum XfInputForm {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum XfTexGenType {
     Regular,
@@ -59,7 +59,7 @@ pub enum XfTexGenType {
 }
 
 #[bitenum]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum XfSourceRow {
     VertexGeometry,
@@ -78,7 +78,7 @@ pub enum XfSourceRow {
     Invalid
 }
 
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct XfSetPayload {
     #[bits(1)]
@@ -115,7 +115,7 @@ pub enum LoadXfPayload {
     Unknown { tex_id: u8, payload: u32 }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct LoadXfOpCode {
     pub loads: Vec<LoadXfPayload>
 }

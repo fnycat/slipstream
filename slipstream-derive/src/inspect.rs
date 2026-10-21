@@ -137,7 +137,7 @@ pub struct FieldOpt {
 
 impl FieldOpt {
     /// An expression that evaluates to the value to inspect. The caller takes `&mut` of it.
-    pub fn accessor(&self, ty: ContainerType) -> proc_macro2::TokenStream {
+    pub fn accessor(&self, field_index: usize, ty: ContainerType) -> proc_macro2::TokenStream {
         if let Some(ident) = &self.ident {
             match ty {
                 ContainerType::Bitfield => {
@@ -149,7 +149,8 @@ impl FieldOpt {
                 }
             }
         } else {
-            todo!("tuple structs are not supported yet");
+            let index = syn::Index::from(field_index);
+            quote! { self.#index }
         }
     }
 
@@ -250,9 +251,14 @@ impl FieldOpt {
         }
     }
 
-    pub fn render(&self, ty: ContainerType, tokens: &mut proc_macro2::TokenStream) {
+    pub fn render(
+        &self,
+        field_index: usize,
+        ty: ContainerType,
+        tokens: &mut proc_macro2::TokenStream
+    ) {
         let name = self.name();
-        let accessor = self.accessor(ty);
+        let accessor = self.accessor(field_index, ty);
         let config = self.config();
         let default_open = self.opened;
 
@@ -321,8 +327,8 @@ impl FieldOpt {
         });
 
         let mut tokens = proc_macro2::TokenStream::new();
-        for field in fields {
-            field.render(ty, &mut tokens);
+        for (field_index, field) in fields.enumerate() {
+            field.render(field_index, ty, &mut tokens);
         }
 
         tokens
@@ -335,9 +341,6 @@ pub struct FieldVariant {
     pub ident: Ident,
     pub fields: Fields<FieldOpt>,
 
-    /// Function that returns a default value of the specified variant.
-    #[darling(default)]
-    pub default: Option<syn::Path>,
     /// A tooltip that is displayed when hovering over the variant.
     #[darling(default)]
     pub tooltip: Option<String>,
@@ -583,12 +586,84 @@ impl Input {
             .collect()
     }
 
+    fn render_enum_content(&self, variants: &[FieldVariant]) -> proc_macro2::TokenStream {
+        let inner = variants
+            .iter()
+            .map(|variant| {
+                let ident = &variant.ident;
+
+                match variant.fields.style {
+                    darling::ast::Style::Unit => {
+                        quote! { Self::#ident => { /* no data, so do nothing */} }
+                    }
+                    darling::ast::Style::Tuple => {
+                        let matchers = (0..variant.fields.fields.len())
+                            .map(|i| format_ident!("ss_tuple_enum_ident{i}"))
+                            .collect::<Vec<_>>();
+
+                        let drawers = matchers
+                            .iter()
+                            .map(|matcher| {
+                                quote! {
+                                    changes |= slipstream_shared::inspect::Inspect::draw_inner(#matcher, ui, cfg)
+                                }
+                            })
+                            .collect::<Vec<_>>();
+
+                        quote! { Self::#ident(#(#matchers),*) => {
+                            #(#drawers);*
+                        } }
+                    }
+                    darling::ast::Style::Struct => {
+                        // rename the fields to avoid naming collisions.
+                        let renamed = (0..variant.fields.fields.len())
+                            .map(|i| format_ident!("ss_struct_enum_ident{i}"))
+                            .collect::<Vec<_>>();
+
+                        let matchers = variant
+                            .fields
+                            .fields
+                            .iter()
+                            .zip(renamed.iter())
+                            .map(|(field, renamed)| {
+                                let ident = field
+                                    .ident
+                                    .as_ref()
+                                    .expect("struct fields should have an identifier");
+
+                                quote! {
+                                    #ident: #renamed
+                                }
+                            })
+                            .collect::<Vec<_>>();
+
+                        quote! {
+                            Self::#ident {
+                                #(#matchers),*
+                            } => {
+                                #(changes |= slipstream_shared::inspect::Inspect::draw_inner(#renamed, ui, cfg));*
+                            }
+                        }
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
+
+        quote! {
+            match self {
+                #(#inner),*
+            }
+        }
+    }
+
     fn render_enum(&self, variants: &[FieldVariant], tokens: &mut proc_macro2::TokenStream) {
         let Self { ident, .. } = self;
 
         let names = variants.iter().map(|v| v.name()).collect::<Vec<_>>();
-        let fields = FieldVariant::render(&names, variants);
+        let variant_tokens = FieldVariant::render(&names, variants);
         let (impl_generics, ty_generics, where_clauses) = self.generics.split_for_impl();
+
+        let variant_content = self.render_enum_content(variants);
 
         // Generate match statement to return the enum variant name.
         let variant_names = self.match_on_variants(variants, |_, variant: &FieldVariant| {
@@ -630,20 +705,22 @@ impl Input {
 
                 fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
                     let curr_label = slipstream_shared::inspect::AsEnumLabel::as_label(self);
-
                     let mut changes = slipstream_shared::inspect::Changes::default();
-                    let response = egui::ComboBox::new(ui.id().with("ComboBox"), "")
-                        .selected_text(curr_label)
-                        .show_ui(ui, |ui| {
-                            #fields
-                        }).response;
 
-                    if let Some(tooltip) = cfg.tooltip {
-                        response.on_hover_text(tooltip);
-                    }
+                    ui.group(|ui| {
+                        let response = egui::ComboBox::new(ui.id().with("ComboBox"), "")
+                            .selected_text(curr_label)
+                            .show_ui(ui, |ui| {
+                                #variant_tokens
+                            }).response;
 
-                    // If the enum has content, display it below the ComboBox.
-                    // #enum_content
+                        if let Some(tooltip) = cfg.tooltip {
+                            response.on_hover_text(tooltip);
+                        }
+
+                        // If the enum has content, display it below the ComboBox.
+                        #variant_content
+                    });
 
                     changes
                 }

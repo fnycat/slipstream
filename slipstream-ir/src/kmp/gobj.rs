@@ -259,7 +259,7 @@ impl GeoSetting for Item {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum TimingLottery {
     /// Roulette spin is normal, respawn time is 150.
     #[default]

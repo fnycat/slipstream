@@ -1,10 +1,10 @@
-use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::inspect_bitfield;
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
 use slipstream_shared::error::SlipstreamResult;
 
 /// Loads a matrix from the table and puts it into the given slot.
-#[bitfield(u32)]
+#[inspect_bitfield(u32)]
 #[derive(PartialEq, Eq)]
 pub struct IndexedLoad {
     /// Address into the indexed array. This should be divided by 12 to get the XF slot number.

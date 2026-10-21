@@ -24,7 +24,7 @@ use crate::visitor::{VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMu
 /// to global matrices.
 ///
 /// [`pn_index_enabled`]: CpVcdLo::pn_index_enabled
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct BoneTable {
     pub entries: Vec<u16>
 }

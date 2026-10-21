@@ -118,7 +118,10 @@ impl MdlVisitor for InspectorVisitor<'_> {
         &mut self,
         context: VisitorCtxMut<'_, Definitions>
     ) -> ControlFlow<()> {
-        self.ui.label(format!("{:#?}", context.content));
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
         ControlFlow::Continue(())
     }
 

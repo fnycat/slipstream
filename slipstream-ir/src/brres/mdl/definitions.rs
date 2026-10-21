@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_derive::try_from;
+use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::cursor::{MutCursor, RefCursor, SizeEstimate};
 use slipstream_shared::error::SlipstreamResult;
 use slipstream_shared::verify;
@@ -18,7 +18,7 @@ pub const DRAW_OPA_NAME: &str = "DrawOpa";
 pub const DRAW_XLU_NAME: &str = "DrawXlu";
 
 /// Simple newtype that makes types with many IDs a lot clearer.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable, Inspect)]
 #[repr(transparent)]
 pub struct MatrixId(pub u16);
 
@@ -39,25 +39,26 @@ impl Default for MatrixId {
 }
 
 /// Simple newtype that makes types with many IDs a lot clearer.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Inspect)]
 #[repr(transparent)]
 pub struct BoneId(pub u16);
 
 /// Simple newtype that makes types with many IDs a lot clearer.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Inspect)]
 #[repr(transparent)]
 pub struct BoneIndex(pub u16);
 
 /// Simple newtype that makes types with many IDs a lot clearer.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Inspect)]
 #[repr(transparent)]
 pub struct WeightId(pub u16);
 
 /// The opcode IDs for the possible commands in the definitions section of an MDL file.
 #[try_from(u8)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
 pub enum DefinitionOpCodeId {
+    #[default]
     Nop = 0x00,
     End = 0x01,
     MapNode = 0x02,
@@ -72,7 +73,7 @@ pub enum DefinitionOpCodeId {
 ///
 /// This is contained in the bytecode section of the file. It assigns a transformation
 /// matrix to each of the bones.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct MapNode {
     pub bone_index: BoneIndex,
     pub matrix_index: MatrixId
@@ -98,7 +99,7 @@ impl MapNode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub struct BoneWeight {
     /// The matrix that this weight affects.
     pub matrix_id: MatrixId,
@@ -123,7 +124,7 @@ impl BoneWeight {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub struct Weights {
     pub id: WeightId,
     pub weights: Vec<BoneWeight>
@@ -161,7 +162,7 @@ impl Weights {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub struct Draw {
     pub material_index: u16,
     pub polygon_index: u16,
@@ -197,7 +198,7 @@ impl Draw {
 }
 
 /// Maps a matrix to its corresponding weights.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct WeightIndex {
     pub matrix_id: MatrixId,
     pub weight_id: WeightId
@@ -215,7 +216,7 @@ impl WeightIndex {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct DuplicateMatrix {
     pub dest: u16,
     pub src: u16
@@ -240,7 +241,7 @@ impl DuplicateMatrix {
 }
 
 /// All possible commands in a [`Definitions`] file.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum DefCommand {
     MapNode(MapNode),
     Weights(Weights),
@@ -259,7 +260,7 @@ pub enum DefCommand {
 /// - `DrawXlu` TODO
 /// - `NodeTree` consists of only [`MapNode`] entries.
 /// - `NodeMix`: if the model uses weights, this file contains all of them.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Definitions {
     pub commands: Vec<DefCommand>
 }
