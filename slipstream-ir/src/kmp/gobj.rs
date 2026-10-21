@@ -13,7 +13,7 @@ use crate::visitor::{
 
 pub trait GeoSetting: Sized {
     fn into_raw(&self) -> u16;
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self>;
+    fn from_raw(setting: u16) -> SlipstreamResult<Self>;
 }
 
 impl GeoSetting for u16 {
@@ -21,7 +21,7 @@ impl GeoSetting for u16 {
         *self
     }
 
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self> {
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Ok(setting)
     }
 }
@@ -31,7 +31,7 @@ impl GeoSetting for bool {
         *self as u16
     }
 
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self> {
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Ok(setting != 0)
     }
 }
@@ -48,7 +48,7 @@ macro_rules! geo_objects {
            })?
        ),*
    ) => {
-       #[derive(Debug, Clone, PartialEq)]
+       #[derive(Debug, Clone, PartialEq, Inspect)]
        pub enum GeoObjectId {
            $(
                $name $({
@@ -62,7 +62,7 @@ macro_rules! geo_objects {
                Ok(match id {
                    $(
                        $id => Self::$name $({
-                           $($field: $field_ty::try_from_raw(settings[$slot])?),*
+                           $($field: <$field_ty>::from_raw(settings[$slot])?),*
                        })?,
                    )*
                    _ => return Err(SlipstreamError::from(InvalidInputError {
@@ -90,6 +90,24 @@ macro_rules! geo_objects {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[try_from(u16)]
+pub enum ThwompRouteBehavior {
+    StompOnEveryPoint = 0x01,
+    LeftAndRightStomp = 0x02,
+    LeftAndRightGrounded = 0x03
+}
+
+impl GeoSetting for ThwompRouteBehavior {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[try_from(u16)]
 pub enum FallBoundary {
     AirFall = 0x00,
     Water = 0x01,
@@ -106,7 +124,7 @@ impl GeoSetting for FallBoundary {
         *self as u16
     }
 
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self> {
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Self::try_from(setting)
     }
 }
@@ -129,7 +147,7 @@ impl GeoSetting for WallFlag {
         *self as u16
     }
 
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self> {
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Self::try_from(setting)
     }
 }
@@ -148,7 +166,7 @@ impl GeoSetting for StartDelay {
         }
     }
 
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self> {
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Ok(match setting {
             0xf0 => Self::Immediate,
             _ => Self::Delayed(setting)
@@ -168,7 +186,7 @@ impl GeoSetting for EnemyLineEntryFlag {
         *self as u16
     }
 
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self> {
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Self::try_from(setting)
     }
 }
@@ -188,7 +206,7 @@ impl GeoSetting for TopmanBehavior {
         *self as u16
     }
 
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self> {
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Self::try_from(setting)
     }
 }
@@ -228,7 +246,7 @@ impl GeoSetting for Item {
         *self as u16
     }
 
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self> {
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Self::try_from(setting)
     }
 }
@@ -255,7 +273,7 @@ impl GeoSetting for TimingLottery {
         *self as u16
     }
 
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self> {
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Self::try_from(setting)
     }
 }
@@ -267,11 +285,31 @@ pub enum ChainChompStartBehavior {
     Release = 0x01
 }
 
+impl GeoSetting for ChainChompStartBehavior {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
+}
+
 #[try_from(u16)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum CoinMode {
     Battle = 0x00,
     TournamentOrMission = 0x01
+}
+
+impl GeoSetting for CoinMode {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
 }
 
 /// Not exactly sure what this does yet.
@@ -281,6 +319,22 @@ pub enum CoinMode {
 pub enum CoinSpawnPlace {
     Start(u16),
     Respawn
+}
+
+impl GeoSetting for CoinSpawnPlace {
+    fn into_raw(&self) -> u16 {
+        match self {
+            Self::Start(x) => *x,
+            Self::Respawn => u16::MAX
+        }
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Ok(match setting {
+            u16::MAX => Self::Respawn,
+            _ => Self::Start(setting)
+        })
+    }
 }
 
 #[try_from(u16)]
@@ -296,6 +350,16 @@ pub enum CoinSpawnBehavior {
     FallRicochet = 0x03
 }
 
+impl GeoSetting for CoinSpawnBehavior {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
+}
+
 #[try_from(u16)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum WaterfallType {
@@ -304,14 +368,34 @@ pub enum WaterfallType {
     C = 0x02
 }
 
+impl GeoSetting for WaterfallType {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
+}
+
 #[try_from(u16)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
-pub enum DirectItem {
+pub enum PhysicalItem {
     GreenShell = 0x00,
     RedShell = 0x01,
     Banana = 0x02,
     Mushroom = 0x03,
     Star = 0x04
+}
+
+impl GeoSetting for PhysicalItem {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
 }
 
 #[try_from(u16)]
@@ -322,12 +406,32 @@ pub enum TruckTexture {
     Factory = 0x02
 }
 
+impl GeoSetting for TruckTexture {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
+}
+
 #[try_from(u16)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum CarBodyColor {
     Blue = 0x00,
     Red = 0x01,
     Yellow = 0x02
+}
+
+impl GeoSetting for CarBodyColor {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
 }
 
 #[try_from(u16)]
@@ -338,11 +442,31 @@ pub enum PylonColor {
     Yellow = 0x02
 }
 
+impl GeoSetting for PylonColor {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
+}
+
 #[try_from(u16)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum CrabViewDirection {
     Left = 0x00,
     Right = 0x01
+}
+
+impl GeoSetting for CrabViewDirection {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
@@ -361,7 +485,7 @@ impl GeoSetting for BlockFallTime {
         }
     }
 
-    fn try_from_raw(setting: u16) -> SlipstreamResult<Self> {
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Ok(match setting {
             0 => Self::Inactive,
             4 => Self::Immediate,
@@ -377,6 +501,16 @@ pub enum ChairliftModel {
     Chairlift01 = 0x01
 }
 
+impl GeoSetting for ChairliftModel {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
+}
+
 #[try_from(u16)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum WaluigiFlashType {
@@ -385,11 +519,31 @@ pub enum WaluigiFlashType {
     C = 0x02
 }
 
+impl GeoSetting for WaluigiFlashType {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
+}
+
 #[try_from(u16)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum FunkyFlashType {
     A = 0x00,
     B = 0x01
+}
+
+impl GeoSetting for FunkyFlashType {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
 }
 
 #[try_from(u16)]
@@ -403,11 +557,31 @@ pub enum SmokeVariant {
     Explode = 0x05
 }
 
+impl GeoSetting for SmokeVariant {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
+}
+
 #[try_from(u16)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum KoopaFireFunction {
     Decoration = 0x0,
     Obstacle = 0x1
+}
+
+impl GeoSetting for KoopaFireFunction {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Self::try_from(setting)
+    }
 }
 
 geo_objects! {
@@ -535,12 +709,12 @@ geo_objects! {
     },
     0x073 => Coin {
         0 => mode: CoinMode,
-        1 => start_or_respawn_place: CoinStartPlace,
+        1 => start_or_respawn_place: CoinSpawnPlace,
         2 => spawn_behavior: CoinSpawnBehavior
     },
     0x074 => Ironbox,
     0x075 => ItemDirect {
-        0 => ty: DirectItem
+        0 => ty: PhysicalItem
     },
     0x076 => SItemBox {
         1 => item_player: Item,
@@ -1231,21 +1405,30 @@ geo_objects! {
     0x2f3 => DkFalls
 }
 
+/// An object that can be placed on the track through a KMP file.
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct GeoObject {
+    /// The type of object and its settings.
     pub object_id: GeoObjectId,
+    /// Position of the object.
     pub position: glam::Vec3,
+    /// Rotation of the object.
+    ///
+    /// Some objects might not obey this setting properly.
     pub rotation: glam::Vec3,
+    /// Scale of the object.
+    ///
+    /// Some objects might not obey this setting properly.
     pub scale: glam::Vec3,
-    /// Route used by the object
+    /// Route used by the object. This is used for moving objects.
     pub route: u16,
-    pub settings: [u16; 8],
     pub presence_flags: u16
 }
 
 impl GeoObject {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        let object_id = GeoObjectId::deserialize(reader)?;
+        let raw_object_id = reader.read_u16::<BigEndian>()?;
+        // let object_id = GeoObjectId::deserialize(reader)?;
         let _padding = reader.read_u16::<BigEndian>()?;
         let position = glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?);
         let rotation = glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?);
@@ -1253,6 +1436,8 @@ impl GeoObject {
         let route = reader.read_u16::<BigEndian>()?;
         let settings = reader.read_u16_array::<8, BigEndian>()?;
         let presence_flags = reader.read_u16::<BigEndian>()?;
+
+        let object_id = GeoObjectId::from_raw(raw_object_id, settings)?;
 
         Ok(Self {
             object_id,

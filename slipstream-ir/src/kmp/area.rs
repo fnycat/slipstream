@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::error::InvalidInputError;
-use slipstream_shared::{RefCursor, SlipstreamResult};
+use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult};
 
 use crate::encoding::ReadArrayExt;
 use crate::kmp::{KmpSectionHeader, MAX_KMP_SECTION_ENTRY_COUNT};
@@ -42,9 +42,11 @@ impl AreaFromRaw for bool {
 
 impl AreaFromRaw for u8 {
     fn from_raw(raw: u16) -> SlipstreamResult<Self> {
-        let conv = raw.try_into().map_err(InvalidInputError {
-            reason: format!("AREA setting {raw} out of range for byte."),
-            ..Default::default()
+        let conv = raw.try_into().map_err(|_| {
+            SlipstreamError::from(InvalidInputError {
+                reason: format!("AREA setting {raw} out of range for byte."),
+                ..Default::default()
+            })
         })?;
         Ok(conv)
     }

@@ -237,11 +237,7 @@ impl FieldOpt {
         }
     }
 
-    pub fn to_tokens(
-        parent: &Ident,
-        fields: &[FieldOpt],
-        is_bitfield: bool
-    ) -> proc_macro2::TokenStream {
+    pub fn render(fields: &[FieldOpt], is_bitfield: bool) -> proc_macro2::TokenStream {
         let fields = fields.iter().filter(|f| {
             // skip over field when it has the ignore attribute, or when it has a _ prefix in bitfield structs.
             let bitfield_ignore = if is_bitfield {
@@ -266,6 +262,8 @@ impl FieldOpt {
             if let Some(draw_fn) = &field.with {
                 tokens.append_all(quote! {
                     {
+                        use slipstream_shared::widgets;
+
                         const CONFIG: slipstream_shared::inspect::FieldConfig = #config;
                         let value = &mut #accessor;
                         let field_id = id.with(#name);
@@ -278,6 +276,8 @@ impl FieldOpt {
             } else {
                 tokens.append_all(quote! {
                     {
+                        use slipstream_shared::widgets;
+
                         const CONFIG: slipstream_shared::inspect::FieldConfig = #config;
                         let value = &mut #accessor;
                         let field_id = id.with(#name);
@@ -335,7 +335,8 @@ impl FieldVariant {
         }
     }
 
-    pub fn to_tokens(names: &[String], variants: &[FieldVariant]) -> proc_macro2::TokenStream {
+    /// Renders the variant in the dropdown menu.
+    pub fn render(names: &[String], variants: &[FieldVariant]) -> proc_macro2::TokenStream {
         let variants = variants
             .iter()
             .enumerate()
@@ -352,19 +353,38 @@ impl FieldVariant {
                 None => quote! { None::<&'static str> }
             };
 
-            tokens.append_all(quote! {
-                let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(self) == #i;
-                let mut response = ui.selectable_label(is_selected, #name);
+            // Check whether this enum has any data.
+            match variant.fields.style {
+                darling::ast::Style::Unit => {
+                    tokens.append_all(quote! {
+                        let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(self) == #i;
+                        let mut response = ui.selectable_label(is_selected, #name);
 
-                if let Some(tooltip) = #tooltip {
-                    response = response.on_hover_text(tooltip);
-                }
+                        if let Some(tooltip) = #tooltip {
+                            response = response.on_hover_text(tooltip);
+                        }
 
-                if response.clicked() {
-                    *self = Self::#ident;
-                    changes.changed = true;
+                        if response.clicked() {
+                            *self = Self::#ident;
+                            changes.changed = true;
+                        }
+                    });
                 }
-            });
+                darling::ast::Style::Tuple => tokens.append_all(quote! {
+                    let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(self) == #i;
+                }),
+                darling::ast::Style::Struct => {
+                    let enum_fields = FieldOpt::render(&variant.fields.fields, false);
+
+                    tokens.append_all(quote! {
+                        let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(self) == #i;
+                        if is_selected {
+                            // Draw the enum struct contents.
+                            #enum_fields
+                        }
+                    });
+                }
+            }
         }
 
         tokens
@@ -394,7 +414,7 @@ impl Input {
         }
     }
 
-    fn struct_to_tokens(
+    fn render_struct(
         &self,
         fields: &[FieldOpt],
         is_bitfield: bool,
@@ -403,7 +423,7 @@ impl Input {
         let Self { ident, .. } = self;
 
         let name = self.name();
-        let fields = FieldOpt::to_tokens(ident, fields, is_bitfield);
+        let fields = FieldOpt::render(fields, is_bitfield);
 
         let summary = match &self.summary {
             Some(path) => quote! { #path(self) },
@@ -464,11 +484,20 @@ impl Input {
         });
     }
 
-    fn enum_to_tokens(&self, variants: &[FieldVariant], tokens: &mut proc_macro2::TokenStream) {
+    fn render_enum_content(&self, variants: &[FieldVariant]) -> proc_macro2::TokenStream {
+        let mut tokens = proc_macro2::TokenStream::new();
+        // for (i, variant) in variants.iter().enumerate() {
+        //     variant.render_content(i, &mut tokens);
+        // }
+
+        tokens
+    }
+
+    fn render_enum(&self, variants: &[FieldVariant], tokens: &mut proc_macro2::TokenStream) {
         let Self { ident, .. } = self;
 
         let names = variants.iter().map(|v| v.name()).collect::<Vec<_>>();
-        let fields = FieldVariant::to_tokens(&names, variants);
+        let fields = FieldVariant::render(&names, variants);
 
         let variant_names = variants.iter().zip(names.iter()).map(|(variant, name)| {
             let ident = &variant.ident;
@@ -491,16 +520,9 @@ impl Input {
         let variant_indices = variants.iter().enumerate().map(|(i, variant)| {
             let ident = &variant.ident;
 
-            let field_count = variant.fields.fields.len();
             let pattern_content = match variant.fields.style {
                 Style::Struct => Some(quote! { { .. } }),
-                Style::Tuple => {
-                    // Repeat the `_` pattern to match the whole tuple.
-                    let dash_repeat = std::iter::repeat(quote! { _ }).take(field_count);
-                    Some(quote! {
-                        (#(#dash_repeat),*)
-                    })
-                }
+                Style::Tuple => Some(quote! { (..) }),
                 Style::Unit => None
             };
 
@@ -513,16 +535,15 @@ impl Input {
             }
         });
 
+        // let enum_content = self.render_enum_content(variants);
         tokens.append_all(quote! {
             impl slipstream_shared::inspect::AsEnumLabel for #ident {
-                #[inline]
                 fn as_index(&self) -> usize {
                     match self {
                         #(#variant_indices)*
                     }
                 }
 
-                #[inline]
                 fn as_label(&self) -> &'static str {
                     match self {
                         #(#variant_names)*
@@ -552,6 +573,9 @@ impl Input {
                         response.on_hover_text(tooltip);
                     }
 
+                    // If the enum has content, display it below the ComboBox.
+                    // #enum_content
+
                     changes
                 }
             }
@@ -562,8 +586,8 @@ impl Input {
         let mut tokens = proc_macro2::TokenStream::new();
 
         match &self.data {
-            Data::Struct(data) => self.struct_to_tokens(&data.fields, is_bitfield, &mut tokens),
-            Data::Enum(data) => self.enum_to_tokens(&data, &mut tokens)
+            Data::Struct(data) => self.render_struct(&data.fields, is_bitfield, &mut tokens),
+            Data::Enum(data) => self.render_enum(&data, &mut tokens)
         }
 
         tokens
