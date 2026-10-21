@@ -1,4 +1,5 @@
 use byteorder::{BigEndian, ReadBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::SlipstreamResult;
 
@@ -9,10 +10,16 @@ use crate::tpl::deserialize_color;
 use crate::util::{VectorDivisor, VertexFormat, deserialize_scalar, deserialize_vector};
 
 /// Position data that is stored directly inside of a draw call.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Inspect)]
 pub enum InlinePosition {
     Xy(glam::Vec2),
     Xyz(glam::Vec3)
+}
+
+impl Default for InlinePosition {
+    fn default() -> Self {
+        Self::Xyz(glam::Vec3::ZERO)
+    }
 }
 
 impl InlinePosition {
@@ -44,9 +51,10 @@ impl InlinePosition {
 }
 
 /// How the position data is stored by the draw call.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub enum PositionData {
     /// This vertex has no data. Skip it.
+    #[default]
     NotPresent,
     /// This vertex is located at the given 8-bit index into a vertex buffer.
     ///
@@ -81,12 +89,18 @@ impl PositionData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum InlineNormal {
     /// Stores only the normal
     Single(glam::Vec3),
     /// Stores the normal, binormal and tangent in a single 9 float block.
     Packed([glam::Vec3; 3])
+}
+
+impl Default for InlineNormal {
+    fn default() -> Self {
+        Self::Single(glam::Vec3::ZERO)
+    }
 }
 
 impl InlineNormal {
@@ -125,7 +139,7 @@ impl InlineNormal {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub enum NormalIndex<T> {
     /// If NBT mode is set, all three normal vectors are read consecutively.
     /// Otherwise only a single normal vector is read.
@@ -135,8 +149,15 @@ pub enum NormalIndex<T> {
     Triple([T; 3])
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl<T: Default> Default for NormalIndex<T> {
+    fn default() -> Self {
+        Self::Single(T::default())
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub enum NormalData {
+    #[default]
     NotPresent,
     Index8(NormalIndex<u8>),
     Index16(NormalIndex<u16>),
@@ -178,10 +199,16 @@ impl NormalData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum DirectColor {
     AlphaDisabled(glam::U8Vec4),
     AlphaEnabled(glam::U8Vec4)
+}
+
+impl Default for DirectColor {
+    fn default() -> Self {
+        Self::AlphaDisabled(glam::u8vec4(255, 255, 0, 255))
+    }
 }
 
 impl DirectColor {
@@ -216,8 +243,9 @@ impl DirectColor {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub enum ColorData {
+    #[default]
     NotPresent,
     Index8(u8),
     Index16(u16),
@@ -252,10 +280,16 @@ impl ColorData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum DirectUv {
     S(f32),
     St(glam::Vec2)
+}
+
+impl Default for DirectUv {
+    fn default() -> Self {
+        Self::S(0.0)
+    }
 }
 
 impl DirectUv {
@@ -268,8 +302,9 @@ impl DirectUv {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub enum UvData {
+    #[default]
     NotPresent,
     Index8(u8),
     Index16(u16),
@@ -331,7 +366,7 @@ impl_uv_de!(
     7 => vat_c + vat_c
 );
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct OpVertex {
     /// The position/normal matrix that should be used to transform this vertex.
     ///
@@ -402,8 +437,8 @@ impl OpVertex {
 
 /// Raw drawing commands.
 ///
-/// These are directly for the Wii, not suitable for PC rendering.
-#[derive(Debug, Clone, PartialEq)]
+/// These are directly for the Wii, not suitable for drawing in modern APIs.
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub struct DrawOpCode {
     pub vertices: Vec<OpVertex>
 }

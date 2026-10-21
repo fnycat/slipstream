@@ -24,7 +24,7 @@ use crate::visitor::{VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMu
 /// to global matrices.
 ///
 /// [`pn_index_enabled`]: CpVcdLo::pn_index_enabled
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct BoneTable {
     pub entries: Vec<u16>
 }
@@ -98,7 +98,7 @@ impl PolygonModifier {
 }
 
 /// Determines how this shape is bound to a bone.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub enum BoneBind {
     /// The entire polygon is bound to a single bone.
     ///
@@ -132,7 +132,6 @@ pub struct GxVertexDeclaration {
     /// The third vertex attribute table.
     #[inspect(rename = "Attribute Table 3")]
     pub vat_c: CpVatC,
-    #[inspect(ignore)]
     pub xf: Vec<LoadXfPayload>
 }
 
@@ -249,7 +248,6 @@ pub struct Polygon {
     #[inspect(rename = "Vertex Declaration")]
     pub vertex_decl: GxVertexDeclaration,
     /// Bytecode containing this shape's draw calls.
-    #[inspect(ignore)]
     pub vertex_data_gx: GxBytecode
 }
 

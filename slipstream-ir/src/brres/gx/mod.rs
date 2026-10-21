@@ -1,4 +1,5 @@
 use byteorder::ReadBytesExt;
+use slipstream_derive::Inspect;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 use slipstream_shared::verify;
@@ -94,12 +95,16 @@ impl TryFrom<u8> for GxOpCodeId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+// I provide custom `inspect_default` implementations for some types that
+// don't really have sensible defaults I want in the API.
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub enum GxOpCode {
+    #[default]
     Nop,
-    LoadCp(LoadCpOpCode),
+    // #[inspect(default_fn = LoadCpOpCode::inspect_default)]
+    LoadCp(#[inspect(default = LoadCpOpCode::inspect_default)] LoadCpOpCode),
     LoadXf(LoadXfOpCode),
-    LoadBp(LoadBpOpCode),
+    LoadBp(#[inspect(default = LoadBpOpCode::inspect_default)] LoadBpOpCode),
     LoadIndexedPosition(IndexedLoad),
     LoadIndexedNormal(IndexedLoad),
     LoadIndexedTextureMatrix(IndexedLoad),
@@ -113,10 +118,11 @@ pub enum GxOpCode {
     DrawLines(DrawOpCode),
     DrawLineStrip(DrawOpCode),
     DrawPoints(DrawOpCode),
+    #[inspect(ignore)]
     Unknown
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct GxBytecode {
     pub commands: Vec<GxOpCode>
 }

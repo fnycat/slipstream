@@ -88,6 +88,9 @@ pub struct FieldOpt {
     pub ident: Option<Ident>,
     pub ty: Type,
 
+    /// Default initializer for this field. If not set, the `Default` trait is used instead.
+    #[darling(default)]
+    pub default: Option<syn::Path>,
     #[darling(default = default_max_horizontal_elements)]
     pub max_horizontal_elements: usize,
     /// A tooltip to display when hovering over the value.
@@ -332,10 +335,16 @@ pub struct FieldVariant {
     pub ident: Ident,
     pub fields: Fields<FieldOpt>,
 
+    /// Function that returns a default value of the specified variant.
+    #[darling(default)]
+    pub default: Option<syn::Path>,
+    /// A tooltip that is displayed when hovering over the variant.
     #[darling(default)]
     pub tooltip: Option<String>,
+    /// Changes the displayed name of the variant.
     #[darling(default)]
     pub rename: Option<String>,
+    /// Ignores the variant. It will not be shown to the user.
     #[darling(default)]
     pub ignore: bool
 }
@@ -367,7 +376,64 @@ impl FieldVariant {
                 None => quote! { None::<&'static str> }
             };
 
-            tokens.append_all(quote! {});
+            let setter = match variant.fields.style {
+                darling::ast::Style::Unit => quote! { *self = Self::#ident },
+                darling::ast::Style::Tuple => {
+                    let inits = variant
+                        .fields
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            if let Some(default_fn) = &field.default {
+                                quote! {
+                                    #default_fn()
+                                }
+                            } else {
+                                quote! {
+                                    Default::default()
+                                }
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    quote! {
+                        *self = Self::#ident(#(#inits),*)
+                    }
+                }
+                darling::ast::Style::Struct => {
+                    // If there is a default function, use it.
+                    // Otherwise attempt to default initialize all fields
+                    // manually.
+
+                    let inits = variant
+                        .fields
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let ident = field
+                                .ident
+                                .as_ref()
+                                .expect("struct field should have an identifier");
+
+                            if let Some(default_fn) = &field.default {
+                                quote! {
+                                    #ident: #default_fn()
+                                }
+                            } else {
+                                quote! {
+                                    #ident: Default::default()
+                                }
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    quote! {
+                        *self = Self::#ident {
+                            #(#inits),*
+                        }
+                    }
+                }
+            };
 
             tokens.append_all(quote! {
                 let is_selected = slipstream_shared::inspect::AsEnumLabel::as_index(self) == #i;
@@ -378,7 +444,7 @@ impl FieldVariant {
                 }
 
                 if response.clicked() {
-                    *self = Self::#ident;
+                    #setter;
                     changes.changed = true;
                 }
             });
@@ -481,15 +547,6 @@ impl Input {
         });
     }
 
-    fn render_enum_content(&self, variants: &[FieldVariant]) -> proc_macro2::TokenStream {
-        let mut tokens = proc_macro2::TokenStream::new();
-        // for (i, variant) in variants.iter().enumerate() {
-        //     variant.render_content(i, &mut tokens);
-        // }
-
-        tokens
-    }
-
     /// Generates a match statement over every variant in the enum, adding the tokens
     /// that the closure produces.
     fn match_on_variants<F>(
@@ -560,12 +617,12 @@ impl Input {
             #[cfg(feature = "egui-impls")]
             impl slipstream_shared::inspect::Inspect for #ident {
                 fn draw_properties(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
-                    let err_text = egui::RichText::new(format!("ERROR: `Inspect::draw_properties` is not implemented for enum `{}`", stringify!(#ident)));
+                    let err_text = egui::RichText::new(format!("ERROR: `Inspect::draw_properties` is not implemented for enum `{}`", stringify!(#ident)))
                         .color(ui.visuals().error_fg_color);
 
                     ui.label(err_text);
 
-                    Changes::default()
+                    slipstream_shared::inspect::Changes::default()
                 }
 
                 fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {

@@ -88,9 +88,10 @@ macro_rules! geo_objects {
    }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 #[try_from(u16)]
 pub enum ThwompRouteBehavior {
+    #[default]
     StompOnEveryPoint = 0x01,
     LeftAndRightStomp = 0x02,
     LeftAndRightGrounded = 0x03
@@ -106,9 +107,10 @@ impl GeoSetting for ThwompRouteBehavior {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 #[try_from(u16)]
 pub enum FallBoundary {
+    #[default]
     AirFall = 0x00,
     Water = 0x01,
     Lava = 0x02,
@@ -129,9 +131,10 @@ impl GeoSetting for FallBoundary {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 #[try_from(u16)]
 pub enum WallFlag {
+    #[default]
     Normal = 0x00,
     Rock = 0x01,
     Metal = 0x02,
@@ -152,9 +155,10 @@ impl GeoSetting for WallFlag {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum StartDelay {
     Delayed(u16),
+    #[default]
     Immediate
 }
 
@@ -174,9 +178,10 @@ impl GeoSetting for StartDelay {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 #[try_from(u16)]
 pub enum EnemyLineEntryFlag {
+    #[default]
     DoNotEnter = 0x0,
     Enter = 0x1
 }
@@ -191,9 +196,10 @@ impl GeoSetting for EnemyLineEntryFlag {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 #[try_from(u16)]
 pub enum TopmanBehavior {
+    #[default]
     Unknown = 0x00,
     #[inspect(tooltip = "Ignores the player")]
     Coward = 0x01,
@@ -212,8 +218,9 @@ impl GeoSetting for TopmanBehavior {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Inspect)]
 pub enum Item {
+    #[default]
     Default = 0x000,
     Banana = 0x001,
     Mushroom = 0x002,
@@ -252,9 +259,10 @@ impl GeoSetting for Item {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub enum TimingLottery {
     /// Roulette spin is normal, respawn time is 150.
+    #[default]
     Normal150 = 0,
     /// Roulette spin is short, respawn time is 150.
     Short150 = 2,
@@ -279,8 +287,9 @@ impl GeoSetting for TimingLottery {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum ChainChompStartBehavior {
+    #[default]
     Wait = 0x00,
     Release = 0x01
 }
@@ -296,8 +305,9 @@ impl GeoSetting for ChainChompStartBehavior {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum CoinMode {
+    #[default]
     Battle = 0x00,
     TournamentOrMission = 0x01
 }
@@ -315,9 +325,10 @@ impl GeoSetting for CoinMode {
 /// Not exactly sure what this does yet.
 ///
 /// [Wiiki link](https://mkwiiki.org/wiki/Object/coin#Setting_2:_Start_or_Respawn_Place).
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum CoinSpawnPlace {
     Start(u16),
+    #[default]
     Respawn
 }
 
@@ -338,9 +349,10 @@ impl GeoSetting for CoinSpawnPlace {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum CoinSpawnBehavior {
     /// Coins are inserted at a place and snap to the ground.
+    #[default]
     InPlaceSnapGround = 0x00,
     /// Coins are inserted at a place and float in the air.
     InPlaceFloat = 0x01,
@@ -361,8 +373,9 @@ impl GeoSetting for CoinSpawnBehavior {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum WaterfallType {
+    #[default]
     A = 0x00,
     B = 0x01,
     C = 0x02
@@ -379,8 +392,9 @@ impl GeoSetting for WaterfallType {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum PhysicalItem {
+    #[default]
     GreenShell = 0x00,
     RedShell = 0x01,
     Banana = 0x02,
@@ -399,8 +413,9 @@ impl GeoSetting for PhysicalItem {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum TruckTexture {
+    #[default]
     MooMoo = 0x00,
     Fruit = 0x01,
     Factory = 0x02
@@ -417,8 +432,9 @@ impl GeoSetting for TruckTexture {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum CarBodyColor {
+    #[default]
     Blue = 0x00,
     Red = 0x01,
     Yellow = 0x02
@@ -435,8 +451,9 @@ impl GeoSetting for CarBodyColor {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum PylonColor {
+    #[default]
     Red = 0x00,
     Blue = 0x01,
     Yellow = 0x02
@@ -453,8 +470,9 @@ impl GeoSetting for PylonColor {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum CrabViewDirection {
+    #[default]
     Left = 0x00,
     Right = 0x01
 }
@@ -469,8 +487,9 @@ impl GeoSetting for CrabViewDirection {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum BlockFallTime {
+    #[default]
     Inactive,
     Immediate,
     Delayed(u16)
@@ -495,8 +514,9 @@ impl GeoSetting for BlockFallTime {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum ChairliftModel {
+    #[default]
     Chairlift00 = 0x00,
     Chairlift01 = 0x01
 }
@@ -512,8 +532,9 @@ impl GeoSetting for ChairliftModel {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum WaluigiFlashType {
+    #[default]
     A = 0x00,
     B = 0x01,
     C = 0x02
@@ -530,8 +551,9 @@ impl GeoSetting for WaluigiFlashType {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum FunkyFlashType {
+    #[default]
     A = 0x00,
     B = 0x01
 }
@@ -547,8 +569,9 @@ impl GeoSetting for FunkyFlashType {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum SmokeVariant {
+    #[default]
     DefaultPermanent = 0x00,
     Fluffy = 0x01,
     Default = 0x02,
@@ -568,9 +591,10 @@ impl GeoSetting for SmokeVariant {
 }
 
 #[try_from(u16)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum KoopaFireFunction {
     Decoration = 0x0,
+    #[default]
     Obstacle = 0x1
 }
 
@@ -1445,7 +1469,6 @@ impl GeoObject {
             rotation,
             scale,
             route,
-            settings,
             presence_flags
         })
     }

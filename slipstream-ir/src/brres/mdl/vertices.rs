@@ -25,7 +25,7 @@ pub enum VertexPositionType {
     Xyz
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum VertexBufData {
     Xy(Vec<glam::Vec2>),
     Xyz(Vec<glam::Vec3>)
@@ -98,7 +98,6 @@ pub struct VertexBuffer {
     pub divisor: u8,
     pub bounding_volume: Box3,
     /// The vertex data.
-    #[inspect(ignore)]
     pub vertices: VertexBufData
 }
 

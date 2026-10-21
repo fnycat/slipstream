@@ -1,5 +1,6 @@
 use bitfield_struct::{bitenum, bitfield};
 use byteorder::{BigEndian, ReadBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamResult};
 
@@ -107,14 +108,14 @@ impl XfSetPayload {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub enum LoadXfPayload {
     Size(XfSizePayload),
     Set { tex_id: u8, payload: XfSetPayload },
     Unknown { tex_id: u8, payload: u32 }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct LoadXfOpCode {
     pub loads: Vec<LoadXfPayload>
 }

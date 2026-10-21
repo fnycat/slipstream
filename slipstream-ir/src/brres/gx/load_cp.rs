@@ -365,15 +365,6 @@ impl CpVatC {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LoadCpOpCode {
-    VcdLo(CpVcdLo),
-    VcdHi(CpVcdHi),
-    VatA(CpVatA),
-    VatB(CpVatB),
-    VatC(CpVatC)
-}
-
 #[try_from(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum LoadCpOpCodeId {
@@ -396,7 +387,20 @@ impl LoadCpOpCodeId {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
+pub enum LoadCpOpCode {
+    VcdLo(CpVcdLo),
+    VcdHi(CpVcdHi),
+    VatA(CpVatA),
+    VatB(CpVatB),
+    VatC(CpVatC)
+}
+
 impl LoadCpOpCode {
+    pub(crate) fn inspect_default() -> Self {
+        Self::VcdLo(CpVcdLo::default())
+    }
+
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let opcode = LoadCpOpCodeId::deserialize(reader)?;
         let word = reader.read_u32::<BigEndian>()?;

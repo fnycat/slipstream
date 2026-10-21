@@ -1,11 +1,12 @@
 use bitfield_struct::bitfield;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use slipstream_derive::Inspect;
 use slipstream_shared::cursor::MutCursor;
 use slipstream_shared::error::InvalidInputError;
 use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult, verify};
 
 /// A 4-byte animation frame.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct I4Frame {
     /// The index of this frame in the animation.
     pub index: u8,
@@ -69,7 +70,7 @@ impl I4Frame {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct I6Frame {
     pub index: f32,
     pub step: f32,
@@ -98,7 +99,7 @@ impl I6Frame {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct I12Frame {
     pub index: f32,
     pub value: f32,
@@ -127,7 +128,7 @@ impl I12Frame {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub struct I4Animation {
     pub frame_scale: f32,
     pub step: f32,
@@ -196,7 +197,7 @@ impl I4Animation {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub struct I6Animation {
     pub frame_scale: f32,
     pub step: f32,
@@ -265,7 +266,7 @@ impl I6Animation {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub struct I12Animation {
     pub frame_scale: f32,
     pub frames: Vec<I12Frame>
@@ -325,7 +326,7 @@ impl I12Animation {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub struct L1Animation {
     pub step: f32,
     pub base: f32,
@@ -367,7 +368,7 @@ impl L1Animation {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub struct L4Animation {
     pub frames: Vec<f32>
 }

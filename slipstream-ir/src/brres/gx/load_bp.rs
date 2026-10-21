@@ -434,7 +434,14 @@ pub struct MaterialAddressRange {
     _padding2: u8
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
+pub enum ComponentsSet {
+    #[default]
+    RedAlpha,
+    BlueGreen
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub enum LoadBpOpCode {
     IndirectTexture(SetIndirectTexture),
     TextureRead {
@@ -464,13 +471,11 @@ pub enum LoadBpOpCode {
     WriteMask(u32)
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ComponentsSet {
-    RedAlpha,
-    BlueGreen
-}
-
 impl LoadBpOpCode {
+    pub(crate) fn inspect_default() -> Self {
+        Self::WriteMask(0)
+    }
+
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let address = reader.read_u8()?;
         let value = reader.read_u24::<BigEndian>()?;

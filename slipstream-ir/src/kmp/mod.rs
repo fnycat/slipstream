@@ -235,6 +235,7 @@ pub fn deserialize(
             KmpSectionType::ItemRoutePoints => {
                 Box::new(ItemRoutePoints::deserialize(reader, section_header)?)
             }
+            KmpSectionType::ItemRoute => Box::new(ItemRoutes::deserialize(reader, section_header)?),
             KmpSectionType::Checkpoints => {
                 Box::new(Checkpoints::deserialize(reader, section_header)?)
             }
@@ -247,7 +248,7 @@ pub fn deserialize(
             KmpSectionType::Routes => {
                 Box::new(PointInformationPaths::deserialize(reader, section_header)?)
             }
-            KmpSectionType::Areas => Box::new(Areas::deserialize(reader, section_header)?),
+            // KmpSectionType::Areas => Box::new(Areas::deserialize(reader, section_header)?),
             _ => {
                 tracing::warn!("unimplemented section type: {:?}", section_header.ty);
                 continue;

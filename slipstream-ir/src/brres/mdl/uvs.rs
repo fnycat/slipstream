@@ -24,7 +24,7 @@ pub enum UvDataType {
     St
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum UvBufData {
     S(Vec<f32>),
     St(Vec<glam::Vec2>)
@@ -64,7 +64,6 @@ pub struct UvBuffer {
     #[inspect(tooltip = FORMAT_DIVISOR_TOOLTIP)]
     pub divisor: u8,
     /// The raw UV data.
-    #[inspect(ignore)]
     pub uvs: UvBufData,
     pub bounding_volume: Box2
 }

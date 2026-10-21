@@ -261,7 +261,7 @@ impl AnimationCode {
 }
 
 /// The type of animation that is applied to the bone.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum ComponentType {
     /// The bone stays in place throughout the entire animation.
     Fixed(f32),
@@ -269,7 +269,7 @@ pub enum ComponentType {
     Animated(AnimationType)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum AnimationType {
     Interpolated4(I4Animation),
     Interpolated6(I6Animation),
@@ -278,13 +278,16 @@ pub enum AnimationType {
     Linear4(L4Animation)
 }
 
+impl Default for AnimationType {
+    fn default() -> Self {
+        Self::Interpolated4(I4Animation::default())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct ComponentData {
-    #[inspect(ignore)]
     pub x: ComponentType,
-    #[inspect(ignore)]
     pub y: ComponentType,
-    #[inspect(ignore)]
     pub z: ComponentType
 }
 

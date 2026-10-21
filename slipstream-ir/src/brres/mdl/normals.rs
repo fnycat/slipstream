@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use bitfield_struct::bitenum;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_derive::Inspect;
+use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 use slipstream_shared::verify;
@@ -23,6 +23,7 @@ const COMPONENTS_ANY: u32 = 0x2;
 /// the formats that are invalid for normal data (i.e only signed formats).
 ///
 /// [`VertexFormat`]: slipstream_ir::mdl::VertexFormat
+#[try_from(u32)]
 #[bitenum]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[repr(u8)]
@@ -36,30 +37,7 @@ pub enum NormalFormat {
     /// Fallback value for `bitenum`, this variant should never be used.
     #[inspect(ignore)]
     #[fallback]
-    Invalid
-}
-
-impl TryFrom<u32> for NormalFormat {
-    type Error = SlipstreamError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        // Literally the same as VertexFormat, except that it only supports signed
-        // formats.
-        Ok(match value {
-            // 0 => Self::Uint8,
-            1 => Self::Int8,
-            // 2 => Self::Uint16,
-            3 => Self::Int16,
-            4 => Self::Float32,
-            v => {
-                return Err(CorruptionError {
-                    reason: format!("invalid vertex format: {v} (expected 1, 3 or 4)"),
-                    ..Default::default()
-                }
-                .into());
-            }
-        })
-    }
+    Invalid = 5
 }
 
 impl NormalFormat {
@@ -88,7 +66,7 @@ pub enum NormalBufType {
     All
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum NormalBufData {
     /// Only the normal.
     Single(Vec<glam::Vec3>),
@@ -141,7 +119,6 @@ pub struct NormalBuffer {
     // /// The size in bytes of each entry.
     // pub stride: u8,
     /// The normal data.
-    #[inspect(ignore)]
     pub normals: NormalBufData
 }
 
