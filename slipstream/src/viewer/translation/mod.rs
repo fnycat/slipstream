@@ -24,7 +24,8 @@ pub struct IntermediateModel {
 
     pub bounding_volume: Box3,
 
-    pub bone_translations: Vec<glam::Mat4>,
+    pub bone_positions: Vec<glam::Vec3>,
+    pub bone_matrices: Vec<glam::Mat4>,
     pub polygons: Vec<IntermediatePolygon>,
 
     /// All textures are converted to RGBA8 images.

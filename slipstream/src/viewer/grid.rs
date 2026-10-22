@@ -2,11 +2,16 @@ use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT};
 
 /// Pipeline that renders the 3D view background grid.
 pub struct GridPipeline {
+    camera_bind_group: wgpu::BindGroup,
     pipeline: wgpu::RenderPipeline
 }
 
 impl GridPipeline {
-    pub fn new(device: &wgpu::Device, camera_bind_layout: &wgpu::BindGroupLayout) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        camera_bind_layout: &wgpu::BindGroupLayout,
+        camera_bind_group: wgpu::BindGroup
+    ) -> Self {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("grid pipeline layout"),
             bind_group_layouts: &[Some(&camera_bind_layout)],
@@ -59,12 +64,15 @@ impl GridPipeline {
             cache: None
         });
 
-        Self { pipeline }
+        Self {
+            pipeline,
+            camera_bind_group
+        }
     }
 
-    pub fn draw(&self, pass: &mut wgpu::RenderPass, camera_bind_group: &wgpu::BindGroup) {
+    pub fn draw(&self, pass: &mut wgpu::RenderPass) {
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, camera_bind_group, &[]);
+        pass.set_bind_group(0, &self.camera_bind_group, &[]);
         pass.draw(0..3, 0..1);
     }
 }

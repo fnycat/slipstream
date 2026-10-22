@@ -230,11 +230,11 @@ impl ModelContents<'_> {
             .copied()
             .unwrap_or(BoneIndex(0));
 
-        out.bone_translations
+        out.bone_matrices
             .resize(max_bone_index.0 as usize + 1, glam::Mat4::IDENTITY);
 
         for (bone_index, transform) in visitor.transforms {
-            out.bone_translations[bone_index.0 as usize] = *transform;
+            out.bone_matrices[bone_index.0 as usize] = *transform;
             tracing::trace!("Wrote matrix for bone ID {bone_index:?}");
         }
 

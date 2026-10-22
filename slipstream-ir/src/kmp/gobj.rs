@@ -88,13 +88,14 @@ macro_rules! geo_objects {
    }
 }
 
+/// The Mario Kart Wiiki claims this starts at 1, but `koopa_course.szs` contains an entry with value 0.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 #[try_from(u16)]
 pub enum ThwompRouteBehavior {
     #[default]
-    StompOnEveryPoint = 0x01,
-    LeftAndRightStomp = 0x02,
-    LeftAndRightGrounded = 0x03
+    StompOnEveryPoint = 0x00,
+    LeftAndRightStomp = 0x01,
+    LeftAndRightGrounded = 0x02
 }
 
 impl GeoSetting for ThwompRouteBehavior {
@@ -717,9 +718,9 @@ geo_objects! {
     0x06a => GndTrapezoid,
     0x06b => GndWave1,
     0x06c => GndWave2,
-    0x06c => GndWave3,
-    0x06d => GndWave4,
-    0x06e => Sun,
+    0x06d => GndWave3,
+    0x06e => GndWave4,
+    0x06f => Sun,
     0x070 => Woodbox {
         1 => item: Item,
         /// A chance between 0 and 100 to spawn an item when this crate is hit.

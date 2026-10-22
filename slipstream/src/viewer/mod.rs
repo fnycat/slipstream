@@ -1,6 +1,7 @@
 pub mod camera;
 pub mod grid;
 pub mod pipeline;
+pub mod skeleton;
 pub mod toolbar;
 pub mod translation;
 pub mod wgpu;

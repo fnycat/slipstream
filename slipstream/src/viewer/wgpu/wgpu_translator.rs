@@ -9,13 +9,16 @@ use crate::viewer::translation::{IntermediateModel, IntermediatePolygon};
 use crate::viewer::wgpu::{PipelineDescriptor, PipelineRegistry, PipelineSignature};
 
 pub struct WgpuModel {
-    camera_bind_group: wgpu::BindGroup,
-    bind_pose_group: wgpu::BindGroup,
+    pub camera_bind_group: wgpu::BindGroup,
 
-    pipelines: PipelineRegistry,
+    pub bone_count: u32,
+    pub bind_pose_group_layout: wgpu::BindGroupLayout,
+    pub bind_pose_group: wgpu::BindGroup,
 
-    textures: Vec<WgpuTexture>,
-    polygons: Vec<WgpuPolygon>
+    pub pipelines: PipelineRegistry,
+
+    pub textures: Vec<WgpuTexture>,
+    pub polygons: Vec<WgpuPolygon>
 }
 
 impl WgpuModel {
@@ -28,7 +31,7 @@ impl WgpuModel {
         let transform_matrix_buffer =
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("transform matrix storage buffer"),
-                contents: bytemuck::cast_slice(&ir.bone_translations),
+                contents: bytemuck::cast_slice(&ir.bone_matrices),
                 usage: wgpu::BufferUsages::STORAGE
             });
 
@@ -80,6 +83,8 @@ impl WgpuModel {
 
         Ok(Self {
             camera_bind_group: camera_state.bind_group.clone(),
+            bone_count: ir.bone_matrices.len() as u32,
+            bind_pose_group_layout: transform_matrix_layout,
             bind_pose_group: transform_matrix_group,
             pipelines,
             textures,

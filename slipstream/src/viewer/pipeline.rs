@@ -8,6 +8,7 @@ use crate::shared::GraphicsState;
 use crate::shared::vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex3};
 use crate::viewer::camera::{Camera, CameraController, CameraUniformData, FreeCamera, OrbitCamera};
 use crate::viewer::grid::GridPipeline;
+use crate::viewer::skeleton::SkeletonPipeline;
 use crate::viewer::translation::IntermediateModel;
 use crate::viewer::wgpu::WgpuModel;
 
@@ -326,7 +327,6 @@ impl CameraState {
 }
 
 pub struct PipelineState {
-    pub pipeline_layout: wgpu::PipelineLayout,
     pub pipeline: wgpu::RenderPipeline
 }
 
@@ -400,10 +400,7 @@ impl PipelineState {
                 cache: None
             });
 
-        Self {
-            pipeline_layout,
-            pipeline
-        }
+        Self { pipeline }
     }
 }
 
@@ -441,6 +438,7 @@ pub struct ViewerPipeline {
     pub graphics_state: GraphicsState,
     pub viewport_size: glam::UVec2,
 
+    pub skeleton: Option<SkeletonPipeline>,
     pub grid: GridPipeline,
 
     pub camera_state: CameraState,
@@ -511,7 +509,22 @@ impl ViewerPipeline {
             })
             .transpose()?;
 
-        let grid = GridPipeline::new(&graphics_state.device, &camera_state.bind_group_layout);
+        let skeleton = model_state.as_ref().map(|model| {
+            SkeletonPipeline::new(
+                &graphics_state.device,
+                &camera_state.bind_group_layout,
+                camera_state.bind_group.clone(),
+                &model.bind_pose_group_layout,
+                model.bind_pose_group.clone(),
+                model.bone_count
+            )
+        });
+
+        let grid = GridPipeline::new(
+            &graphics_state.device,
+            &camera_state.bind_group_layout,
+            camera_state.bind_group.clone()
+        );
 
         Ok(Self {
             camera_state,
@@ -519,6 +532,7 @@ impl ViewerPipeline {
             // pipeline_state,
             model_state,
 
+            skeleton,
             grid,
 
             viewport_size,
@@ -571,11 +585,14 @@ impl ViewerPipeline {
             multiview_mask: None
         });
 
-        self.grid
-            .draw(&mut render_pass, &self.camera_state.bind_group);
+        self.grid.draw(&mut render_pass);
 
         if let Some(model) = &self.model_state {
             model.draw(&mut render_pass);
+        }
+
+        if let Some(skeleton) = &self.skeleton {
+            skeleton.draw(&mut render_pass);
         }
 
         Vec::new()
