@@ -1,7 +1,6 @@
 use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT};
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use wgpu::util::DeviceExt;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]

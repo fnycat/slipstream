@@ -2,7 +2,7 @@
 
 use crate::viewer::translation::{IntermediateModel, ModelContents, VertexBoneData};
 use slipstream_ir::brres::draw::{
-    ColorData, DirectColor, DrawOpCode, NormalData, NormalIndex, OpVertex, PositionData, UvData
+    ColorData, DrawOpCode, NormalData, NormalIndex, OpVertex, PositionData, UvData
 };
 use slipstream_ir::brres::load_indexed::IndexedLoad;
 use slipstream_ir::brres::{
@@ -476,8 +476,8 @@ impl ModelContents<'_> {
     fn load_position_slot(
         &self,
         model: &mut IntermediateModel,
-        scratch: &mut IntermediatePolygon,
-        polygon: &Polygon,
+        _scratch: &mut IntermediatePolygon,
+        _polygon: &Polygon,
         load: &IndexedLoad
     ) -> SlipstreamResult<()> {
         let address = load.address();
@@ -502,10 +502,10 @@ impl ModelContents<'_> {
 
     fn load_normal_slot(
         &self,
-        model: &mut IntermediateModel,
-        scratch: &mut IntermediatePolygon,
-        polygon: &Polygon,
-        load: &IndexedLoad
+        _model: &mut IntermediateModel,
+        _scratch: &mut IntermediatePolygon,
+        _polygon: &Polygon,
+        _load: &IndexedLoad
     ) -> SlipstreamResult<()> {
         todo!("normal indexed load");
 
@@ -532,10 +532,10 @@ impl ModelContents<'_> {
                 GxOpCode::LoadIndexedPosition(load) => {
                     self.load_position_slot(model, scratch, polygon, load)?;
                 }
-                GxOpCode::LoadIndexedNormal(load) => {
+                GxOpCode::LoadIndexedNormal(_load) => {
                     // tracing::trace!("TODO: {load:?}");
                 }
-                GxOpCode::LoadIndexedTextureMatrix(load) => {
+                GxOpCode::LoadIndexedTextureMatrix(_load) => {
                     // tracing::trace!("TODO: {load:?}");
                 }
                 _ => todo!("{call:?}")

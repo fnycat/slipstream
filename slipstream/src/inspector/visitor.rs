@@ -7,7 +7,7 @@ use slipstream_ir::brres::{
     TextureLinks, UvBuffer, VertexBuffer
 };
 use slipstream_ir::kmp::{
-    self, EnemyRoutePoints, EnemyRoutes, ItemRoutePoints, KmpHeader, KmpVisitor, StartingPositions
+    self, KmpVisitor
 };
 use slipstream_ir::tpl::{TplHeader, TplImage};
 use slipstream_ir::visitor::{Visitor, VisitorCtxMut};

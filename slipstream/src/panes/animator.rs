@@ -5,7 +5,6 @@ use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::node::IrNodeType;
 
 use crate::panes::{Pane, PaneAction, PaneId, PaneResponse};
-use crate::shared::GraphicsState;
 use crate::shared::object_dialog::{DialogResponse, ObjectDialog, ObjectFilter};
 
 pub struct AnimationFrame {}
@@ -58,13 +57,13 @@ impl Pane for AnimatorPane {
     fn draw_content(
         &mut self,
         ui: &mut egui::Ui,
-        tile_id: egui_tiles::TileId,
-        is_focused: bool
+        _tile_id: egui_tiles::TileId,
+        _is_focused: bool
     ) -> PaneResponse {
         if let Some(response) = self.dialog.as_mut().map(|dialog| dialog.draw(ui)) {
             match response {
                 DialogResponse::Closed => self.dialog = None,
-                DialogResponse::Confirmed(key) => {
+                DialogResponse::Confirmed(_key) => {
                     self.dialog = None;
                     // self.animation = Some(key)
                     self.animation = todo!();
@@ -73,7 +72,7 @@ impl Pane for AnimatorPane {
             }
         }
 
-        let Some(node_key) = &self.animation else {
+        let Some(_node_key) = &self.animation else {
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 ui.label("Open an animation");
                 if ui.button("Choose a CHR0 file").clicked() {

@@ -150,7 +150,7 @@ impl ModelContents<'_> {
                     weights
                 }
             }
-            BoneBind::Mixed(mixed) => {
+            BoneBind::Mixed(_mixed) => {
                 // The polygon has a bone table.
 
                 let matrix_id = vertex_key.mtx_id.unwrap_or_else(|| {
@@ -160,7 +160,7 @@ impl ModelContents<'_> {
 
                 // Check if weights are involved
                 match &model.bone_weights {
-                    Some(weights) => {
+                    Some(_weights) => {
                         // The bone influences are weighted. This is used to control how a vertex
                         // moves when it's influenced by multiple bones.
 

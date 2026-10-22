@@ -1,5 +1,4 @@
-use crate::error::AssertFailed;
-use crate::{SlipstreamResult, verify};
+use crate::SlipstreamResult;
 
 pub struct HeaderIcons {
     pub open: egui::RichText,

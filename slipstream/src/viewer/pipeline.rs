@@ -1,4 +1,3 @@
-use std::time::Instant;
 
 use eframe::egui_wgpu;
 use slipstream_shared::SlipstreamResult;
@@ -6,7 +5,7 @@ use wgpu::util::DeviceExt;
 
 use crate::shared::GraphicsState;
 use crate::shared::vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex3};
-use crate::viewer::camera::{Camera, CameraController, CameraUniformData, FreeCamera, OrbitCamera};
+use crate::viewer::camera::{Camera, CameraController, CameraUniformData, FreeCamera};
 use crate::viewer::grid::GridPipeline;
 use crate::viewer::registry::{ViewerId, ViewerRegistry};
 use crate::viewer::skeleton::SkeletonPipeline;
@@ -460,7 +459,7 @@ impl ViewerPipeline {
         let viewport_size = glam::uvec2(800, 600);
 
         let camera_move_speed;
-        let (lookat, radius) = if let Some(model) = &intermediate_model {
+        let (_lookat, _radius) = if let Some(model) = &intermediate_model {
             // Position camera based on model bounding box.
             // This ensures the camera doesn't have to be fully zoomed out to see the model.
             // It also centers the model in the view.

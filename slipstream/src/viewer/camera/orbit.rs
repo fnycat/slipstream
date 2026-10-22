@@ -1,6 +1,5 @@
-use std::time::Instant;
 
-use crate::viewer::camera::{CameraController, FAR_PLANE, NEAR_PLANE, WORLD_UP};
+use crate::viewer::camera::{CameraController, NEAR_PLANE, WORLD_UP};
 
 /// A camera orbiting around a given point.
 #[derive(Debug, Clone, PartialEq)]

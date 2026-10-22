@@ -1,6 +1,5 @@
-use std::time::Instant;
 
-use crate::viewer::camera::{CameraController, FAR_PLANE, NEAR_PLANE, WORLD_UP};
+use crate::viewer::camera::{CameraController, NEAR_PLANE, WORLD_UP};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FreeCamera {

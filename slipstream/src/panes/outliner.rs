@@ -4,10 +4,10 @@ use slipstream_ir::brres::MdlSectionType;
 use slipstream_ir::kmp::KmpSectionType;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::node::{IrNode, IrNodeType};
-use slipstream_shared::error::{SlipstreamError, SlipstreamResult};
-use slipstream_shared::{fill_icon, reg_icon};
+use slipstream_shared::error::SlipstreamResult;
+use slipstream_shared::reg_icon;
 
-use crate::panes::{ContentSignature, Pane, PaneAction, PaneId, PaneResponse, RequestNewPane};
+use crate::panes::{Pane, PaneAction, PaneId, PaneResponse, RequestNewPane};
 use slipstream_shared::widgets::{self, CollapseDescriptor, DropdownType, HeaderIcons};
 
 /// The outliner displays a file tree.

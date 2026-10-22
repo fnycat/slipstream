@@ -31,7 +31,7 @@ impl Pane for DebugPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        is_focused: bool
+        _is_focused: bool
     ) -> PaneResponse {
         let ctx = ui.ctx().clone();
         match self {

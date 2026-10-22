@@ -1,8 +1,6 @@
-use crate::panes::{ContentSignature, Pane, PaneAction, PaneId, PaneResponse};
+use crate::panes::{Pane, PaneAction, PaneId, PaneResponse};
 use crate::shared::mem_logger::GLOBAL_MEM_LOGS;
-use slipstream_shared::{SlipstreamError, SlipstreamResult};
-use std::hash::{DefaultHasher, Hash, Hasher};
-use std::sync::{LazyLock, mpsc};
+use std::sync::mpsc;
 
 // These are the colours from the Campbell theme. Except that the trace level is white instead of purple.
 const LEVEL_COLORS: &[egui::Color32] = &[
@@ -36,7 +34,7 @@ impl Pane for LogPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        is_focused: bool
+        _is_focused: bool
     ) -> PaneResponse {
         let row_height = 15.0;
         let logs = GLOBAL_MEM_LOGS.lock();
