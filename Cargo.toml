@@ -6,7 +6,7 @@ members = ["slipstream", "slipstream-derive", "slipstream-ir", "slipstream-share
 egui = { version = "0.36.2", features = ["rayon"] }
 glam = { version = "0.34.1", features = ["bytemuck"] }
 wgpu = { version = "30.0.1", features = ["webgl"] }
-eframe = "0.36.2"
+eframe = "0.37.0"
 egui_extras = { version = "0.36.2", features = ["image"] }
 egui-phosphor = { version = "0.14.0", features = ["fill", "subset"] }
 tracing = "0.1.44"
