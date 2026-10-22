@@ -73,7 +73,10 @@ impl ObjectDialog {
                 }
 
                 for (key, label) in &self.cache {
-                    if ui.label(format!("{label} ({key:?})")).clicked() {
+                    if ui
+                        .selectable_label(false, format!("{label} ({key:?})"))
+                        .clicked()
+                    {
                         return DialogResponse::Confirmed(*key);
                     }
                 }

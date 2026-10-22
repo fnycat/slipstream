@@ -1,7 +1,7 @@
 mod visitor;
 
 use crate::inspector::visitor::InspectorVisitor;
-use crate::panes::{Pane, PaneAction, PaneId};
+use crate::panes::{Pane, PaneAction, PaneId, PaneResponse};
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::visitor::VisitorCtxMetaMut;
 use slipstream_shared::{SlipstreamError, SlipstreamResult};
@@ -73,9 +73,9 @@ impl Pane for InspectorPane {
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
         _is_focused: bool
-    ) -> egui_tiles::UiResponse {
+    ) -> PaneResponse {
         self.draw_properties(ui).unwrap();
 
-        egui_tiles::UiResponse::None
+        PaneResponse::None
     }
 }

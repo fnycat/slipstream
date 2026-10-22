@@ -1,4 +1,4 @@
-use crate::panes::{ContentSignature, Pane, PaneAction, PaneId};
+use crate::panes::{ContentSignature, Pane, PaneAction, PaneId, PaneResponse};
 use crate::shared::mem_logger::GLOBAL_MEM_LOGS;
 use slipstream_shared::{SlipstreamError, SlipstreamResult};
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -37,7 +37,7 @@ impl Pane for LogPane {
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
         is_focused: bool
-    ) -> egui_tiles::UiResponse {
+    ) -> PaneResponse {
         let row_height = 15.0;
         let logs = GLOBAL_MEM_LOGS.lock();
 
@@ -66,6 +66,6 @@ impl Pane for LogPane {
                 }
             });
 
-        egui_tiles::UiResponse::None
+        PaneResponse::None
     }
 }

@@ -1,4 +1,5 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::ops::{BitOr, BitOrAssign};
 use std::sync::mpsc;
 
 use egui_phosphor::thin::X;
@@ -26,6 +27,49 @@ impl From<u64> for ContentSignature {
 pub const PANE_MARGIN: f32 = 5.0;
 pub const PANE_TITLE_SIZE: f32 = 15.0;
 
+/// A response of a pane.
+///
+/// Use the `|` operator to combine responses. The priority of responses is as follows:
+/// ```
+/// 1. Closed
+/// 2. DragStarted
+/// 3. None
+/// ```
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum PaneResponse {
+    None,
+    DragStarted,
+    Closed
+}
+
+impl PaneResponse {
+    pub fn into_tiles_response(self) -> egui_tiles::UiResponse {
+        match self {
+            Self::DragStarted => egui_tiles::UiResponse::DragStarted,
+            _ => egui_tiles::UiResponse::None
+        }
+    }
+}
+
+impl BitOr for PaneResponse {
+    type Output = PaneResponse;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::None, rhs) => rhs,
+            (Self::DragStarted, Self::Closed) => Self::Closed,
+            (Self::DragStarted, _) => Self::DragStarted,
+            (Self::Closed, _) => Self::Closed
+        }
+    }
+}
+
+impl BitOrAssign for PaneResponse {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
+    }
+}
+
 /// A general pane that can be used in the editor.
 ///
 /// The tile manager stores every pane as a trait object of this type and does
@@ -35,8 +79,9 @@ pub trait Pane: Send + Sync {
     /// The title of the current pane.
     fn title(&self) -> &str;
 
-    fn draw_pane_header(&self, ui: &mut egui::Ui, is_focused: bool) -> egui_tiles::UiResponse {
-        let mut drag_response = egui_tiles::UiResponse::None;
+    fn draw_pane_header(&self, ui: &mut egui::Ui, is_focused: bool) -> PaneResponse {
+        let mut pane_response = PaneResponse::None;
+
         egui::Frame::new()
             .inner_margin(PANE_MARGIN)
             .fill(if is_focused {
@@ -57,7 +102,7 @@ pub trait Pane: Send + Sync {
                         )
                         .drag_started()
                     {
-                        drag_response = egui_tiles::UiResponse::DragStarted;
+                        pane_response |= PaneResponse::DragStarted;
                     }
 
                     let label = egui::Label::new(
@@ -72,13 +117,13 @@ pub trait Pane: Send + Sync {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         let button = egui::Button::new(X).fill(egui::Color32::TRANSPARENT);
                         if ui.add(button).clicked() {
-                            todo!("close")
+                            pane_response |= PaneResponse::Closed;
                         }
                     })
                 });
             });
 
-        drag_response
+        pane_response
     }
 
     /// Draws the pane window itself.
@@ -89,17 +134,14 @@ pub trait Pane: Send + Sync {
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         is_focused: bool
-    ) -> egui_tiles::UiResponse {
+    ) -> PaneResponse {
         let mut response = self.draw_pane_header(ui, is_focused);
 
         egui::Frame::new()
             .fill(ui.visuals().panel_fill)
             .inner_margin(5.0)
             .show(ui, |ui| {
-                if self.draw_content(ui, tile_id, is_focused) == egui_tiles::UiResponse::DragStarted
-                {
-                    response = egui_tiles::UiResponse::DragStarted;
-                }
+                response |= self.draw_content(ui, tile_id, is_focused);
             });
 
         response
@@ -111,7 +153,7 @@ pub trait Pane: Send + Sync {
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         is_focused: bool
-    ) -> egui_tiles::UiResponse;
+    ) -> PaneResponse;
 
     fn highlight(&self, _painter: &mut egui::Painter) {
         todo!()
@@ -281,6 +323,15 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
         }
 
         let is_focused = self.focused_pane == Some(tile_id);
-        pane.draw_window(ui, tile_id, is_focused)
+
+        let response = pane.draw_window(ui, tile_id, is_focused);
+        if response == PaneResponse::Closed {
+            // The window wants to be closed.
+            if let Err(err) = self.sender.send(PaneAction::RemoveTile(tile_id)) {
+                tracing::error!("Failed to send pane close command: {err:?}");
+            };
+        }
+
+        response.into_tiles_response()
     }
 }

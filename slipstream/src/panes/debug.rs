@@ -1,4 +1,4 @@
-use crate::panes::{Pane, PaneId};
+use crate::panes::{Pane, PaneId, PaneResponse};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum DebugPane {
@@ -32,7 +32,7 @@ impl Pane for DebugPane {
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
         is_focused: bool
-    ) -> egui_tiles::UiResponse {
+    ) -> PaneResponse {
         let ctx = ui.ctx().clone();
         match self {
             Self::General => ctx.settings_ui(ui),
@@ -43,6 +43,6 @@ impl Pane for DebugPane {
             Self::Style => ctx.style_ui(ui, ui.theme())
         }
 
-        egui_tiles::UiResponse::None
+        PaneResponse::None
     }
 }

@@ -7,7 +7,7 @@ use slipstream_ir::node::node::{IrNode, IrNodeType};
 use slipstream_shared::error::{SlipstreamError, SlipstreamResult};
 use slipstream_shared::{fill_icon, reg_icon};
 
-use crate::panes::{ContentSignature, Pane, PaneAction, PaneId, RequestNewPane};
+use crate::panes::{ContentSignature, Pane, PaneAction, PaneId, PaneResponse, RequestNewPane};
 use slipstream_shared::widgets::{self, CollapseDescriptor, DropdownType, HeaderIcons};
 
 /// The outliner displays a file tree.
@@ -115,7 +115,7 @@ impl OutlinerPane {
         ui.horizontal(|ui| {
             ui.label(node.ty.closed_icon());
 
-            let response = ui.button(node.label());
+            let response = ui.selectable_label(false, node.label());
             if response.clicked() {
                 self.cmd_sender
                     .send(PaneAction::RequestNewPane(RequestNewPane::Inspector {
@@ -164,7 +164,7 @@ impl Pane for OutlinerPane {
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
         _is_focused: bool
-    ) -> egui_tiles::UiResponse {
+    ) -> PaneResponse {
         ui.set_min_size(ui.available_size());
 
         ui.spacing_mut().item_spacing.y = 7.5;
@@ -173,7 +173,7 @@ impl Pane for OutlinerPane {
             self.draw_file_tree(self.root, ui).unwrap();
         });
 
-        egui_tiles::UiResponse::None
+        PaneResponse::None
     }
 }
 

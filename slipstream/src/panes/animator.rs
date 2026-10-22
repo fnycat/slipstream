@@ -4,7 +4,7 @@ use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::node::IrNodeType;
 
 use crate::cmd::AppCommand;
-use crate::panes::{Pane, PaneAction, PaneId};
+use crate::panes::{Pane, PaneAction, PaneId, PaneResponse};
 use crate::shared::object_dialog::{DialogResponse, ObjectDialog, ObjectFilter};
 
 pub struct AnimatorPane {
@@ -45,7 +45,7 @@ impl Pane for AnimatorPane {
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         is_focused: bool
-    ) -> egui_tiles::UiResponse {
+    ) -> PaneResponse {
         let response = self.dialog.as_mut().map(|dialog| dialog.draw(ui));
         if response == Some(DialogResponse::Closed) {
             self.dialog = None;
@@ -63,7 +63,7 @@ impl Pane for AnimatorPane {
                 }
             });
 
-            return egui_tiles::UiResponse::None;
+            return PaneResponse::None;
         };
 
         self.arena.inspect(node_key, |node| {
@@ -73,6 +73,6 @@ impl Pane for AnimatorPane {
             ));
         });
 
-        egui_tiles::UiResponse::None
+        PaneResponse::None
     }
 }

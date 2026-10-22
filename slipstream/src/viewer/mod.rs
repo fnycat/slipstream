@@ -8,7 +8,7 @@ pub mod wgpu;
 
 use std::sync::{Arc, mpsc};
 
-use crate::panes::{Pane, PaneAction, PaneId};
+use crate::panes::{Pane, PaneAction, PaneId, PaneResponse};
 use crate::shared::GraphicsState;
 use crate::viewer::camera::CameraController;
 use crate::viewer::pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipeline};
@@ -86,10 +86,9 @@ impl Pane for ViewerPane {
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         is_focused: bool
-    ) -> egui_tiles::UiResponse {
+    ) -> PaneResponse {
         let response = self.draw_pane_header(ui, is_focused);
-        let _ = self.draw_content(ui, tile_id, is_focused);
-        response
+        response | self.draw_content(ui, tile_id, is_focused)
     }
 
     fn draw_content(
@@ -97,7 +96,7 @@ impl Pane for ViewerPane {
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
         is_focused: bool
-    ) -> egui_tiles::UiResponse {
+    ) -> PaneResponse {
         egui::Frame::canvas(ui.style()).show(ui, |ui| {
             let target_size = ui.available_size();
             let panel_bounds = egui::Rect::from_min_size(ui.cursor().min, target_size);
@@ -240,6 +239,6 @@ impl Pane for ViewerPane {
             .expect("failed to update pipeline state");
         });
 
-        egui_tiles::UiResponse::None
+        PaneResponse::None
     }
 }
