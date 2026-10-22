@@ -20,6 +20,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 #[repr(transparent)]
 pub struct IrNodeKey(NonZeroU64);
 
+impl IrNodeKey {
+    pub const ROOT: Self = Self(NonZeroU64::new(1).unwrap());
+}
+
 impl Inspect for IrNodeKey {
     fn draw_inner(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
         ui.label(format!("{self:?}")).into()
@@ -228,7 +232,8 @@ impl IrArena {
         &self,
         root_key: IrNodeKey,
         visit_root: bool,
-        mut walk_fn: F
+        // we must take a reference here to avoid hitting the recursion limit during monomorphization
+        walk_fn: &mut F
     ) -> SlipstreamResult<()>
     where
         F: FnMut(&IrNode) -> SlipstreamResult<ControlFlow<()>>
@@ -253,13 +258,13 @@ impl IrArena {
         for &child in &guard.children {
             // Visits the child's contents and returns a control flow.
             let flow = self
-                .inspect(child, &mut walk_fn)
+                .inspect(child, &mut *walk_fn)
                 .transpose()?
                 .unwrap_or(ControlFlow::Continue(()));
 
             if flow.is_continue() {
                 // Walk this node's children only if the visitor wants to continue.
-                self.walk_inner(child, false, &mut walk_fn)?;
+                self.walk_inner(child, false, walk_fn)?;
             }
         }
 
@@ -276,7 +281,8 @@ impl IrArena {
         &self,
         root_key: IrNodeKey,
         visit_root: bool,
-        mut walk_fn: F
+        // we must take a reference here to avoid hitting the recursion limit during monomorphization
+        walk_fn: &mut F
     ) -> SlipstreamResult<()>
     where
         F: FnMut(&mut IrNode) -> SlipstreamResult<ControlFlow<()>>
@@ -301,13 +307,13 @@ impl IrArena {
         for &child in &guard.children {
             // Visits the child's contents and returns a control flow.
             let flow = self
-                .update(child, &mut walk_fn)
+                .update(child, &mut *walk_fn)
                 .transpose()?
                 .unwrap_or(ControlFlow::Continue(()));
 
             if flow.is_continue() {
                 // Walk this node's children only if the visitor wants to continue.
-                self.walk_inner_mut(child, false, &mut walk_fn)?;
+                self.walk_inner_mut(child, false, walk_fn)?;
             }
         }
 
@@ -315,39 +321,43 @@ impl IrArena {
     }
 
     /// Walks the entire tree from a root node, forcing any lazy nodes it encounters to be evaluated.
-    pub fn walk_all<F>(&self, start_node: IrNodeKey, callback_fn: F) -> SlipstreamResult<()>
+    pub fn walk_all<F>(&self, start_node: IrNodeKey, mut callback_fn: F) -> SlipstreamResult<()>
     where
         F: FnMut(&IrNode) -> SlipstreamResult<ControlFlow<()>>
     {
-        self.walk_inner(start_node, true, callback_fn)
+        self.walk_inner(start_node, true, &mut callback_fn)
     }
 
     /// Walks the entire tree from a root node, forcing any lazy nodes it encounters to be evaluated.
-    pub fn walk_children<F>(&self, start_node: IrNodeKey, callback_fn: F) -> SlipstreamResult<()>
+    pub fn walk_children<F>(
+        &self,
+        start_node: IrNodeKey,
+        mut callback_fn: F
+    ) -> SlipstreamResult<()>
     where
         F: FnMut(&IrNode) -> SlipstreamResult<ControlFlow<()>>
     {
-        self.walk_inner(start_node, false, callback_fn)
+        self.walk_inner(start_node, false, &mut callback_fn)
     }
 
     /// Walks the entire tree from a root node, forcing any lazy nodes it encounters to be evaluated.
-    pub fn walk_all_mut<F>(&self, start_node: IrNodeKey, callback_fn: F) -> SlipstreamResult<()>
+    pub fn walk_all_mut<F>(&self, start_node: IrNodeKey, mut callback_fn: F) -> SlipstreamResult<()>
     where
         F: FnMut(&mut IrNode) -> SlipstreamResult<ControlFlow<()>>
     {
-        self.walk_inner_mut(start_node, true, callback_fn)
+        self.walk_inner_mut(start_node, true, &mut callback_fn)
     }
 
     /// Walks the entire tree from a root node, forcing any lazy nodes it encounters to be evaluated.
     pub fn walk_children_mut<F>(
         &self,
         start_node: IrNodeKey,
-        callback_fn: F
+        mut callback_fn: F
     ) -> SlipstreamResult<()>
     where
         F: FnMut(&mut IrNode) -> SlipstreamResult<ControlFlow<()>>
     {
-        self.walk_inner_mut(start_node, false, callback_fn)
+        self.walk_inner_mut(start_node, false, &mut callback_fn)
     }
 
     /// Walks the entire tree from a root node. This function forces any lazy nodes it encounters
@@ -362,7 +372,7 @@ impl IrArena {
         visitor: &mut dyn Visitor
     ) -> SlipstreamResult<()> {
         // self.walk_inner(root_key, true, visitor)
-        self.walk_inner(start_node, true, |node| {
+        self.walk_inner(start_node, true, &mut |node| {
             if let Some(contents) = node.contents.get_or_try_init()? {
                 return Ok::<_, SlipstreamError>(
                     contents.accept(VisitorCtxMeta::from(node), visitor)
@@ -384,7 +394,7 @@ impl IrArena {
         start_node: IrNodeKey,
         visitor: &mut dyn Visitor
     ) -> SlipstreamResult<()> {
-        self.walk_inner(start_node, false, |node| {
+        self.walk_inner(start_node, false, &mut |node| {
             if let Some(contents) = node.contents.get_or_try_init()? {
                 return Ok::<_, SlipstreamError>(
                     contents.accept(VisitorCtxMeta::from(node), visitor)
