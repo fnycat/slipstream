@@ -495,16 +495,16 @@ impl LoadBpOpCode {
             0x41 => Self::BlendMode(BlendMode::from_bits(value)),
             0x42 => Self::ConstantAlpha(ConstantAlpha::from_bits(value)),
             0xc0 | 0xc2 | 0xc4 | 0xc6 | 0xc8 | 0xca | 0xcc | 0xce => Self::ColorLayerBlend {
-                layer: address as u8,
+                layer: address,
                 payload: ColorLayerBlendSettings::from_bits(value)
             },
             0xc1 | 0xc3 | 0xc5 | 0xc7 | 0xc9 | 0xcb | 0xcd | 0xcf => Self::AlphaLayerBlend {
-                layer: address as u8,
+                layer: address,
                 payload: AlphaLayerBlendSettings::from_bits(value)
             },
             0xf6..=0xfd => {
                 // table id is the 3 lowest bits of the address.
-                let table = (address & 0x03) as u8;
+                let table = address & 0x03;
                 Self::SwapModeTable {
                     table,
                     payload: SwapModeTableSettings::from_bits(value)

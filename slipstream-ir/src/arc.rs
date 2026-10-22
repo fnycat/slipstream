@@ -341,7 +341,10 @@ pub fn deserialize(
                 .map(|x| x.try_into())
         else {
             return Err(CorruptionError {
-                reason: format!("string pool start pointer overflows 32-bit integer"),
+                reason: format!(
+                    "string pool start pointer overflows 32-bit integer (offset {})",
+                    header.node_offset
+                ),
                 location: Some(reader.position())
             }
             .into());
@@ -349,7 +352,10 @@ pub fn deserialize(
 
         let Some(end) = header.node_offset.checked_add(header.size) else {
             return Err(CorruptionError {
-                reason: format!("string pool end pointer overflows 32-bit integer"),
+                reason: format!(
+                    "string pool end pointer overflows 32-bit integer (offset {})",
+                    header.node_offset
+                ),
                 location: Some(reader.position())
             }
             .into());

@@ -93,6 +93,10 @@ impl NormalBufData {
             Self::Triple(x) => x.len()
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// A large buffer of normals that the shape draw commands index into to draw their polygons.
@@ -207,8 +211,7 @@ impl DeserializeContents for NormalBuffer {
             v => {
                 return Err(CorruptionError {
                     reason: format!("invalid component count: {v} (expected 0-2)"),
-                    location: Some(reader.position()),
-                    ..Default::default()
+                    location: Some(reader.position())
                 }
                 .into());
             }

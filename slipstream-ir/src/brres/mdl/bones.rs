@@ -245,7 +245,7 @@ impl Bone {
         Self {
             index: bone.index,
             id: bone.id,
-            flags: bone.flags.clone(),
+            flags: bone.flags,
             billboard_setting: bone.billboard_setting,
             billboard_reference: billboard_id,
             scale: bone.scaling_vector,
@@ -328,8 +328,7 @@ fn build_skeleton_tree(
 
         let parent_start = (bone.data.bone_start as i64)
             .checked_add(bone.data.parent_offset as i64)
-            .map(|c| c.checked_add(BONE_INDEX_OFFSET as i64))
-            .flatten()
+            .and_then(|c| c.checked_add(BONE_INDEX_OFFSET as i64))
             .ok_or_else(|| {
                 SlipstreamError::from(CorruptionError {
                     reason: format!("Parent bone pointer for bone `{i}` exceeds 64-bit integer limit (start: {}, parent_offset: {})", bone.data.bone_start, bone.data.parent_offset),

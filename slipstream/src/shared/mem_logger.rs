@@ -10,7 +10,7 @@ use tracing_subscriber::Layer;
 use tracing_subscriber::layer::Context;
 
 /// Global vector containing all logs logged by the current process.
-pub static GLOBAL_MEM_LOGS: LazyLock<Mutex<Vec<LogEvent>>> = LazyLock::new(|| Mutex::default());
+pub static GLOBAL_MEM_LOGS: LazyLock<Mutex<Vec<LogEvent>>> = LazyLock::new(Mutex::default);
 
 /// A simple ZST to use as a tracing layer.
 #[derive(Default)]
@@ -18,7 +18,7 @@ pub struct GlobalMemLogLayer;
 
 impl GlobalMemLogLayer {
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 
     /// Removes all recorded logs from the global data.

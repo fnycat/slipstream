@@ -16,7 +16,7 @@ pub struct LogPane {
 }
 
 impl LogPane {
-    pub fn new(cmd_sender: mpsc::Sender<PaneAction>) -> Box<dyn Pane> {
+    pub fn new(cmd_sender: mpsc::Sender<PaneAction>) -> Box<Self> {
         Box::new(LogPane { cmd_sender })
     }
 }

@@ -49,7 +49,7 @@ impl ViewerPane {
         mdl_node: Option<IrNodeKey>,
         arena: Arc<IrArena>,
         render_state: GraphicsState
-    ) -> SlipstreamResult<Box<dyn Pane>> {
+    ) -> SlipstreamResult<Box<Self>> {
         let model = mdl_node
             .map(|node| ModelContents::from_root(node, &arena))
             .transpose()?

@@ -140,7 +140,7 @@ impl ModelContents<'_> {
                 // let matrix_id = model.bone_map.get_matrix(BoneIndex(*rigid as u16)).unwrap();
 
                 let mut bone_ids = [0; MAX_BONE_INFLUENCES];
-                bone_ids[0] = *rigid as u32;
+                bone_ids[0] = *rigid;
 
                 let mut weights = WEIGHTS_DEFAULT;
                 weights[3] = -42.0;

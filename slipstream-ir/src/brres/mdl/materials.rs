@@ -379,7 +379,7 @@ impl MaterialMode {
         verify!(reader.read_u8()? == 0x61, "expected LoadBP opcode");
         let LoadBpOpCode::AlphaFunction(alpha_fn) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
-                reason: format!("excepted LoadBP opcode of type AlphaFunction (0xf3)"),
+                reason: String::from("excepted LoadBP opcode of type AlphaFunction (0xf3)"),
                 location: Some(reader.position())
             }
             .into());
@@ -388,7 +388,7 @@ impl MaterialMode {
         verify!(reader.read_u8()? == 0x61, "expected LoadBP opcode");
         let LoadBpOpCode::DepthTest(depth_test) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
-                reason: format!("excepted LoadBP opcode of type DepthTest (0x40)"),
+                reason: String::from("excepted LoadBP opcode of type DepthTest (0x40)"),
                 location: Some(reader.position())
             }
             .into());
@@ -397,7 +397,7 @@ impl MaterialMode {
         verify!(reader.read_u8()? == 0x61, "expected LoadBP opcode");
         let LoadBpOpCode::WriteMask(write_mask) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
-                reason: format!("excepted LoadBP opcode of type WriteMask (0xFE)"),
+                reason: String::from("excepted LoadBP opcode of type WriteMask (0xFE)"),
                 location: Some(reader.position())
             }
             .into());
@@ -406,7 +406,7 @@ impl MaterialMode {
         verify!(reader.read_u8()? == 0x61, "expected LoadBP opcode");
         let LoadBpOpCode::BlendMode(blend_mode) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
-                reason: format!("excepted LoadBP opcode of type BlendMode (0x41)"),
+                reason: String::from("excepted LoadBP opcode of type BlendMode (0x41)"),
                 location: Some(reader.position())
             }
             .into());
@@ -415,7 +415,7 @@ impl MaterialMode {
         verify!(reader.read_u8()? == 0x61, "expected LoadBP opcode");
         let LoadBpOpCode::ConstantAlpha(constant_alpha) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
-                reason: format!("excepted LoadBP opcode of type ConstantAlpha (0x42)"),
+                reason: String::from("excepted LoadBP opcode of type ConstantAlpha (0x42)"),
                 location: Some(reader.position())
             }
             .into());

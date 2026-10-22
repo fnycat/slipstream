@@ -45,7 +45,7 @@ impl PipelineRegistry {
     }
 
     pub fn register(&mut self, desc: PipelineDescriptor<'_>) -> PipelineSignature {
-        let signature = PipelineSignature::from_layouts(&desc.vertex_layouts);
+        let signature = PipelineSignature::from_layouts(desc.vertex_layouts);
         self.pipelines.entry(signature).or_insert_with(|| {
             let module = self
                 .device

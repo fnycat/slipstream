@@ -310,6 +310,10 @@ impl BoneLinkTable {
     pub fn len(&self) -> usize {
         self.rigid_bones.len() + self.mixed_bones.len() + self.unconnected_bones.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl BoneLinkTable {

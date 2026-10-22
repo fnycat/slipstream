@@ -351,11 +351,9 @@ impl AnimationData {
         );
 
         if anim_code.scale_isotropic() {
-            let iso_scale;
-
             // Only one piece of data is stored, rather than for each component
-            if anim_code.scale_x_fixed() {
-                iso_scale = ComponentType::Fixed(reader.read_f32::<BigEndian>()?);
+            let iso_scale = if anim_code.scale_x_fixed() {
+                ComponentType::Fixed(reader.read_f32::<BigEndian>()?)
             } else {
                 // Verify that the format is indeed non-fixed.
                 verify!(
@@ -369,8 +367,8 @@ impl AnimationData {
                     frame_count,
                     anim_code.scale_format().extend()
                 )?;
-                iso_scale = ComponentType::Animated(frame);
-            }
+                ComponentType::Animated(frame)
+            };
 
             Ok(ComponentData {
                 x: iso_scale.clone(),

@@ -60,10 +60,7 @@ pub enum VertexAttrKey {
 impl VertexAttrKey {
     #[inline]
     pub const fn is_present(&self) -> bool {
-        match self {
-            Self::NotPresent => false,
-            _ => true
-        }
+        !matches!(self, Self::NotPresent)
     }
 }
 
@@ -455,17 +452,17 @@ impl ModelContents<'_> {
         vertices: &[OpVertex]
     ) -> SlipstreamResult<()> {
         let expanded_len = vertices.len() - 2;
-        let Some(v1) = vertices.get(0) else {
+        let Some(v1) = vertices.first() else {
             // We have no vertices
             return Ok(());
         };
 
-        let r1 = self.resolve_vertex(model, scratch, polygon, &v1)?;
+        let r1 = self.resolve_vertex(model, scratch, polygon, v1)?;
 
         scratch.indices.reserve(expanded_len);
         for [v2, v3] in vertices.array_windows() {
-            let r2 = self.resolve_vertex(model, scratch, polygon, &v2)?;
-            let r3 = self.resolve_vertex(model, scratch, polygon, &v3)?;
+            let r2 = self.resolve_vertex(model, scratch, polygon, v2)?;
+            let r3 = self.resolve_vertex(model, scratch, polygon, v3)?;
 
             scratch.indices.extend([r1, r2, r3]);
         }
@@ -482,7 +479,7 @@ impl ModelContents<'_> {
     ) -> SlipstreamResult<()> {
         let address = load.address();
         verify!(
-            address <= 108 && address % 12 == 0,
+            address <= 108 && address.is_multiple_of(12),
             "Invalid address for position LoadXF command: {address}. Expected an address divisible by 12 and in the range 0..=108"
         );
 

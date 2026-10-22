@@ -1,4 +1,3 @@
-
 use eframe::egui_wgpu;
 use slipstream_shared::SlipstreamResult;
 use wgpu::util::DeviceExt;
@@ -338,7 +337,7 @@ impl PipelineState {
     pub fn new(state: &GraphicsState, camera_state: &CameraState) -> Self {
         let shader = state
             .device
-            .create_shader_module(wgpu::include_wgsl!("../../shaders/viewer.wgsl").into());
+            .create_shader_module(wgpu::include_wgsl!("../../shaders/viewer.wgsl"));
 
         let pipeline_layout =
             state

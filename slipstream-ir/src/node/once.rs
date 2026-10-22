@@ -185,16 +185,16 @@ impl Once {
                 continue;
             }
 
-            if state & PARKED_BIT == 0 {
-                if let Err(x) = self.0.compare_exchange_weak(
+            if state & PARKED_BIT == 0
+                && let Err(x) = self.0.compare_exchange_weak(
                     state,
                     state | PARKED_BIT,
                     Ordering::Relaxed,
                     Ordering::Relaxed
-                ) {
-                    state = x;
-                    continue;
-                }
+                )
+            {
+                state = x;
+                continue;
             }
 
             // Park our thread until we are woken up by the thread that owns the
@@ -371,16 +371,16 @@ impl Once {
                 continue;
             }
 
-            if state & PARKED_BIT == 0 {
-                if let Err(x) = self.0.compare_exchange_weak(
+            if state & PARKED_BIT == 0
+                && let Err(x) = self.0.compare_exchange_weak(
                     state,
                     state | PARKED_BIT,
                     Ordering::Relaxed,
                     Ordering::Relaxed
-                ) {
-                    state = x;
-                    continue;
-                }
+                )
+            {
+                state = x;
+                continue;
             }
 
             // Park our thread until we are woken up by the thread that owns the

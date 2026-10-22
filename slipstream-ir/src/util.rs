@@ -147,7 +147,7 @@ pub fn deserialize_scalar(
         VertexFormat::Float32 => reader.read_f32::<BigEndian>()?,
         VertexFormat::Invalid => {
             return Err(InvalidInputError {
-                reason: format!("cannot deserialize scalar data with format `Invalid`"),
+                reason: String::from("cannot deserialize scalar data with format `Invalid`"),
                 ..Default::default()
             }
             .into());
@@ -208,7 +208,7 @@ pub fn deserialize_vector<const N: usize>(
         VertexFormat::Float32 => reader.read_f32_array::<N, BigEndian>()?,
         VertexFormat::Invalid => {
             return Err(InvalidInputError {
-                reason: format!("cannot deserialize vector data with format `Invalid`"),
+                reason: String::from("cannot deserialize vector data with format `Invalid`"),
                 ..Default::default()
             }
             .into());

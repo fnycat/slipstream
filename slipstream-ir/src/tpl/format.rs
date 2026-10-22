@@ -49,10 +49,7 @@ pub enum ImageFormat {
 
 impl ImageFormat {
     pub const fn is_paletted(&self) -> bool {
-        match self {
-            Self::C4 | Self::C8 | Self::C14x2 => true,
-            _ => false
-        }
+        matches!(self, Self::C4 | Self::C8 | Self::C14x2)
     }
 
     pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {

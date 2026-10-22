@@ -31,7 +31,7 @@ impl OutlinerPane {
         cmd_sender: mpsc::Sender<PaneAction>,
         base_node: Option<IrNodeKey>,
         arena: Arc<IrArena>
-    ) -> Box<dyn Pane> {
+    ) -> Box<Self> {
         Box::new(Self {
             cmd_sender,
             base_node,
@@ -53,14 +53,12 @@ impl OutlinerPane {
         }
 
         // Only draw the open in 3D viewer button for MDL roots.
-        if node.ty == IrNodeType::MdlHeader {
-            if ui.button("Open in 3D viewer").clicked() {
-                self.cmd_sender
-                    .send(PaneAction::RequestNewPane(RequestNewPane::Viewer {
-                        viewed: Some(node.key())
-                    }))
-                    .expect("failed to send context command");
-            }
+        if node.ty == IrNodeType::MdlHeader && ui.button("Open in 3D viewer").clicked() {
+            self.cmd_sender
+                .send(PaneAction::RequestNewPane(RequestNewPane::Viewer {
+                    viewed: Some(node.key())
+                }))
+                .expect("failed to send context command");
         }
 
         if ui.button("Open in new outliner").clicked() {

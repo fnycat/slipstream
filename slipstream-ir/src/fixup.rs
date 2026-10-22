@@ -82,6 +82,12 @@ impl FixupPass {
     }
 }
 
+impl Default for FixupPass {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Keeps track of the current entries in the string pool.
 ///
 /// This is only used for serialisation.

@@ -12,13 +12,13 @@ use crate::visitor::{
 };
 
 pub trait GeoSetting: Sized {
-    fn into_raw(&self) -> u16;
+    fn into_raw(self) -> u16;
     fn from_raw(setting: u16) -> SlipstreamResult<Self>;
 }
 
 impl GeoSetting for u16 {
-    fn into_raw(&self) -> u16 {
-        *self
+    fn into_raw(self) -> u16 {
+        self
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -27,8 +27,8 @@ impl GeoSetting for u16 {
 }
 
 impl GeoSetting for i16 {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -37,8 +37,8 @@ impl GeoSetting for i16 {
 }
 
 impl GeoSetting for bool {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -109,8 +109,8 @@ pub enum ThwompRouteBehavior {
 }
 
 impl GeoSetting for ThwompRouteBehavior {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -133,8 +133,8 @@ pub enum FallBoundary {
 }
 
 impl GeoSetting for FallBoundary {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -157,8 +157,8 @@ pub enum WallFlag {
 }
 
 impl GeoSetting for WallFlag {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -174,9 +174,9 @@ pub enum StartDelay {
 }
 
 impl GeoSetting for StartDelay {
-    fn into_raw(&self) -> u16 {
+    fn into_raw(self) -> u16 {
         match self {
-            Self::Delayed(x) => *x,
+            Self::Delayed(x) => x,
             Self::Immediate => 0xf0
         }
     }
@@ -198,8 +198,8 @@ pub enum EnemyLineEntryFlag {
 }
 
 impl GeoSetting for EnemyLineEntryFlag {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -219,8 +219,8 @@ pub enum TopmanBehavior {
 }
 
 impl GeoSetting for TopmanBehavior {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -260,8 +260,8 @@ pub enum Item {
 }
 
 impl GeoSetting for Item {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -288,8 +288,8 @@ pub enum TimingLottery {
 }
 
 impl GeoSetting for TimingLottery {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -306,8 +306,8 @@ pub enum ChainChompStartBehavior {
 }
 
 impl GeoSetting for ChainChompStartBehavior {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -324,8 +324,8 @@ pub enum CoinMode {
 }
 
 impl GeoSetting for CoinMode {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -344,9 +344,9 @@ pub enum CoinSpawnPlace {
 }
 
 impl GeoSetting for CoinSpawnPlace {
-    fn into_raw(&self) -> u16 {
+    fn into_raw(self) -> u16 {
         match self {
-            Self::Start(x) => *x,
+            Self::Start(x) => x,
             Self::Respawn => u16::MAX
         }
     }
@@ -374,8 +374,8 @@ pub enum CoinSpawnBehavior {
 }
 
 impl GeoSetting for CoinSpawnBehavior {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -393,8 +393,8 @@ pub enum WaterfallType {
 }
 
 impl GeoSetting for WaterfallType {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -414,8 +414,8 @@ pub enum PhysicalItem {
 }
 
 impl GeoSetting for PhysicalItem {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -433,8 +433,8 @@ pub enum TruckTexture {
 }
 
 impl GeoSetting for TruckTexture {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -452,8 +452,8 @@ pub enum CarBodyColor {
 }
 
 impl GeoSetting for CarBodyColor {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -471,8 +471,8 @@ pub enum PylonColor {
 }
 
 impl GeoSetting for PylonColor {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -489,8 +489,8 @@ pub enum CrabViewDirection {
 }
 
 impl GeoSetting for CrabViewDirection {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -507,11 +507,11 @@ pub enum BlockFallTime {
 }
 
 impl GeoSetting for BlockFallTime {
-    fn into_raw(&self) -> u16 {
+    fn into_raw(self) -> u16 {
         match self {
             Self::Inactive => 0,
             Self::Immediate => 4,
-            Self::Delayed(x) => *x
+            Self::Delayed(x) => x
         }
     }
 
@@ -533,8 +533,8 @@ pub enum ChairliftModel {
 }
 
 impl GeoSetting for ChairliftModel {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -552,8 +552,8 @@ pub enum WaluigiFlashType {
 }
 
 impl GeoSetting for WaluigiFlashType {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -570,8 +570,8 @@ pub enum FunkyFlashType {
 }
 
 impl GeoSetting for FunkyFlashType {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -592,8 +592,8 @@ pub enum SmokeVariant {
 }
 
 impl GeoSetting for SmokeVariant {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
@@ -610,8 +610,8 @@ pub enum KoopaFireFunction {
 }
 
 impl GeoSetting for KoopaFireFunction {
-    fn into_raw(&self) -> u16 {
-        *self as u16
+    fn into_raw(self) -> u16 {
+        self as u16
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {

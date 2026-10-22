@@ -19,7 +19,7 @@ impl InspectorPane {
         cmd_sender: mpsc::Sender<PaneAction>,
         inspected: IrNodeKey,
         arena: Arc<IrArena>
-    ) -> Box<dyn Pane> {
+    ) -> Box<Self> {
         Box::new(Self {
             cmd_sender,
             inspected,

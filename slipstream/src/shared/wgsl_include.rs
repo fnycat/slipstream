@@ -25,7 +25,7 @@ fn load_shader_module(name: &str) -> io::Result<String> {
     let first_line = module_source.lines().next().unwrap();
     if first_line.starts_with("//!include") {
         for include in first_line.split_whitespace().skip(1) {
-            module_string.push_str(&*load_shader_module(include).unwrap());
+            module_string.push_str(&load_shader_module(include).unwrap());
         }
     }
 

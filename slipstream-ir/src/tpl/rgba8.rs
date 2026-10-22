@@ -37,15 +37,15 @@ impl Rgba8Image {
         let mut curr_block = [glam::U8Vec4::ZERO; 16];
         for _ in 0..blocks {
             // Decode alpha and red channels.
-            for i in 0..(Self::BLOCK_W * Self::BLOCK_H) {
-                curr_block[i].w = reader.read_u8()?;
-                curr_block[i].x = reader.read_u8()?;
+            for pixel in curr_block.iter_mut().take(Self::BLOCK_W * Self::BLOCK_H) {
+                pixel.w = reader.read_u8()?;
+                pixel.x = reader.read_u8()?;
             }
 
             // Decode blue and green channels
-            for i in 0..(Self::BLOCK_W * Self::BLOCK_H) {
-                curr_block[i].y = reader.read_u8()?;
-                curr_block[i].z = reader.read_u8()?;
+            for pixel in curr_block.iter_mut().take(Self::BLOCK_W * Self::BLOCK_H) {
+                pixel.y = reader.read_u8()?;
+                pixel.z = reader.read_u8()?;
             }
 
             tiled.extend_from_slice(&curr_block);

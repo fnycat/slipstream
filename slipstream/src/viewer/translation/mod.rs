@@ -251,9 +251,11 @@ impl<'a> ModelContents<'a> {
     /// This intermediate model can then be converted into wgpu buffers and commands
     /// in the next step.
     pub fn to_intermediate(&self, arena: &IrArena) -> SlipstreamResult<IntermediateModel> {
-        let mut model = IntermediateModel::default();
+        let mut model = IntermediateModel {
+            bounding_volume: self.bounding_volume,
+            ..Default::default()
+        };
 
-        model.bounding_volume = self.bounding_volume;
         self.translate_node_tree(&mut model, arena)?;
         self.translate_node_mix(&mut model, arena)?;
         self.populate_primary_influences(&mut model, arena)?;

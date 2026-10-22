@@ -14,7 +14,7 @@ impl GridPipeline {
     ) -> Self {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("grid pipeline layout"),
-            bind_group_layouts: &[Some(&camera_bind_layout)],
+            bind_group_layouts: &[Some(camera_bind_layout)],
             immediate_size: 0
         });
 

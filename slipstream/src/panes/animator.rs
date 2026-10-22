@@ -25,7 +25,7 @@ pub struct AnimatorPane {
 }
 
 impl AnimatorPane {
-    pub fn new(cmd_sender: mpsc::Sender<PaneAction>, arena: Arc<IrArena>) -> Box<dyn Pane> {
+    pub fn new(cmd_sender: mpsc::Sender<PaneAction>, arena: Arc<IrArena>) -> Box<Self> {
         Box::new(Self {
             cmd_sender,
             arena,

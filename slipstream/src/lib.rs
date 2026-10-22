@@ -5,8 +5,7 @@
     clippy::style,
     clippy::suspicious,
     clippy::allow_attributes,
-    clippy::default_trait_access,
-    clippy::broken_intra_doc_links
+    clippy::default_trait_access
 )]
 #![warn(
     clippy::assigning_clones,
@@ -17,6 +16,7 @@
     clippy::enum_glob_use,
     clippy::expl_impl_clone_on_copy
 )]
+#![recursion_limit = "256"] // Fixes auto trait inference overflow on `ViewerPane`
 
 pub mod app;
 

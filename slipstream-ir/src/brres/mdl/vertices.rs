@@ -70,6 +70,10 @@ impl VertexBufData {
             Self::Xyz(verts) => verts.len()
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// A vertex buffer.

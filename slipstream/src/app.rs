@@ -57,9 +57,10 @@ fn create_initial_layout(
 
     let (tx, rx) = mpsc::channel();
 
-    let outliner = OutlinerPane::new(tx.clone(), None, Arc::clone(&arena));
-    let viewer = ViewerPane::new(tx.clone(), None, Arc::clone(&arena), graphics_state)?;
-    let animator = AnimatorPane::new(tx.clone(), Arc::clone(&arena));
+    let outliner = OutlinerPane::new(tx.clone(), None, Arc::clone(arena)) as Box<dyn Pane>;
+    let viewer =
+        ViewerPane::new(tx.clone(), None, Arc::clone(arena), graphics_state)? as Box<dyn Pane>;
+    let animator = AnimatorPane::new(tx.clone(), Arc::clone(arena)) as Box<dyn Pane>;
 
     let outliner = tiles.insert_pane(outliner);
     let viewer = tiles.insert_pane(viewer);
@@ -219,20 +220,20 @@ impl App {
                 self.pane_behavior.sender.clone(),
                 Some(base),
                 self.arena.clone()
-            ),
+            ) as Box<dyn Pane>,
             RequestNewPane::Inspector { inspected } => InspectorPane::new(
                 self.pane_behavior.sender.clone(),
                 inspected,
                 self.arena.clone()
-            ),
+            ) as Box<dyn Pane>,
             RequestNewPane::Viewer { viewed } => ViewerPane::new(
                 self.pane_behavior.sender.clone(),
                 viewed,
                 self.arena.clone(),
                 self.render_state.clone()
-            )?,
-            RequestNewPane::Log => LogPane::new(self.pane_behavior.sender.clone()),
-            RequestNewPane::Debug { ty } => Box::new(ty)
+            )? as Box<dyn Pane>,
+            RequestNewPane::Log => LogPane::new(self.pane_behavior.sender.clone()) as Box<dyn Pane>,
+            RequestNewPane::Debug { ty } => Box::new(ty) as Box<dyn Pane>
         };
 
         Ok(if let Some(existing_tile) = existing_tile {

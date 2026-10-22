@@ -230,26 +230,28 @@ impl GxBytecode {
         const TEV_BYTECODE_SIZE: usize = 0x20; // Size is always 0x20
 
         let section_end = reader.position() + TEV_BYTECODE_SIZE as u64;
-        let mut commands = Vec::new();
+        // let mut commands = Vec::new();
 
-        while reader.position() < section_end {
-            let opcode = GxOpCodeId::try_from(reader.read_u8()?)?;
-            commands.push(match opcode {
-                GxOpCodeId::LoadBp => GxOpCode::LoadBp(LoadBpOpCode::deserialize(reader)?),
-                _ => {
-                    return Err(CorruptionError {
-                        reason: format!("invalid TEV bytecode opcode ID: {opcode:?}"),
-                        location: Some(reader.position())
-                    }
-                    .into());
-                }
-            });
+        todo!();
 
-            tracing::trace!("TEV opcode: {opcode:?}");
+        //         while reader.position() < section_end {
+        //             let opcode = GxOpCodeId::try_from(reader.read_u8()?)?;
+        //             commands.push(match opcode {
+        //                 GxOpCodeId::LoadBp => GxOpCode::LoadBp(LoadBpOpCode::deserialize(reader)?),
+        //                 _ => {
+        //                     return Err(CorruptionError {
+        //                         reason: format!("invalid TEV bytecode opcode ID: {opcode:?}"),
+        //                         location: Some(reader.position())
+        //                     }
+        //                     .into());
+        //                 }
+        //             });
+        //
+        //             tracing::trace!("TEV opcode: {opcode:?}");
+        //
+        //             break;
+        //         }
 
-            break;
-        }
-
-        Ok(Self { commands })
+        // Ok(Self { commands })
     }
 }

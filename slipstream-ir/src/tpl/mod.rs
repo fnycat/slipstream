@@ -109,7 +109,7 @@ pub const fn block_count(dimensions: glam::U16Vec2, block_size: glam::USizeVec2)
     let blocks_x = (dimensions.x as usize).div_ceil(block_size.x);
     let blocks_y = (dimensions.y as usize).div_ceil(block_size.y);
 
-    blocks_x as usize * blocks_y as usize
+    blocks_x * blocks_y
 }
 
 /// Converts a tiled image into a regular displayable image.
