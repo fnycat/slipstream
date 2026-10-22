@@ -54,7 +54,7 @@ pub fn serialize_node(
         pass: &mut pass,
         result: Ok(())
     };
-    arena.walk(node.key, &mut visitor)?;
+    arena.visit_all(node.key, &mut visitor)?;
     visitor.result
 }
 

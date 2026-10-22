@@ -287,7 +287,7 @@ impl<'a> ModelContents<'a> {
             polygons: Vec::new()
         };
 
-        arena.walk(root, &mut visitor)?;
+        arena.visit_all(root, &mut visitor)?;
         Ok(visitor)
     }
 }

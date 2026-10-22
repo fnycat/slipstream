@@ -170,12 +170,69 @@ impl IrArena {
         Ok(())
     }
 
-    fn walk_inner(
+    //     fn walk_inner(
+    //         &self,
+    //         root_key: IrNodeKey,
+    //         visit_root: bool,
+    //         visitor: &mut dyn Visitor
+    //     ) -> SlipstreamResult<()> {
+    //         let root = self
+    //             .map
+    //             .read()
+    //             .get(&root_key)
+    //             .ok_or_else(|| {
+    //                 SlipstreamError::from(InvalidInputError {
+    //                     reason: format!("root node {root_key:?} does not exist"),
+    //                     ..Default::default()
+    //                 })
+    //             })?
+    //             .clone();
+    //
+    //         let guard = root.read();
+    //         if visit_root && let Some(content) = guard.contents.get_or_try_init()? {
+    //             let _ = content.accept(VisitorCtxMeta::from(&*guard), visitor);
+    //         }
+    //
+    //         let guard = root.read();
+    //         for &child in &guard.children {
+    //             // Visits the child's contents and returns a control flow.
+    //             let flow = self
+    //                 .inspect(child, |child| {
+    //                     if let Some(contents) = child.contents.get_or_try_init()? {
+    //                         return Ok::<_, SlipstreamError>(
+    //                             contents.accept(VisitorCtxMeta::from(child), visitor)
+    //                         );
+    //                     }
+    //
+    //                     Ok(ControlFlow::Continue(()))
+    //                 })
+    //                 .transpose()?
+    //                 .unwrap_or(ControlFlow::Continue(()));
+    //
+    //             if flow.is_continue() {
+    //                 // Walk this node's children only if the visitor wants to continue.
+    //                 self.walk_inner(child, false, visitor)?;
+    //             }
+    //         }
+    //
+    //         Ok(())
+    //     }
+
+    /// Walks the node tree.
+    ///
+    /// `root_key` determines at which node to start. Depending on whether `visit_root` is set to `true`, this node
+    /// may or may not be visited.
+    ///
+    /// The callback `walk_fn` is called on every visited node.
+    fn walk_inner<F>(
         &self,
         root_key: IrNodeKey,
         visit_root: bool,
-        visitor: &mut dyn Visitor
-    ) -> SlipstreamResult<()> {
+        mut walk_fn: F
+    ) -> SlipstreamResult<()>
+    where
+        F: FnMut(&IrNode) -> SlipstreamResult<ControlFlow<()>>
+    {
         let root = self
             .map
             .read()
@@ -189,33 +246,108 @@ impl IrArena {
             .clone();
 
         let guard = root.read();
-        if visit_root && let Some(content) = guard.contents.get_or_try_init()? {
-            let _ = content.accept(VisitorCtxMeta::from(&*guard), visitor);
+        if visit_root {
+            let _ = walk_fn(&guard)?;
         }
 
-        let guard = root.read();
         for &child in &guard.children {
             // Visits the child's contents and returns a control flow.
             let flow = self
-                .inspect(child, |child| {
-                    if let Some(contents) = child.contents.get_or_try_init()? {
-                        return Ok::<_, SlipstreamError>(
-                            contents.accept(VisitorCtxMeta::from(child), visitor)
-                        );
-                    }
-
-                    Ok(ControlFlow::Continue(()))
-                })
+                .inspect(child, &mut walk_fn)
                 .transpose()?
                 .unwrap_or(ControlFlow::Continue(()));
 
             if flow.is_continue() {
                 // Walk this node's children only if the visitor wants to continue.
-                self.walk_inner(child, false, visitor)?;
+                self.walk_inner(child, false, &mut walk_fn)?;
             }
         }
 
         Ok(())
+    }
+
+    /// Walks the node tree mutably.
+    ///
+    /// `root_key` determines at which node to start. Depending on whether `visit_root` is set to `true`, this node
+    /// may or may not be visited.
+    ///
+    /// The callback `walk_fn` is called on every visited node.
+    fn walk_inner_mut<F>(
+        &self,
+        root_key: IrNodeKey,
+        visit_root: bool,
+        mut walk_fn: F
+    ) -> SlipstreamResult<()>
+    where
+        F: FnMut(&mut IrNode) -> SlipstreamResult<ControlFlow<()>>
+    {
+        let root = self
+            .map
+            .read()
+            .get(&root_key)
+            .ok_or_else(|| {
+                SlipstreamError::from(InvalidInputError {
+                    reason: format!("root node {root_key:?} does not exist"),
+                    ..Default::default()
+                })
+            })?
+            .clone();
+
+        let mut guard = root.write();
+        if visit_root {
+            let _ = walk_fn(&mut guard)?;
+        }
+
+        for &child in &guard.children {
+            // Visits the child's contents and returns a control flow.
+            let flow = self
+                .update(child, &mut walk_fn)
+                .transpose()?
+                .unwrap_or(ControlFlow::Continue(()));
+
+            if flow.is_continue() {
+                // Walk this node's children only if the visitor wants to continue.
+                self.walk_inner_mut(child, false, &mut walk_fn)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Walks the entire tree from a root node, forcing any lazy nodes it encounters to be evaluated.
+    pub fn walk_all<F>(&self, start_node: IrNodeKey, callback_fn: F) -> SlipstreamResult<()>
+    where
+        F: FnMut(&IrNode) -> SlipstreamResult<ControlFlow<()>>
+    {
+        self.walk_inner(start_node, true, callback_fn)
+    }
+
+    /// Walks the entire tree from a root node, forcing any lazy nodes it encounters to be evaluated.
+    pub fn walk_children<F>(&self, start_node: IrNodeKey, callback_fn: F) -> SlipstreamResult<()>
+    where
+        F: FnMut(&IrNode) -> SlipstreamResult<ControlFlow<()>>
+    {
+        self.walk_inner(start_node, false, callback_fn)
+    }
+
+    /// Walks the entire tree from a root node, forcing any lazy nodes it encounters to be evaluated.
+    pub fn walk_all_mut<F>(&self, start_node: IrNodeKey, callback_fn: F) -> SlipstreamResult<()>
+    where
+        F: FnMut(&mut IrNode) -> SlipstreamResult<ControlFlow<()>>
+    {
+        self.walk_inner_mut(start_node, true, callback_fn)
+    }
+
+    /// Walks the entire tree from a root node, forcing any lazy nodes it encounters to be evaluated.
+    pub fn walk_children_mut<F>(
+        &self,
+        start_node: IrNodeKey,
+        callback_fn: F
+    ) -> SlipstreamResult<()>
+    where
+        F: FnMut(&mut IrNode) -> SlipstreamResult<ControlFlow<()>>
+    {
+        self.walk_inner_mut(start_node, false, callback_fn)
     }
 
     /// Walks the entire tree from a root node. This function forces any lazy nodes it encounters
@@ -224,17 +356,43 @@ impl IrArena {
     /// # Errors
     /// This function returns an error if the given root node does not exist.
     #[inline]
-    pub fn walk(&self, root_key: IrNodeKey, visitor: &mut dyn Visitor) -> SlipstreamResult<()> {
-        self.walk_inner(root_key, true, visitor)
-    }
-
-    #[inline]
-    pub fn walk_children(
+    pub fn visit_all(
         &self,
-        root_key: IrNodeKey,
+        start_node: IrNodeKey,
         visitor: &mut dyn Visitor
     ) -> SlipstreamResult<()> {
-        self.walk_inner(root_key, false, visitor)
+        // self.walk_inner(root_key, true, visitor)
+        self.walk_inner(start_node, true, |node| {
+            if let Some(contents) = node.contents.get_or_try_init()? {
+                return Ok::<_, SlipstreamError>(
+                    contents.accept(VisitorCtxMeta::from(node), visitor)
+                );
+            }
+
+            Ok(ControlFlow::Continue(()))
+        })
+    }
+
+    /// Walks the tree starting with `root_key`'s children. During traversal, every visited lazy node
+    /// will be evaluated.
+    ///
+    /// # Errors
+    /// This function returns an error if the given root node does not exist.
+    #[inline]
+    pub fn visit_children(
+        &self,
+        start_node: IrNodeKey,
+        visitor: &mut dyn Visitor
+    ) -> SlipstreamResult<()> {
+        self.walk_inner(start_node, false, |node| {
+            if let Some(contents) = node.contents.get_or_try_init()? {
+                return Ok::<_, SlipstreamError>(
+                    contents.accept(VisitorCtxMeta::from(node), visitor)
+                );
+            }
+
+            Ok(ControlFlow::Continue(()))
+        })
     }
 }
 

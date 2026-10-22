@@ -13,6 +13,7 @@ use crate::decorations::{self, WindowState};
 use crate::inspector::InspectorPane;
 use crate::pages::RoutablePage;
 use crate::pages::intro::IntroPage;
+use crate::panes::animator::AnimatorPane;
 use crate::panes::debug::DebugPane;
 use crate::panes::log::LogPane;
 use crate::panes::outliner::OutlinerPane;
@@ -90,13 +91,26 @@ impl Editor {
 
         let outliner = OutlinerPane::new(tx.clone(), root_node, Arc::clone(&arena));
         let viewer = ViewerPane::new(tx.clone(), None, Arc::clone(&arena), render_state.clone())?;
+        let animator = AnimatorPane::new(tx.clone(), None, Arc::clone(&arena));
 
-        let tile_ids = [tiles.insert_pane(outliner), tiles.insert_pane(viewer)];
+        let outliner = tiles.insert_pane(outliner);
+        let viewer = tiles.insert_pane(viewer);
+        let animator = tiles.insert_pane(animator);
 
-        let container =
-            egui_tiles::Linear::new_binary(egui_tiles::LinearDir::Horizontal, tile_ids, 0.2);
+        let horizontal_split = egui_tiles::Linear::new_binary(
+            egui_tiles::LinearDir::Horizontal,
+            [outliner, viewer],
+            0.2
+        );
+        let horizontal_id = tiles.insert_container(horizontal_split);
 
-        let container_id = tiles.insert_container(container);
+        let vertical_split = egui_tiles::Linear::new_binary(
+            egui_tiles::LinearDir::Vertical,
+            [horizontal_id, animator],
+            0.7
+        );
+
+        let container_id = tiles.insert_container(vertical_split);
 
         // let egui_tiles::Tile::Container(grid) = tiles.get_mut(container_id).unwrap() else {
         //     unreachable!()

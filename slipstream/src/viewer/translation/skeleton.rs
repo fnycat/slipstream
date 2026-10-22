@@ -220,7 +220,7 @@ impl ModelContents<'_> {
         let mut visitor = BoneVisitor {
             transforms: &mut transforms
         };
-        arena.walk(skeleton_root, &mut visitor)?;
+        arena.visit_all(skeleton_root, &mut visitor)?;
 
         // Find max bone ID to resize the vector.
         let max_bone_index = visitor

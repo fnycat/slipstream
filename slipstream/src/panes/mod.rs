@@ -6,6 +6,7 @@ use slipstream_ir::node::arena::IrNodeKey;
 
 use crate::panes::debug::DebugPane;
 
+pub mod animator;
 pub mod debug;
 pub mod log;
 pub mod outliner;
@@ -123,7 +124,8 @@ pub enum PaneId {
     Inspector,
     Viewer,
     Logs,
-    Debug
+    Debug,
+    Animator
 }
 
 /// Requests to the tile manager to open a new pane.

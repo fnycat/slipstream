@@ -1,4 +1,5 @@
 pub mod mem_logger;
+pub mod object_dialog;
 pub mod vertex;
 pub mod wgsl_include;
 
