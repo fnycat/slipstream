@@ -33,7 +33,10 @@ impl SkeletonPipeline {
             vertex: wgpu::VertexState {
                 module: &module,
                 entry_point: Some("vs_main"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: &[("line_width", 2.0)],
+                    zero_initialize_workgroup_memory: false
+                },
                 buffers: &[Some(wgpu::VertexBufferLayout {
                     array_stride: 3 * size_of::<f32>() as u64,
                     attributes: &[wgpu::VertexAttribute {

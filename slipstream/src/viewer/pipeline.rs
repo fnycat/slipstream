@@ -8,6 +8,7 @@ use crate::shared::GraphicsState;
 use crate::shared::vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex3};
 use crate::viewer::camera::{Camera, CameraController, CameraUniformData, FreeCamera, OrbitCamera};
 use crate::viewer::grid::GridPipeline;
+use crate::viewer::registry::{ViewerId, ViewerRegistry};
 use crate::viewer::skeleton::SkeletonPipeline;
 use crate::viewer::translation::IntermediateModel;
 use crate::viewer::wgpu::WgpuModel;
@@ -29,7 +30,7 @@ pub const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const TEXTURE_FILTER_MODE: wgpu::FilterMode = wgpu::FilterMode::Linear;
 
-pub struct ViewerCallback;
+pub struct ViewerCallback(pub ViewerId);
 
 impl egui_wgpu::CallbackTrait for ViewerCallback {
     fn prepare(
@@ -40,8 +41,12 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
         egui_encoder: &mut wgpu::CommandEncoder,
         callback_resources: &mut egui_wgpu::CallbackResources
     ) -> Vec<wgpu::CommandBuffer> {
-        let viewer = callback_resources.get::<ViewerPipeline>().unwrap();
-        viewer.draw(egui_encoder)
+        callback_resources
+            .get::<ViewerRegistry>()
+            .unwrap()
+            .get(self.0)
+            .expect("viewer pipeline did not exist in registry")
+            .draw(egui_encoder)
     }
 
     fn paint(

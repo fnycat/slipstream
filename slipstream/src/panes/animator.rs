@@ -1,33 +1,49 @@
 use std::sync::{Arc, mpsc};
 
+use slipstream_ir::brres::ChrHeader;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::node::IrNodeType;
 
 use crate::cmd::AppCommand;
 use crate::panes::{Pane, PaneAction, PaneId, PaneResponse};
+use crate::shared::GraphicsState;
 use crate::shared::object_dialog::{DialogResponse, ObjectDialog, ObjectFilter};
+
+pub struct AnimationFrame {}
+
+pub struct AnimationData {
+    node: IrNodeKey,
+    header: ChrHeader
+}
 
 pub struct AnimatorPane {
     cmd_sender: mpsc::Sender<PaneAction>,
-    open_node: Option<IrNodeKey>,
     arena: Arc<IrArena>,
+
+    animation: Option<AnimationData>,
+    current_frame: u16,
 
     dialog: Option<ObjectDialog>
 }
 
 impl AnimatorPane {
-    pub fn new(
-        cmd_sender: mpsc::Sender<PaneAction>,
-        open_node: Option<IrNodeKey>,
-        arena: Arc<IrArena>
-    ) -> Box<dyn Pane> {
+    pub fn new(cmd_sender: mpsc::Sender<PaneAction>, arena: Arc<IrArena>) -> Box<dyn Pane> {
         Box::new(Self {
             cmd_sender,
             arena,
-            open_node,
+
+            animation: None,
+            current_frame: 0,
 
             dialog: None
         })
+    }
+
+    /// Called by the editor to retrieve the current animation contents.
+    ///
+    /// The editor then passes these to the viewer to display.
+    pub fn update(&mut self) -> AnimationFrame {
+        todo!()
     }
 }
 
@@ -51,13 +67,14 @@ impl Pane for AnimatorPane {
                 DialogResponse::Closed => self.dialog = None,
                 DialogResponse::Confirmed(key) => {
                     self.dialog = None;
-                    self.open_node = Some(key)
+                    // self.animation = Some(key)
+                    self.animation = todo!();
                 }
                 _ => {}
             }
         }
 
-        let Some(node_key) = self.open_node else {
+        let Some(node_key) = &self.animation else {
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 ui.label("Open an animation");
                 if ui.button("Choose a CHR0 file").clicked() {
@@ -71,13 +88,10 @@ impl Pane for AnimatorPane {
 
             return PaneResponse::None;
         };
-
-        self.arena.inspect(node_key, |node| {
-            ui.label(format!(
-                "You have opened node {node_key:?} with name {}",
-                node.label()
-            ));
-        });
+        //
+        //         self.arena.inspect(node_key, |node| {
+        //             ui.label(format!("{}.chr0", node.label()));
+        //         });
 
         PaneResponse::None
     }

@@ -1,6 +1,7 @@
 pub mod camera;
 pub mod grid;
 pub mod pipeline;
+pub mod registry;
 pub mod skeleton;
 pub mod toolbar;
 pub mod translation;
@@ -12,6 +13,7 @@ use crate::panes::{Pane, PaneAction, PaneId, PaneResponse};
 use crate::shared::GraphicsState;
 use crate::viewer::camera::CameraController;
 use crate::viewer::pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipeline};
+use crate::viewer::registry::ViewerId;
 use crate::viewer::translation::ModelContents;
 use eframe::egui_wgpu;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
@@ -23,6 +25,7 @@ pub struct ViewerPane {
     node: Option<IrNodeKey>,
     arena: Arc<IrArena>,
 
+    viewer_id: ViewerId,
     render_state: GraphicsState
 }
 
@@ -54,19 +57,13 @@ impl ViewerPane {
             .transpose()?;
 
         let pipeline = ViewerPipeline::new(render_state.clone(), model)?;
-
-        render_state
-            .renderer
-            .write()
-            .callback_resources
-            .insert(pipeline);
-
-        tracing::trace!("Viewer pipeline initialized");
+        let viewer_id = render_state.insert(pipeline);
 
         Ok(Box::new(Self {
             cmd_sender,
             node: mdl_node,
             arena,
+            viewer_id,
             render_state
         }))
     }
@@ -78,7 +75,7 @@ impl Pane for ViewerPane {
     }
 
     fn title(&self) -> &str {
-        "Model view"
+        "3D Viewer"
     }
 
     fn draw_window(
@@ -103,24 +100,22 @@ impl Pane for ViewerPane {
 
             // Update viewport size.
             let has_resized = {
-                let mut renderer = self.render_state.renderer.write();
-                let (has_resized, output_view, egui_tex_id) = {
-                    let pipeline = renderer
-                        .callback_resources
-                        .get_mut::<ViewerPipeline>()
-                        .expect("viewer pipeline did not exist");
+                let (has_resized, output_view, egui_tex_id) = self
+                    .render_state
+                    .update_viewer(self.viewer_id, |pipeline| {
+                        let has_resized = pipeline
+                            .update_size(glam::uvec2(target_size.x as u32, target_size.y as u32));
+                        let output_view = pipeline.screen_texture_state.output_view.clone();
+                        let egui_tex_id = pipeline.screen_texture_state.egui_texture_id;
 
-                    let has_resized = pipeline
-                        .update_size(glam::uvec2(target_size.x as u32, target_size.y as u32));
-                    let output_view = pipeline.screen_texture_state.output_view.clone();
-                    let egui_tex_id = pipeline.screen_texture_state.egui_texture_id;
-
-                    (has_resized, output_view, egui_tex_id)
-                };
+                        (has_resized, output_view, egui_tex_id)
+                    })
+                    .expect("viewer pipeline did not exist in registry");
 
                 // This is done in a different scope as the pipeline needs to be dropped
                 // to borrow the renderer mutably.
                 if has_resized {
+                    let mut renderer = self.render_state.renderer.write();
                     renderer.update_egui_texture_from_wgpu_texture(
                         &self.render_state.device,
                         &output_view,
@@ -132,111 +127,110 @@ impl Pane for ViewerPane {
                 has_resized
             };
 
-            self.update_graphics(|pipeline| {
-                ui.painter().add(egui_wgpu::Callback::new_paint_callback(
-                    panel_bounds,
-                    ViewerCallback
-                ));
+            self.render_state
+                .update_viewer(self.viewer_id, |pipeline| {
+                    ui.painter().add(egui_wgpu::Callback::new_paint_callback(
+                        panel_bounds,
+                        ViewerCallback(self.viewer_id)
+                    ));
 
-                let image_widget = egui::Image::new(egui::load::SizedTexture {
-                    id: pipeline.screen_texture_state.egui_texture_id,
-                    size: panel_bounds.size()
-                })
-                .tint(egui::Color32::WHITE) // some custom themes seem to add a tint to the viewer
-                .sense(egui::Sense::click_and_drag());
+                    let image_widget = egui::Image::new(egui::load::SizedTexture {
+                        id: pipeline.screen_texture_state.egui_texture_id,
+                        size: panel_bounds.size()
+                    })
+                    .tint(egui::Color32::WHITE) // some custom themes seem to add a tint to the viewer
+                    .sense(egui::Sense::click_and_drag());
 
-                // Camera
-                // =============================================================================
-
-                pipeline
-                    .camera_state
-                    .camera
-                    .set_aspect_ratio(target_size.x / target_size.y);
-
-                // If the screen has resized, we need to update to adjust the aspect ratio.
-                let mut camera_updated = has_resized;
-
-                let response = ui.add(image_widget);
-                if response.dragged() {
-                    let drag_delta = response.drag_delta();
+                    // Camera
+                    // =============================================================================
 
                     pipeline
                         .camera_state
                         .camera
-                        .on_drag(glam::vec2(drag_delta.x, drag_delta.y));
+                        .set_aspect_ratio(target_size.x / target_size.y);
 
-                    camera_updated = true;
-                }
+                    // If the screen has resized, we need to update to adjust the aspect ratio.
+                    let mut camera_updated = has_resized;
 
-                // Only process inputs if this viewer window is also active.
-                if is_focused {
-                    ui.input(|i| {
-                        if i.zoom_delta() != 1.0 {
-                            // Support zooming using a touchpad for laptops
-                            // without a scroll wheel (or for the maniacs trying
-                            // to use this editor on a mobile device)
-                            let delta = 20.0 * (i.zoom_delta() - 1.0);
+                    let response = ui.add(image_widget);
+                    if response.dragged() {
+                        let drag_delta = response.drag_delta();
 
-                            pipeline.camera_state.camera.on_scroll(delta);
+                        pipeline
+                            .camera_state
+                            .camera
+                            .on_drag(glam::vec2(drag_delta.x, drag_delta.y));
 
-                            camera_updated = true;
-                        }
+                        camera_updated = true;
+                    }
 
-                        if i.is_scrolling() && response.contains_pointer() {
-                            let scroll_delta = i.smooth_scroll_delta();
+                    // Only process inputs if this viewer window is also active.
+                    if is_focused {
+                        ui.input(|i| {
+                            if i.zoom_delta() != 1.0 {
+                                // Support zooming using a touchpad for laptops
+                                // without a scroll wheel (or for the maniacs trying
+                                // to use this editor on a mobile device)
+                                let delta = 20.0 * (i.zoom_delta() - 1.0);
 
-                            pipeline.camera_state.camera.on_scroll(scroll_delta.y);
+                                pipeline.camera_state.camera.on_scroll(delta);
 
-                            camera_updated = true;
-                        }
+                                camera_updated = true;
+                            }
 
-                        let mut move_delta = glam::Vec3::ZERO;
+                            if i.is_scrolling() && response.contains_pointer() {
+                                let scroll_delta = i.smooth_scroll_delta();
 
-                        if i.key_down(egui::Key::W) {
-                            move_delta.z += 1.0;
-                        }
+                                pipeline.camera_state.camera.on_scroll(scroll_delta.y);
 
-                        if i.key_down(egui::Key::S) {
-                            move_delta.z -= 1.0;
-                        }
+                                camera_updated = true;
+                            }
 
-                        if i.key_down(egui::Key::A) {
-                            move_delta.x += 1.0;
-                        }
+                            let mut move_delta = glam::Vec3::ZERO;
 
-                        if i.key_down(egui::Key::D) {
-                            move_delta.x -= 1.0;
-                        }
+                            if i.key_down(egui::Key::W) {
+                                move_delta.z += 1.0;
+                            }
 
-                        if i.key_down(egui::Key::Space) {
-                            move_delta.y += 1.0;
-                        }
+                            if i.key_down(egui::Key::S) {
+                                move_delta.z -= 1.0;
+                            }
 
-                        if i.key_down(egui::Key::ControlLeft) {
-                            move_delta.y -= 1.0;
-                        }
+                            if i.key_down(egui::Key::A) {
+                                move_delta.x += 1.0;
+                            }
 
-                        if move_delta != glam::Vec3::ZERO {
-                            pipeline.camera_state.camera.on_move(move_delta);
-                            camera_updated = true;
-                        }
-                    });
-                }
+                            if i.key_down(egui::Key::D) {
+                                move_delta.x -= 1.0;
+                            }
 
-                if camera_updated {
-                    pipeline.camera_state.update(&self.render_state);
+                            if i.key_down(egui::Key::Space) {
+                                move_delta.y += 1.0;
+                            }
 
-                    // Force repainting of the screen.
-                    //
-                    // This ensures that the camera keeps moving continuously.
-                    // Otherwise movement behaves like typing: repeated presses only happen after a short
-                    // delay.
-                    ui.request_repaint();
-                }
+                            if i.key_down(egui::Key::ControlLeft) {
+                                move_delta.y -= 1.0;
+                            }
 
-                Ok(())
-            })
-            .expect("failed to update pipeline state");
+                            if move_delta != glam::Vec3::ZERO {
+                                pipeline.camera_state.camera.on_move(move_delta);
+                                camera_updated = true;
+                            }
+                        });
+                    }
+
+                    if camera_updated {
+                        pipeline.camera_state.update(&self.render_state);
+
+                        // Force repainting of the screen.
+                        //
+                        // This ensures that the camera keeps moving continuously.
+                        // Otherwise movement behaves like typing: repeated presses only happen after a short
+                        // delay.
+                        ui.request_repaint();
+                    }
+                })
+                .expect("failed to update pipeline state");
         });
 
         PaneResponse::None

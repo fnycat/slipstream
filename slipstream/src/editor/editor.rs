@@ -91,7 +91,7 @@ impl Editor {
 
         let outliner = OutlinerPane::new(tx.clone(), root_node, Arc::clone(&arena));
         let viewer = ViewerPane::new(tx.clone(), None, Arc::clone(&arena), render_state.clone())?;
-        let animator = AnimatorPane::new(tx.clone(), None, Arc::clone(&arena));
+        let animator = AnimatorPane::new(tx.clone(), Arc::clone(&arena));
 
         let outliner = tiles.insert_pane(outliner);
         let viewer = tiles.insert_pane(viewer);
