@@ -14,6 +14,7 @@ use crate::viewer::registry::{ViewerId, ViewerRegistry};
 #[derive(Clone)]
 pub struct GraphicsState {
     pub instance: wgpu::Instance,
+    pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub renderer: Arc<RwLock<egui_wgpu::Renderer>>

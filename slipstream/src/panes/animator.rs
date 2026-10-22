@@ -4,7 +4,6 @@ use slipstream_ir::brres::ChrHeader;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::node::IrNodeType;
 
-use crate::cmd::AppCommand;
 use crate::panes::{Pane, PaneAction, PaneId, PaneResponse};
 use crate::shared::GraphicsState;
 use crate::shared::object_dialog::{DialogResponse, ObjectDialog, ObjectFilter};

@@ -18,7 +18,7 @@ use slipstream_shared::widgets::{self, CollapseDescriptor, DropdownType, HeaderI
 /// New suboutliners can be made by creating new panes with a child node set to root.
 pub struct OutlinerPane {
     cmd_sender: mpsc::Sender<PaneAction>,
-    root: IrNodeKey,
+    base_node: Option<IrNodeKey>,
     arena: Arc<IrArena>
 }
 
@@ -29,12 +29,12 @@ impl OutlinerPane {
     /// to create outliners of subsets of the project.
     pub fn new(
         cmd_sender: mpsc::Sender<PaneAction>,
-        root_key: IrNodeKey,
+        base_node: Option<IrNodeKey>,
         arena: Arc<IrArena>
     ) -> Box<dyn Pane> {
         Box::new(Self {
             cmd_sender,
-            root: root_key,
+            base_node,
             arena
         })
     }
@@ -66,7 +66,7 @@ impl OutlinerPane {
         if ui.button("Open in new outliner").clicked() {
             self.cmd_sender
                 .send(PaneAction::RequestNewPane(RequestNewPane::Outliner {
-                    root: node.key()
+                    base: node.key()
                 }))
                 .expect("failed to send context command");
         }
@@ -169,9 +169,15 @@ impl Pane for OutlinerPane {
 
         ui.spacing_mut().item_spacing.y = 7.5;
 
-        egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-            self.draw_file_tree(self.root, ui).unwrap();
-        });
+        if let Some(base_node) = self.base_node {
+            // If we have a base node, draw the file tree.
+            egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
+                self.draw_file_tree(base_node, ui).unwrap();
+            });
+        } else {
+            // Otherwise offer to open a file.
+            ui.label("No files are open");
+        }
 
         PaneResponse::None
     }

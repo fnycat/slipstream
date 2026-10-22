@@ -182,7 +182,7 @@ pub enum RequestNewPane {
     ///
     /// [`Outliner`]: outliner::OutlinerPane.
     Outliner {
-        root: IrNodeKey
+        base: IrNodeKey
     },
     Inspector {
         inspected: IrNodeKey
@@ -217,7 +217,7 @@ impl RequestNewPane {
         pane_id.hash(&mut hasher);
 
         match self {
-            RequestNewPane::Outliner { root } => {
+            RequestNewPane::Outliner { base: root } => {
                 root.hash(&mut hasher);
             }
             RequestNewPane::Inspector { inspected } => {

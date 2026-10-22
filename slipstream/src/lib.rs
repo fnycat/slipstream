@@ -20,12 +20,9 @@
 
 pub mod app;
 
-pub mod cmd;
 pub mod config;
 pub mod decorations;
-pub mod editor;
 pub mod inspector;
-pub mod pages;
 pub mod panes;
 pub mod shared;
 

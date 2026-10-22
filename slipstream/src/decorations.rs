@@ -1,11 +1,10 @@
 use slipstream_shared::error::SlipstreamResult;
-use slipstream_shared::reg_icon;
+use slipstream_shared::{SlipstreamError, reg_icon};
 
-use crate::cmd::AppCommandChannel;
+use crate::app::App;
 use crate::config::APP_TITLE;
-use crate::pages::info::InfoPage;
-use crate::pages::settings::SettingsPage;
-use crate::shared::GraphicsState;
+use crate::panes::RequestNewPane;
+use crate::panes::debug::DebugPane;
 
 /// The size state of the window.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
@@ -249,6 +248,140 @@ pub fn handle_frameless_resize(ctx: &egui::Context) {
     }
 }
 
+impl App {
+    /// Draws the editor's upper toolbar.
+    ///
+    /// These are the `File`, `Edit`, buttons you often see in application .
+    pub fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui) -> SlipstreamResult<()> {
+        let decorations_id = egui::Id::new("title_panel");
+
+        let egui::InnerResponse { inner, .. } = egui::Panel::top(decorations_id)
+            .frame(
+                egui::Frame::new()
+                    .fill(ui.visuals().window_fill)
+                    .inner_margin(egui::Margin::symmetric(8, 0))
+                    .outer_margin(egui::Margin::ZERO)
+            )
+            .resizable(false)
+            .show(ui, |ui| {
+                // Respond to dragging and click of the title bar.
+                let response = ui.interact(
+                    ui.ctx().viewport_rect(),
+                    decorations_id,
+                    egui::Sense::click_and_drag()
+                );
+
+                if response.double_clicked() {
+                    let window_state = WindowState::get_state(ui);
+                    if window_state == WindowState::Maximized {
+                        ui.send_viewport_cmd(egui::ViewportCommand::Maximized(false));
+                    } else {
+                        ui.send_viewport_cmd(egui::ViewportCommand::Maximized(true));
+                    }
+                }
+
+                if response.drag_started() {
+                    ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                }
+
+                let egui::InnerResponse { inner, .. } = ui.horizontal_centered(|ui| {
+                    let egui::InnerResponse { inner, .. } = egui::MenuBar::new().ui(ui, |ui| {
+                        let egui::InnerResponse { inner, .. } = ui.menu_button("File", |ui| {
+                            if ui.button("Save").clicked() {
+                                todo!("save file");
+                            }
+
+                            if ui.button("Save as").clicked() {
+                                #[cfg(not(target_arch = "wasm32"))]
+                                {
+                                    if let Some(path) = rfd::FileDialog::new().save_file() {
+                                        self.save_file(&path)?;
+                                    }
+                                }
+
+                                #[cfg(target_arch = "wasm32")]
+                                {
+                                    todo!("save as dialog on wasm32")
+                                }
+                            }
+
+                            if ui.button("Quit").clicked() {
+                                ui.send_viewport_cmd(egui::ViewportCommand::Close);
+                            }
+
+                            Ok::<_, SlipstreamError>(())
+                        });
+
+                        if let Some(inner) = inner {
+                            inner?;
+                        }
+
+                        if ui.button("Logs").clicked() {
+                            self.on_new_pane_request(RequestNewPane::Log)?;
+                        }
+
+                        let egui::InnerResponse { inner, .. } = ui.menu_button("Debug", |ui| {
+                            if ui.button("Widget Inspector").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::Inspection
+                                })?;
+                            }
+
+                            if ui.button("GUI Settings").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::General
+                                })?;
+                            }
+
+                            if ui.button("Style Settings").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::Style
+                                })?;
+                            }
+
+                            if ui.button("Image Loader Statistics").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::Loaders
+                                })?;
+                            }
+
+                            if ui.button("Memory Statistics").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::Memory
+                                })?;
+                            }
+
+                            if ui.button("Texture Statistics").clicked() {
+                                self.on_new_pane_request(RequestNewPane::Debug {
+                                    ty: DebugPane::Textures
+                                })?;
+                            }
+
+                            Ok::<_, SlipstreamError>(())
+                        });
+
+                        if let Some(inner) = inner {
+                            inner?;
+                        }
+
+                        Ok::<_, SlipstreamError>(())
+                    });
+                    inner?;
+
+                    // Don't need need these in the browser.
+                    #[cfg(not(target_arch = "wasm32"))]
+                    draw_title_buttons(ui);
+
+                    Ok::<_, SlipstreamError>(())
+                });
+
+                inner
+            });
+
+        inner
+    }
+}
+
 /// Draws a basic title bar with the window title and title buttons.
 ///
 /// This does not exist on WASM platforms.
@@ -303,81 +436,4 @@ pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
                 draw_title_buttons(ui);
             })
         });
-}
-
-/// Draws the vertical tool buttons on the right of the menu screen.
-pub fn draw_tool_buttons(
-    cmd_channel: &mut AppCommandChannel,
-    gfx_state: &GraphicsState,
-    ui: &mut egui::Ui
-) -> SlipstreamResult<()> {
-    let egui::InnerResponse { inner, .. } = egui::Area::new(egui::Id::new("home_tool_buttons"))
-        .anchor(egui::Align2::RIGHT_CENTER, egui::vec2(-10.0, 0.0))
-        .show(ui, |ui| -> SlipstreamResult<()> {
-            let egui::InnerResponse { inner, .. } = ui.vertical(|ui| -> SlipstreamResult<()> {
-                ui.spacing_mut().button_padding = egui::vec2(10.0, 10.0);
-                ui.spacing_mut().item_spacing = egui::vec2(5.0, 5.0);
-
-                let power_button = egui::Button::new(reg_icon!(POWER));
-                if ui
-                    .add(power_button)
-                    .on_hover_text_at_pointer("Quit")
-                    .clicked()
-                {
-                    ui.send_viewport_cmd(egui::ViewportCommand::Close);
-                };
-
-                if ui.theme() == egui::Theme::Dark {
-                    if ui
-                        .button(reg_icon!(SUN))
-                        .on_hover_text("Switch to light theme")
-                        .clicked()
-                    {
-                        ui.ctx().set_theme(egui::Theme::Light);
-                    }
-                } else {
-                    if ui
-                        .button(reg_icon!(MOON))
-                        .on_hover_text("Switch to dark theme")
-                        .clicked()
-                    {
-                        ui.ctx().set_theme(egui::Theme::Dark);
-                    }
-                }
-
-                if ui
-                    .button(reg_icon!(GEAR_FINE))
-                    .on_hover_text("Open settings")
-                    .clicked()
-                {
-                    cmd_channel
-                        .try_route(SettingsPage::new(cmd_channel.clone(), gfx_state.clone()))?;
-                }
-
-                if ui
-                    .button(reg_icon!(INFO))
-                    .on_hover_text("Open app info")
-                    .clicked()
-                {
-                    cmd_channel.try_route(InfoPage::new(cmd_channel.clone(), gfx_state.clone()))?;
-                }
-
-                if ui
-                    .button(reg_icon!(GITHUB_LOGO))
-                    .on_hover_text("Open the project on GitHub")
-                    .clicked()
-                {
-                    ui.ctx().open_url(egui::OpenUrl {
-                        url: "https://github.com/RadiatedMonkey/slipstream".to_owned(),
-                        new_tab: true
-                    });
-                }
-
-                Ok(())
-            });
-
-            inner
-        });
-
-    inner
 }
