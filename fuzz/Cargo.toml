@@ -10,11 +10,8 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 
-[dependencies.slipstream-shared]
-path = "../slipstream-shared"
-
-[dependencies.slipstream-ir]
-path = "../slipstream-ir"
+slipstream-ir = { path = "../slipstream-ir", default-features = false }
+slipstream-shared = { path = "../slipstream-shared", default-features = false }
 
 [[bin]]
 name = "full"

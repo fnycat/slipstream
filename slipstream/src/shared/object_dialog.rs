@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::node::{IrNode, IrNodeType};
-use slipstream_shared::widgets::draw_node_icon;
+use slipstream_shared::widgets::{DropdownType, draw_node_icon, draw_node_selector};
 
 use crate::panes::outliner::NodeIconsExt;
 
@@ -86,20 +86,32 @@ impl ObjectDialog {
                 }
 
                 for CacheEntry { name, icon, key } in &self.cache {
-                    let egui::InnerResponse { inner, .. } = ui.horizontal(|ui| {
+                    let draw_icon = |ui: &mut egui::Ui| {
                         let icon_size =
                             egui::vec2(ui.spacing().icon_width, ui.spacing().icon_width);
 
                         let icon_response = ui.allocate_response(icon_size, egui::Sense::click());
                         draw_node_icon(ui, icon.clone(), &icon_response);
+                        icon_response
+                    };
 
-                        let label_response = ui.selectable_label(false, name);
+                    let mut selected = None;
+                    let on_click = |_ui: &mut egui::Ui| {
+                        selected = Some(key);
+                    };
 
-                        label_response | icon_response
-                    });
+                    draw_node_selector(
+                        key,
+                        name,
+                        DropdownType::Regular,
+                        draw_icon,
+                        on_click,
+                        None,
+                        ui
+                    );
 
-                    if inner.clicked() {
-                        tracing::debug!("User confirmed entry {name} ({key:?})");
+                    if let Some(key) = selected {
+                        tracing::debug!("User confirmed entry `{name}` ({key:?})");
                         return DialogResponse::Confirmed(*key);
                     }
                 }

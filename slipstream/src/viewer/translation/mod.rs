@@ -24,8 +24,8 @@ pub struct IntermediateModel {
 
     pub bounding_volume: Box3,
 
-    pub bone_positions: Vec<glam::Vec3>,
-    pub bone_matrices: Vec<glam::Mat4>,
+    pub bone_parents: Vec<u32>,
+    pub bone_transforms: Vec<glam::Mat4>,
     pub polygons: Vec<IntermediatePolygon>,
 
     /// All textures are converted to RGBA8 images.
@@ -128,18 +128,17 @@ impl<'a> ModelContents<'a> {
         out: &mut IntermediateModel,
         arena: &IrArena
     ) -> SlipstreamResult<()> {
-        struct DefinitionVisitor<'a> {
-            model: &'a ModelContents<'a>,
+        struct DefinitionVisitor {
             result: SlipstreamResult<BoneWeights>
         }
 
-        impl Visitor for DefinitionVisitor<'_> {
+        impl Visitor for DefinitionVisitor {
             fn as_mdl(&mut self) -> Option<&mut dyn MdlVisitor> {
                 Some(self)
             }
         }
 
-        impl MdlVisitor for DefinitionVisitor<'_> {
+        impl MdlVisitor for DefinitionVisitor {
             fn visit_definitions(
                 &mut self,
                 context: VisitorCtx<'_, Definitions>
@@ -153,7 +152,6 @@ impl<'a> ModelContents<'a> {
 
         if let Some(node_mix) = self.node_mix {
             let mut visitor = DefinitionVisitor {
-                model: self,
                 result: Ok(BoneWeights::default())
             };
             arena.visit(node_mix, &mut visitor)?;

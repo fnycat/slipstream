@@ -82,7 +82,7 @@ impl OutlinerPane {
 
     fn draw_directory_node(&self, node: &IrNode, ui: &mut egui::Ui) -> SlipstreamResult<()> {
         widgets::draw_collapsing_state(
-            CollapseDescriptor::with_context_menu(
+            CollapseDescriptor::new(
                 Self::get_state_id(node.key(), ui),
                 node.label.clone().into(),
                 Some(HeaderIcons {
@@ -102,7 +102,7 @@ impl OutlinerPane {
 
                     Ok(())
                 },
-                |ui| self.draw_context_menu(node, ui)
+                Some(&mut |ui| self.draw_context_menu(node, ui))
             ),
             ui
         )

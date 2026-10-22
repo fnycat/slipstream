@@ -24,6 +24,7 @@ impl IrNodeKey {
     pub const ROOT: Self = Self(NonZeroU64::new(1).unwrap());
 }
 
+#[cfg(feature = "egui-impls")]
 impl Inspect for IrNodeKey {
     fn draw_inner(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
         ui.label(format!("{self:?}")).into()

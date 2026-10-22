@@ -11,7 +11,7 @@ pub enum DropdownType {
     MenuButton
 }
 
-pub struct CollapseDescriptor<B, C> {
+pub struct CollapseDescriptor<'ctx, F> {
     state_id: egui::Id,
     icons: Option<HeaderIcons>,
     label: egui::RichText,
@@ -19,12 +19,14 @@ pub struct CollapseDescriptor<B, C> {
     default_open: bool,
     indent: bool,
 
-    on_body: B,
-    on_ctx_menu: Option<C>
+    on_body: F,
+    // using dynamic dispatch so we don't have to deal with rustc not being able to infer
+    // the generic parameter when the user passes `None`.
+    on_ctx_menu: Option<&'ctx mut dyn FnMut(&mut egui::Ui)>
 }
 
 // Set `C` to a default function pointer so we don't have to explicitly name the type.
-impl<B> CollapseDescriptor<B, fn(&mut egui::Ui)>
+impl<'ctx, B> CollapseDescriptor<'ctx, B>
 where
     B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>
 {
@@ -35,35 +37,8 @@ where
         header_alignment: DropdownType,
         default_open: bool,
         indent: bool,
-        on_body: B
-    ) -> Self {
-        Self {
-            state_id,
-            label,
-            icons,
-            header_alignment,
-            default_open,
-            indent,
-            on_body,
-            on_ctx_menu: None
-        }
-    }
-}
-
-impl<B, C> CollapseDescriptor<B, C>
-where
-    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
-    C: FnMut(&mut egui::Ui)
-{
-    pub fn with_context_menu(
-        state_id: egui::Id,
-        label: egui::RichText,
-        icons: Option<HeaderIcons>,
-        header_alignment: DropdownType,
-        default_open: bool,
-        indent: bool,
         on_body: B,
-        on_ctx_menu: C
+        on_ctx_menu: Option<&'ctx mut dyn FnMut(&mut egui::Ui)>
     ) -> Self {
         Self {
             state_id,
@@ -73,17 +48,13 @@ where
             default_open,
             indent,
             on_body,
-            on_ctx_menu: Some(on_ctx_menu)
+            on_ctx_menu
         }
     }
 }
 
 /// Draws the icon of files and folders in the outliner.
-pub fn draw_node_icon<'a, 'r>(
-    ui: &'a mut egui::Ui,
-    icon: egui::RichText,
-    response: &'r egui::Response
-) {
+pub fn draw_node_icon(ui: &mut egui::Ui, icon: egui::RichText, response: &egui::Response) {
     let galley = egui::WidgetText::from(icon).into_galley(
         ui,
         Some(egui::TextWrapMode::Extend),
@@ -97,20 +68,21 @@ pub fn draw_node_icon<'a, 'r>(
         .galley(center_pos, galley, ui.visuals().text_color());
 }
 
-pub fn draw_node_selector<Label, Icon, Click, Ctx>(
+pub fn draw_node_selector<Label, Icon, Click>(
     id: impl egui::AsIdSalt,
     label: Label,
     ty: DropdownType,
     draw_icon: Icon,
     on_click: Click,
-    mut on_ctx: Option<Ctx>,
+    // using dynamic dispatch so we don't have to deal with rustc not being able to infer
+    // the generic parameter when the user passes `None`.
+    mut on_ctx: Option<&mut dyn FnMut(&mut egui::Ui)>,
     ui: &mut egui::Ui
 ) -> egui::Response
 where
     Label: Into<egui::WidgetText>,
     Icon: FnOnce(&mut egui::Ui) -> egui::Response,
-    Click: FnOnce(&mut egui::Ui),
-    Ctx: FnMut(&mut egui::Ui)
+    Click: FnOnce(&mut egui::Ui)
 {
     // Determines the rect that should be coloured when the node is hovered over.
     let clip_rect = ui.clip_rect();
@@ -183,13 +155,12 @@ where
     row_response
 }
 
-pub fn draw_collapsing_state<B, C>(
-    mut desc: CollapseDescriptor<B, C>,
+pub fn draw_collapsing_state<F>(
+    mut desc: CollapseDescriptor<F>,
     ui: &mut egui::Ui
 ) -> SlipstreamResult<()>
 where
-    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
-    C: FnMut(&mut egui::Ui)
+    F: FnMut(&mut egui::Ui) -> SlipstreamResult<()>
 {
     let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),

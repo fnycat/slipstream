@@ -196,7 +196,9 @@ impl ModelContents<'_> {
         arena: &IrArena
     ) -> SlipstreamResult<()> {
         struct BoneVisitor<'a> {
-            transforms: &'a mut HashMap<BoneIndex, glam::Mat4>
+            arena: &'a IrArena,
+            parents: HashMap<BoneIndex, BoneIndex>,
+            transforms: HashMap<BoneIndex, glam::Mat4>
         }
 
         impl Visitor for BoneVisitor<'_> {
@@ -207,6 +209,37 @@ impl ModelContents<'_> {
 
         impl MdlVisitor for BoneVisitor<'_> {
             fn visit_bone(&mut self, bone: VisitorCtx<'_, Bone>) -> ControlFlow<()> {
+                struct BoneParentVisitor {
+                    parent: BoneIndex
+                }
+
+                impl Visitor for BoneParentVisitor {
+                    fn as_mdl(&mut self) -> Option<&mut dyn MdlVisitor> {
+                        Some(self)
+                    }
+                }
+
+                impl MdlVisitor for BoneParentVisitor {
+                    fn visit_bone(&mut self, bone: VisitorCtx<'_, Bone>) -> ControlFlow<()> {
+                        self.parent = BoneIndex(bone.id as u16);
+                        ControlFlow::Break(())
+                    }
+                }
+
+                let parent = match bone.parent {
+                    Some(key) => {
+                        let mut parent_visitor = BoneParentVisitor {
+                            parent: BoneIndex(0)
+                        };
+                        self.arena
+                            .visit(key, &mut parent_visitor)
+                            .expect("failed to find bone parent");
+                        parent_visitor.parent
+                    }
+                    None => BoneIndex(u16::MAX)
+                };
+
+                self.parents.insert(BoneIndex(bone.id as u16), parent);
                 self.transforms
                     .insert(BoneIndex(bone.id as u16), bone.transform_matrix);
 
@@ -216,9 +249,10 @@ impl ModelContents<'_> {
 
         let skeleton_root = try_unwrap!(self.skeleton_root, "skeleton root was not found")?;
 
-        let mut transforms = HashMap::new();
         let mut visitor = BoneVisitor {
-            transforms: &mut transforms
+            arena,
+            transforms: HashMap::new(),
+            parents: HashMap::new()
         };
         arena.visit_all(skeleton_root, &mut visitor)?;
 
@@ -230,13 +264,21 @@ impl ModelContents<'_> {
             .copied()
             .unwrap_or(BoneIndex(0));
 
-        out.bone_matrices
+        out.bone_transforms
             .resize(max_bone_index.0 as usize + 1, glam::Mat4::IDENTITY);
 
-        for (bone_index, transform) in visitor.transforms {
-            out.bone_matrices[bone_index.0 as usize] = *transform;
-            tracing::trace!("Wrote matrix for bone ID {bone_index:?}");
+        out.bone_parents
+            .resize(max_bone_index.0 as usize + 1, u32::MAX);
+
+        for (bone_index, transform) in &visitor.transforms {
+            out.bone_transforms[bone_index.0 as usize] = *transform;
         }
+
+        for (bone_index, parent) in &visitor.parents {
+            out.bone_parents[bone_index.0 as usize] = parent.0 as u32;
+        }
+
+        dbg!(&out.bone_parents);
 
         Ok(())
     }

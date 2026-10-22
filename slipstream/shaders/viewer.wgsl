@@ -19,9 +19,8 @@ var<uniform> camera: CameraUniformData;
 /// make the character render properly, as the vertex positions are in bone space.
 @group(1) @binding(0)
 var<storage, read> bone_transformations: array<mat4x4f>;
-
-@group(1) @binding(2)
-var<uniform> material: Material;
+@group(1) @binding(1)
+var<storage, read> bone_parents: array<u32>;
 
 // Texture bindings
 @group(2) @binding(0) var tex: texture_2d<f32>;

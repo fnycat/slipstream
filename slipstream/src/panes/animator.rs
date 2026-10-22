@@ -46,9 +46,15 @@ impl Pane for AnimatorPane {
         tile_id: egui_tiles::TileId,
         is_focused: bool
     ) -> PaneResponse {
-        let response = self.dialog.as_mut().map(|dialog| dialog.draw(ui));
-        if response == Some(DialogResponse::Closed) {
-            self.dialog = None;
+        if let Some(response) = self.dialog.as_mut().map(|dialog| dialog.draw(ui)) {
+            match response {
+                DialogResponse::Closed => self.dialog = None,
+                DialogResponse::Confirmed(key) => {
+                    self.dialog = None;
+                    self.open_node = Some(key)
+                }
+                _ => {}
+            }
         }
 
         let Some(node_key) = self.open_node else {

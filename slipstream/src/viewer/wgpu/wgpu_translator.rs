@@ -28,17 +28,23 @@ impl WgpuModel {
         camera_state: &CameraState,
         ir: IntermediateModel
     ) -> SlipstreamResult<Self> {
-        let transform_matrix_buffer =
-            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("transform matrix storage buffer"),
-                contents: bytemuck::cast_slice(&ir.bone_matrices),
-                usage: wgpu::BufferUsages::STORAGE
-            });
+        let bone_transform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("bone transform storage buffer"),
+            contents: bytemuck::cast_slice(&ir.bone_transforms),
+            usage: wgpu::BufferUsages::STORAGE
+        });
 
-        let transform_matrix_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("transform matrix buffer group layout"),
-                entries: &[wgpu::BindGroupLayoutEntry {
+        let bone_parent_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("bone parent storage buffer"),
+            contents: bytemuck::cast_slice(&ir.bone_parents),
+            usage: wgpu::BufferUsages::STORAGE
+        });
+
+        let bone_bg_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("transform matrix buffer group layout"),
+            entries: &[
+                // bone transformations
+                wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
@@ -47,20 +53,42 @@ impl WgpuModel {
                         has_dynamic_offset: false
                     },
                     count: None
-                }]
-            });
+                },
+                // bone parents
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        min_binding_size: None,
+                        has_dynamic_offset: false
+                    },
+                    count: None
+                }
+            ]
+        });
 
-        let transform_matrix_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bone_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("transform matrix buffer bind group"),
-            layout: &transform_matrix_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                    buffer: &transform_matrix_buffer,
-                    offset: 0,
-                    size: None
-                })
-            }]
+            layout: &bone_bg_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &bone_transform_buffer,
+                        offset: 0,
+                        size: None
+                    })
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &bone_parent_buffer,
+                        offset: 0,
+                        size: None
+                    })
+                }
+            ]
         });
 
         let mut pipelines = PipelineRegistry::new(device.clone());
@@ -74,7 +102,7 @@ impl WgpuModel {
         for polygon in ir.polygons {
             polygons.push(WgpuPolygon::from_intermediate(
                 device,
-                &transform_matrix_layout,
+                &bone_bg_layout,
                 &camera_state.bind_group_layout,
                 &mut pipelines,
                 polygon
@@ -83,9 +111,9 @@ impl WgpuModel {
 
         Ok(Self {
             camera_bind_group: camera_state.bind_group.clone(),
-            bone_count: ir.bone_matrices.len() as u32,
-            bind_pose_group_layout: transform_matrix_layout,
-            bind_pose_group: transform_matrix_group,
+            bone_count: ir.bone_transforms.len() as u32,
+            bind_pose_group_layout: bone_bg_layout,
+            bind_pose_group: bone_bind_group,
             pipelines,
             textures,
             polygons

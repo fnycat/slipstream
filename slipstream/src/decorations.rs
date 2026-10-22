@@ -273,8 +273,14 @@ pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
                 egui::Sense::click_and_drag()
             );
 
+            let window_state = WindowState::get_state(ui);
             if response.double_clicked() {
-                ui.send_viewport_cmd(egui::ViewportCommand::Maximized(false));
+                match window_state {
+                    WindowState::Maximized => {
+                        ui.send_viewport_cmd(egui::ViewportCommand::Maximized(false))
+                    }
+                    _ => ui.send_viewport_cmd(egui::ViewportCommand::Maximized(true))
+                }
             }
 
             if response.drag_started() {
