@@ -3,6 +3,9 @@ use std::sync::Arc;
 
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::node::{IrNode, IrNodeType};
+use slipstream_shared::widgets::draw_node_icon;
+
+use crate::panes::outliner::NodeIconsExt;
 
 /// A filter that only shows certain objects/files in the dialog.
 #[derive(Debug, Clone, PartialEq)]
@@ -26,10 +29,16 @@ pub enum DialogResponse<T> {
     Closed
 }
 
+struct CacheEntry {
+    pub name: String,
+    pub icon: egui::RichText,
+    pub key: IrNodeKey
+}
+
 pub struct ObjectDialog {
     // Cache the results instead of recomputing them every frame.
     is_cached: bool,
-    cache: Vec<(IrNodeKey, String)>,
+    cache: Vec<CacheEntry>,
 
     arena: Arc<IrArena>,
     filter: ObjectFilter
@@ -51,7 +60,11 @@ impl ObjectDialog {
         self.cache.clear();
         let _ = self.arena.walk_all(IrNodeKey::ROOT, |node| {
             if self.filter.matches(node) {
-                self.cache.push((node.key(), node.label.clone()));
+                self.cache.push(CacheEntry {
+                    name: node.label.clone(),
+                    icon: node.ty().closed_icon(),
+                    key: node.key()
+                });
             }
             Ok(ControlFlow::Continue(()))
         });
@@ -72,11 +85,21 @@ impl ObjectDialog {
                     return DialogResponse::Closed;
                 }
 
-                for (key, label) in &self.cache {
-                    if ui
-                        .selectable_label(false, format!("{label} ({key:?})"))
-                        .clicked()
-                    {
+                for CacheEntry { name, icon, key } in &self.cache {
+                    let egui::InnerResponse { inner, .. } = ui.horizontal(|ui| {
+                        let icon_size =
+                            egui::vec2(ui.spacing().icon_width, ui.spacing().icon_width);
+
+                        let icon_response = ui.allocate_response(icon_size, egui::Sense::click());
+                        draw_node_icon(ui, icon.clone(), &icon_response);
+
+                        let label_response = ui.selectable_label(false, name);
+
+                        label_response | icon_response
+                    });
+
+                    if inner.clicked() {
+                        tracing::debug!("User confirmed entry {name} ({key:?})");
                         return DialogResponse::Confirmed(*key);
                     }
                 }

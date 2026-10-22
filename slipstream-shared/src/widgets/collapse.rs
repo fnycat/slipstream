@@ -79,7 +79,7 @@ where
 }
 
 /// Draws the icon of files and folders in the outliner.
-fn draw_header_icon<'a, 'r>(
+pub fn draw_node_icon<'a, 'r>(
     ui: &'a mut egui::Ui,
     icon: egui::RichText,
     response: &'r egui::Response
@@ -97,20 +97,21 @@ fn draw_header_icon<'a, 'r>(
         .galley(center_pos, galley, ui.visuals().text_color());
 }
 
-pub fn draw_collapsing_state<'a, 'b, B, C>(
-    mut desc: CollapseDescriptor<B, C>,
-    ui: &'a mut egui::Ui
-) -> SlipstreamResult<()>
+pub fn draw_node_selector<Label, Icon, Click, Ctx>(
+    id: impl egui::AsIdSalt,
+    label: Label,
+    ty: DropdownType,
+    draw_icon: Icon,
+    on_click: Click,
+    mut on_ctx: Option<Ctx>,
+    ui: &mut egui::Ui
+) -> egui::Response
 where
-    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
-    C: FnMut(&mut egui::Ui)
+    Label: Into<egui::WidgetText>,
+    Icon: FnOnce(&mut egui::Ui) -> egui::Response,
+    Click: FnOnce(&mut egui::Ui),
+    Ctx: FnMut(&mut egui::Ui)
 {
-    let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
-        ui.ctx(),
-        desc.state_id,
-        desc.default_open
-    );
-
     // Determines the rect that should be coloured when the node is hovered over.
     let clip_rect = ui.clip_rect();
     // Need to slightly decrease the width due to possible file tree indentation.
@@ -127,11 +128,7 @@ where
         "Collapsing header row rect had NaN entries: {header_rect:?}"
     );
 
-    let row_response = ui.interact(
-        header_rect,
-        desc.state_id.with("interact"),
-        egui::Sense::click()
-    );
+    let row_response = ui.interact(header_rect, ui.id().with(id), egui::Sense::click());
 
     // If the cursor hovers over the node, fill the background with a different colour.
     if ui.rect_contains_pointer(header_rect) {
@@ -144,22 +141,10 @@ where
 
     // Draw the folder icon and label.
     ui.horizontal(|ui| {
-        let icon_response = if let Some(icon) = desc.icons {
-            state.show_toggle_button(ui, move |ui, openness, response| {
-                if openness > 0.5 {
-                    draw_header_icon(ui, icon.open, response)
-                } else {
-                    draw_header_icon(ui, icon.closed, response)
-                }
-            })
-        } else {
-            state.show_toggle_button(ui, move |ui, openness, response| {
-                egui::collapsing_header::paint_default_icon(ui, openness, response)
-            })
-        };
+        let icon_response = draw_icon(ui);
 
-        let header_label = egui::Label::new(desc.label).selectable(false);
-        let label_response = match desc.header_alignment {
+        let header_label = egui::Label::new(label).selectable(false);
+        let label_response = match ty {
             DropdownType::Regular => ui.add(header_label),
             DropdownType::MenuButton => {
                 ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
@@ -176,11 +161,12 @@ where
         // We also need to ensure the icon is not below the cursor, as the icon lies within the outliner row. Otherwise
         // the collapsing state itself will also respond and we will attempt to toggle the node twice.
         if (row_response.clicked() || label_response.clicked()) && !icon_response.hovered() {
-            state.toggle(ui);
+            // state.toggle(ui);
+            on_click(&mut *ui);
         }
 
         // We also need separate context menus for the row and label responses, although they both display the same content.
-        if let Some(ctx_fn) = &mut desc.on_ctx_menu {
+        if let Some(ctx_fn) = &mut on_ctx {
             row_response.context_menu(|ui| ctx_fn(ui));
             label_response.context_menu(|ui| ctx_fn(ui));
             icon_response.context_menu(|ui| ctx_fn(ui));
@@ -194,8 +180,63 @@ where
         ui.set_cursor_icon(egui::CursorIcon::PointingHand);
     }
 
+    row_response
+}
+
+pub fn draw_collapsing_state<B, C>(
+    mut desc: CollapseDescriptor<B, C>,
+    ui: &mut egui::Ui
+) -> SlipstreamResult<()>
+where
+    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
+    C: FnMut(&mut egui::Ui)
+{
+    let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+        ui.ctx(),
+        desc.state_id,
+        desc.default_open
+    );
+
+    // need to set the type explicitly due to poor inference.
+    let draw_icon = |ui: &mut egui::Ui| {
+        if let Some(icon) = desc.icons {
+            state.show_toggle_button(ui, move |ui, openness, response| {
+                if openness > 0.5 {
+                    draw_node_icon(ui, icon.open, response)
+                } else {
+                    draw_node_icon(ui, icon.closed, response)
+                }
+            })
+        } else {
+            state.show_toggle_button(ui, move |ui, openness, response| {
+                egui::collapsing_header::paint_default_icon(ui, openness, response)
+            })
+        }
+    };
+
+    // need to set the type explicitly due to poor inference.
+    let mut should_toggle = false;
+    let on_click = |_ui: &mut egui::Ui| {
+        // can't borrow `state` twice.
+        should_toggle = true;
+    };
+
+    let header_response = draw_node_selector(
+        desc.state_id,
+        desc.label,
+        desc.header_alignment,
+        draw_icon,
+        on_click,
+        desc.on_ctx_menu,
+        ui
+    );
+
+    if should_toggle {
+        state.toggle(ui);
+    }
+
     let body_response = if desc.indent {
-        state.show_body_indented(&row_response, ui, |ui| (desc.on_body)(ui))
+        state.show_body_indented(&header_response, ui, |ui| (desc.on_body)(ui))
     } else {
         state.show_body_unindented(ui, |ui| (desc.on_body)(ui))
     };

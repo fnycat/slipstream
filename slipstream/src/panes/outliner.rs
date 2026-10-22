@@ -177,32 +177,6 @@ impl Pane for OutlinerPane {
     }
 }
 
-/// Draws the icon of files and folders in the outliner.
-fn draw_outliner_node_icon(
-    ui: &mut egui::Ui,
-    openness: f32,
-    node_kind: IrNodeType,
-    response: &egui::Response
-) {
-    let icon = if openness < 0.5 {
-        node_kind.closed_icon()
-    } else {
-        node_kind.open_icon()
-    };
-
-    let galley = egui::WidgetText::from(icon).into_galley(
-        ui,
-        Some(egui::TextWrapMode::Extend),
-        f32::INFINITY,
-        egui::TextStyle::Body
-    );
-
-    let center_pos = response.rect.center() - (galley.size() * 0.5);
-
-    ui.painter()
-        .galley(center_pos, galley, ui.visuals().text_color());
-}
-
 /// Extends [`IrNodeType`], providing UI specific utilities to node types.
 pub trait NodeIconsExt {
     /// The icon to display when this node is open.
