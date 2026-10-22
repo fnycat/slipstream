@@ -26,6 +26,16 @@ impl GeoSetting for u16 {
     }
 }
 
+impl GeoSetting for i16 {
+    fn into_raw(&self) -> u16 {
+        *self as u16
+    }
+
+    fn from_raw(setting: u16) -> SlipstreamResult<Self> {
+        Ok(setting as i16)
+    }
+}
+
 impl GeoSetting for bool {
     fn into_raw(&self) -> u16 {
         *self as u16
@@ -620,15 +630,19 @@ geo_objects! {
     /// The sea on GCN Peach Beach.
     ///
     /// See the [wiki](https://szs.wiimm.de/cgi/mkw/track-ref/object/Psea)
+    #[inspect(rename = "Peach Beach Sea (Psea)")]
+    #[inspect(tooltip = "The sea of GCN Peach Beach. Internally this is known as `Psea.`")]
     0x002 => PSea,
     /// Generates a lens flare object when looking at the sun.
     ///
     /// See the [wiki](https://szs.wiimm.de/cgi/mkw/track-ref/object/lensFX)
+    #[inspect(rename = "Lens FX")]
+    #[inspect(tooltip = "Generates a lens flare object when looking at the sun.")]
     0x003 => LensFx,
     /// The rising and dropping sea on Delfino Pier. The `pocha` object is required if the player
     /// can interact with it.
-    ///
-    /// See the [wiki](https://szs.wiimm.de/cgi/mkw/track-ref/object/venice_nami)
+    #[inspect(rename = "Delfino Pier Rising Water (VeniceNami)")]
+    #[inspect(tooltip = "The rising and dropping sea of Delfino Pier. The `pocha` object is required if the player can interact with it.")]
     0x004 => VeniceNami
     {
         // Rising speed in odd stages.
@@ -646,15 +660,18 @@ geo_objects! {
     /// Only works on slots 3.2, 4.2, 5.2 and 7.3.
     ///
     /// See the [wiki](https://szs.wiimm.de/cgi/mkw/track-ref/object/sound_river)
+    #[inspect(rename = "River Sound")]
     0x005 => SoundRiver,
     /// Generates a waterfall sound effect.
     ///
     /// Only works on slots 3.2, 4.2 and 7.3.
+    #[inspect(tooltip = "Waterfall Sound")]
     0x006 => SoundWaterFall,
     /// Generates a water splash effect when a player touches KCL flag `0x10` with variants 1
     /// (water) or 3 (icy water that also needs the `ice` object).
     ///
     /// See the [wiki](https://szs.wiimm.de/cgi/mkw/track-ref/object/pocha)
+    #[inspect(tooltip = "Water Splash (pocha)")]
     0x007 => Pocha {
         0 => group_y_kcl_index: FallBoundary
     },
@@ -677,10 +694,18 @@ geo_objects! {
     0x00e => SoundBigRiver,
     0x00f => SoundSandFall,
     0x010 => SoundLift,
+    #[inspect(rename = "Lava Splash (pochaYogan)")]
+    #[inspect(tooltip = "Generates a lava splash effect when a player touches a lava KCL fall boundary. Only the Y coordinate is used for transformations.")]
     0x011 => PochaYogan {
         0 => group_y_kcl_index: FallBoundary
     },
+    #[inspect(rename = "Atmosphere Entry (entry)")]
+    #[inspect(tooltip = "Generates a fire around the player when they fall through a burning air KCL fall boundary.")]
     0x012 => Entry,
+    #[inspect(rename = "Leaf Splash (pochaMori)")]
+    #[inspect(tooltip = "Generates a leaf splash effect when the player touches the leaf KCL fall boundary.
+
+This object only works on slots 4.2 and arena slot 2.5.")]
     0x013 => PochaMori {
         0 => group_y_kcl_index: FallBoundary
     },
@@ -691,28 +716,53 @@ geo_objects! {
         3 => next_controller_id: u16,
         7 => enph_section: u16
     },
+    #[inspect(rename = "Mii Audience (sound_Mii)")]
+    #[inspect(tooltip = "Generates a Mii crowd sound effect.")]
     0x015 => SoundMii,
+    #[inspect(rename = "Topmen Manager (begoman_manager)")]
+    #[inspect(tooltip = "Controls topmen in the Galaxy Colosseum map.")]
     0x016 => BegomanManager {
+        #[inspect(rename ="Manager ID")]
+        #[inspect(tooltip = "The 1-based ID of this manager.")]
         0 => manager_id: u16,
+        #[inspect(rename = "Topmen Count")]
+        #[inspect(tooltip = "The amount of topmen that this manager controls.")]
         1 => topmen_number: u16,
+        #[inspect(tooltip = "First topman ID to control.")]
         2 => first_topman_id: u16,
+        #[inspect(rename = "Behavior")]
+        #[inspect(tooltip = "Topman behavior towards the player.")]
         3 => topman_behavior: TopmanBehavior,
         /// Number of topmen to control + number of topment controlled by the previous manager.
+        #[inspect(tooltip = "The number of topmen to control + number of topment controlled by the previous manager.")]
         4 => topmen_number_additive: u16
     },
+    #[inspect(rename = "Ice (ice)")]
+    #[inspect(tooltip = "Generates ice around the player when respawned, after falling through an icy water KCL boundary.")]
     0x017 => Ice,
+    #[inspect(rename = "2D Start Line (startline2D)")]
+    #[inspect(tooltip = "Used in tournaments to generate a finish line at a given location. It can add finish lines to battle arenas.")]
     0x018 => Startline2d,
+    #[inspect(rename = "Item Box (itembox)")]
+    #[inspect(tooltip = "Spinning item box with a question mark inside it.")]
     0x065 => Itembox {
+        #[inspect(tooltip = "The possible items a player can get.")]
         1 => item_player: Item,
+        #[inspect(tooltip = "The possible items a CPU player can get.")]
         2 => item_enemy: Item,
         3 => disable_shadow: bool,
+        #[inspect(tooltip = "Determines the item roulette and respawn timing.")]
         4 => timing_lottery: TimingLottery,
-        5 => height_offset: u16
+        #[inspect(tooltip = "Height offset from the box's position.")]
+        5 => height_offset: i16
     },
+    #[inspect(rename = "Dummy Pole (DummyPole)")]
     0x066 => DummyPole {
         0 => wall_kcl_variant: WallFlag
     },
+    #[inspect(rename = "Flag (flag)")]
     0x067 => Flag,
+    #[inspect(rename = "Flag Blend (flagBlend)")]
     0x068 => FlagBlend,
     0x069 => GndSphere,
     0x06a => GndTrapezoid,
@@ -805,7 +855,8 @@ geo_objects! {
         0 => speed: u16,
         1 => vertical_movement: u16
     },
-    /// A wooden box that ollows a route.
+    /// A wooden box that follows a route.
+    #[inspect(tooltip = "A wooden box that follows a route")]
     0x0d3 => WWoodBox {
         0 => speed: u16,
         1 => item: Item,
@@ -927,6 +978,7 @@ geo_objects! {
         5 => timing_lottery: TimingLottery
     },
     0x0ef => TwanwanUe,
+    #[inspect(rename = "Wiggler Boss (BossHanachan)")]
     0x0f0 => BossHanachan {
         0 => primary_speed: u16,
         1 => angry_wait_delay: u16,
@@ -939,6 +991,7 @@ geo_objects! {
         6 => angry_cooldown: u16
     },
     0x0f1 => KDossunC,
+    #[inspect(rename = "Boss Wiggler Head (BossHanachanHead)")]
     0x0f2 => BossHanachanHead,
     0x0f3 => KBombCar1,
     0x012d => Dummy,
@@ -953,7 +1006,7 @@ geo_objects! {
     0x136 => DonkyTree2Gc,
     0x137 => PeachTreeGc,
     0x138 => PeachTreeGcC,
-    0x138 => NpcMiiA,
+    0x139 => NpcMiiA,
     0x13a => NpcMiiB,
     0x13b => NpcMiiC,
     0x13c => ObakeBlockSfcC {
@@ -1032,12 +1085,15 @@ geo_objects! {
         1 => fall_time: BlockFallTime,
         2 => additional_delay: u16
     },
+    #[inspect(rename = "Large Bowser (KoopaFigure)")]
+    #[inspect(tooltip = "The large Bowser from Wii Bowser's Castle.")]
     0x171 => KoopaFigure,
     0x172 => Pukupuku,
     0x173 => VStand1,
     0x174 => VStand2,
     0x175 => LeafEffect,
     /// Leaf pile from Maple Treeway.
+    #[inspect(rename = "Leaf Pile (Karehayama)")]
     0x176 => Karehayama {
         1 => item: Item,
         2 => item_chance: u16
@@ -1059,7 +1115,10 @@ geo_objects! {
         2 => duration: u16,
         3 => interval: u16
     },
+    #[inspect(tooltip = "The alarm from Toad's Factory.")]
     0x184 => Alarm,
+    #[inspect(rename = "Pianta Audience A (GroupMonteA)")]
+    #[inspect(tooltip = "A group of Piantas in the audience.")]
     0x185 => GroupMonteA,
     0x186 => MiiStatueL2,
     0x187 => MiiStatueD2,
@@ -1075,6 +1134,7 @@ geo_objects! {
     0x18d => MiiStatueDk1,
     0x18e => MiiKanban,
     0x18f => BgTeresaSfc,
+    #[inspect(rename = "Goomba (kuribo)")]
     0x191 => Kuribo {
         0 => respawn_time: u16,
         1 => speed: u16,
@@ -1085,7 +1145,9 @@ geo_objects! {
         1 => start_delay: u16
     },
     0x193 => Cow {
+        #[inspect(tooltip = "How many cows will follow this lead cow?")]
         0 => followers: u16,
+        #[inspect(tooltip = "Delay until the cows start following the lead cow.")]
         2 => start_delay: u16
     },
     0x194 => PakkunF {
@@ -1104,8 +1166,12 @@ geo_objects! {
         5 => wander_time: u16,
         6 => wedge_size: u16
     },
+    #[inspect(rename = "Cataquack (poihana)")]
+    #[inspect(tooltip = "The Cataquack from GCN Peach Beach.")]
     0x197 => Poihana {
+        #[inspect(tooltip = "The color of the Cataquack.")]
         0 => pat_anim_index: u16,
+        #[inspect(tooltip = "Distance from which the Cataquack starts looking for players.")]
         1 => trigger_distance: u16
     },
     0x198 => DkRockGc {
@@ -1114,24 +1180,39 @@ geo_objects! {
         2 => speed: u16,
         3 => bounce_factor: u16
     },
+    #[inspect(rename = "Pokey (sanbo)")]
+    #[inspect(tooltip = "The Pokeys from Dry Dry Ruins and DS Desert Hills")]
     0x199 => Sanbo {
         0 => speed: u16
     },
+    #[inspect(rename = "Monty Mole (choropu2)")]
+    #[inspect(tooltip = "Certain object rotations cause strange behavior. This object cannot be used together with \"choropu\"")]
     0x19a => Choropu2 {
+        #[inspect(tooltip = "Time in 1/60 seconds.")]
         0 => hide_time: u16,
         1 => start_delay: u16
     },
+    #[inspect(rename = "Minecart (TruckWagon)")]
+    #[inspect(tooltip = "The minecarts from Wario's Gold Mine.")]
     0x19b => TruckWagon {
+        #[inspect(tooltip = "Speed of the minecart.")]
         0 => speed: u16,
+        #[inspect(tooltip = "Delay, in frames, before the second group of carts spawns.")]
         1 => interval: u16,
+        #[inspect(tooltip = "Delay, in frames, until the first group of carts spawns.")]
         2 => start_delay: u16,
+        #[inspect(tooltip = "Whether to disable collisions. If this is set to false, 12 groups of carts are spawned and animations/effects are enabled. If set to false, the LOD model is loaded and only 3 cart groups will be spawned.")]
         3 => disable_collision: bool
     },
+    #[inspect(rename = "Shy Guy (heyho)")]
+    #[inspect(tooltip = "The Shy Guy obstacles from DK Summit.")]
     0x19c => HeyHo {
         0 => speed: u16,
         1 => pat_animation_frame: u16
     },
+    #[inspect(tooltip = "The press from Toad's Factory.")]
     0x19d => Press {
+        #[inspect(tooltip = "Delay until the press starts animating.")]
         1 => start_delay: u16,
         2 => sleep_time: u16
     },
@@ -1144,16 +1225,27 @@ geo_objects! {
         2 => pulsation_factor: u16,
         3 => radius: u16
     },
+    #[inspect(rename = "Piranha Plant Pipe (pakkun_dokan)")]
+    #[inspect(tooltip = "The pipe of a potted Piranha Plant. Combine this with \"pakkun_f\"")]
     0x1a2 => PakkunDokan,
+    #[inspect(rename = "Topman (begoman_spike)")]
     0x1a3 => BegomanSpike {
+        #[inspect(tooltip = "A 1-based ID used in the \"begoman_manager\" that determines when the topmen should appear.")]
         0 => id: u16,
-        1 => roam1_radius: u16,
-        2 => roam2_start_delay: u16,
-        3 => roam2_radius: u16,
-        4 => roam3_start_delay: u16,
-        5 => roam3_radius: u16,
-        6 => roam4_start_delay: u16,
-        7 => roam4_radius: u16
+        #[inspect(tooltip = "Radius of the first ring the topman is allowed to roam in.")]
+        1 => ring1_radius: u16,
+        #[inspect(tooltip = "Time in frames from the start of the race until the topman will switch from the first to the second ring.")]
+        2 => ring2_start_delay: u16,
+        #[inspect(tooltip = "Radius of the second ring the topman is allowed to roam in.")]
+        3 => ring2_radius: u16,
+        #[inspect(tooltip = "Time in frames from the start of the race until the topman will switch from the second to the third ring.")]
+        4 => ring3_start_delay: u16,
+        #[inspect(tooltip = "Radius of the third ring the topman is allowed to roam in.")]
+        5 => ring3_radius: u16,
+        #[inspect(tooltip = "Time in frames from the start of the race until the topman will switch from the third to the fourth ring.")]
+        6 => ring4_start_delay: u16,
+        #[inspect(tooltip = "Radius of the fourth ring the topman is allowed to roam in.")]
+        7 => ring4_radius: u16
     },
     0x1a4 => FireSnake {
         0 => route_id: u16,
@@ -1165,6 +1257,7 @@ geo_objects! {
         2 => fireball_distance: u16,
         3 => arm_count: u16
     },
+    #[inspect(tooltip = "The electric propelles on Koopa Cape.")]
     0x1a6 => EPropeller {
         0 => rotations_per_12sec: u16,
         1 => is_counter_clockwise: bool
@@ -1186,8 +1279,10 @@ geo_objects! {
         3 => cycle_shift: u16,
         4 => sleep_time: u16
     },
+    #[inspect(tooltip = "A bouncy mushroom that will bend back and forth as if it is being pulled on.")]
     0x1f6 => KinokoBend {
         0 => texturing: u16,
+        #[inspect(tooltip = "The maximum angle it will bend.")]
         1 => max_angle: u16,
         2 => cycle_time: u16,
         3 => cycle_shift: u16
@@ -1200,12 +1295,14 @@ geo_objects! {
         4 => y_period: u16,
         5 => y_amplitude: u16
     },
+    #[inspect(tooltip = "The bulldozer on the left side of the track on Toad's Factory.")]
     0x1f8 => BulldozerLeft {
         1 => move_distance: u16,
         2 => move_time: u16,
         3 => start_delay: u16,
         4 => sleep_time: u16
     },
+    #[inspect(tooltip = "The bulldozer on the right side of the track on Toad's Factory.")]
     0x1f9 => BulldozerRight {
         1 => move_distance: u16,
         2 => move_time: u16,
@@ -1215,6 +1312,7 @@ geo_objects! {
     0x1fa => KinokoNm {
         0 => texturing: u16
     },
+    #[inspect(tooltip = "The crane on Toad's Factory.")]
     0x1fb => Crane {
         1 => cycle_period: u16,
         2 => amplitude: u16,
@@ -1235,6 +1333,7 @@ geo_objects! {
         1 => start_delay: u16,
         2 => size_factor: u16
     },
+    #[inspect(tooltip = "The twisting road on Wii Bowser's Castle.")]
     0x1fe => TwistedWay,
     0x1ff => TownBridgeDsc {
         0 => angle: u16,
@@ -1254,6 +1353,7 @@ geo_objects! {
         1 => vertical_movement: u16,
         2 => speed: u16
     },
+    #[inspect(tooltip = "The rotating roulette wheel on Chain Chomp Wheel.")]
     0x206 => CasinoRoulette,
     0x207 => BossField01Obj1,
     0x208 => DcPillar {
@@ -1290,6 +1390,8 @@ geo_objects! {
         6 => shake_time_50cc: u16,
         7 => fall_delay: u16
     },
+    #[inspect(rename = "Rope Net Bridge (ami)")]
+    #[inspect(tooltip = "The waving rope net bridge on Maple Treeway.")]
     0x20e => Ami,
     0x20f => MObjJump,
     0x210 => StarGate,
@@ -1335,6 +1437,7 @@ geo_objects! {
         3 => switch_back_interval: u16
     },
     0x25d => BeltCurveB,
+    #[inspect(tooltip = "A Coconut Mall escalator.")]
     0x25e => Escalator {
         1 => speed1: u16,
         2 => speed2_delay: u16,
@@ -1351,7 +1454,9 @@ geo_objects! {
         5 => speed3: u16
     },
     0x261 => TreeCannon,
+    #[inspect(tooltip = "A group of characters in the audience.")]
     0x2bd => GroupEnemyB,
+    #[inspect(tooltip = "A group of characters in the audience.")]
     0x2be => GroupEnemyC,
     0x2bf => Taimatsu,
     0x2c0 => TruckChimSmkW,
@@ -1359,6 +1464,7 @@ geo_objects! {
     0x2c2 => DkMonitor,
     0x2c3 => GroupEnemyA,
     0x2c4 => FlagB3,
+    #[inspect(tooltip = "A spotlight.")]
     0x2c5 => Spot,
     0x2c6 => GroupEnemyD,
     0x2c7 => FlagB4,
