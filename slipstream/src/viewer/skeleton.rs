@@ -1,4 +1,3 @@
-
 use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT};
 
 pub struct SkeletonPipeline {

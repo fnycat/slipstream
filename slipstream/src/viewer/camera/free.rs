@@ -1,4 +1,3 @@
-
 use crate::viewer::camera::{CameraController, NEAR_PLANE, WORLD_UP};
 
 #[derive(Debug, Clone, PartialEq)]

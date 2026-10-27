@@ -6,9 +6,7 @@ use slipstream_ir::brres::{
     MdlHeader, MdlVisitor, NormalBuffer, PaletteLinks, Polygon, SkeletalAnimation, Texture,
     TextureLinks, UvBuffer, VertexBuffer
 };
-use slipstream_ir::kmp::{
-    self, KmpVisitor
-};
+use slipstream_ir::kmp::{self, KmpVisitor};
 use slipstream_ir::tpl::{TplHeader, TplImage};
 use slipstream_ir::visitor::{Visitor, VisitorCtxMut};
 use slipstream_shared::inspect::{FieldConfig, Inspect};
