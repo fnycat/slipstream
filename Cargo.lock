@@ -24,8 +24,6 @@ version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3b7f7f85a7e5f68090000ed7622545829afd484d210358702ae4cb97dd0c320"
 dependencies = [
- "enumn",
- "serde",
  "uuid",
 ]
 
@@ -35,6 +33,8 @@ version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad442f58ee04714aaa0ba0a2768c1ea1935b29507bb22ddece8cbbc76db02932"
 dependencies = [
+ "enumn",
+ "serde",
  "uuid",
 ]
 
@@ -1023,7 +1023,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0656a7530b9e2841ee7a5f983965bdd9840c32f4012f759cfd44b912cced6b34"
 dependencies = [
  "emath 0.36.2",
- "serde",
 ]
 
 [[package]]
@@ -1034,6 +1033,7 @@ checksum = "31bcbef0d4263a63eb32c4834e5d711613035ce1333468e107d928923e21e6e2"
 dependencies = [
  "bytemuck",
  "emath 0.37.0",
+ "serde",
 ]
 
 [[package]]
@@ -1088,7 +1088,6 @@ dependencies = [
  "log",
  "nohash-hasher",
  "profiling",
- "serde",
  "smallvec",
  "unicode-segmentation",
  "web-sys",
@@ -1109,6 +1108,7 @@ dependencies = [
  "log",
  "nohash-hasher",
  "profiling",
+ "serde",
  "smallvec",
  "unicode-segmentation",
  "web-sys",
@@ -1117,8 +1117,6 @@ dependencies = [
 [[package]]
 name = "egui-phosphor"
 version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f4299551488dddaa8f757727e1eb4ffdaf277ffe6e30b413403468f5ecf4634"
 dependencies = [
  "egui 0.36.2",
 ]
@@ -1170,12 +1168,12 @@ dependencies = [
 
 [[package]]
 name = "egui_extras"
-version = "0.36.2"
+version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05cbdc785020861553f230f23d330ba1fb72613b9d8e0e457f3bdc8ba6db6dcf"
+checksum = "def286cf47194f3fe45b8e37c503ada7a20a64b59a903b4bc704baec943b1827"
 dependencies = [
  "ahash",
- "egui 0.36.2",
+ "egui 0.37.0",
  "enum-map",
  "image",
  "itertools 0.15.0",
@@ -1215,12 +1213,12 @@ dependencies = [
 
 [[package]]
 name = "egui_tiles"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87147a0a2f03415a3082a92dba79062912d70d555f2495a54d16a7be2c81ac55"
+checksum = "c08803282261f981e84f422b9f716450caee4c2a0301278e27aab721dff99218"
 dependencies = [
  "ahash",
- "egui 0.36.2",
+ "egui 0.37.0",
  "itertools 0.15.0",
  "log",
  "serde",
@@ -1237,9 +1235,6 @@ name = "emath"
 version = "0.36.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52c8d4141cf0f60fb2f7aefaf352d3ffa5171ef0ab09731c64391801e95e48f1"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "emath"
@@ -1248,6 +1243,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e73ce90f54750be8672c02be0743fe47530e6f251e066f0ee2869b59eb297af5"
 dependencies = [
  "bytemuck",
+ "serde",
 ]
 
 [[package]]
@@ -1258,22 +1254,22 @@ checksum = "66b7e2430c6dff6a955451e2cfc438f09cea1965a9d6f87f7e3b90decc014099"
 
 [[package]]
 name = "enum-map"
-version = "2.7.3"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6866f3bfdf8207509a033af1a75a7b08abda06bbaaeae6669323fd5a097df2e9"
+checksum = "d4532960034c15ba2f55e9eee631040ecc473c32e6c4b200828c759840f13a06"
 dependencies = [
  "enum-map-derive",
 ]
 
 [[package]]
 name = "enum-map-derive"
-version = "0.17.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f282cfdfe92516eb26c2af8589c274c7c17681f5ecc03c18255fe741c6aa64eb"
+checksum = "7127272f64b3e098f7d81f350d672081b879bff896d219c42370dc858b1af9ff"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.119",
+ "syn 3.0.9",
 ]
 
 [[package]]
@@ -1317,16 +1313,13 @@ dependencies = [
  "ahash",
  "ecolor 0.36.2",
  "emath 0.36.2",
- "epaint_default_fonts 0.36.2",
  "font-types",
  "harfrust",
  "log",
  "nohash-hasher",
  "parking_lot",
  "profiling",
- "rayon",
  "self_cell",
- "serde",
  "skrifa",
  "smallvec",
  "unicode-general-category",
@@ -1344,14 +1337,16 @@ dependencies = [
  "bytemuck",
  "ecolor 0.37.0",
  "emath 0.37.0",
- "epaint_default_fonts 0.37.0",
+ "epaint_default_fonts",
  "font-types",
  "harfrust",
  "log",
  "nohash-hasher",
  "parking_lot",
  "profiling",
+ "rayon",
  "self_cell",
+ "serde",
  "skrifa",
  "smallvec",
  "unicode-general-category",
@@ -1359,12 +1354,6 @@ dependencies = [
  "unicode-segmentation",
  "vello_cpu 0.2.0",
 ]
-
-[[package]]
-name = "epaint_default_fonts"
-version = "0.36.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "773fa9c96dd0dbef887e39d0ed6177f141cce4d68e6041df77570aa3702dfa13"
 
 [[package]]
 name = "epaint_default_fonts"
@@ -3976,7 +3965,7 @@ dependencies = [
  "byteorder",
  "console_error_panic_hook",
  "eframe",
- "egui 0.36.2",
+ "egui 0.37.0",
  "egui-phosphor",
  "egui_extras",
  "egui_tiles",
@@ -4031,7 +4020,7 @@ dependencies = [
  "byteorder",
  "downcast-rs 2.0.2",
  "eframe",
- "egui 0.36.2",
+ "egui 0.37.0",
  "futures",
  "glam",
  "image",
@@ -4054,7 +4043,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "eframe",
- "egui 0.36.2",
+ "egui 0.37.0",
  "egui-phosphor",
  "futures",
  "glam",
