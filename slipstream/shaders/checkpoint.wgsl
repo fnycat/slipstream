@@ -25,7 +25,8 @@ fn vs_main(
     @builtin(vertex_index) vi: u32,
     @location(0) left: vec2f,
     @location(1) right: vec2f,
-    @location(2) ty: u32
+    @location(2) respawn_y: f32,
+    @location(3) ty: u32
 ) -> VertexOutput {
     let base = select(left, right, (vi >> 1u) == 1u);
     let side = f32(vi & 1u);
@@ -35,10 +36,11 @@ fn vs_main(
     let normal = vec2(-dir.y, dir.x) / len;
 
     let world = base + normal * f32(vi & 1u) * 2.0 - 1.0;
+    let bound_y = respawn_y - 500.0 + 4000.0 * side;
 
     var out: VertexOutput;
     out.ty = ty;
-    out.clip = camera.view_proj * vec4f(world.x, 2000.0 * side, world.y, 1.0);
+    out.clip = camera.view_proj * vec4f(world.x, bound_y, world.y, 1.0);
     return out;
 }
 
@@ -48,5 +50,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {
     let green = select(0.0, 1.0, in.ty == KEY_TYPE);
     let blue = select(0.0, 1.0, in.ty == LAP_TYPE);
 
-    return vec4f(red, green, blue, 0.1);
+    return vec4f(red, green, blue, 0.25);
 }

@@ -298,4 +298,15 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
         ControlFlow::Continue(())
     }
+
+    fn visit_respawns_mut(
+        &mut self,
+        context: VisitorCtxMut<'_, kmp::Respawns>
+    ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
 }

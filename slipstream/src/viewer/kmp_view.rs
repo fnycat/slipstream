@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use slipstream_ir::kmp::{Checkpoint, CheckpointBox2, Checkpoints, KmpHeader, KmpVisitor};
+use slipstream_ir::kmp::{Checkpoint, CheckpointBox2, Checkpoints, KmpHeader, KmpVisitor, RespawnPoint, Respawns};
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::visitor::{Visitor, VisitorCtx};
 use slipstream_shared::SlipstreamResult;
@@ -11,7 +11,8 @@ use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT, Vi
 
 #[derive(Default)]
 struct KmpRootVisitor {
-    node: Option<IrNodeKey>
+    node: Option<IrNodeKey>,
+    respawns: Vec<RespawnPoint>
 }
 
 impl Visitor for KmpRootVisitor {
@@ -25,11 +26,13 @@ impl KmpVisitor for KmpRootVisitor {
         if ctx.meta.label == "course.kmp" {
             tracing::debug!("Found `course.kmp` at node {:?}", ctx.meta.key);
             self.node = Some(ctx.meta.key);
-
-            ControlFlow::Break(())
-        } else {
-            ControlFlow::Continue(())
         }
+        ControlFlow::Continue(())
+    }
+
+    fn visit_respawns(&mut self, context: VisitorCtx<'_, Respawns>) -> ControlFlow<()> {
+        self.respawns = context.content.respawns.clone();
+        ControlFlow::Continue(())
     }
 }
 
@@ -62,6 +65,9 @@ impl KmpPipeline {
         // course.kmp was found, we now start building buffers for rendering
         let mut buffer_vis = KmpDrawVisitor {
             device,
+
+            sections: vis,
+
             camera_bg_layout,
             camera_bg,
             checkpoints_buffer: None
@@ -117,28 +123,18 @@ impl From<u8> for CheckpointType {
 #[repr(C)]
 struct CheckpointData {
     pub bounds: CheckpointBox2,
+    pub respawn_y: f32,
     pub ty: CheckpointType
 }
 
 impl CheckpointsPipeline {
     pub const VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-        array_stride: size_of::<glam::Vec2>() as u64 * 2 + size_of::<u32>() as u64,
-        attributes: &[
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x2,
-                offset: 0,
-                shader_location: 0
-            },
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x2,
-                offset: size_of::<glam::Vec2>() as u64,
-                shader_location: 1
-            },
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Uint32,
-                offset: size_of::<glam::Vec2>() as u64 * 2,
-                shader_location: 2
-            }
+        array_stride: 6 * 4,
+        attributes: &wgpu::vertex_attr_array! [
+            0 => Float32x2,
+            1 => Float32x2,
+            2 => Float32,
+            3 => Uint32
         ],
         step_mode: wgpu::VertexStepMode::Instance
     };
@@ -147,15 +143,27 @@ impl CheckpointsPipeline {
         device: &wgpu::Device,
         camera_bg_layout: &wgpu::BindGroupLayout,
         camera_bg: wgpu::BindGroup,
-        checkpoints: &[Checkpoint]
+        checkpoints: &[Checkpoint],
+        respawns: &[RespawnPoint]
     ) -> Self {
         let checkpoint_count = checkpoints.len();
 
         // 6 floats per checkpoint
         let mut bounds = Vec::with_capacity(checkpoint_count);
-        for checkpoint in checkpoints {
+        for (i, checkpoint) in checkpoints.iter().enumerate() {
+            let respawn_y = match respawns.get(checkpoint.respawn_index as usize) {
+                Some(respawn) => {
+                    respawn.position.y
+                },
+                None => {
+                    tracing::error!("Respawn point index out of range for checkpoint {i} ({} > {})", checkpoint.respawn_index, respawns.len());
+                    0.0
+                }
+            };
+
             bounds.push(CheckpointData {
                 bounds: checkpoint.bounds,
+                respawn_y, 
                 ty: CheckpointType::from(checkpoint.ty as u8)
             });
         }
@@ -244,6 +252,8 @@ impl ViewerPipeline for CheckpointsPipeline {
 struct KmpDrawVisitor<'a> {
     device: &'a wgpu::Device,
 
+    sections: KmpRootVisitor,
+
     camera_bg_layout: &'a wgpu::BindGroupLayout,
     camera_bg: wgpu::BindGroup,
 
@@ -260,7 +270,8 @@ impl KmpVisitor for KmpDrawVisitor<'_> {
             self.device,
             self.camera_bg_layout,
             self.camera_bg.clone(),
-            &context.checkpoints
+            &context.checkpoints,
+            &self.sections.respawns
         ));
         ControlFlow::Continue(())
     }

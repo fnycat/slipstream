@@ -9,7 +9,9 @@ mod itpt;
 mod ktpt;
 mod poti;
 mod visitor;
+mod jgpt;
 
+pub use jgpt::*;
 pub use area::*;
 pub use ckph::*;
 pub use ckpt::*;
@@ -247,6 +249,9 @@ pub fn deserialize(
             }
             KmpSectionType::Routes => {
                 Box::new(PointInformationPaths::deserialize(reader, section_header)?)
+            }
+            KmpSectionType::RespawnPositions => {
+                Box::new(Respawns::deserialize(reader, section_header)?)
             }
             // KmpSectionType::Areas => Box::new(Areas::deserialize(reader, section_header)?),
             _ => {

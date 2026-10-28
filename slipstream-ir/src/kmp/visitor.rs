@@ -3,8 +3,7 @@ use std::ops::ControlFlow;
 use crate::kmp::enph::EnemyRoutes;
 use crate::kmp::enpt::EnemyRoutePoints;
 use crate::kmp::{
-    Areas, CheckpointGroups, Checkpoints, GeoObjects, ItemRoutePoints, ItemRoutes, KmpHeader,
-    PointInformationPaths, StartingPositions
+    Areas, CheckpointGroups, Checkpoints, GeoObjects, ItemRoutePoints, ItemRoutes, KmpHeader, PointInformationPaths, Respawns, StartingPositions
 };
 use crate::visitor::{VisitorCtx, VisitorCtxMut};
 
@@ -216,6 +215,22 @@ pub trait KmpVisitor {
     }
 
     fn visit_areas_mut(&mut self, context: VisitorCtxMut<'_, Areas>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_respawns(&mut self, context: VisitorCtx<'_, Respawns>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_respawns_mut(&mut self, context: VisitorCtxMut<'_, Respawns>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {
