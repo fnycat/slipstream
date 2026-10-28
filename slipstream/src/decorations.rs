@@ -3,8 +3,8 @@ use slipstream_shared::{SlipstreamError, reg_icon};
 
 use crate::app::App;
 use crate::config::APP_TITLE;
-use crate::panes::RequestNewPane;
 use crate::panes::debug::DebugPane;
+use crate::panes::{AddPaneRequest, PaneAction};
 
 /// The size state of the window.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
@@ -317,44 +317,56 @@ impl App {
                         }
 
                         if ui.button("Logs").clicked() {
-                            self.on_new_pane_request(RequestNewPane::Log)?;
+                            self.send_pane_action(PaneAction::AddPane(AddPaneRequest::Log))?;
                         }
 
                         let egui::InnerResponse { inner, .. } = ui.menu_button("Debug", |ui| {
                             if ui.button("Widget Inspector").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::Inspection
-                                })?;
+                                self.send_pane_action(PaneAction::AddPane(
+                                    AddPaneRequest::Debug {
+                                        ty: DebugPane::Inspection
+                                    }
+                                ))?;
                             }
 
                             if ui.button("GUI Settings").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::General
-                                })?;
+                                self.send_pane_action(PaneAction::AddPane(
+                                    AddPaneRequest::Debug {
+                                        ty: DebugPane::General
+                                    }
+                                ))?;
                             }
 
                             if ui.button("Style Settings").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::Style
-                                })?;
+                                self.send_pane_action(PaneAction::AddPane(
+                                    AddPaneRequest::Debug {
+                                        ty: DebugPane::Style
+                                    }
+                                ))?;
                             }
 
                             if ui.button("Image Loader Statistics").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::Loaders
-                                })?;
+                                self.send_pane_action(PaneAction::AddPane(
+                                    AddPaneRequest::Debug {
+                                        ty: DebugPane::Loaders
+                                    }
+                                ))?;
                             }
 
                             if ui.button("Memory Statistics").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::Memory
-                                })?;
+                                self.send_pane_action(PaneAction::AddPane(
+                                    AddPaneRequest::Debug {
+                                        ty: DebugPane::Memory
+                                    }
+                                ))?;
                             }
 
                             if ui.button("Texture Statistics").clicked() {
-                                self.on_new_pane_request(RequestNewPane::Debug {
-                                    ty: DebugPane::Textures
-                                })?;
+                                self.send_pane_action(PaneAction::AddPane(
+                                    AddPaneRequest::Debug {
+                                        ty: DebugPane::Textures
+                                    }
+                                ))?;
                             }
 
                             Ok::<_, SlipstreamError>(())

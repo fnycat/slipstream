@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::panic::AssertUnwindSafe;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::SendError;
 use std::sync::{Arc, mpsc};
 
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
@@ -13,7 +14,7 @@ use crate::inspector::InspectorPane;
 use crate::panes::animator::AnimatorPane;
 use crate::panes::log::LogPane;
 use crate::panes::outliner::OutlinerPane;
-use crate::panes::{Pane, PaneAction, PaneBehavior, RequestNewPane};
+use crate::panes::{AddPaneRequest, Pane, PaneAction, PaneBehavior};
 use crate::shared::GraphicsState;
 use crate::viewer::ViewerPane;
 
@@ -186,6 +187,10 @@ impl App {
         self.pane_tree.active_tiles().first().copied()
     }
 
+    pub fn send_pane_action(&self, action: PaneAction) -> Result<(), SendError<PaneAction>> {
+        self.pane_behavior.sender.send(action)
+    }
+
     /// Handles a [`RequestNewPane`] request by either focusing an existing pane with
     /// the same contents, or creating a new pane.
     ///
@@ -198,43 +203,47 @@ impl App {
     /// If no tiles were found at all, this pane will be set as root.
     pub fn on_new_pane_request(
         &mut self,
-        request: RequestNewPane
+        request: AddPaneRequest,
+        output_tile: Option<egui_tiles::TileId>
     ) -> SlipstreamResult<egui_tiles::TileId> {
         // Check if this pane already exists.
 
-        let existing_tile = self
-            .pane_tree
-            .tiles
-            .iter()
-            .find_map(|(id, pane)| {
-                let egui_tiles::Tile::Pane(pane) = pane else {
-                    return None;
-                };
+        let existing_tile = match output_tile {
+            Some(out) => Some(out),
+            None => self
+                .pane_tree
+                .tiles
+                .iter()
+                .find_map(|(id, pane)| {
+                    let egui_tiles::Tile::Pane(pane) = pane else {
+                        return None;
+                    };
 
-                (pane.ty() == request.id()).then_some(id)
-            })
-            .copied();
+                    (pane.ty() == request.id()).then_some(id)
+                })
+                .copied()
+        };
 
         // Pane was not found, create a new one
         let new_pane = match request {
-            RequestNewPane::Outliner { base } => OutlinerPane::new(
+            AddPaneRequest::Outliner { base } => OutlinerPane::new(
                 self.pane_behavior.sender.clone(),
                 Some(base),
                 self.arena.clone()
             ) as Box<dyn Pane>,
-            RequestNewPane::Inspector { inspected } => InspectorPane::new(
+            AddPaneRequest::Inspector { inspected } => InspectorPane::new(
                 self.pane_behavior.sender.clone(),
                 inspected,
                 self.arena.clone()
             ) as Box<dyn Pane>,
-            RequestNewPane::Viewer { viewed } => ViewerPane::new(
+            AddPaneRequest::Viewer { viewed } => ViewerPane::new(
                 self.pane_behavior.sender.clone(),
                 viewed,
                 self.arena.clone(),
                 self.render_state.clone()
             )? as Box<dyn Pane>,
-            RequestNewPane::Log => LogPane::new(self.pane_behavior.sender.clone()) as Box<dyn Pane>,
-            RequestNewPane::Debug { ty } => Box::new(ty) as Box<dyn Pane>
+            AddPaneRequest::Log => LogPane::new(self.pane_behavior.sender.clone()) as Box<dyn Pane>,
+            AddPaneRequest::Debug { ty } => Box::new(ty) as Box<dyn Pane>
         };
 
         Ok(if let Some(existing_tile) = existing_tile {
@@ -353,9 +362,11 @@ impl App {
     pub fn handle_commands(&mut self) -> SlipstreamResult<()> {
         while let Ok(cmd) = self.pane_behavior.receiver.try_recv() {
             match cmd {
-                PaneAction::RequestPaneEdit(_) => todo!(),
-                PaneAction::RequestNewPane(request) => {
-                    self.on_new_pane_request(request)?;
+                PaneAction::ReplacePane(request) => {
+                    self.on_new_pane_request(request.request, Some(request.tile_id))?;
+                }
+                PaneAction::AddPane(request) => {
+                    self.on_new_pane_request(request, None)?;
                 }
                 PaneAction::RemoveTile(tile) => {
                     self.pane_tree.tiles.remove(tile);

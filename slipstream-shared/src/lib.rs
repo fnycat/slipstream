@@ -1,6 +1,7 @@
 pub mod assert;
 pub mod cursor;
 pub mod error;
+pub mod file_dialog;
 pub mod icons;
 pub mod inspect;
 pub mod widgets;

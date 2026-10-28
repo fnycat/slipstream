@@ -84,7 +84,7 @@ impl IrArena {
     /// may not be monotonic.
     pub fn reserve_key(&self) -> IrNodeKey {
         IrNodeKey(
-            NonZeroU64::new(self.counter.fetch_add(1, Ordering::Relaxed))
+            NonZeroU64::new(self.counter.fetch_add(1, Ordering::Acquire))
                 .expect("arena counter was set to 0")
         )
     }
@@ -121,6 +121,11 @@ impl IrArena {
         );
 
         key
+    }
+
+    pub fn clear(&self) {
+        self.map.write().clear();
+        self.counter.store(1, Ordering::Release);
     }
 
     /// Attempts to load the node's contents. Parsing it if it has not been evaluated yet.

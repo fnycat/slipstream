@@ -3964,6 +3964,7 @@ dependencies = [
  "glam",
  "image",
  "parking_lot",
+ "rfd",
  "smallvec",
  "thiserror 2.0.21",
 ]

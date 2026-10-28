@@ -177,7 +177,7 @@ pub enum PaneId {
 ///
 /// See [``] for an explanation on how it is decided where to put the new pane.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RequestNewPane {
+pub enum AddPaneRequest {
     /// Opens a new [`Outliner`]
     ///
     /// [`Outliner`]: outliner::OutlinerPane.
@@ -196,7 +196,7 @@ pub enum RequestNewPane {
     }
 }
 
-impl RequestNewPane {
+impl AddPaneRequest {
     pub const fn id(&self) -> PaneId {
         match self {
             Self::Outliner { .. } => PaneId::Outliner,
@@ -217,17 +217,17 @@ impl RequestNewPane {
         pane_id.hash(&mut hasher);
 
         match self {
-            RequestNewPane::Outliner { base: root } => {
+            AddPaneRequest::Outliner { base: root } => {
                 root.hash(&mut hasher);
             }
-            RequestNewPane::Inspector { inspected } => {
+            AddPaneRequest::Inspector { inspected } => {
                 inspected.hash(&mut hasher);
             }
-            RequestNewPane::Viewer { viewed } => {
+            AddPaneRequest::Viewer { viewed } => {
                 viewed.hash(&mut hasher);
             }
-            RequestNewPane::Log => {}
-            RequestNewPane::Debug { ty } => ty.hash(&mut hasher)
+            AddPaneRequest::Log => {}
+            AddPaneRequest::Debug { ty } => ty.hash(&mut hasher)
         }
 
         ContentSignature::from(hasher.finish())
@@ -235,9 +235,9 @@ impl RequestNewPane {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RequestPaneEdit {
+pub struct ReplacePaneRequest {
     pub tile_id: egui_tiles::TileId,
-    pub new_node: IrNodeKey
+    pub request: AddPaneRequest
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -245,11 +245,11 @@ pub enum PaneAction {
     /// Requests a pane to be modified.
     ///
     /// This generally means changing the open node.
-    RequestPaneEdit(RequestPaneEdit),
+    ReplacePane(ReplacePaneRequest),
     /// Request a pane to be created.
     ///
     /// If this specific pane already exists, it will become active instead.
-    RequestNewPane(RequestNewPane),
+    AddPane(AddPaneRequest),
     /// Removes the pane with the given tile ID.
     RemoveTile(egui_tiles::TileId)
 }

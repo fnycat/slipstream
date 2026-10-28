@@ -4,10 +4,12 @@ use slipstream_ir::brres::MdlSectionType;
 use slipstream_ir::kmp::KmpSectionType;
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::node::node::{IrNode, IrNodeType};
+use slipstream_ir::node::root::deserialize_maybe_compressed;
 use slipstream_shared::error::SlipstreamResult;
-use slipstream_shared::reg_icon;
+use slipstream_shared::file_dialog::{FileDialogKind, pick_file_dialog};
+use slipstream_shared::{RefCursor, reg_icon};
 
-use crate::panes::{Pane, PaneAction, PaneId, PaneResponse, RequestNewPane};
+use crate::panes::{AddPaneRequest, Pane, PaneAction, PaneId, PaneResponse, ReplacePaneRequest};
 use slipstream_shared::widgets::{self, CollapseDescriptor, DropdownType, HeaderIcons};
 
 /// The outliner displays a file tree.
@@ -55,7 +57,7 @@ impl OutlinerPane {
         // Only draw the open in 3D viewer button for MDL roots.
         if node.ty == IrNodeType::MdlHeader && ui.button("Open in 3D viewer").clicked() {
             self.cmd_sender
-                .send(PaneAction::RequestNewPane(RequestNewPane::Viewer {
+                .send(PaneAction::AddPane(AddPaneRequest::Viewer {
                     viewed: Some(node.key())
                 }))
                 .expect("failed to send context command");
@@ -63,7 +65,7 @@ impl OutlinerPane {
 
         if ui.button("Open in new outliner").clicked() {
             self.cmd_sender
-                .send(PaneAction::RequestNewPane(RequestNewPane::Outliner {
+                .send(PaneAction::AddPane(AddPaneRequest::Outliner {
                     base: node.key()
                 }))
                 .expect("failed to send context command");
@@ -71,7 +73,7 @@ impl OutlinerPane {
 
         if ui.button("Properties").clicked() {
             self.cmd_sender
-                .send(PaneAction::RequestNewPane(RequestNewPane::Inspector {
+                .send(PaneAction::AddPane(AddPaneRequest::Inspector {
                     inspected: node.key()
                 }))
                 .expect("failed to send context command");
@@ -116,7 +118,7 @@ impl OutlinerPane {
             let response = ui.selectable_label(false, node.label());
             if response.clicked() {
                 self.cmd_sender
-                    .send(PaneAction::RequestNewPane(RequestNewPane::Inspector {
+                    .send(PaneAction::AddPane(AddPaneRequest::Inspector {
                         inspected: node.key()
                     }))
                     .expect("failed to send inspector pane open request");
@@ -160,7 +162,7 @@ impl Pane for OutlinerPane {
     fn draw_content(
         &mut self,
         ui: &mut egui::Ui,
-        _tile_id: egui_tiles::TileId,
+        tile_id: egui_tiles::TileId,
         _is_focused: bool
     ) -> PaneResponse {
         ui.set_min_size(ui.available_size());
@@ -174,7 +176,35 @@ impl Pane for OutlinerPane {
             });
         } else {
             // Otherwise offer to open a file.
-            ui.label("No files are open");
+            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                ui.label("No file is open");
+
+                let arena = Arc::clone(&self.arena);
+                let pane_channel = self.cmd_sender.clone();
+
+                if ui.button("Open file").clicked() {
+                    pick_file_dialog(
+                        FileDialogKind::PickSingle,
+                        async move |file: rfd::FileHandle| {
+                            // Clear the arena
+                            arena.clear();
+
+                            // Open the file
+                            let contents = file.read().await;
+
+                            let reader = RefCursor::new(Arc::from(contents));
+                            deserialize_maybe_compressed(reader, &arena, file.file_name());
+
+                            pane_channel.send(PaneAction::ReplacePane(ReplacePaneRequest {
+                                tile_id,
+                                request: AddPaneRequest::Outliner {
+                                    base: IrNodeKey::ROOT
+                                }
+                            }));
+                        }
+                    );
+                }
+            });
         }
 
         PaneResponse::None

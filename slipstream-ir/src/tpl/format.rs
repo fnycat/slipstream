@@ -184,6 +184,8 @@ impl ImageData {
         }
 
         if ui.button("Export").clicked() {
+            use slipstream_shared::file_dialog::{FileDialogKind, pick_file_dialog};
+
             tracing::trace!("Opening texture export file dialog");
 
             let rgba_image = self
@@ -202,20 +204,16 @@ impl ImageData {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                // Poll in a new thread so the UI thread isn't blocked.
+                // Polls in a new thread so the UI thread isn't blocked.
                 //
                 // We copy the RGBA8 image data into the new thread because the thread
                 // will last multiple frames and cannot hold a reference into the node.
-                std::thread::spawn(move || {
-                    tracing::trace!("Export thread started");
+                pick_file_dialog(FileDialogKind::Save, async move |file: rfd::FileHandle| {
+                    tracing::info!("Exporting image to `{:?}`", file.path());
 
-                    if let Some(file) = futures::executor::block_on(fut) {
-                        tracing::info!("Exporting image to `{:?}`", file.path());
-
-                        rgba_image
-                            .export_to_file(file.path())
-                            .expect("failed to export file");
-                    }
+                    rgba_image
+                        .export_to_file(file.path())
+                        .expect("failed to export file");
                 });
             }
 
@@ -223,27 +221,23 @@ impl ImageData {
             {
                 use std::io::Cursor;
 
-                wasm_bindgen_futures::spawn_local(async move {
-                    tracing::trace!("Export future started");
+                pick_file_dialog(FileDialogKind::Save, async |file: rfd::FileHandle| {
+                    let filename = file.file_name();
+                    tracing::info!("WASM file dialog returned with file: `{filename}`");
 
-                    if let Some(file) = fut.await {
-                        let filename = file.file_name();
-                        tracing::info!("WASM file dialog returned with file: `{filename}`");
+                    let Ok(format) = image::ImageFormat::from_path(filename) else {
+                        tracing::error!("Failed to guess export format from file path");
+                        return;
+                    };
 
-                        let Ok(format) = image::ImageFormat::from_path(filename) else {
-                            tracing::error!("Failed to guess export format from file path");
-                            return;
-                        };
+                    let mut writer = BufWriter::new(Cursor::new(Vec::new()));
+                    rgba_image.export(&mut writer, format);
 
-                        let mut writer = BufWriter::new(Cursor::new(Vec::new()));
-                        rgba_image.export(&mut writer, format);
+                    writer
+                        .flush()
+                        .expect("Failed to flush image export buf writer");
 
-                        writer
-                            .flush()
-                            .expect("Failed to flush image export buf writer");
-
-                        file.write(writer.buffer()).await;
-                    }
+                    file.write(writer.buffer()).await;
                 });
             }
         }
