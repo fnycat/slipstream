@@ -78,6 +78,14 @@ impl IrArena {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.map.read().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Reserves a key for future use.
     ///
     /// The keys returned by this function are guaranteed to be unique, but

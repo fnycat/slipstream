@@ -574,7 +574,12 @@ impl ViewerPipelines {
         }
 
         // Check if the file contains a `course.kmp` file
-        if let Some(pipeline) = KmpPipeline::from_root(arena) {
+        if let Some(pipeline) = KmpPipeline::from_root(
+            &graphics_state.device,
+            &camera_state.bind_group_layout,
+            camera_state.bind_group.clone(),
+            arena
+        )? {
             pipelines.push(pipeline);
         }
 

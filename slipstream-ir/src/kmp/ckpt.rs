@@ -11,7 +11,8 @@ use crate::visitor::{
 };
 
 /// Special version of `Box2` to change the names of the fields.
-#[derive(Debug, Clone, PartialEq, Inspect)]
+#[derive(Debug, Copy, Clone, PartialEq, Inspect, bytemuck::Zeroable, bytemuck::Pod)]
+#[repr(C)]
 pub struct CheckpointBox2 {
     #[inspect(rename = "Left Edge")]
     pub left: glam::Vec2,
