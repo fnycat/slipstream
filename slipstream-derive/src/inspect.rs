@@ -508,7 +508,7 @@ impl Input {
                 /// Nested structs are drawn as animated collapsing bodies by `draw_rows`.
                 fn draw_properties(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
                     let mut changes = slipstream_shared::inspect::Changes::default();
-                    let root_id = ui.id().with(concat!("InspectRoot_", #name));
+                    let root_id = ui.scope_id().with(concat!("InspectRoot_", #name));
 
                     ui.scope(|ui| {
                         // Gives the right aligned value cells a definite right edge.
@@ -522,7 +522,7 @@ impl Input {
                 /// Fallback for callers that draw a whole struct as a single value.
                 fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &slipstream_shared::inspect::FieldConfig) -> slipstream_shared::inspect::Changes {
                     let mut changes = slipstream_shared::inspect::Changes::default();
-                    let id = ui.id().with(concat!("InspectNested_", #name));
+                    let id = ui.scope_id().with(concat!("InspectNested_", #name));
 
                     ui.vertical(|ui| {
                         changes |= slipstream_shared::inspect::Inspect::draw_rows(self, ui, id, cfg);
@@ -708,7 +708,7 @@ impl Input {
                     let mut changes = slipstream_shared::inspect::Changes::default();
 
                     ui.group(|ui| {
-                        let response = egui::ComboBox::new(ui.id().with("ComboBox"), "")
+                        let response = egui::ComboBox::new(ui.scope_id().with("ComboBox"), "")
                             .selected_text(curr_label)
                             .show_ui(ui, |ui| {
                                 #variant_tokens

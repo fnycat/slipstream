@@ -115,7 +115,10 @@ impl ImageData {
         // Check if the texture has been registered.
         let dims = self.dimensions();
 
-        let key = ui.id().with("TexturePreview").with(self.content_hash());
+        let key = ui
+            .scope_id()
+            .with("TexturePreview")
+            .with(self.content_hash());
 
         let cached = ui.data(|d| d.get_temp::<egui::TextureHandle>(key));
         let handle = match cached {
@@ -158,7 +161,7 @@ impl ImageData {
         let egui::InnerResponse { inner, .. } =
             ui.centered_and_justified(|ui| ui.add(image.clone().sense(egui::Sense::click())));
 
-        let modal_id = ui.id().with("PreviewModal");
+        let modal_id = ui.scope_id().with("PreviewModal");
 
         // Draw the modal before checking for clicks in the inspector.
         //

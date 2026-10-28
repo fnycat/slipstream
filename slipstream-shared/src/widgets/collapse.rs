@@ -99,7 +99,7 @@ where
         "Collapsing header row rect had NaN entries: {header_rect:?}"
     );
 
-    let row_response = ui.interact(header_rect, ui.id().with(id), egui::Sense::click());
+    let row_response = ui.interact(header_rect, ui.scope_id().with(id), egui::Sense::click());
 
     // If the cursor hovers over the node, fill the background with a different colour.
     if ui.rect_contains_pointer(header_rect) {

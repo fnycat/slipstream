@@ -248,7 +248,7 @@ impl Inspect for glam::Mat4 {
         let mut changes = Changes::default();
 
         // We use a max row size of 1 because a single "entry" is a vec4 which already has 4 inputs.
-        widgets::wrapped(ui, ui.id().with("Mat4"), vecs, 1, |ui, item| {
+        widgets::wrapped(ui, ui.scope_id().with("Mat4"), vecs, 1, |ui, item| {
             changes |= item.draw_inner(ui, cfg);
         });
 

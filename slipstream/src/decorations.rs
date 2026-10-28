@@ -99,7 +99,7 @@ pub fn draw_version_details(ui: &mut egui::Ui) {
     ui.ctx()
         .layer_painter(egui::LayerId::new(
             egui::Order::Foreground,
-            egui::Id::new("version_overlay")
+            egui::Id::unique("version_overlay")
         ))
         .text(
             pos,
@@ -253,7 +253,7 @@ impl App {
     ///
     /// These are the `File`, `Edit`, buttons you often see in application .
     pub fn draw_upper_toolbar(&mut self, ui: &mut egui::Ui) -> SlipstreamResult<()> {
-        let decorations_id = egui::Id::new("title_panel");
+        let decorations_id = egui::Id::unique("title_panel");
 
         let egui::InnerResponse { inner, .. } = egui::Panel::top(decorations_id)
             .frame(
@@ -388,7 +388,7 @@ impl App {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
     let layout_bg = ui.style().visuals.panel_fill;
-    let decorations_id = egui::Id::new("titlebar_panel");
+    let decorations_id = egui::Id::unique("titlebar_panel");
 
     egui::Panel::top(decorations_id)
         .frame(

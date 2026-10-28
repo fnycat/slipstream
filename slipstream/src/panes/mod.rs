@@ -97,7 +97,7 @@ pub trait Pane: Send + Sync {
                     if ui
                         .interact(
                             ui.available_rect_before_wrap(),
-                            ui.id().with("pane_header"),
+                            ui.scope_id().with("pane_header"),
                             egui::Sense::drag()
                         )
                         .drag_started()

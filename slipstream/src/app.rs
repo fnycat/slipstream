@@ -84,7 +84,8 @@ fn create_initial_layout(
         focused_pane: None
     };
 
-    let pane_tree = egui_tiles::Tree::new(egui::Id::new("editor_pane_tree"), container_id, tiles);
+    let pane_tree =
+        egui_tiles::Tree::new(egui::Id::unique("editor_pane_tree"), container_id, tiles);
 
     Ok((pane_behavior, pane_tree))
 }
@@ -369,7 +370,7 @@ impl App {
     ///
     /// When the user closes the window, the app's panic info is reset to `None`.
     pub fn draw_panic_modal(&mut self, ui: &mut egui::Ui) {
-        let modal_id = egui::Id::new("panic_modal");
+        let modal_id = egui::Id::unique("panic_modal");
         egui::Modal::new(modal_id).show(ui.ctx(), |ui| {
             let panic = self.panic_info.as_ref().unwrap();
 
