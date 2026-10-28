@@ -50,5 +50,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {
     let green = select(0.0, 1.0, in.ty == KEY_TYPE);
     let blue = select(0.0, 1.0, in.ty == LAP_TYPE);
 
-    return vec4f(red, green, blue, 0.25);
+    return vec4f(red, green, blue, 0.9);
 }

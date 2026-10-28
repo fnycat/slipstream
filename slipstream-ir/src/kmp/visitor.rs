@@ -71,7 +71,7 @@ pub trait KmpVisitor {
     }
 
     fn visit_enemy_route_points(
-        &self,
+        &mut self,
         context: VisitorCtx<'_, EnemyRoutePoints>
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {

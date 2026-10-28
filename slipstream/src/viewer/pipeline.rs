@@ -9,7 +9,7 @@ use crate::shared::GraphicsState;
 use crate::shared::vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex3};
 use crate::viewer::camera::{Camera, CameraController, CameraUniformData, FreeCamera};
 use crate::viewer::grid::GridPipeline;
-use crate::viewer::kmp_view::KmpPipeline;
+use crate::viewer::kmp::KmpPipeline;
 use crate::viewer::registry::{ViewerId, ViewerRegistry};
 use crate::viewer::skeleton::SkeletonPipeline;
 use crate::viewer::translation::IntermediateModel;
@@ -284,8 +284,6 @@ impl CameraState {
             inverse_view_proj: view_proj.inverse()
         };
 
-        tracing::debug!("inverse view proj: {:?}", uniform_data.inverse_view_proj);
-
         let uniform_buffer = state
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -504,7 +502,7 @@ impl ViewerPipelines {
 
             camera_move_speed = model_diameter * 0.01;
 
-            (model_center, model_diameter * 0.5)
+            (model_center, model_diameter * 0.05)
         } else {
             camera_move_speed = 1.0;
             (glam::Vec3::ZERO, 5.0)

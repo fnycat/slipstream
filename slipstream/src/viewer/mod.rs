@@ -1,12 +1,12 @@
 pub mod camera;
 pub mod grid;
-pub mod kmp_view;
 pub mod pipeline;
 pub mod registry;
 pub mod skeleton;
 pub mod toolbar;
 pub mod translation;
 pub mod wgpu;
+pub mod kmp;
 
 use std::sync::{Arc, mpsc};
 

@@ -7,99 +7,8 @@ use slipstream_ir::visitor::{Visitor, VisitorCtx};
 use slipstream_shared::SlipstreamResult;
 use wgpu::util::DeviceExt;
 
+use crate::viewer::kmp::KmpRootVisitor;
 use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT, ViewerPipeline};
-
-#[derive(Default)]
-struct KmpRootVisitor {
-    node: Option<IrNodeKey>,
-    respawns: Vec<RespawnPoint>
-}
-
-impl Visitor for KmpRootVisitor {
-    fn as_kmp(&mut self) -> Option<&mut dyn KmpVisitor> {
-        Some(self)
-    }
-}
-
-impl KmpVisitor for KmpRootVisitor {
-    fn visit_kmp(&mut self, ctx: VisitorCtx<'_, KmpHeader>) -> ControlFlow<()> {
-        if ctx.meta.label == "course.kmp" {
-            tracing::debug!("Found `course.kmp` at node {:?}", ctx.meta.key);
-            self.node = Some(ctx.meta.key);
-        }
-        ControlFlow::Continue(())
-    }
-
-    fn visit_respawns(&mut self, context: VisitorCtx<'_, Respawns>) -> ControlFlow<()> {
-        self.respawns = context.content.respawns.clone();
-        ControlFlow::Continue(())
-    }
-}
-
-pub struct KmpPipeline {
-    pub course_kmp: IrNodeKey,
-    pub arena: Arc<IrArena>,
-    checkpoints: Option<CheckpointsPipeline>
-}
-
-impl KmpPipeline {
-    pub fn from_root(
-        device: &wgpu::Device,
-        camera_bg_layout: &wgpu::BindGroupLayout,
-        camera_bg: wgpu::BindGroup,
-        arena: Arc<IrArena>
-    ) -> SlipstreamResult<Option<Self>> {
-        // Check if a file is actually open before trying to find the node
-        if arena.is_empty() {
-            return Ok(None);
-        }
-
-        // Find the `course.kmp` file.
-        let mut vis = KmpRootVisitor::default();
-        arena.visit_children(IrNodeKey::ROOT, &mut vis)?;
-
-        let Some(root) = vis.node else {
-            return Ok(None);
-        };
-
-        // course.kmp was found, we now start building buffers for rendering
-        let mut buffer_vis = KmpDrawVisitor {
-            device,
-
-            sections: vis,
-
-            camera_bg_layout,
-            camera_bg,
-            checkpoints_buffer: None
-        };
-        arena.visit_all(root, &mut buffer_vis)?;
-
-        tracing::trace!("Generated KMP buffers");
-
-        Ok(Some(Self {
-            course_kmp: root,
-            arena,
-            checkpoints: buffer_vis.checkpoints_buffer
-        }))
-    }
-}
-
-impl ViewerPipeline for KmpPipeline {
-    fn draw(&self, render_pass: &mut wgpu::RenderPass) {
-        if let Some(checkpoints) = &self.checkpoints {
-            checkpoints.draw(render_pass);
-        }
-    }
-}
-
-struct CheckpointsPipeline {
-    checkpoint_count: usize,
-    /// Vertex buffer contains only two vec3 corners, the box itself is generated in the vertex
-    /// shader.
-    vertex_buffer: wgpu::Buffer,
-    camera_bg: wgpu::BindGroup,
-    pipeline: wgpu::RenderPipeline
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, bytemuck::Zeroable, bytemuck::NoUninit)]
 #[repr(u32)]
@@ -125,6 +34,15 @@ struct CheckpointData {
     pub bounds: CheckpointBox2,
     pub respawn_y: f32,
     pub ty: CheckpointType
+}
+
+pub(super) struct CheckpointsPipeline {
+    checkpoint_count: usize,
+    /// Vertex buffer contains only two vec3 corners, the box itself is generated in the vertex
+    /// shader.
+    vertex_buffer: wgpu::Buffer,
+    camera_bg: wgpu::BindGroup,
+    pipeline: wgpu::RenderPipeline
 }
 
 impl CheckpointsPipeline {
@@ -179,7 +97,7 @@ impl CheckpointsPipeline {
         );
 
         let module =
-            device.create_shader_module(wgpu::include_wgsl!("../../shaders/checkpoint.wgsl"));
+            device.create_shader_module(wgpu::include_wgsl!("../../../shaders/checkpoint.wgsl"));
 
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("checkpoints pipeline layout"),
@@ -246,39 +164,5 @@ impl ViewerPipeline for CheckpointsPipeline {
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         pass.set_bind_group(0, &self.camera_bg, &[]);
         pass.draw(0..4, 0..self.checkpoint_count as u32);
-    }
-}
-
-struct KmpDrawVisitor<'a> {
-    device: &'a wgpu::Device,
-
-    sections: KmpRootVisitor,
-
-    camera_bg_layout: &'a wgpu::BindGroupLayout,
-    camera_bg: wgpu::BindGroup,
-
-    checkpoints_buffer: Option<CheckpointsPipeline>
-}
-
-impl KmpVisitor for KmpDrawVisitor<'_> {
-    fn stop_when_uninterested(&self) -> bool {
-        false
-    }
-
-    fn visit_checkpoints(&mut self, context: VisitorCtx<'_, Checkpoints>) -> ControlFlow<()> {
-        self.checkpoints_buffer = Some(CheckpointsPipeline::new(
-            self.device,
-            self.camera_bg_layout,
-            self.camera_bg.clone(),
-            &context.checkpoints,
-            &self.sections.respawns
-        ));
-        ControlFlow::Continue(())
-    }
-}
-
-impl Visitor for KmpDrawVisitor<'_> {
-    fn as_kmp(&mut self) -> Option<&mut dyn KmpVisitor> {
-        Some(self)
     }
 }
