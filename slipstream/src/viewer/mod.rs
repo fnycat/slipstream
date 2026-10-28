@@ -57,7 +57,7 @@ impl ViewerPane {
             .map(|model| model.to_intermediate(&arena))
             .transpose()?;
 
-        let pipeline = ViewerPipelines::new(render_state.clone(), model)?;
+        let pipeline = ViewerPipelines::new(Arc::clone(&arena), render_state.clone(), model)?;
         let viewer_id = render_state.insert(pipeline);
 
         Ok(Box::new(Self {

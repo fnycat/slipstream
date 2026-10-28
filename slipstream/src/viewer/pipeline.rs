@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use eframe::egui_wgpu;
+use slipstream_ir::node::arena::IrArena;
 use slipstream_shared::SlipstreamResult;
 use wgpu::util::DeviceExt;
 
@@ -482,6 +485,7 @@ pub struct ViewerPipelines {
 
 impl ViewerPipelines {
     pub fn new(
+        arena: Arc<IrArena>,
         graphics_state: GraphicsState,
         intermediate_model: Option<IntermediateModel>
     ) -> SlipstreamResult<Self> {
@@ -569,7 +573,10 @@ impl ViewerPipelines {
             pipelines.push(pipeline);
         }
 
-        // Check if the current node contains a `course.kmp file`
+        // Check if the file contains a `course.kmp` file
+        if let Some(pipeline) = KmpPipeline::from_root(arena) {
+            pipelines.push(pipeline);
+        }
 
         Ok(Self {
             camera_state,
