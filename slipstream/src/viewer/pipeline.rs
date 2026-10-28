@@ -6,6 +6,7 @@ use crate::shared::GraphicsState;
 use crate::shared::vertex::{CUBE_INDICES, CUBE_VERTICES, Vertex3};
 use crate::viewer::camera::{Camera, CameraController, CameraUniformData, FreeCamera};
 use crate::viewer::grid::GridPipeline;
+use crate::viewer::kmp_view::KmpPipeline;
 use crate::viewer::registry::{ViewerId, ViewerRegistry};
 use crate::viewer::skeleton::SkeletonPipeline;
 use crate::viewer::translation::IntermediateModel;
@@ -437,20 +438,49 @@ impl ModelState {
     }
 }
 
-pub struct ViewerPipeline {
+pub trait ViewerPipeline: Send + Sync {
+    fn draw(&self, render_pass: &mut wgpu::RenderPass);
+}
+
+impl<T: ViewerPipeline + 'static> From<T> for Box<dyn ViewerPipeline> {
+    fn from(value: T) -> Self {
+        Box::new(value)
+    }
+}
+
+#[derive(Default)]
+pub struct ViewerPipelineRegistry {
+    pipelines: Vec<Box<dyn ViewerPipeline>>
+}
+
+impl ViewerPipelineRegistry {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn push<P: Into<Box<dyn ViewerPipeline>>>(&mut self, pipeline: P) -> usize {
+        self.pipelines.push(pipeline.into());
+        self.pipelines.len() - 1
+    }
+
+    pub fn draw_all(&self, render_pass: &mut wgpu::RenderPass) {
+        for pipeline in &self.pipelines {
+            pipeline.draw(render_pass);
+        }
+    }
+}
+
+pub struct ViewerPipelines {
     pub graphics_state: GraphicsState,
     pub viewport_size: glam::UVec2,
 
-    pub skeleton: Option<SkeletonPipeline>,
-    pub grid: GridPipeline,
+    pub pipelines: ViewerPipelineRegistry,
 
     pub camera_state: CameraState,
-    pub screen_texture_state: ScreenTextureState,
-    // pub pipeline_state: PipelineState,
-    pub model_state: Option<WgpuModel>
+    pub screen_texture_state: ScreenTextureState
 }
 
-impl ViewerPipeline {
+impl ViewerPipelines {
     pub fn new(
         graphics_state: GraphicsState,
         intermediate_model: Option<IntermediateModel>
@@ -512,7 +542,15 @@ impl ViewerPipeline {
             })
             .transpose()?;
 
-        let skeleton = model_state.as_ref().map(|model| {
+        let mut pipelines = ViewerPipelineRegistry::new();
+
+        pipelines.push(GridPipeline::new(
+            &graphics_state.device,
+            &camera_state.bind_group_layout,
+            camera_state.bind_group.clone()
+        ));
+
+        let skeleton_pipeline = model_state.as_ref().map(|model| {
             SkeletonPipeline::new(
                 &graphics_state.device,
                 &camera_state.bind_group_layout,
@@ -523,20 +561,21 @@ impl ViewerPipeline {
             )
         });
 
-        let grid = GridPipeline::new(
-            &graphics_state.device,
-            &camera_state.bind_group_layout,
-            camera_state.bind_group.clone()
-        );
+        if let Some(model) = model_state {
+            pipelines.push(model);
+        }
+
+        if let Some(pipeline) = skeleton_pipeline {
+            pipelines.push(pipeline);
+        }
+
+        // Check if the current node contains a `course.kmp file`
 
         Ok(Self {
             camera_state,
             screen_texture_state,
-            // pipeline_state,
-            model_state,
 
-            skeleton,
-            grid,
+            pipelines,
 
             viewport_size,
             graphics_state
@@ -588,15 +627,7 @@ impl ViewerPipeline {
             multiview_mask: None
         });
 
-        self.grid.draw(&mut render_pass);
-
-        if let Some(model) = &self.model_state {
-            model.draw(&mut render_pass);
-        }
-
-        if let Some(skeleton) = &self.skeleton {
-            skeleton.draw(&mut render_pass);
-        }
+        self.pipelines.draw_all(&mut render_pass);
 
         Vec::new()
     }

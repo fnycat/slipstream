@@ -1,5 +1,6 @@
 pub mod camera;
 pub mod grid;
+pub mod kmp_view;
 pub mod pipeline;
 pub mod registry;
 pub mod skeleton;
@@ -12,7 +13,7 @@ use std::sync::{Arc, mpsc};
 use crate::panes::{Pane, PaneAction, PaneId, PaneResponse};
 use crate::shared::GraphicsState;
 use crate::viewer::camera::CameraController;
-use crate::viewer::pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipeline};
+use crate::viewer::pipeline::{TEXTURE_FILTER_MODE, ViewerCallback, ViewerPipelines};
 use crate::viewer::registry::ViewerId;
 use crate::viewer::translation::ModelContents;
 use eframe::egui_wgpu;
@@ -32,11 +33,11 @@ pub struct ViewerPane {
 impl ViewerPane {
     pub fn update_graphics<F, T>(&self, update_fn: F) -> SlipstreamResult<T>
     where
-        F: FnOnce(&mut ViewerPipeline) -> SlipstreamResult<T>
+        F: FnOnce(&mut ViewerPipelines) -> SlipstreamResult<T>
     {
         let mut guard = self.render_state.renderer.write();
         let pipeline = try_unwrap!(
-            guard.callback_resources.get_mut::<ViewerPipeline>(),
+            guard.callback_resources.get_mut::<ViewerPipelines>(),
             "viewer pipeline did not exist"
         )?;
 
@@ -56,7 +57,7 @@ impl ViewerPane {
             .map(|model| model.to_intermediate(&arena))
             .transpose()?;
 
-        let pipeline = ViewerPipeline::new(render_state.clone(), model)?;
+        let pipeline = ViewerPipelines::new(render_state.clone(), model)?;
         let viewer_id = render_state.insert(pipeline);
 
         Ok(Box::new(Self {

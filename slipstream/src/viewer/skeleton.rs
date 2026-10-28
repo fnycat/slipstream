@@ -1,4 +1,4 @@
-use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT};
+use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT, ViewerPipeline};
 
 pub struct SkeletonPipeline {
     bone_count: u32,
@@ -35,15 +35,7 @@ impl SkeletonPipeline {
                     constants: &[("line_width", 2.0)],
                     zero_initialize_workgroup_memory: false
                 },
-                buffers: &[Some(wgpu::VertexBufferLayout {
-                    array_stride: 3 * size_of::<f32>() as u64,
-                    attributes: &[wgpu::VertexAttribute {
-                        format: wgpu::VertexFormat::Float32x3,
-                        offset: 0,
-                        shader_location: 0
-                    }],
-                    step_mode: wgpu::VertexStepMode::Vertex
-                })]
+                buffers: &[]
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
@@ -91,11 +83,13 @@ impl SkeletonPipeline {
     }
 
     pub fn update_skeleton(&mut self) {}
+}
 
-    pub fn draw(&self, render_pass: &mut wgpu::RenderPass<'_>) {
-        render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
-        render_pass.set_bind_group(1, &self.bone_transform_bind_group, &[]);
-        render_pass.draw(0..4, 0..self.bone_count);
+impl ViewerPipeline for SkeletonPipeline {
+    fn draw(&self, pass: &mut wgpu::RenderPass<'_>) {
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &self.camera_bind_group, &[]);
+        pass.set_bind_group(1, &self.bone_transform_bind_group, &[]);
+        pass.draw(0..4, 0..self.bone_count);
     }
 }

@@ -4,7 +4,7 @@ use slipstream_ir::tpl::{EncodedImage, Rgba8Image};
 use slipstream_shared::SlipstreamResult;
 use wgpu::util::DeviceExt;
 
-use crate::viewer::pipeline::CameraState;
+use crate::viewer::pipeline::{CameraState, ViewerPipeline};
 use crate::viewer::translation::{IntermediateModel, IntermediatePolygon};
 use crate::viewer::wgpu::{PipelineDescriptor, PipelineRegistry, PipelineSignature};
 
@@ -119,8 +119,10 @@ impl WgpuModel {
             polygons
         })
     }
+}
 
-    pub fn draw(&self, render_pass: &mut wgpu::RenderPass) {
+impl ViewerPipeline for WgpuModel {
+    fn draw(&self, render_pass: &mut wgpu::RenderPass) {
         for polygon in &self.polygons {
             polygon.draw(
                 &self.pipelines,

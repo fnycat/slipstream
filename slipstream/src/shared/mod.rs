@@ -8,7 +8,7 @@ use std::sync::Arc;
 use eframe::egui_wgpu;
 use egui::mutex::RwLock;
 
-use crate::viewer::pipeline::ViewerPipeline;
+use crate::viewer::pipeline::ViewerPipelines;
 use crate::viewer::registry::{ViewerId, ViewerRegistry};
 
 #[derive(Clone)]
@@ -21,7 +21,7 @@ pub struct GraphicsState {
 }
 
 impl GraphicsState {
-    pub fn insert(&self, pipeline: ViewerPipeline) -> ViewerId {
+    pub fn insert(&self, pipeline: ViewerPipelines) -> ViewerId {
         let mut guard = self.renderer.write();
         let registry = guard
             .callback_resources
@@ -33,7 +33,7 @@ impl GraphicsState {
 
     pub fn inspect_viewer<F, T>(&self, viewer: ViewerId, inspect_fn: F) -> Option<T>
     where
-        F: FnOnce(&ViewerPipeline) -> T
+        F: FnOnce(&ViewerPipelines) -> T
     {
         let guard = self.renderer.read();
         guard
@@ -44,7 +44,7 @@ impl GraphicsState {
 
     pub fn update_viewer<F, T>(&self, viewer: ViewerId, update_fn: F) -> Option<T>
     where
-        F: FnOnce(&mut ViewerPipeline) -> T
+        F: FnOnce(&mut ViewerPipelines) -> T
     {
         let mut guard = self.renderer.write();
         guard

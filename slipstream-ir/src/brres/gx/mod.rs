@@ -230,9 +230,9 @@ impl GxBytecode {
         const TEV_BYTECODE_SIZE: usize = 0x20; // Size is always 0x20
 
         let section_end = reader.position() + TEV_BYTECODE_SIZE as u64;
-        // let mut commands = Vec::new();
+        let mut commands = Vec::new();
 
-        todo!();
+        // todo!();
 
         //         while reader.position() < section_end {
         //             let opcode = GxOpCodeId::try_from(reader.read_u8()?)?;
@@ -252,6 +252,6 @@ impl GxBytecode {
         //             break;
         //         }
 
-        // Ok(Self { commands })
+        Ok(Self { commands })
     }
 }

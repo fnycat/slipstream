@@ -1,4 +1,4 @@
-use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT};
+use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT, ViewerPipeline};
 
 /// Pipeline that renders the 3D view background grid.
 pub struct GridPipeline {
@@ -69,8 +69,10 @@ impl GridPipeline {
             camera_bind_group
         }
     }
+}
 
-    pub fn draw(&self, pass: &mut wgpu::RenderPass) {
+impl ViewerPipeline for GridPipeline {
+    fn draw(&self, pass: &mut wgpu::RenderPass) {
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.camera_bind_group, &[]);
         pass.draw(0..3, 0..1);
