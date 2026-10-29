@@ -14,5 +14,5 @@ bytemuck.workspace = true
 futures = "0.3.34"
 smallvec = "1.16.2"
 thiserror = "2.0.21"
-parking_lot = { version = "0.12.5", features = ["arc_lock"] }
+parking_lot = { version = "0.13.0", features = ["arc_lock"] }
 rfd = "0.17.2"
