@@ -3972,7 +3972,7 @@ dependencies = [
  "image",
  "nohash-hasher",
  "parking_lot 0.13.0",
- "parking_lot_core 0.9.12",
+ "parking_lot_core 0.10.0",
  "paste",
  "rayon",
  "rfd",
