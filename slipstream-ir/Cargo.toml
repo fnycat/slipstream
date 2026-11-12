@@ -26,7 +26,7 @@ image.workspace = true
 bytemuck.workspace = true
 futures.workspace = true
 
-parking_lot = { version = "0.12.5", features = ["arc_lock"] }
+parking_lot = { version = "0.13.0", features = ["arc_lock"] }
 paste = "1.0.15"
 nohash-hasher = "0.2.0"
 rayon = "1.12.0"
