@@ -30,9 +30,9 @@ parking_lot = { version = "0.13.0", features = ["arc_lock"] }
 paste = "1.0.15"
 nohash-hasher = "0.2.0"
 rayon = "1.12.0"
-parking_lot_core = "0.9.12"
+parking_lot_core = "0.10.0"
 downcast-rs = "2.0.2"
-rfd = "0.17.2"
+rfd = "0.18.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4.30"
