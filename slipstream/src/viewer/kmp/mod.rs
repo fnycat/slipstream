@@ -1,14 +1,19 @@
 mod checkpoints;
 mod enemy_routes;
 
-use std::{ops::ControlFlow, sync::Arc};
+use std::ops::ControlFlow;
+use std::sync::Arc;
 
 pub use checkpoints::*;
-use slipstream_ir::{kmp::{Checkpoints, EnemyRoutePoint, EnemyRoutePoints, KmpHeader, KmpVisitor, RespawnPoint, Respawns}, node::arena::{IrArena, IrNodeKey}, visitor::{Visitor, VisitorCtx}};
+use slipstream_ir::kmp::{
+    Checkpoints, EnemyRoutePoint, EnemyRoutePoints, KmpHeader, KmpVisitor, RespawnPoint, Respawns
+};
+use slipstream_ir::node::arena::{IrArena, IrNodeKey};
+use slipstream_ir::visitor::{Visitor, VisitorCtx};
 use slipstream_shared::SlipstreamResult;
 
-use crate::viewer::{kmp::enemy_routes::EnemyRoutesPipeline, pipeline::ViewerPipeline};
-
+use crate::viewer::kmp::enemy_routes::EnemyRoutesPipeline;
+use crate::viewer::pipeline::ViewerPipeline;
 
 #[derive(Default)]
 struct KmpRootVisitor {
@@ -132,13 +137,12 @@ impl KmpVisitor for KmpPipelineVisitor<'_> {
     fn visit_enemy_route_points(
         &mut self,
         context: VisitorCtx<'_, EnemyRoutePoints>
-    ) -> ControlFlow<()>
-    {
+    ) -> ControlFlow<()> {
         self.enemy_routes_pipeline = Some(EnemyRoutesPipeline::new(
             self.device,
             self.camera_bg_layout,
             self.camera_bg.clone(),
-            &context.points,
+            &context.points
         ));
         ControlFlow::Continue(())
     }

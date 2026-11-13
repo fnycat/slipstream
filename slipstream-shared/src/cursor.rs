@@ -2,7 +2,8 @@ use std::io::{self, SeekFrom, Write};
 use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
 
-use crate::{SlipstreamResult, verify};
+use crate::error::RangeError;
+use crate::{SlipstreamError, SlipstreamResult, verify};
 
 /// Estimates the size of this type when serialized into a buffer.
 /// This is used to preallocate.
@@ -34,6 +35,131 @@ impl MutCursor {
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    /// Returns the given range of bytes, taking into account the cursor position.
+    ///
+    /// This function returns an error if the range is out of bounds of the array.
+    pub fn slice<B: RangeBounds<usize>>(&self, range: B) -> SlipstreamResult<&[u8]> {
+        // This code is copied over from `RefCursor::slice`.
+
+        let start = range.start_bound();
+        let end = range.end_bound();
+
+        let rem = self.len();
+        let start = match start {
+            Bound::Unbounded => 0,
+            Bound::Included(&x) => {
+                verify!(
+                    x < rem,
+                    "start bound is larger than slice length ({rem} vs. {x})"
+                );
+                x
+            }
+            Bound::Excluded(&x) => {
+                verify!(
+                    x + 1 < rem,
+                    "start bound is larger than slice length ({rem} vs. {x})"
+                );
+                x + 1
+            }
+        };
+
+        let end = match end {
+            Bound::Unbounded => rem,
+            Bound::Included(&x) => {
+                verify!(
+                    x + 1 < rem,
+                    "end bound exceeds slice length ({rem} vs. {x})"
+                );
+                x + 1
+            }
+            Bound::Excluded(&x) => {
+                verify!(x < rem, "end bound exceeds slice length ({rem} vs. {x}");
+                x
+            }
+        };
+
+        // Then ensure the start index does not exceed the end.
+        verify!(
+            start <= end,
+            "start bound is larger than end bound ({start} vs. {end})"
+        );
+
+        Ok(&self.inner[start..end])
+    }
+
+    /// Returns the given range of bytes, taking into account the cursor position.
+    ///
+    /// This function returns an error if the range is out of bounds of the array.
+    pub fn slice_mut<B: RangeBounds<usize>>(&mut self, range: B) -> SlipstreamResult<&mut [u8]> {
+        // This code is copied over from `RefCursor::slice`.
+
+        let start = range.start_bound();
+        let end = range.end_bound();
+
+        let rem = self.len();
+        let start = match start {
+            Bound::Unbounded => 0,
+            Bound::Included(&x) => {
+                verify!(
+                    x < rem,
+                    "start bound is larger than slice length ({rem} vs. {x})"
+                );
+                x
+            }
+            Bound::Excluded(&x) => {
+                verify!(
+                    x + 1 < rem,
+                    "start bound is larger than slice length ({rem} vs. {x})"
+                );
+                x + 1
+            }
+        };
+
+        let end = match end {
+            Bound::Unbounded => rem,
+            Bound::Included(&x) => {
+                verify!(
+                    x + 1 < rem,
+                    "end bound exceeds slice length ({rem} vs. {x})"
+                );
+                x + 1
+            }
+            Bound::Excluded(&x) => {
+                verify!(x < rem, "end bound exceeds slice length ({rem} vs. {x}");
+                x
+            }
+        };
+
+        // Then ensure the start index does not exceed the end.
+        verify!(
+            start <= end,
+            "start bound is larger than end bound ({start} vs. {end})"
+        );
+
+        Ok(&mut self.inner[start..end])
+    }
+
+    /// Writes into existing cursor space.
+    ///
+    /// # Errors
+    ///
+    /// The entire buffer must fit within already allocated space (`pos + N < cursor.len()`)
+    pub fn write_at<const N: usize>(&mut self, pos: usize, bytes: [u8; N]) -> SlipstreamResult<()> {
+        if pos + N >= self.len() {
+            return Err(RangeError {
+                requested: (pos + N) as u64,
+                range: 0..self.len() as u64,
+                location: Some(pos as u64)
+            }
+            .into());
+        }
+
+        let dest = &mut self.inner[pos..pos + N];
+        dest.copy_from_slice(&bytes);
+
+        Ok(())
     }
 }
 

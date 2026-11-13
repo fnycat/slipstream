@@ -9,7 +9,6 @@ use crate::brres::{
     ColorBuffer, Definitions, DeserializeContents, Material, MdlSectionType, NormalBuffer,
     PaletteLinks, Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer
 };
-use crate::fixup::FixupPass;
 use crate::node::arena::IrArena;
 use crate::node::lazy::{DeferPayload, DynContent};
 use crate::node::node::{IrNode, IrNodeType};

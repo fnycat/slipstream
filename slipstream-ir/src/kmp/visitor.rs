@@ -3,7 +3,8 @@ use std::ops::ControlFlow;
 use crate::kmp::enph::EnemyRoutes;
 use crate::kmp::enpt::EnemyRoutePoints;
 use crate::kmp::{
-    Areas, CheckpointGroups, Checkpoints, GeoObjects, ItemRoutePoints, ItemRoutes, KmpHeader, PointInformationPaths, Respawns, StartingPositions
+    Areas, CheckpointGroups, Checkpoints, GeoObjects, ItemRoutePoints, ItemRoutes, KmpHeader,
+    PointInformationPaths, Respawns, StartingPositions
 };
 use crate::visitor::{VisitorCtx, VisitorCtxMut};
 

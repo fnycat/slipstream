@@ -1,8 +1,8 @@
 pub mod arc;
 pub mod brres;
 pub mod compression;
+pub mod defer;
 pub mod encoding;
-pub mod fixup;
 pub mod index;
 pub mod kcl;
 pub mod kmp;

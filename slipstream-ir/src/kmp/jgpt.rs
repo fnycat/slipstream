@@ -27,7 +27,10 @@ impl RespawnPoint {
         let user_data = reader.read_i16::<BigEndian>()?;
 
         Ok(Self {
-            position, rotation, id, user_data
+            position,
+            rotation,
+            id,
+            user_data
         })
     }
 }

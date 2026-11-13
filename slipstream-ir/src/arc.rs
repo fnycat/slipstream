@@ -10,8 +10,8 @@ use slipstream_shared::error::{
 };
 
 use crate::brres::{self, BRRES_MAGIC};
+use crate::defer::StringPool;
 use crate::encoding::{ReadArrayExt, ReadStringExt, WriteArrayExt};
-use crate::fixup::{DEFER_PLACEHOLDER, DEFER_PLACEHOLDER24, DeferredString, FixupPass, StringPool};
 use crate::kmp::KMP_MAGIC;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNode, IrNodeType};
@@ -415,7 +415,7 @@ pub fn serialize_inner(
     node: IrNodeKey,
     writer: &mut MutCursor,
     string_pool: &mut StringPool,
-    pass: &mut FixupPass,
+    // pass: &mut FixupPass,
     id_counter: &mut u32,
     parent: u32
 ) -> SlipstreamResult<()> {

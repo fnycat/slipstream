@@ -1,7 +1,10 @@
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use slipstream_ir::kmp::{Checkpoint, CheckpointBox2, Checkpoints, EnemyRoutePoint, KmpHeader, KmpVisitor, RespawnPoint, Respawns};
+use slipstream_ir::kmp::{
+    Checkpoint, CheckpointBox2, Checkpoints, EnemyRoutePoint, KmpHeader, KmpVisitor, RespawnPoint,
+    Respawns
+};
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::visitor::{Visitor, VisitorCtx};
 use slipstream_shared::SlipstreamResult;
@@ -36,14 +39,16 @@ impl EnemyRoutesPipeline {
         device: &wgpu::Device,
         camera_bg_layout: &wgpu::BindGroupLayout,
         camera_bg: wgpu::BindGroup,
-        route_points: &[EnemyRoutePoint],
+        route_points: &[EnemyRoutePoint]
     ) -> Self {
         let point_count = route_points.len();
 
         // 6 floats per checkpoint
         let mut bounds = Vec::with_capacity(point_count);
         for (i, point) in route_points.iter().enumerate() {
-            bounds.push(PointData { position: point.position });
+            bounds.push(PointData {
+                position: point.position
+            });
         }
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -57,8 +62,9 @@ impl EnemyRoutesPipeline {
             point_count
         );
 
-        let module =
-            device.create_shader_module(wgpu::include_wgsl!("../../../shaders/enemy_route_points.wgsl"));
+        let module = device.create_shader_module(wgpu::include_wgsl!(
+            "../../../shaders/enemy_route_points.wgsl"
+        ));
 
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("enemy route points pipeline layout"),

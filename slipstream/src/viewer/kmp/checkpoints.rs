@@ -1,7 +1,9 @@
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use slipstream_ir::kmp::{Checkpoint, CheckpointBox2, Checkpoints, KmpHeader, KmpVisitor, RespawnPoint, Respawns};
+use slipstream_ir::kmp::{
+    Checkpoint, CheckpointBox2, Checkpoints, KmpHeader, KmpVisitor, RespawnPoint, Respawns
+};
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::visitor::{Visitor, VisitorCtx};
 use slipstream_shared::SlipstreamResult;
@@ -70,18 +72,20 @@ impl CheckpointsPipeline {
         let mut bounds = Vec::with_capacity(checkpoint_count);
         for (i, checkpoint) in checkpoints.iter().enumerate() {
             let respawn_y = match respawns.get(checkpoint.respawn_index as usize) {
-                Some(respawn) => {
-                    respawn.position.y
-                },
+                Some(respawn) => respawn.position.y,
                 None => {
-                    tracing::error!("Respawn point index out of range for checkpoint {i} ({} > {})", checkpoint.respawn_index, respawns.len());
+                    tracing::error!(
+                        "Respawn point index out of range for checkpoint {i} ({} > {})",
+                        checkpoint.respawn_index,
+                        respawns.len()
+                    );
                     0.0
                 }
             };
 
             bounds.push(CheckpointData {
                 bounds: checkpoint.bounds,
-                respawn_y, 
+                respawn_y,
                 ty: CheckpointType::from(checkpoint.ty as u8)
             });
         }
