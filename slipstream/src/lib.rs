@@ -85,11 +85,18 @@ pub fn setup_tracing() {
 }
 
 fn window_builder_hook(builder: egui::ViewportBuilder) -> egui::ViewportBuilder {
-    builder
+    let builder = builder
         .with_title("Slipstream")
-        .with_inner_size(DEFAULT_SIZE)
-        .with_decorations(false)
-        .with_resizable(false)
+        .with_inner_size(DEFAULT_SIZE);
+
+    if crate::config::uses_os_titlebar() {
+        // use the OS title bar if env variable is set.
+        tracing::info!("Using OS native title bar instead of custom");
+        builder
+    } else {
+        tracing::trace!("Using custom title bar");
+        builder.with_decorations(false)
+    }
 }
 
 /// Starts the entire application.

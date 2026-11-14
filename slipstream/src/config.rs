@@ -5,6 +5,11 @@ pub const LAUNCH_DELAY: Duration = Duration::from_millis(500);
 pub const DEFAULT_SIZE: egui::Vec2 = egui::Vec2::new(1280.0, 720.0);
 pub const APP_TITLE: &str = "Slipstream Editor";
 
+/// Returns `true` if the editor should use the OS title bar instead of drawing its own.
+pub fn uses_os_titlebar() -> bool {
+    std::env::var("SS_USE_OS_TITLEBAR").is_ok()
+}
+
 /// Configures the egui style to use for the dark theme.
 pub fn configure_dark_style() -> egui::Style {
     let style = egui::Theme::Dark.default_style();

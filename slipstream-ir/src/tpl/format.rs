@@ -10,6 +10,7 @@ use slipstream_shared::{RefCursor, SlipstreamResult};
 #[cfg(feature = "egui-impls")]
 use slipstream_shared::inspect::{Changes, FieldConfig};
 
+use crate::defer::WriteHandle;
 use crate::encoding::Deserialize;
 use crate::tpl::{
     CmprImage, EncodedImage, ExportableImage, L4Image, L8Image, La4Image, La8Image, Rgb5a3Image,
@@ -274,6 +275,19 @@ impl ImageData {
                 })
             }
         })
+    }
+
+    /// Serializes the image data, writing the location of the data to `img_address_handle`.
+    pub fn serialize(
+        &self,
+        writer: &mut MutCursor,
+        img_address_handle: WriteHandle<u32, BigEndian>
+    ) -> SlipstreamResult<()> {
+        img_address_handle.finish(writer, writer.len() as u32)?;
+
+        writer.write_u32::<BigEndian>(0xCAFEBABE)?;
+
+        Ok(())
     }
 }
 

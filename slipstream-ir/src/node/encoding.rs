@@ -16,7 +16,6 @@ use crate::visitor::{Visitor, VisitorCtx};
 
 pub struct SerializeVisitor<'a> {
     arena: &'a IrArena,
-    pass: &'a mut FixupPass,
     writer: &'a mut MutCursor,
     result: SlipstreamResult<()>
 }
@@ -26,7 +25,7 @@ impl Visitor for SerializeVisitor<'_> {
         // Only serialize the root ARC directory. It will serialize all its children with it.
         match arc.meta.ty {
             IrNodeType::ArcDirectory { is_root: true, .. } => {
-                self.result = arc::serialize(self.arena, arc.meta.key, self.writer, self.pass);
+                self.result = arc::serialize(self.arena, arc.meta.key, self.writer);
                 match self.result {
                     Ok(()) => ControlFlow::Continue(()),
                     Err(_) => ControlFlow::Break(())
@@ -46,11 +45,9 @@ pub fn serialize_node(
 ) -> SlipstreamResult<()> {
     tracing::trace!("Serializing node {:?}", node.key());
 
-    let mut pass = FixupPass::new();
     let mut visitor = SerializeVisitor {
         arena,
         writer,
-        pass: &mut pass,
         result: Ok(())
     };
     arena.visit_all(node.key, &mut visitor)?;

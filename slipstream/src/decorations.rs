@@ -42,7 +42,7 @@ impl WindowState {
 ///
 /// This does not exist on WASM platforms.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn draw_unmaximize(ui: &mut egui::Ui) -> egui::Response {
+fn draw_unmaximize(ui: &mut egui::Ui) -> egui::Response {
     let padding = ui.style().spacing.button_padding;
     let icon_size = egui::vec2(10.0, 10.0);
 
@@ -114,26 +114,11 @@ pub fn draw_version_details(ui: &mut egui::Ui) {
         );
 }
 
-/// Draws the background image with a gray overlay.
-pub fn draw_background(bg_image: &egui::Image, ui: &mut egui::Ui) {
-    let viewport_rect = ui.ctx().viewport_rect();
-
-    bg_image.paint_at(ui, viewport_rect);
-
-    let bg_overlay = if ui.theme() == egui::Theme::Dark {
-        egui::Color32::from_black_alpha(100)
-    } else {
-        egui::Color32::TRANSPARENT
-    };
-
-    ui.painter().rect_filled(viewport_rect, 0.0, bg_overlay);
-}
-
 /// Draws the title buttons (close, minimize, maximize).
 ///
 /// This does not exist on WASM.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn draw_title_buttons(ui: &mut egui::Ui) {
+fn draw_title_buttons(ui: &mut egui::Ui) {
     let layout_bg = ui.style().visuals.panel_fill;
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -399,6 +384,11 @@ impl App {
 /// This does not exist on WASM platforms.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
+    // Do nothing when the `SS_USE_OS_TITLEBAR` env variable is set
+    if crate::config::uses_os_titlebar() {
+        return;
+    }
+
     let layout_bg = ui.style().visuals.panel_fill;
     let decorations_id = egui::Id::unique("titlebar_panel");
 

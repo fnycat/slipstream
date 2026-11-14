@@ -42,30 +42,36 @@ impl<T: num::traits::ToBytes, B: ByteOrderExt> WriteHandle<T, B> {
             writer.copy_from_slice(value.to_le_bytes().as_ref());
         }
 
+        // Do not run the destructor.
+        std::mem::forget(self);
         Ok(())
+    }
+}
+
+#[cfg(debug_assertions)]
+impl<T, B> Drop for WriteHandle<T, B> {
+    fn drop(&mut self) {
+        if !std::thread::panicking() {
+            // Don't panic in a panic (as this would cause an abort)
+            panic!(
+                "write handle at location {} was dropped before being used",
+                self.location
+            );
+        }
     }
 }
 
 /// Adds deferred operations to the cursor, which allow reserving space for values that are not known yet.
 pub trait DeferredWriteExt {
     /// Reserves space for a i32, returning a handle to write into the space at a later time.
-    fn write_i32_def<B: ByteOrderExt>(
-        &mut self,
-        value: i32
-    ) -> SlipstreamResult<WriteHandle<i32, B>>;
+    fn write_i32_def<B: ByteOrderExt>(&mut self) -> SlipstreamResult<WriteHandle<i32, B>>;
 
     /// Reserves space for a u32, returning a handle to write into the space at a later time.
-    fn write_u32_def<B: ByteOrderExt>(
-        &mut self,
-        value: u32
-    ) -> SlipstreamResult<WriteHandle<u32, B>>;
+    fn write_lazy_u32<B: ByteOrderExt>(&mut self) -> SlipstreamResult<WriteHandle<u32, B>>;
 }
 
 impl DeferredWriteExt for MutCursor {
-    fn write_i32_def<B: byteorder::ByteOrder>(
-        &mut self,
-        value: i32
-    ) -> SlipstreamResult<WriteHandle<i32, B>> {
+    fn write_i32_def<B: byteorder::ByteOrder>(&mut self) -> SlipstreamResult<WriteHandle<i32, B>> {
         self.write_u32::<B>(PLACEHOLDER)?;
 
         Ok(WriteHandle {
@@ -74,10 +80,7 @@ impl DeferredWriteExt for MutCursor {
         })
     }
 
-    fn write_u32_def<B: byteorder::ByteOrder>(
-        &mut self,
-        value: u32
-    ) -> SlipstreamResult<WriteHandle<u32, B>> {
+    fn write_lazy_u32<B: byteorder::ByteOrder>(&mut self) -> SlipstreamResult<WriteHandle<u32, B>> {
         self.write_u32::<B>(PLACEHOLDER)?;
 
         Ok(WriteHandle {

@@ -452,15 +452,7 @@ pub fn serialize_inner(
             todo!();
 
             for child in &node.children {
-                serialize_inner(
-                    arena,
-                    *child,
-                    writer,
-                    string_pool,
-                    pass,
-                    id_counter,
-                    root_id
-                )?;
+                serialize_inner(arena, *child, writer, string_pool, id_counter, root_id)?;
             }
 
             Ok::<_, SlipstreamError>(())
@@ -470,26 +462,13 @@ pub fn serialize_inner(
     Ok(())
 }
 
-pub fn serialize(
-    arena: &IrArena,
-    node: IrNodeKey,
-    writer: &mut MutCursor,
-    pass: &mut FixupPass
-) -> SlipstreamResult<()> {
+pub fn serialize(arena: &IrArena, node: IrNodeKey, writer: &mut MutCursor) -> SlipstreamResult<()> {
     tracing::trace!("Serializing ARC file");
 
     let mut node_count = 0;
     let mut string_pool = StringPool::new();
 
-    serialize_inner(
-        arena,
-        node,
-        writer,
-        &mut string_pool,
-        pass,
-        &mut node_count,
-        0
-    )?;
+    serialize_inner(arena, node, writer, &mut string_pool, &mut node_count, 0)?;
 
     let string_pool = string_pool.finish();
     let header_start = writer.len();

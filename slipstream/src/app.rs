@@ -163,7 +163,7 @@ impl App {
 
     /// Draws the main app UI.
     fn draw_ui(&mut self, ui: &mut egui::Ui) {
-        // We don't need resizing or the title bar on WASM platforms.
+        // We don't need resizing or the title bar on WASM platforms or when the env variable is set.
         if let Err(err) = self.draw_upper_toolbar(ui) {
             tracing::error!("while drawing upper toolbar: {err}");
         };

@@ -1,11 +1,13 @@
 use std::ops::ControlFlow;
 
-use byteorder::{BigEndian, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::{Inspect, try_from};
+use slipstream_shared::cursor::MutCursor;
 use slipstream_shared::error::{CorruptionError, IncorrectFormat};
 use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult};
 
 use crate::brres::{MagnificationFilter, MinificationFilter, WrapMode};
+use crate::defer::{DeferredWriteExt, WriteHandle};
 use crate::encoding::{Deserialize, ReadArrayExt};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
@@ -275,6 +277,31 @@ impl ImageHeader {
             unpacked
         })
     }
+
+    /// Serializes the header, returning a handle to write the image data address later on.
+    pub fn serialize(
+        &self,
+        writer: &mut MutCursor
+    ) -> SlipstreamResult<WriteHandle<u32, BigEndian>> {
+        writer.write_u16::<BigEndian>(self.dimensions.y)?; // Height is stored first
+        writer.write_u16::<BigEndian>(self.dimensions.x)?;
+        self.format.serialize(writer)?;
+
+        // Unknown to the header.
+        let img_data_address = writer.write_lazy_u32::<BigEndian>()?;
+
+        self.wrap_s.serialize(writer)?;
+        self.wrap_t.serialize(writer)?;
+        self.min_filter.serialize(writer)?;
+        self.mag_filter.serialize(writer)?;
+        writer.write_f32::<BigEndian>(self.lod_bias)?;
+        writer.write_u8(self.enable_edge_lod as u8)?;
+        writer.write_u8(self.min_lod)?;
+        writer.write_u8(self.max_lod)?;
+        writer.write_u8(self.unpacked)?;
+
+        Ok(img_data_address)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
@@ -283,6 +310,15 @@ pub struct TplImage {
     pub header: ImageHeader,
     #[inspect(with = ImageData::draw_ui, read_only)]
     pub image: ImageData
+}
+
+impl TplImage {
+    pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
+        let img_data_handle = self.header.serialize(writer)?;
+        self.image.serialize(writer, img_data_handle)?;
+
+        Ok(())
+    }
 }
 
 impl Visitable for TplImage {

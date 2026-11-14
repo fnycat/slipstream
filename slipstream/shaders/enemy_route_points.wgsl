@@ -33,7 +33,7 @@ fn vs_main(
     );
 
     let offset = offsets[vi];
-    let corner = position + offset + vec3f(0.0, 50.0, 0.0); // raise the points slightly off the ground to avoid clipping
+    let corner = position + offset + vec3f(0.0, 200.0, 0.0); // raise the points slightly off the ground to avoid clipping
 
     var out: VertexOutput;
     out.clip = camera.view_proj * vec4f(corner, 1.0);
