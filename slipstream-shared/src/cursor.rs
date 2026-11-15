@@ -3,7 +3,7 @@ use std::ops::{Bound, RangeBounds};
 use std::sync::Arc;
 
 use crate::error::RangeError;
-use crate::{SlipstreamError, SlipstreamResult, verify};
+use crate::{SlipstreamResult, verify};
 
 /// Estimates the size of this type when serialized into a buffer.
 /// This is used to preallocate.
