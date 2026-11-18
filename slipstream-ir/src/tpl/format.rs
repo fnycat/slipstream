@@ -66,15 +66,24 @@ impl Deserialize for ImageFormat {
     }
 }
 
+/// Image data in an arbitrary format.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ImageData {
+    /// 4-bit luminance.
     Luminance4(L4Image),
+    /// 8-bit luminance.
     Luminance8(L8Image),
+    /// 4-bit luminance with a 4-bit alpha channel.
     LuminanceAlpha4(La4Image),
+    /// 8-bit luminance with an 8-bit alpha channel.
     LuminanceAlpha8(La8Image),
+    /// 5-bit colour channels with a 3-bit alpha channel.
     Rgb5a3(Rgb5a3Image),
+    /// 5-bit red channel, 6-bit green channel and 5-bit blue channel (no alpha)
     Rgb565(Rgb565Image),
+    /// Regular 8-bit colour + alpha channels.
     Rgba8(Rgba8Image),
+    /// DXT1 color palette compressed image.
     Cmpr(CmprImage)
 }
 
@@ -92,6 +101,7 @@ impl ImageData {
         self.export(&mut buf_writer, format)
     }
 
+    /// Exports to a given file in the given format.
     pub fn export_to_file_with_format<P: AsRef<Path>>(
         &self,
         filepath: P,
@@ -246,6 +256,7 @@ impl ImageData {
         inner.into()
     }
 
+    /// Reads the image data from the cursor.
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
         dims: glam::U16Vec2,
@@ -291,6 +302,7 @@ impl ImageData {
     }
 }
 
+/// Implement a few forwarder methods that forward the image methods to the format-specific implementation.
 macro_rules! impl_img_data {
     ($($ident:ident),*) => {
         impl ImageData {
@@ -309,6 +321,7 @@ macro_rules! impl_img_data {
                 }
             }
 
+            /// How many mipmaps does this image have?
             pub fn mipmaps(&self) -> u32 {
                 match &self {
                     $(
@@ -317,6 +330,7 @@ macro_rules! impl_img_data {
                 }
             }
 
+            /// Size of the image in pixels.
             pub fn dimensions(&self) -> glam::U16Vec2 {
                 match &self {
                     $(
@@ -325,6 +339,7 @@ macro_rules! impl_img_data {
                 }
             }
 
+            /// Creates a copy of this image in RGBA8 format.
             pub fn to_rgba8(&self) -> SlipstreamResult<Rgba8Image> {
                 match &self {
                     $(
@@ -333,6 +348,7 @@ macro_rules! impl_img_data {
                 }
             }
 
+            /// What is the storage format of this image?
             pub fn format(&self) -> ImageFormat {
                 match &self {
                     $(
@@ -341,6 +357,10 @@ macro_rules! impl_img_data {
                 }
             }
 
+            /// Hashes the raw contents of the image.
+            /// 
+            /// This is mainly used when converting images to textures to be displayed in the
+            /// editor.
             pub fn content_hash(&self) -> u64 {
                 match &self {
                     $(

@@ -37,7 +37,7 @@ impl KmpVisitor for KmpRootVisitor {
     }
 
     fn visit_respawns(&mut self, context: VisitorCtx<'_, Respawns>) -> ControlFlow<()> {
-        self.respawns = context.content.respawns.clone();
+        self.respawns.clone_from(&context.content.respawns);
         ControlFlow::Continue(())
     }
 }
@@ -124,13 +124,15 @@ impl KmpVisitor for KmpPipelineVisitor<'_> {
     }
 
     fn visit_checkpoints(&mut self, context: VisitorCtx<'_, Checkpoints>) -> ControlFlow<()> {
-        self.checkpoint_pipeline = Some(CheckpointsPipeline::new(
-            self.device,
-            self.camera_bg_layout,
-            self.camera_bg.clone(),
-            &context.checkpoints,
-            &self.sections.respawns
-        ));
+        if !context.checkpoints.is_empty() {
+            self.checkpoint_pipeline = Some(CheckpointsPipeline::new(
+                self.device,
+                self.camera_bg_layout,
+                self.camera_bg.clone(),
+                &context.checkpoints,
+                &self.sections.respawns
+            ));
+        }
         ControlFlow::Continue(())
     }
 
@@ -138,12 +140,14 @@ impl KmpVisitor for KmpPipelineVisitor<'_> {
         &mut self,
         context: VisitorCtx<'_, EnemyRoutePoints>
     ) -> ControlFlow<()> {
-        self.enemy_routes_pipeline = Some(EnemyRoutesPipeline::new(
-            self.device,
-            self.camera_bg_layout,
-            self.camera_bg.clone(),
-            &context.points
-        ));
+        if !context.points.is_empty() {
+            self.enemy_routes_pipeline = Some(EnemyRoutesPipeline::new(
+                self.device,
+                self.camera_bg_layout,
+                self.camera_bg.clone(),
+                &context.points
+            ));
+        }
         ControlFlow::Continue(())
     }
 }

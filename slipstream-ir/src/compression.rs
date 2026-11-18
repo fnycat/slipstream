@@ -9,6 +9,7 @@ use crate::encoding::ReadArrayExt;
 /// Magic of a YAZ0 file.
 pub const YAZ0_MAGIC: [u8; 4] = [0x59, 0x61, 0x7a, 0x30];
 
+/// A YAZ0 header.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
     /// Size in bytes of the uncompressed file.
@@ -43,6 +44,7 @@ impl Header {
     }
 }
 
+/// Decompressed a YAZ0-compressed buffer.
 pub fn decompress(compressed: &mut RefCursor<[u8]>) -> SlipstreamResult<Vec<u8>> {
     let yaz0_file = Yaz0File::deserialize(compressed)?;
 

@@ -4,6 +4,7 @@ use byteorder::ReadBytesExt;
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{CorruptionError, SlipstreamError, SlipstreamResult};
 
+/// Implements reading and writing methods for arrays.
 macro_rules! impl_byteorder_arrays {
     ($($ty: ty),*) => {
         paste::paste! {
@@ -53,11 +54,17 @@ macro_rules! impl_byteorder_arrays {
                 )*
             }
 
+            /// Extends [`ReadBytesExt`] with array methods.
+            /// 
+            /// [`ReadBytesExt`]: byteorder::ReadBytesExt
             pub trait ReadArrayExt: byteorder::ReadBytesExt {
+                /// Reads an `N`-element array of unsigned bytes.
                 fn read_u8_array<const N: usize>(&mut self) -> std::io::Result<[u8; N]>;
+                /// Reads an `N`-element array of signed bytes.
                 fn read_i8_array<const N: usize>(&mut self) -> std::io::Result<[i8; N]>;
 
                 $(
+                    #[doc = concat!("Reads a `", stringify!($ty), "` array of size `N` from the cursor.")]
                     fn [< read_ $ty _array >]<const N: usize, B: byteorder::ByteOrder>(&mut self)
                         -> std::io::Result<[$ty; N]>;
                 )*

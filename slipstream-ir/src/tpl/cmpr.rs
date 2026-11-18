@@ -30,6 +30,7 @@ impl CmprImage {
     #[cfg(feature = "egui-impls")]
     pub const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bc1RgbaUnorm;
 
+    /// The amount of subblocks in this image.
     pub const fn subblock_count(&self) -> usize {
         let dims = self.dimensions;
         let blocks_x = dims.x.div_ceil(8);

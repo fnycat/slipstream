@@ -34,10 +34,15 @@ impl syn::parse::Parse for TyAttrArg {
     }
 }
 
+/// Does the given attribute belong to the `Inspect` derive macro?
 fn is_inspect_attr(attr: &syn::Attribute) -> bool {
     attr.path().is_ident("inspect")
 }
 
+/// Specialized version of the `Inspect` derive macro specifically for bitfield structs.
+/// 
+/// This is required as the a regular derive macro cannot modify structs, which is required for the
+/// inspect implementation for bitfields.
 #[proc_macro_attribute]
 pub fn inspect_bitfield(args: TokenStream, input: TokenStream) -> TokenStream {
     let bitfield_ty = syn::parse_macro_input!(args as TyAttrArg).ty;
@@ -88,6 +93,9 @@ struct Input {
     pub data: darling::ast::Data<FieldVariant, ()>
 }
 
+/// Convenience macro to implement `TryFrom` on enums.
+/// 
+/// This is an attribute macro instead of a derive macro because derive macros don't accept parameters.
 #[proc_macro_attribute]
 pub fn try_from(args: TokenStream, input: TokenStream) -> TokenStream {
     let ty = syn::parse_macro_input!(args as TyAttrArg).ty;

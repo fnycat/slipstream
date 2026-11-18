@@ -21,6 +21,7 @@ pub struct IndexGroupHeader {
 }
 
 impl IndexGroupHeader {
+    /// Deserializes an index group header.
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         Ok(Self {
             length: reader.read_u32::<BigEndian>()?,
@@ -28,6 +29,7 @@ impl IndexGroupHeader {
         })
     }
 
+    /// Serializes an index group header.
     pub fn serialize(&self, writer: &mut MutCursor) -> SlipstreamResult<()> {
         writer.write_u32::<BigEndian>(self.length)?;
         writer.write_u32::<BigEndian>(self.number)?;

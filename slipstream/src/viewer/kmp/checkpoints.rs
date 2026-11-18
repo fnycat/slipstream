@@ -67,6 +67,7 @@ impl CheckpointsPipeline {
         respawns: &[RespawnPoint]
     ) -> Self {
         let checkpoint_count = checkpoints.len();
+        debug_assert!(checkpoint_count > 0, "cannot create checkpoint pipeline for zero checkpoints.");
 
         // 6 floats per checkpoint
         let mut bounds = Vec::with_capacity(checkpoint_count);
