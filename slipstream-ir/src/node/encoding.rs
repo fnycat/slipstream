@@ -7,7 +7,7 @@ use slipstream_shared::error::UnsupportedError;
 use crate::arc::{self, ArcDirectory};
 use crate::brres::{
     ColorBuffer, Definitions, DeserializeContents, Material, MdlSectionType, NormalBuffer,
-    PaletteLinks, Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer
+    PaletteLinks, Polygon, Tev, TextureLinks, UvBuffer, VertexBuffer,
 };
 use crate::node::arena::IrArena;
 use crate::node::lazy::{DeferPayload, DynContent};
@@ -17,7 +17,7 @@ use crate::visitor::{Visitor, VisitorCtx};
 pub struct SerializeVisitor<'a> {
     arena: &'a IrArena,
     writer: &'a mut MutCursor,
-    result: SlipstreamResult<()>
+    result: SlipstreamResult<()>,
 }
 
 impl Visitor for SerializeVisitor<'_> {
@@ -28,11 +28,11 @@ impl Visitor for SerializeVisitor<'_> {
                 self.result = arc::serialize(self.arena, arc.meta.key, self.writer);
                 match self.result {
                     Ok(()) => ControlFlow::Continue(()),
-                    Err(_) => ControlFlow::Break(())
+                    Err(_) => ControlFlow::Break(()),
                 }
             }
             IrNodeType::ArcDirectory { is_root: false, .. } => ControlFlow::Continue(()),
-            _ => unreachable!("called `visit_arc` on file that is not of type ARC")
+            _ => unreachable!("called `visit_arc` on file that is not of type ARC"),
         }
     }
 }
@@ -41,14 +41,14 @@ impl Visitor for SerializeVisitor<'_> {
 pub fn serialize_node(
     arena: &IrArena,
     node: &IrNode,
-    writer: &mut MutCursor
+    writer: &mut MutCursor,
 ) -> SlipstreamResult<()> {
     tracing::trace!("Serializing node {:?}", node.key());
 
     let mut visitor = SerializeVisitor {
         arena,
         writer,
-        result: Ok(())
+        result: Ok(()),
     };
     arena.visit_all(node.key, &mut visitor)?;
     visitor.result
@@ -92,7 +92,7 @@ pub fn deserialize_node(mut payload: DeferPayload) -> SlipstreamResult<Box<DynCo
                         "lazily parsing a node of MDL section {:?} is not supported",
                         ty
                     ),
-                    location: Some(payload.reader.position())
+                    location: Some(payload.reader.position()),
                 }
                 .into());
             }
@@ -103,7 +103,7 @@ pub fn deserialize_node(mut payload: DeferPayload) -> SlipstreamResult<Box<DynCo
                     "lazily parsing a node of type {:?} is not supported",
                     payload.ty
                 ),
-                location: Some(payload.reader.position())
+                location: Some(payload.reader.position()),
             }
             .into());
         }

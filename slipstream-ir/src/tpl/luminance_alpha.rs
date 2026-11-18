@@ -9,7 +9,7 @@ use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::tpl::{
     EncodedImage, ExportableImage, ImageFormat, MAX_SAFE_PIXEL_WIDTH, Rgba8Image, block_count,
-    detile, hash_pixels
+    detile, hash_pixels,
 };
 
 /// Single channel 4-bit intensity values.
@@ -20,7 +20,7 @@ pub struct La4Image {
     /// Intensity values. The values have already been multiplied by `0x11` compared
     /// to the disk format.
     pub(super) pixels: Arc<[glam::U8Vec2]>,
-    pub(super) hash: u64
+    pub(super) hash: u64,
 }
 
 impl La4Image {
@@ -31,7 +31,7 @@ impl La4Image {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32
+        mipmaps: u32,
     ) -> SlipstreamResult<Self> {
         let blocks = block_count(dimensions, Self::BLOCK_SIZE);
 
@@ -53,7 +53,7 @@ impl La4Image {
             dimensions,
             mipmaps,
             pixels,
-            hash
+            hash,
         })
     }
 }
@@ -138,7 +138,7 @@ impl ExportableImage for La4Image {
     fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
-        format: image::ImageFormat
+        format: image::ImageFormat,
     ) -> SlipstreamResult<()> {
         let dims = self.dimensions();
 
@@ -149,7 +149,7 @@ impl ExportableImage for La4Image {
             dims.x as u32,
             dims.y as u32,
             image::ExtendedColorType::La4,
-            format
+            format,
         )?;
 
         Ok(())
@@ -161,7 +161,7 @@ pub struct La8Image {
     pub(super) dimensions: glam::U16Vec2,
     pub(super) mipmaps: u32,
     pub(super) pixels: Arc<[glam::U8Vec2]>,
-    pub(super) hash: u64
+    pub(super) hash: u64,
 }
 
 impl La8Image {
@@ -172,7 +172,7 @@ impl La8Image {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32
+        mipmaps: u32,
     ) -> SlipstreamResult<Self> {
         let blocks = block_count(dimensions, Self::BLOCK_SIZE);
 
@@ -193,7 +193,7 @@ impl La8Image {
             dimensions,
             mipmaps,
             pixels,
-            hash
+            hash,
         })
     }
 }
@@ -279,7 +279,7 @@ impl ExportableImage for La8Image {
     fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
-        format: image::ImageFormat
+        format: image::ImageFormat,
     ) -> SlipstreamResult<()> {
         let dims = self.dimensions();
 
@@ -290,7 +290,7 @@ impl ExportableImage for La8Image {
             dims.x as u32,
             dims.y as u32,
             image::ExtendedColorType::La8,
-            format
+            format,
         )?;
 
         Ok(())

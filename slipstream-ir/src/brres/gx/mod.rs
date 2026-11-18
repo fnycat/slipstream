@@ -56,7 +56,7 @@ pub enum GxOpCodeId {
     /// Draw line strip.
     DrawLineStrip = 0xb0,
     /// Draw points.
-    DrawPoints = 0xb8
+    DrawPoints = 0xb8,
 }
 
 impl TryFrom<u8> for GxOpCodeId {
@@ -119,18 +119,18 @@ pub enum GxOpCode {
     DrawLineStrip(DrawOpCode),
     DrawPoints(DrawOpCode),
     #[inspect(ignore)]
-    Unknown
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct GxBytecode {
-    pub commands: Vec<GxOpCode>
+    pub commands: Vec<GxOpCode>,
 }
 
 impl GxBytecode {
     pub fn deserialize_vertex_declaration(
         reader: &mut RefCursor<[u8]>,
-        section_end: u64
+        section_end: u64,
     ) -> SlipstreamResult<Self> {
         let mut commands = Vec::new();
         while reader.position() < section_end {
@@ -143,7 +143,7 @@ impl GxBytecode {
                 _ => {
                     return Err(CorruptionError {
                         reason: format!("invalid vertex declaration GX opcode: {opcode:?}"),
-                        location: Some(reader.position())
+                        location: Some(reader.position()),
                     }
                     .into());
                 }
@@ -163,7 +163,7 @@ impl GxBytecode {
     pub fn deserialize_vertex_data(
         reader: &mut RefCursor<[u8]>,
         vertex_decl: &GxVertexDeclaration,
-        section_end: u64
+        section_end: u64,
     ) -> SlipstreamResult<Self> {
         let mut commands = Vec::new();
         while reader.position() < section_end {
@@ -209,7 +209,7 @@ impl GxBytecode {
                 _ => {
                     return Err(CorruptionError {
                         reason: format!("invalid vertex data GX opcode: {opcode:?}"),
-                        location: Some(reader.position())
+                        location: Some(reader.position()),
                     }
                     .into());
                 }

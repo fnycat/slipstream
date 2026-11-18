@@ -8,14 +8,14 @@ use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult};
 use crate::encoding::ReadArrayExt;
 use crate::kmp::{KmpSectionHeader, MAX_KMP_SECTION_ENTRY_COUNT};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 #[try_from(u8)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum AreaShape {
     Box = 0x00,
-    Cylinder = 0x01
+    Cylinder = 0x01,
 }
 
 impl AreaShape {
@@ -174,7 +174,7 @@ pub struct Area {
     pub priority: u8,
     pub position: glam::Vec3,
     pub rotation: glam::Vec3,
-    pub scale: glam::Vec3
+    pub scale: glam::Vec3,
 }
 
 impl Area {
@@ -198,14 +198,14 @@ impl Area {
             priority,
             position,
             rotation,
-            scale
+            scale,
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Areas {
-    pub areas: Vec<Area>
+    pub areas: Vec<Area>,
 }
 
 impl Areas {
@@ -213,7 +213,7 @@ impl Areas {
 
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header: KmpSectionHeader
+        header: KmpSectionHeader,
     ) -> SlipstreamResult<Self> {
         // We cap the capacity at 255, as files generally shouldn't have more entries
         // and 255 is still a reasonable upper bound.
@@ -239,7 +239,7 @@ impl Visitable for Areas {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_kmp()

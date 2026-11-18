@@ -9,14 +9,14 @@ pub struct ViewerId(NonZeroUsize);
 /// Enables using multiple viewer panes.
 pub struct ViewerRegistry {
     next_id: NonZeroUsize,
-    viewers: HashMap<ViewerId, ViewerPipelines>
+    viewers: HashMap<ViewerId, ViewerPipelines>,
 }
 
 impl ViewerRegistry {
     pub fn new() -> Self {
         Self {
             next_id: NonZeroUsize::MIN,
-            viewers: HashMap::new()
+            viewers: HashMap::new(),
         }
     }
 

@@ -12,7 +12,7 @@ use crate::brres::{DeserializeContents, MdlSectionType, TextureMatrixMode};
 use crate::encoding::ReadArrayExt;
 use crate::node::node::IrNodeType;
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 #[inspect_bitfield(u32)]
@@ -38,7 +38,7 @@ pub struct MaterialFlags {
     #[inspect(rename = "Do Not Send TEV Color")]
     pub dont_send_tev_color: bool,
     #[inspect(rename = "Do Not Send Pixel Display")]
-    pub dont_send_pixel_display: bool
+    pub dont_send_pixel_display: bool,
 }
 
 impl MaterialFlags {
@@ -67,7 +67,7 @@ pub enum CullMode {
     None = 0x00,
     Front = 0x01,
     Back = 0x02,
-    All = 0x03
+    All = 0x03,
 }
 
 impl CullMode {
@@ -94,7 +94,7 @@ pub enum IndirectMethod {
     Reserved1 = 0x04,
     Reserved2 = 0x05,
     User0 = 0x06,
-    User1 = 0x07
+    User1 = 0x07,
 }
 
 impl IndirectMethod {
@@ -132,7 +132,7 @@ pub struct UsedTextureMaps {
     #[inspect(rename = "Texture 8 Used")]
     pub tex7_used: bool,
     #[bits(24)]
-    _padding: u32
+    _padding: u32,
 }
 
 impl UsedTextureMaps {
@@ -174,7 +174,7 @@ pub struct UsedPalettes {
     #[inspect(rename = "Palette 8 Used")]
     pub pal7_used: bool,
     #[bits(24)]
-    _padding: u32
+    _padding: u32,
 }
 
 impl UsedPalettes {
@@ -203,7 +203,7 @@ pub struct LayerSettings {
     pub rotation_fixed: bool,
     pub translation_fixed: bool,
     #[bits(28)]
-    _padding: u32
+    _padding: u32,
 }
 
 impl LayerSettings {
@@ -224,7 +224,7 @@ impl LayerSettings {
 pub struct LayerCoordinates {
     pub scale_coordinate: [f32; 2],
     pub rotation_coordinate: f32,
-    pub translation_coordinate: [f32; 2]
+    pub translation_coordinate: [f32; 2],
 }
 
 impl LayerCoordinates {
@@ -236,7 +236,7 @@ impl LayerCoordinates {
         Ok(Self {
             scale_coordinate,
             rotation_coordinate,
-            translation_coordinate
+            translation_coordinate,
         })
     }
 }
@@ -252,7 +252,7 @@ pub enum TextureMapMode {
     #[inspect(rename = "Environment Light")]
     EnvLight = 0x03,
     #[inspect(rename = "Environment Specular")]
-    EnvSpec = 0x04
+    EnvSpec = 0x04,
 }
 
 impl TextureMapMode {
@@ -277,7 +277,7 @@ pub struct TextureMatrixSettings {
     pub scn0_light_ref: i8,
     pub map_mode: TextureMapMode,
     pub enable_identity_matrix_effect: bool,
-    pub texture_matrix: glam::Mat4
+    pub texture_matrix: glam::Mat4,
 }
 
 impl TextureMatrixSettings {
@@ -292,7 +292,7 @@ impl TextureMatrixSettings {
             glam::vec4(tm[0], tm[4], tm[8], 0.0),
             glam::vec4(tm[1], tm[5], tm[9], 0.0),
             glam::vec4(tm[2], tm[6], tm[10], 0.0),
-            glam::vec4(tm[3], tm[7], tm[11], 1.0)
+            glam::vec4(tm[3], tm[7], tm[11], 1.0),
         );
 
         Ok(Self {
@@ -300,7 +300,7 @@ impl TextureMatrixSettings {
             scn0_light_ref,
             map_mode,
             enable_identity_matrix_effect,
-            texture_matrix
+            texture_matrix,
         })
     }
 }
@@ -316,7 +316,7 @@ pub struct LightingChannelFlags {
     pub raster_color_enabled: bool,
     pub raster_alpha_enabled: bool,
     #[bits(26)]
-    _padding: u32
+    _padding: u32,
 }
 
 impl LightingChannelFlags {
@@ -343,7 +343,7 @@ pub struct LightChannelSettings {
     pub material_color: glam::U8Vec4,
     pub ambient_color: glam::U8Vec4,
     pub color_light: LightChannelControl,
-    pub alpha_light: LightChannelControl
+    pub alpha_light: LightChannelControl,
 }
 
 impl LightChannelSettings {
@@ -359,7 +359,7 @@ impl LightChannelSettings {
             material_color,
             ambient_color,
             color_light,
-            alpha_light
+            alpha_light,
         })
     }
 }
@@ -371,7 +371,7 @@ pub struct MaterialMode {
     pub depth_test: DepthTest,
     pub write_mask: u32,
     pub blend_mode: BlendMode,
-    pub constant_alpha: ConstantAlpha
+    pub constant_alpha: ConstantAlpha,
 }
 
 impl MaterialMode {
@@ -380,7 +380,7 @@ impl MaterialMode {
         let LoadBpOpCode::AlphaFunction(alpha_fn) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
                 reason: String::from("excepted LoadBP opcode of type AlphaFunction (0xf3)"),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         };
@@ -389,7 +389,7 @@ impl MaterialMode {
         let LoadBpOpCode::DepthTest(depth_test) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
                 reason: String::from("excepted LoadBP opcode of type DepthTest (0x40)"),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         };
@@ -398,7 +398,7 @@ impl MaterialMode {
         let LoadBpOpCode::WriteMask(write_mask) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
                 reason: String::from("excepted LoadBP opcode of type WriteMask (0xFE)"),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         };
@@ -407,7 +407,7 @@ impl MaterialMode {
         let LoadBpOpCode::BlendMode(blend_mode) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
                 reason: String::from("excepted LoadBP opcode of type BlendMode (0x41)"),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         };
@@ -416,7 +416,7 @@ impl MaterialMode {
         let LoadBpOpCode::ConstantAlpha(constant_alpha) = LoadBpOpCode::deserialize(reader)? else {
             return Err(CorruptionError {
                 reason: String::from("excepted LoadBP opcode of type ConstantAlpha (0x42)"),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         };
@@ -429,7 +429,7 @@ impl MaterialMode {
             depth_test,
             write_mask,
             blend_mode,
-            constant_alpha
+            constant_alpha,
         })
     }
 }
@@ -442,7 +442,7 @@ pub enum MinificationFilter {
     NearestMipmapNearest = 0x02,
     LinearMipmapNearest = 0x03,
     NearestMipmapLinear = 0x04,
-    LinearMipmapLinear = 0x05
+    LinearMipmapLinear = 0x05,
 }
 
 impl MinificationFilter {
@@ -463,7 +463,7 @@ impl MinificationFilter {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum MagnificationFilter {
     Nearest = 0x00,
-    Linear = 0x01
+    Linear = 0x01,
 }
 
 impl MagnificationFilter {
@@ -488,7 +488,7 @@ pub enum AnisotropyFiltering {
     #[inspect(rename = "2X")]
     Two = 0x01,
     #[inspect(rename = "4X")]
-    Four = 0x02
+    Four = 0x02,
 }
 
 impl AnisotropyFiltering {
@@ -510,7 +510,7 @@ impl AnisotropyFiltering {
 pub enum WrapMode {
     Clamp = 0x00,
     Repeat = 0x01,
-    Mirror = 0x02
+    Mirror = 0x02,
 }
 
 impl WrapMode {
@@ -535,7 +535,7 @@ pub enum ColorSource {
     Vertex,
     #[inspect(ignore)]
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -547,7 +547,7 @@ pub enum DiffuseFunction {
     Clamped,
     #[inspect(ignore)]
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -559,7 +559,7 @@ pub enum AttenuationFunction {
     None,
     #[inspect(ignore)]
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[inspect_bitfield(u32)]
@@ -584,7 +584,7 @@ pub struct LightChannelControl {
     pub light_6: bool,
     pub light_7: bool,
     #[bits(17)]
-    _unused: u32
+    _unused: u32,
 }
 
 impl LightChannelControl {
@@ -611,7 +611,7 @@ pub struct TextureReference {
     pub lod_bias: f32,
     pub max_anisotropy_filtering: AnisotropyFiltering,
     pub clamp_bias: u8,
-    pub texel_interpolate: u8
+    pub texel_interpolate: u8,
 }
 
 impl TextureReference {
@@ -646,7 +646,7 @@ impl TextureReference {
             lod_bias,
             max_anisotropy_filtering,
             clamp_bias,
-            texel_interpolate
+            texel_interpolate,
         })
     }
 }
@@ -685,7 +685,7 @@ pub struct Material {
     #[inspect(max_horizontal_elements = 1)]
     pub light_channel_settings: [LightChannelSettings; 2],
     #[inspect(max_horizontal_elements = 1)]
-    pub texture_references: Vec<TextureReference>
+    pub texture_references: Vec<TextureReference>,
 }
 
 impl Visitable for Material {
@@ -699,7 +699,7 @@ impl Visitable for Material {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_mdl()
@@ -711,7 +711,7 @@ impl Visitable for Material {
 impl DeserializeContents for Material {
     const NAME: &str = "Materials";
     const KIND: IrNodeType = IrNodeType::MdlSection {
-        ty: MdlSectionType::Material
+        ty: MdlSectionType::Material,
     };
 
     #[tracing::instrument(skip_all)]
@@ -735,7 +735,7 @@ impl DeserializeContents for Material {
             IndirectMethod::deserialize(reader)?,
             IndirectMethod::deserialize(reader)?,
             IndirectMethod::deserialize(reader)?,
-            IndirectMethod::deserialize(reader)?
+            IndirectMethod::deserialize(reader)?,
         ];
         let light_normal_map_refs = reader.read_i8_array::<4>()?;
         let shader_offset = reader.read_i32::<BigEndian>()?;
@@ -770,7 +770,7 @@ impl DeserializeContents for Material {
             LayerCoordinates::deserialize(reader)?,
             LayerCoordinates::deserialize(reader)?,
             LayerCoordinates::deserialize(reader)?,
-            LayerCoordinates::deserialize(reader)?
+            LayerCoordinates::deserialize(reader)?,
         ];
 
         let texture_matrix_settings = [
@@ -781,12 +781,12 @@ impl DeserializeContents for Material {
             TextureMatrixSettings::deserialize(reader)?,
             TextureMatrixSettings::deserialize(reader)?,
             TextureMatrixSettings::deserialize(reader)?,
-            TextureMatrixSettings::deserialize(reader)?
+            TextureMatrixSettings::deserialize(reader)?,
         ];
 
         let light_channel_settings = [
             LightChannelSettings::deserialize(reader)?,
-            LightChannelSettings::deserialize(reader)?
+            LightChannelSettings::deserialize(reader)?,
         ];
 
         let material_bytecode = {
@@ -837,7 +837,7 @@ impl DeserializeContents for Material {
             texture_matrix_settings,
             light_channel_settings,
 
-            texture_references
+            texture_references,
         })
     }
 }

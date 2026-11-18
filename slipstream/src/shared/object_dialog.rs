@@ -11,13 +11,13 @@ use crate::panes::outliner::NodeIconsExt;
 #[derive(Debug, Clone, PartialEq)]
 pub enum ObjectFilter {
     /// Displays only files of the given type.
-    Type(IrNodeType)
+    Type(IrNodeType),
 }
 
 impl ObjectFilter {
     pub fn matches(&self, node: &IrNode) -> bool {
         match self {
-            Self::Type(ty) => node.ty() == *ty
+            Self::Type(ty) => node.ty() == *ty,
         }
     }
 }
@@ -26,13 +26,13 @@ impl ObjectFilter {
 pub enum DialogResponse<T> {
     Open,
     Confirmed(T),
-    Closed
+    Closed,
 }
 
 struct CacheEntry {
     pub name: String,
     pub icon: egui::RichText,
-    pub key: IrNodeKey
+    pub key: IrNodeKey,
 }
 
 pub struct ObjectDialog {
@@ -41,7 +41,7 @@ pub struct ObjectDialog {
     cache: Vec<CacheEntry>,
 
     arena: Arc<IrArena>,
-    filter: ObjectFilter
+    filter: ObjectFilter,
 }
 
 impl ObjectDialog {
@@ -52,7 +52,7 @@ impl ObjectDialog {
             arena,
 
             is_cached: false,
-            cache: Vec::new()
+            cache: Vec::new(),
         }
     }
 
@@ -63,7 +63,7 @@ impl ObjectDialog {
                 self.cache.push(CacheEntry {
                     name: node.label.clone(),
                     icon: node.ty().closed_icon(),
-                    key: node.key()
+                    key: node.key(),
                 });
             }
             Ok(ControlFlow::Continue(()))
@@ -107,7 +107,7 @@ impl ObjectDialog {
                         draw_icon,
                         on_click,
                         None,
-                        ui
+                        ui,
                     );
 
                     if let Some(key) = selected {

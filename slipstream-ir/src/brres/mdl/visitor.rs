@@ -2,7 +2,7 @@ use std::ops::ControlFlow;
 
 use crate::brres::{
     Bone, ColorBuffer, Definitions, Material, MdlHeader, NormalBuffer, PaletteLinks, Polygon, Tev,
-    TextureLinks, UvBuffer, VertexBuffer
+    TextureLinks, UvBuffer, VertexBuffer,
 };
 use crate::visitor::{VisitorCtx, VisitorCtxMut};
 
@@ -124,7 +124,7 @@ pub trait MdlVisitor {
 
     fn visit_definitions_mut(
         &mut self,
-        definitions: VisitorCtxMut<'_, Definitions>
+        definitions: VisitorCtxMut<'_, Definitions>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -143,7 +143,7 @@ pub trait MdlVisitor {
 
     fn visit_vertices_mut(
         &mut self,
-        vertex_buf: VisitorCtxMut<'_, VertexBuffer>
+        vertex_buf: VisitorCtxMut<'_, VertexBuffer>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -154,7 +154,7 @@ pub trait MdlVisitor {
 
     fn visit_normals_mut(
         &mut self,
-        normal_buf: VisitorCtxMut<'_, NormalBuffer>
+        normal_buf: VisitorCtxMut<'_, NormalBuffer>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -205,7 +205,7 @@ pub trait MdlVisitor {
 
     fn visit_palette_links_mut(
         &mut self,
-        links: VisitorCtxMut<'_, PaletteLinks>
+        links: VisitorCtxMut<'_, PaletteLinks>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -216,7 +216,7 @@ pub trait MdlVisitor {
 
     fn visit_texture_links_mut(
         &mut self,
-        links: VisitorCtxMut<'_, TextureLinks>
+        links: VisitorCtxMut<'_, TextureLinks>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())

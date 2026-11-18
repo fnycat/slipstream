@@ -27,7 +27,7 @@ impl StringAttrExt for Option<StringAttr> {
 
 #[derive(Debug)]
 pub struct StringAttr {
-    expr: Expr
+    expr: Expr,
 }
 
 impl FromMeta for StringAttr {
@@ -36,10 +36,10 @@ impl FromMeta for StringAttr {
             syn::Lit::Str(s) => Ok(Self {
                 expr: Expr::Lit(ExprLit {
                     attrs: Vec::new(),
-                    lit: Lit::Str(s.clone())
-                })
+                    lit: Lit::Str(s.clone()),
+                }),
             }),
-            _ => Err(darling::Error::unexpected_lit_type(value))
+            _ => Err(darling::Error::unexpected_lit_type(value)),
         }
     }
 
@@ -47,8 +47,8 @@ impl FromMeta for StringAttr {
         Ok(Self {
             expr: Expr::Lit(ExprLit {
                 attrs: Vec::new(),
-                lit: Lit::Str(LitStr::new(value, Span::call_site()))
-            })
+                lit: Lit::Str(LitStr::new(value, Span::call_site())),
+            }),
         })
     }
 
@@ -79,7 +79,7 @@ pub enum ContainerType {
     /// A regular struct.
     Struct,
     /// A bitfield.
-    Bitfield
+    Bitfield,
 }
 
 #[derive(Debug, darling::FromField)]
@@ -132,7 +132,7 @@ pub struct FieldOpt {
     pub opened: bool,
     /// Draws this field with the given function.
     #[darling(default)]
-    pub with: Option<syn::Path>
+    pub with: Option<syn::Path>,
 }
 
 impl FieldOpt {
@@ -158,7 +158,7 @@ impl FieldOpt {
         match (&self.rename, &self.ident) {
             (Some(rename), _) => rename.clone(),
             (None, Some(ident)) => ident.to_string().to_title_case(),
-            (None, None) => String::from("<unknown>")
+            (None, None) => String::from("<unknown>"),
         }
     }
 
@@ -218,7 +218,7 @@ impl FieldOpt {
                     // #ty is specified twice because we need to both specify the generic and the impl we want to use.
                     Some(<#ty as IntoBounds::<#ty>>::into_bounds(None, Some(#max)))
                 }
-            }
+            },
         };
 
         let label = if let Some(name) = &self.rename {
@@ -255,7 +255,7 @@ impl FieldOpt {
         &self,
         field_index: usize,
         ty: ContainerType,
-        tokens: &mut proc_macro2::TokenStream
+        tokens: &mut proc_macro2::TokenStream,
     ) {
         let name = self.name();
         let accessor = self.accessor(field_index, ty);
@@ -349,7 +349,7 @@ pub struct FieldVariant {
     pub rename: Option<String>,
     /// Ignores the variant. It will not be shown to the user.
     #[darling(default)]
-    pub ignore: bool
+    pub ignore: bool,
 }
 
 impl FieldVariant {
@@ -376,7 +376,7 @@ impl FieldVariant {
             let tooltip = match &variant.tooltip {
                 Some(tooltip) => quote! { Some(#tooltip) },
                 // we have to set the type explicitly here because the compiler is unable to infer it.
-                None => quote! { None::<&'static str> }
+                None => quote! { None::<&'static str> },
             };
 
             let setter = match variant.fields.style {
@@ -469,7 +469,7 @@ pub struct Input {
     /// Optional `fn(&Self) -> String` used for the text shown next to a collapsed struct:
     /// `#[inspect(summary = "my_summary_fn")]`. Defaults to the struct's display name.
     #[darling(default)]
-    pub summary: Option<syn::Path>
+    pub summary: Option<syn::Path>,
 }
 
 impl Input {
@@ -485,7 +485,7 @@ impl Input {
         &self,
         fields: &[FieldOpt],
         ty: ContainerType,
-        tokens: &mut proc_macro2::TokenStream
+        tokens: &mut proc_macro2::TokenStream,
     ) {
         let Self { ident, .. } = self;
 
@@ -494,7 +494,7 @@ impl Input {
 
         let summary = match &self.summary {
             Some(path) => quote! { #path(self) },
-            None => quote! { ::std::string::String::from(#name) }
+            None => quote! { ::std::string::String::from(#name) },
         };
 
         let (impl_generics, ty_generics, where_clauses) = self.generics.split_for_impl();
@@ -557,10 +557,10 @@ impl Input {
     fn match_on_variants<F>(
         &self,
         variants: &[FieldVariant],
-        eval_fn: F
+        eval_fn: F,
     ) -> Vec<proc_macro2::TokenStream>
     where
-        F: Fn(usize, &FieldVariant) -> proc_macro2::TokenStream
+        F: Fn(usize, &FieldVariant) -> proc_macro2::TokenStream,
     {
         variants
             .iter()
@@ -571,7 +571,7 @@ impl Input {
                 let pattern_content = match variant.fields.style {
                     Style::Struct => Some(quote! { { .. } }),
                     Style::Tuple => Some(quote! { (..) }),
-                    Style::Unit => None
+                    Style::Unit => None,
                 };
 
                 let pattern = quote! {
@@ -733,7 +733,7 @@ impl Input {
 
         match &self.data {
             Data::Struct(data) => self.render_struct(&data.fields, ty, &mut tokens),
-            Data::Enum(data) => self.render_enum(&data, &mut tokens)
+            Data::Enum(data) => self.render_enum(&data, &mut tokens),
         }
 
         tokens

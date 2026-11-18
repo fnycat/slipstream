@@ -4,7 +4,7 @@ use slipstream_ir::arc::ArcDirectory;
 use slipstream_ir::brres::{
     Bone, BrresFile, ChrHeader, ClrHeader, ColorAnimation, ColorBuffer, Definitions, Material,
     MdlHeader, MdlVisitor, NormalBuffer, PaletteLinks, Polygon, SkeletalAnimation, Texture,
-    TextureLinks, UvBuffer, VertexBuffer
+    TextureLinks, UvBuffer, VertexBuffer,
 };
 use slipstream_ir::kmp::{self, KmpVisitor};
 use slipstream_ir::tpl::{TplHeader, TplImage};
@@ -12,7 +12,7 @@ use slipstream_ir::visitor::{Visitor, VisitorCtxMut};
 use slipstream_shared::inspect::{FieldConfig, Inspect};
 
 pub struct InspectorVisitor<'ui> {
-    pub ui: &'ui mut egui::Ui
+    pub ui: &'ui mut egui::Ui,
 }
 
 impl Visitor for InspectorVisitor<'_> {
@@ -50,7 +50,7 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_skeletal_animation_mut(
         &mut self,
-        context: VisitorCtxMut<'_, SkeletalAnimation>
+        context: VisitorCtxMut<'_, SkeletalAnimation>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -93,7 +93,7 @@ impl Visitor for InspectorVisitor<'_> {
 
     fn visit_color_animation_mut(
         &mut self,
-        context: VisitorCtxMut<'_, ColorAnimation>
+        context: VisitorCtxMut<'_, ColorAnimation>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -114,7 +114,7 @@ impl MdlVisitor for InspectorVisitor<'_> {
 
     fn visit_definitions_mut(
         &mut self,
-        context: VisitorCtxMut<'_, Definitions>
+        context: VisitorCtxMut<'_, Definitions>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -181,7 +181,7 @@ impl MdlVisitor for InspectorVisitor<'_> {
 
     fn visit_texture_links_mut(
         &mut self,
-        context: VisitorCtxMut<'_, TextureLinks>
+        context: VisitorCtxMut<'_, TextureLinks>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -192,7 +192,7 @@ impl MdlVisitor for InspectorVisitor<'_> {
 
     fn visit_palette_links_mut(
         &mut self,
-        context: VisitorCtxMut<'_, PaletteLinks>
+        context: VisitorCtxMut<'_, PaletteLinks>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -213,7 +213,7 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_starting_positions_mut(
         &mut self,
-        context: VisitorCtxMut<'_, kmp::StartingPositions>
+        context: VisitorCtxMut<'_, kmp::StartingPositions>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -224,7 +224,7 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_enemy_routes_mut(
         &mut self,
-        context: VisitorCtxMut<'_, kmp::EnemyRoutes>
+        context: VisitorCtxMut<'_, kmp::EnemyRoutes>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -235,7 +235,7 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_enemy_route_points_mut(
         &mut self,
-        context: VisitorCtxMut<'_, kmp::EnemyRoutePoints>
+        context: VisitorCtxMut<'_, kmp::EnemyRoutePoints>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -246,7 +246,7 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_item_route_points_mut(
         &mut self,
-        context: VisitorCtxMut<'_, kmp::ItemRoutePoints>
+        context: VisitorCtxMut<'_, kmp::ItemRoutePoints>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -257,7 +257,7 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_item_routes_mut(
         &mut self,
-        context: VisitorCtxMut<'_, kmp::ItemRoutes>
+        context: VisitorCtxMut<'_, kmp::ItemRoutes>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -268,7 +268,7 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_checkpoints_mut(
         &mut self,
-        context: VisitorCtxMut<'_, kmp::Checkpoints>
+        context: VisitorCtxMut<'_, kmp::Checkpoints>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -279,7 +279,7 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_checkpoint_groups_mut(
         &mut self,
-        context: VisitorCtxMut<'_, kmp::CheckpointGroups>
+        context: VisitorCtxMut<'_, kmp::CheckpointGroups>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content
@@ -290,7 +290,7 @@ impl KmpVisitor for InspectorVisitor<'_> {
 
     fn visit_geo_objects_mut(
         &mut self,
-        context: VisitorCtxMut<'_, kmp::GeoObjects>
+        context: VisitorCtxMut<'_, kmp::GeoObjects>,
     ) -> ControlFlow<()> {
         let _changes = context
             .content

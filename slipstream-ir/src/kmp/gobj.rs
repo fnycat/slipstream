@@ -8,7 +8,7 @@ use slipstream_shared::{RefCursor, SlipstreamError, SlipstreamResult};
 use crate::encoding::ReadArrayExt;
 use crate::kmp::{KmpSectionHeader, MAX_KMP_SECTION_ENTRY_COUNT};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 pub trait GeoSetting: Sized {
@@ -105,7 +105,7 @@ pub enum ThwompRouteBehavior {
     #[default]
     StompOnEveryPoint = 0x00,
     LeftAndRightStomp = 0x01,
-    LeftAndRightGrounded = 0x02
+    LeftAndRightGrounded = 0x02,
 }
 
 impl GeoSetting for ThwompRouteBehavior {
@@ -129,7 +129,7 @@ pub enum FallBoundary {
     LavaNoGfx = 0x04,
     BurningAirFall = 0x05,
     Quicksand = 0x06,
-    ShortFall = 0x07
+    ShortFall = 0x07,
 }
 
 impl GeoSetting for FallBoundary {
@@ -153,7 +153,7 @@ pub enum WallFlag {
     Ice = 0x04,
     Bush = 0x05,
     Rope = 0x06,
-    Rubber = 0x07
+    Rubber = 0x07,
 }
 
 impl GeoSetting for WallFlag {
@@ -170,21 +170,21 @@ impl GeoSetting for WallFlag {
 pub enum StartDelay {
     Delayed(u16),
     #[default]
-    Immediate
+    Immediate,
 }
 
 impl GeoSetting for StartDelay {
     fn into_raw(self) -> u16 {
         match self {
             Self::Delayed(x) => x,
-            Self::Immediate => 0xf0
+            Self::Immediate => 0xf0,
         }
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Ok(match setting {
             0xf0 => Self::Immediate,
-            _ => Self::Delayed(setting)
+            _ => Self::Delayed(setting),
         })
     }
 }
@@ -194,7 +194,7 @@ impl GeoSetting for StartDelay {
 pub enum EnemyLineEntryFlag {
     #[default]
     DoNotEnter = 0x0,
-    Enter = 0x1
+    Enter = 0x1,
 }
 
 impl GeoSetting for EnemyLineEntryFlag {
@@ -215,7 +215,7 @@ pub enum TopmanBehavior {
     #[inspect(tooltip = "Ignores the player")]
     Coward = 0x01,
     #[inspect(tooltip = "Attacks the player")]
-    Aggressive = 0x02
+    Aggressive = 0x02,
 }
 
 impl GeoSetting for TopmanBehavior {
@@ -256,7 +256,7 @@ pub enum Item {
     /// Grants a mushroom (roulette shows green shell)
     Empty3 = 0x010,
     /// Same as [`Default`]
-    Empty4 = 0x255
+    Empty4 = 0x255,
 }
 
 impl GeoSetting for Item {
@@ -284,7 +284,7 @@ pub enum TimingLottery {
     /// Roulette spin is normal speed, respawn time is 600.
     Normal600 = 5,
     /// Roulette spin is normal speed, respawn time is 900.
-    Normal900 = 6
+    Normal900 = 6,
 }
 
 impl GeoSetting for TimingLottery {
@@ -302,7 +302,7 @@ impl GeoSetting for TimingLottery {
 pub enum ChainChompStartBehavior {
     #[default]
     Wait = 0x00,
-    Release = 0x01
+    Release = 0x01,
 }
 
 impl GeoSetting for ChainChompStartBehavior {
@@ -320,7 +320,7 @@ impl GeoSetting for ChainChompStartBehavior {
 pub enum CoinMode {
     #[default]
     Battle = 0x00,
-    TournamentOrMission = 0x01
+    TournamentOrMission = 0x01,
 }
 
 impl GeoSetting for CoinMode {
@@ -340,21 +340,21 @@ impl GeoSetting for CoinMode {
 pub enum CoinSpawnPlace {
     Start(u16),
     #[default]
-    Respawn
+    Respawn,
 }
 
 impl GeoSetting for CoinSpawnPlace {
     fn into_raw(self) -> u16 {
         match self {
             Self::Start(x) => x,
-            Self::Respawn => u16::MAX
+            Self::Respawn => u16::MAX,
         }
     }
 
     fn from_raw(setting: u16) -> SlipstreamResult<Self> {
         Ok(match setting {
             u16::MAX => Self::Respawn,
-            _ => Self::Start(setting)
+            _ => Self::Start(setting),
         })
     }
 }
@@ -370,7 +370,7 @@ pub enum CoinSpawnBehavior {
     /// Coins fall down from the sky and keep their X and Z value.
     FallFixed = 0x02,
     /// Coins fall down from the sky. When they fall on a slope, they ricochet.
-    FallRicochet = 0x03
+    FallRicochet = 0x03,
 }
 
 impl GeoSetting for CoinSpawnBehavior {
@@ -389,7 +389,7 @@ pub enum WaterfallType {
     #[default]
     A = 0x00,
     B = 0x01,
-    C = 0x02
+    C = 0x02,
 }
 
 impl GeoSetting for WaterfallType {
@@ -410,7 +410,7 @@ pub enum PhysicalItem {
     RedShell = 0x01,
     Banana = 0x02,
     Mushroom = 0x03,
-    Star = 0x04
+    Star = 0x04,
 }
 
 impl GeoSetting for PhysicalItem {
@@ -429,7 +429,7 @@ pub enum TruckTexture {
     #[default]
     MooMoo = 0x00,
     Fruit = 0x01,
-    Factory = 0x02
+    Factory = 0x02,
 }
 
 impl GeoSetting for TruckTexture {
@@ -448,7 +448,7 @@ pub enum CarBodyColor {
     #[default]
     Blue = 0x00,
     Red = 0x01,
-    Yellow = 0x02
+    Yellow = 0x02,
 }
 
 impl GeoSetting for CarBodyColor {
@@ -467,7 +467,7 @@ pub enum PylonColor {
     #[default]
     Red = 0x00,
     Blue = 0x01,
-    Yellow = 0x02
+    Yellow = 0x02,
 }
 
 impl GeoSetting for PylonColor {
@@ -485,7 +485,7 @@ impl GeoSetting for PylonColor {
 pub enum CrabViewDirection {
     #[default]
     Left = 0x00,
-    Right = 0x01
+    Right = 0x01,
 }
 
 impl GeoSetting for CrabViewDirection {
@@ -503,7 +503,7 @@ pub enum BlockFallTime {
     #[default]
     Inactive,
     Immediate,
-    Delayed(u16)
+    Delayed(u16),
 }
 
 impl GeoSetting for BlockFallTime {
@@ -511,7 +511,7 @@ impl GeoSetting for BlockFallTime {
         match self {
             Self::Inactive => 0,
             Self::Immediate => 4,
-            Self::Delayed(x) => x
+            Self::Delayed(x) => x,
         }
     }
 
@@ -519,7 +519,7 @@ impl GeoSetting for BlockFallTime {
         Ok(match setting {
             0 => Self::Inactive,
             4 => Self::Immediate,
-            _ => Self::Delayed(setting)
+            _ => Self::Delayed(setting),
         })
     }
 }
@@ -529,7 +529,7 @@ impl GeoSetting for BlockFallTime {
 pub enum ChairliftModel {
     #[default]
     Chairlift00 = 0x00,
-    Chairlift01 = 0x01
+    Chairlift01 = 0x01,
 }
 
 impl GeoSetting for ChairliftModel {
@@ -548,7 +548,7 @@ pub enum WaluigiFlashType {
     #[default]
     A = 0x00,
     B = 0x01,
-    C = 0x02
+    C = 0x02,
 }
 
 impl GeoSetting for WaluigiFlashType {
@@ -566,7 +566,7 @@ impl GeoSetting for WaluigiFlashType {
 pub enum FunkyFlashType {
     #[default]
     A = 0x00,
-    B = 0x01
+    B = 0x01,
 }
 
 impl GeoSetting for FunkyFlashType {
@@ -588,7 +588,7 @@ pub enum SmokeVariant {
     Default = 0x02,
     Thick = 0x03,
     Default2 = 0x04,
-    Explode = 0x05
+    Explode = 0x05,
 }
 
 impl GeoSetting for SmokeVariant {
@@ -606,7 +606,7 @@ impl GeoSetting for SmokeVariant {
 pub enum KoopaFireFunction {
     Decoration = 0x0,
     #[default]
-    Obstacle = 0x1
+    Obstacle = 0x1,
 }
 
 impl GeoSetting for KoopaFireFunction {
@@ -1553,7 +1553,7 @@ pub struct GeoObject {
     pub scale: glam::Vec3,
     /// Route used by the object. This is used for moving objects.
     pub route: u16,
-    pub presence_flags: u16
+    pub presence_flags: u16,
 }
 
 impl GeoObject {
@@ -1576,14 +1576,14 @@ impl GeoObject {
             rotation,
             scale,
             route,
-            presence_flags
+            presence_flags,
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct GeoObjects {
-    pub objects: Vec<GeoObject>
+    pub objects: Vec<GeoObject>,
 }
 
 impl GeoObjects {
@@ -1591,7 +1591,7 @@ impl GeoObjects {
 
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header: KmpSectionHeader
+        header: KmpSectionHeader,
     ) -> SlipstreamResult<Self> {
         // We cap the capacity at 255, as files generally shouldn't have more entries
         // and 255 is still a reasonable upper bound.
@@ -1617,7 +1617,7 @@ impl Visitable for GeoObjects {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_kmp()

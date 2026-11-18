@@ -6,7 +6,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::tpl::{
-    EncodedImage, ExportableImage, ImageFormat, Rgba8Image, block_count, detile, hash_pixels
+    EncodedImage, ExportableImage, ImageFormat, Rgba8Image, block_count, detile, hash_pixels,
 };
 
 /// Converts an RGB5A3 integer format to RGBA8.
@@ -23,7 +23,7 @@ pub const fn from_rgb5a3(short: u16) -> glam::U8Vec4 {
             pub red: u8,
             #[bits(3)]
             pub alpha: u8,
-            pub alpha_disabled: bool
+            pub alpha_disabled: bool,
         }
 
         let channels = ColorChannels::from_bits(short);
@@ -33,7 +33,7 @@ pub const fn from_rgb5a3(short: u16) -> glam::U8Vec4 {
             channels.red() * 0x11,
             channels.green() * 0x11,
             channels.blue() * 0x11,
-            channels.alpha() * 0x20
+            channels.alpha() * 0x20,
         )
     } else {
         #[bitfield(u16)]
@@ -44,7 +44,7 @@ pub const fn from_rgb5a3(short: u16) -> glam::U8Vec4 {
             pub green: u8,
             #[bits(5)]
             pub red: u8,
-            pub alpha_disabled: bool
+            pub alpha_disabled: bool,
         }
 
         let channels = ColorChannels::from_bits(short);
@@ -54,7 +54,7 @@ pub const fn from_rgb5a3(short: u16) -> glam::U8Vec4 {
             channels.red() * 0x8,
             channels.green() * 0x8,
             channels.blue() * 0x8,
-            0xff
+            0xff,
         )
     }
 }
@@ -64,7 +64,7 @@ pub struct Rgb5a3Image {
     pub(super) dimensions: glam::U16Vec2,
     pub(super) mipmaps: u32,
     pub(super) hash: u64,
-    pub(super) pixels: Arc<[glam::U8Vec4]>
+    pub(super) pixels: Arc<[glam::U8Vec4]>,
 }
 
 impl Rgb5a3Image {
@@ -78,7 +78,7 @@ impl Rgb5a3Image {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32
+        mipmaps: u32,
     ) -> SlipstreamResult<Self> {
         let blocks = block_count(dimensions, Self::BLOCK_SIZE);
 
@@ -98,7 +98,7 @@ impl Rgb5a3Image {
             dimensions,
             mipmaps,
             pixels,
-            hash
+            hash,
         })
     }
 }
@@ -134,7 +134,7 @@ impl ExportableImage for Rgb5a3Image {
     fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
-        format: image::ImageFormat
+        format: image::ImageFormat,
     ) -> SlipstreamResult<()> {
         let dims = self.dimensions();
 
@@ -146,7 +146,7 @@ impl ExportableImage for Rgb5a3Image {
             dims.x as u32,
             dims.y as u32,
             image::ExtendedColorType::Rgba8,
-            format
+            format,
         )?;
 
         Ok(())

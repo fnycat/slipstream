@@ -13,6 +13,6 @@ fuzz_target!(|data: &[u8]| {
     let _ = slipstream_ir::node::root::deserialize_maybe_compressed(
         reader,
         &arena,
-        String::from("fuzzed.szs")
+        String::from("fuzzed.szs"),
     );
 });

@@ -2,12 +2,12 @@ use crate::SlipstreamResult;
 
 pub struct HeaderIcons {
     pub open: egui::RichText,
-    pub closed: egui::RichText
+    pub closed: egui::RichText,
 }
 
 pub enum DropdownType {
     Regular,
-    MenuButton
+    MenuButton,
 }
 
 pub struct CollapseDescriptor<'ctx, F> {
@@ -21,13 +21,13 @@ pub struct CollapseDescriptor<'ctx, F> {
     on_body: F,
     // using dynamic dispatch so we don't have to deal with rustc not being able to infer
     // the generic parameter when the user passes `None`.
-    on_ctx_menu: Option<&'ctx mut dyn FnMut(&mut egui::Ui)>
+    on_ctx_menu: Option<&'ctx mut dyn FnMut(&mut egui::Ui)>,
 }
 
 // Set `C` to a default function pointer so we don't have to explicitly name the type.
 impl<'ctx, B> CollapseDescriptor<'ctx, B>
 where
-    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>
+    B: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
 {
     pub fn new(
         state_id: egui::Id,
@@ -37,7 +37,7 @@ where
         default_open: bool,
         indent: bool,
         on_body: B,
-        on_ctx_menu: Option<&'ctx mut dyn FnMut(&mut egui::Ui)>
+        on_ctx_menu: Option<&'ctx mut dyn FnMut(&mut egui::Ui)>,
     ) -> Self {
         Self {
             state_id,
@@ -47,7 +47,7 @@ where
             default_open,
             indent,
             on_body,
-            on_ctx_menu
+            on_ctx_menu,
         }
     }
 }
@@ -58,7 +58,7 @@ pub fn draw_node_icon(ui: &mut egui::Ui, icon: egui::RichText, response: &egui::
         ui,
         Some(egui::TextWrapMode::Extend),
         f32::INFINITY,
-        egui::TextStyle::Body
+        egui::TextStyle::Body,
     );
 
     let center_pos = response.rect.center() - (galley.size() * 0.5);
@@ -76,12 +76,12 @@ pub fn draw_node_selector<Label, Icon, Click>(
     // using dynamic dispatch so we don't have to deal with rustc not being able to infer
     // the generic parameter when the user passes `None`.
     mut on_ctx: Option<&mut dyn FnMut(&mut egui::Ui)>,
-    ui: &mut egui::Ui
+    ui: &mut egui::Ui,
 ) -> egui::Response
 where
     Label: Into<egui::WidgetText>,
     Icon: FnOnce(&mut egui::Ui) -> egui::Response,
-    Click: FnOnce(&mut egui::Ui)
+    Click: FnOnce(&mut egui::Ui),
 {
     // Determines the rect that should be coloured when the node is hovered over.
     let clip_rect = ui.clip_rect();
@@ -91,7 +91,7 @@ where
 
     let header_rect = egui::Rect::from_min_size(
         ui.cursor().min.max(egui::Pos2::ZERO),
-        egui::vec2(row_width, row_height)
+        egui::vec2(row_width, row_height),
     );
 
     assert!(
@@ -106,7 +106,7 @@ where
         ui.painter().rect_filled(
             header_rect,
             ui.visuals().widgets.hovered.corner_radius,
-            ui.visuals().widgets.hovered.bg_fill
+            ui.visuals().widgets.hovered.bg_fill,
         );
     }
 
@@ -156,15 +156,15 @@ where
 
 pub fn draw_collapsing_state<F>(
     mut desc: CollapseDescriptor<F>,
-    ui: &mut egui::Ui
+    ui: &mut egui::Ui,
 ) -> SlipstreamResult<()>
 where
-    F: FnMut(&mut egui::Ui) -> SlipstreamResult<()>
+    F: FnMut(&mut egui::Ui) -> SlipstreamResult<()>,
 {
     let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
         desc.state_id,
-        desc.default_open
+        desc.default_open,
     );
 
     // need to set the type explicitly due to poor inference.
@@ -198,7 +198,7 @@ where
         draw_icon,
         on_click,
         desc.on_ctx_menu,
-        ui
+        ui,
     );
 
     if should_toggle {

@@ -7,7 +7,7 @@ use slipstream_shared::{RefCursor, SlipstreamResult};
 use crate::encoding::ReadArrayExt;
 use crate::kmp::{KmpSectionHeader, MAX_KMP_SECTION_ENTRY_COUNT};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 #[inspect_bitfield(u16)]
@@ -18,7 +18,7 @@ pub struct EnemyRouteLinks {
     #[bits(6)]
     pub link_forward: u8,
     #[bits(4)]
-    _unused: u8
+    _unused: u8,
 }
 
 impl EnemyRouteLinks {
@@ -34,7 +34,7 @@ pub struct EnemyRoute {
     pub point_length: u8,
     pub previous_group: [i8; 6],
     pub next_group: [i8; 6],
-    pub links: EnemyRouteLinks
+    pub links: EnemyRouteLinks,
 }
 
 impl EnemyRoute {
@@ -50,14 +50,14 @@ impl EnemyRoute {
             point_length,
             previous_group,
             next_group,
-            links
+            links,
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub struct EnemyRoutes {
-    pub routes: Vec<EnemyRoute>
+    pub routes: Vec<EnemyRoute>,
 }
 
 impl EnemyRoutes {
@@ -65,7 +65,7 @@ impl EnemyRoutes {
 
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header: KmpSectionHeader
+        header: KmpSectionHeader,
     ) -> SlipstreamResult<Self> {
         // We cap the capacity at 255, as files generally shouldn't have more entries
         // and 255 is still a reasonable upper bound.
@@ -91,7 +91,7 @@ impl Visitable for EnemyRoutes {
     fn accept_mut(
         &mut self,
         meta: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_kmp()

@@ -42,7 +42,7 @@ pub trait ExportableImage {
     fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
-        format: image::ImageFormat
+        format: image::ImageFormat,
     ) -> SlipstreamResult<()>;
 
     /// The file format is automatically determined from the file extension.
@@ -63,7 +63,7 @@ pub trait ExportableImage {
     fn export_to_file_with_format<P: AsRef<Path>>(
         &self,
         filepath: P,
-        format: image::ImageFormat
+        format: image::ImageFormat,
     ) -> SlipstreamResult<()> {
         let path = filepath.as_ref();
         let mut file = std::fs::File::create(path)?;
@@ -119,10 +119,10 @@ pub fn detile<
     const TILE_W: usize,
     const TILE_H: usize,
     const TILE_SIZE: usize,
-    P: Default + Copy
+    P: Default + Copy,
 >(
     tiled: &[P],
-    dims: glam::U16Vec2
+    dims: glam::U16Vec2,
 ) -> Vec<P> {
     let width = dims.x as usize;
     let height = dims.y as usize;
@@ -154,7 +154,7 @@ pub fn detile<
 
 pub fn deserialize_color(
     reader: &mut RefCursor<[u8]>,
-    format: ColorFormat
+    format: ColorFormat,
 ) -> SlipstreamResult<glam::U8Vec4> {
     Ok(match format {
         ColorFormat::Rgb565 => {
@@ -216,7 +216,7 @@ pub fn deserialize_color(
         ColorFormat::Invalid => {
             return Err(InvalidInputError {
                 reason: String::from("cannot read color of invalid format"),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         }

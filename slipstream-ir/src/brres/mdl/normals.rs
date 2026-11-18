@@ -12,7 +12,7 @@ use crate::brres::{DeserializeContents, MdlSectionType, SectionHeader};
 use crate::node::node::IrNodeType;
 use crate::util::{VectorDivisor, VertexFormat, deserialize_vector, deserialize_vector_data};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 const COMPONENTS_NORMAL: u32 = 0x0;
@@ -37,7 +37,7 @@ pub enum NormalFormat {
     /// Fallback value for `bitenum`, this variant should never be used.
     #[inspect(ignore)]
     #[fallback]
-    Invalid = 5
+    Invalid = 5,
 }
 
 impl NormalFormat {
@@ -63,7 +63,7 @@ pub enum NormalBufType {
     /// Only the normal itself is included in the buffer.
     Normal,
     /// All three (normal/binormal/tangent) vectors are included in the buffer.
-    All
+    All,
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
@@ -71,14 +71,14 @@ pub enum NormalBufData {
     /// Only the normal.
     Single(Vec<glam::Vec3>),
     /// Includes all of the normal, bi-normal and tangent
-    Triple(Vec<[glam::Vec3; 3]>)
+    Triple(Vec<[glam::Vec3; 3]>),
 }
 
 impl NormalBufData {
     pub fn ty(&self) -> NormalBufType {
         match self {
             Self::Single(_) => NormalBufType::Normal,
-            Self::Triple(_) => NormalBufType::All
+            Self::Triple(_) => NormalBufType::All,
         }
     }
 
@@ -90,7 +90,7 @@ impl NormalBufData {
     pub fn len(&self) -> usize {
         match self {
             Self::Single(x) => x.len(),
-            Self::Triple(x) => x.len()
+            Self::Triple(x) => x.len(),
         }
     }
 
@@ -123,14 +123,14 @@ pub struct NormalBuffer {
     // /// The size in bytes of each entry.
     // pub stride: u8,
     /// The normal data.
-    pub normals: NormalBufData
+    pub normals: NormalBufData,
 }
 
 impl NormalBuffer {
     pub fn get_normal(&self, index: usize) -> Option<glam::Vec3> {
         match &self.normals {
             NormalBufData::Single(x) => x.get(index).copied(),
-            NormalBufData::Triple(x) => x.get(index).map(|x| x[0])
+            NormalBufData::Triple(x) => x.get(index).map(|x| x[0]),
         }
     }
 }
@@ -146,7 +146,7 @@ impl Visitable for NormalBuffer {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_mdl()
@@ -158,7 +158,7 @@ impl Visitable for NormalBuffer {
 impl DeserializeContents for NormalBuffer {
     const NAME: &str = "Normals";
     const KIND: IrNodeType = IrNodeType::MdlSection {
-        ty: MdlSectionType::Normals
+        ty: MdlSectionType::Normals,
     };
 
     #[tracing::instrument(skip_all)]
@@ -182,7 +182,7 @@ impl DeserializeContents for NormalBuffer {
                 reader,
                 normal_count as usize,
                 VertexFormat::from(format),
-                VectorDivisor::Custom(divisor)
+                VectorDivisor::Custom(divisor),
             )?),
             COMPONENTS_ALL => {
                 // custom implementation because it doesn't work with the existing vector functions.
@@ -192,7 +192,7 @@ impl DeserializeContents for NormalBuffer {
                     let data = deserialize_vector::<9>(
                         reader,
                         VertexFormat::from(format),
-                        VectorDivisor::Custom(divisor)
+                        VectorDivisor::Custom(divisor),
                     )?;
                     let normal = glam::Vec3::from_slice(&data[..3]);
                     let tangent = glam::Vec3::from_slice(&data[3..6]);
@@ -206,12 +206,12 @@ impl DeserializeContents for NormalBuffer {
                 reader,
                 normal_count as usize,
                 VertexFormat::from(format),
-                VectorDivisor::Custom(divisor)
+                VectorDivisor::Custom(divisor),
             )?),
             v => {
                 return Err(CorruptionError {
                     reason: format!("invalid component count: {v} (expected 0-2)"),
-                    location: Some(reader.position())
+                    location: Some(reader.position()),
                 }
                 .into());
             }
@@ -221,7 +221,7 @@ impl DeserializeContents for NormalBuffer {
             header,
             format,
             divisor,
-            normals
+            normals,
         })
     }
 }

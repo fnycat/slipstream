@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use eframe::egui_wgpu;
-use slipstream_ir::node::arena::IrArena;
+use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_shared::SlipstreamResult;
 use wgpu::util::DeviceExt;
 
@@ -41,7 +41,7 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
         _queue: &wgpu::Queue,
         _screen_desc: &egui_wgpu::ScreenDescriptor,
         egui_encoder: &mut wgpu::CommandEncoder,
-        callback_resources: &mut egui_wgpu::CallbackResources
+        callback_resources: &mut egui_wgpu::CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
         callback_resources
             .get::<ViewerRegistry>()
@@ -55,7 +55,7 @@ impl egui_wgpu::CallbackTrait for ViewerCallback {
         &self,
         _info: egui::PaintCallbackInfo,
         _render_pass: &mut wgpu::RenderPass<'static>,
-        _callback_resources: &egui_wgpu::CallbackResources
+        _callback_resources: &egui_wgpu::CallbackResources,
     ) {
     }
 }
@@ -69,7 +69,7 @@ pub struct ScreenTextureState {
     pub msaa_output_view: wgpu::TextureView,
 
     pub depth: wgpu::Texture,
-    pub depth_view: wgpu::TextureView
+    pub depth_view: wgpu::TextureView,
 }
 
 impl ScreenTextureState {
@@ -79,14 +79,14 @@ impl ScreenTextureState {
             size: wgpu::Extent3d {
                 width: size.x,
                 height: size.y,
-                depth_or_array_layers: 1
+                depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: TARGET_FORMAT,
             usage: TARGET_USAGES,
-            view_formats: &[]
+            view_formats: &[],
         });
 
         let output_view = output.create_view(&wgpu::TextureViewDescriptor {
@@ -98,13 +98,13 @@ impl ScreenTextureState {
             base_mip_level: 0,
             mip_level_count: None,
             base_array_layer: 0,
-            array_layer_count: None
+            array_layer_count: None,
         });
 
         let egui_texture_id = state.renderer.write().register_native_texture(
             &state.device,
             &output_view,
-            TEXTURE_FILTER_MODE
+            TEXTURE_FILTER_MODE,
         );
 
         let msaa_output = state.device.create_texture(&wgpu::TextureDescriptor {
@@ -112,14 +112,14 @@ impl ScreenTextureState {
             size: wgpu::Extent3d {
                 width: DEFAULT_VIEWPORT.width() as u32,
                 height: DEFAULT_VIEWPORT.height() as u32,
-                depth_or_array_layers: 1
+                depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: MSAA_SAMPLE_COUNT,
             dimension: wgpu::TextureDimension::D2,
             format: TARGET_FORMAT,
             usage: TARGET_USAGES,
-            view_formats: &[]
+            view_formats: &[],
         });
 
         let msaa_output_view = msaa_output.create_view(&wgpu::TextureViewDescriptor {
@@ -131,7 +131,7 @@ impl ScreenTextureState {
             base_mip_level: 0,
             mip_level_count: None,
             base_array_layer: 0,
-            array_layer_count: None
+            array_layer_count: None,
         });
 
         let depth = state.device.create_texture(&wgpu::TextureDescriptor {
@@ -139,14 +139,14 @@ impl ScreenTextureState {
             size: wgpu::Extent3d {
                 width: DEFAULT_VIEWPORT.width() as u32,
                 height: DEFAULT_VIEWPORT.height() as u32,
-                depth_or_array_layers: 1
+                depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: MSAA_SAMPLE_COUNT,
             dimension: wgpu::TextureDimension::D2,
             format: DEPTH_FORMAT,
             usage: DEPTH_USAGES,
-            view_formats: &[]
+            view_formats: &[],
         });
 
         let depth_view = depth.create_view(&wgpu::TextureViewDescriptor {
@@ -158,7 +158,7 @@ impl ScreenTextureState {
             base_mip_level: 0,
             mip_level_count: None,
             base_array_layer: 0,
-            array_layer_count: None
+            array_layer_count: None,
         });
 
         Self {
@@ -170,7 +170,7 @@ impl ScreenTextureState {
             msaa_output_view,
 
             depth,
-            depth_view
+            depth_view,
         }
     }
 
@@ -182,14 +182,14 @@ impl ScreenTextureState {
             size: wgpu::Extent3d {
                 width: new_size.x,
                 height: new_size.y,
-                depth_or_array_layers: 1
+                depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: TARGET_FORMAT,
             usage: TARGET_USAGES,
-            view_formats: &[]
+            view_formats: &[],
         });
 
         self.output_view = self.output.create_view(&wgpu::TextureViewDescriptor {
@@ -201,7 +201,7 @@ impl ScreenTextureState {
             base_mip_level: 0,
             mip_level_count: None,
             base_array_layer: 0,
-            array_layer_count: None
+            array_layer_count: None,
         });
 
         self.msaa_output = state.device.create_texture(&wgpu::TextureDescriptor {
@@ -209,14 +209,14 @@ impl ScreenTextureState {
             size: wgpu::Extent3d {
                 width: new_size.x,
                 height: new_size.y,
-                depth_or_array_layers: 1
+                depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: MSAA_SAMPLE_COUNT,
             dimension: wgpu::TextureDimension::D2,
             format: TARGET_FORMAT,
             usage: TARGET_USAGES,
-            view_formats: &[]
+            view_formats: &[],
         });
 
         self.msaa_output_view = self.msaa_output.create_view(&wgpu::TextureViewDescriptor {
@@ -228,7 +228,7 @@ impl ScreenTextureState {
             base_mip_level: 0,
             mip_level_count: None,
             base_array_layer: 0,
-            array_layer_count: None
+            array_layer_count: None,
         });
 
         self.depth = state.device.create_texture(&wgpu::TextureDescriptor {
@@ -236,14 +236,14 @@ impl ScreenTextureState {
             size: wgpu::Extent3d {
                 width: new_size.x,
                 height: new_size.y,
-                depth_or_array_layers: 1
+                depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: MSAA_SAMPLE_COUNT,
             dimension: wgpu::TextureDimension::D2,
             format: DEPTH_FORMAT,
             usage: DEPTH_USAGES,
-            view_formats: &[]
+            view_formats: &[],
         });
 
         self.depth_view = self.depth.create_view(&wgpu::TextureViewDescriptor {
@@ -255,7 +255,7 @@ impl ScreenTextureState {
             base_mip_level: 0,
             mip_level_count: None,
             base_array_layer: 0,
-            array_layer_count: None
+            array_layer_count: None,
         });
     }
 }
@@ -267,7 +267,7 @@ pub struct CameraState {
     pub bind_group: wgpu::BindGroup,
     pub bind_group_layout: wgpu::BindGroupLayout,
 
-    pub uniform_buffer: wgpu::Buffer
+    pub uniform_buffer: wgpu::Buffer,
 }
 
 impl CameraState {
@@ -281,7 +281,7 @@ impl CameraState {
             viewport_size: glam::vec4(viewport_size.x as f32, viewport_size.y as f32, 0.0, 0.0),
             position: camera.position().extend(1.0),
             view_proj,
-            inverse_view_proj: view_proj.inverse()
+            inverse_view_proj: view_proj.inverse(),
         };
 
         let uniform_buffer = state
@@ -289,7 +289,7 @@ impl CameraState {
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("camera uniform data buffer"),
                 contents: bytemuck::bytes_of(&uniform_data),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
         let bind_group = state.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -300,9 +300,9 @@ impl CameraState {
                 resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                     buffer: &uniform_buffer,
                     offset: 0,
-                    size: Some(CameraUniformData::size())
-                })
-            }]
+                    size: Some(CameraUniformData::size()),
+                }),
+            }],
         });
 
         Self {
@@ -310,7 +310,7 @@ impl CameraState {
             viewport_size: uniform_data.viewport_size,
             bind_group,
             bind_group_layout,
-            uniform_buffer
+            uniform_buffer,
         }
     }
 
@@ -318,21 +318,21 @@ impl CameraState {
         if let Some(mut buffer_view) = graphics_state.queue.write_buffer_with(
             &self.uniform_buffer,
             0,
-            CameraUniformData::size()
+            CameraUniformData::size(),
         ) {
             let view_proj = self.camera.compute_matrix();
             buffer_view.copy_from_slice(bytemuck::bytes_of(&CameraUniformData {
                 view_proj,
                 position: self.camera.position().extend(1.0),
                 inverse_view_proj: view_proj.inverse(),
-                viewport_size: self.viewport_size
+                viewport_size: self.viewport_size,
             }))
         }
     }
 }
 
 pub struct PipelineState {
-    pub pipeline: wgpu::RenderPipeline
+    pub pipeline: wgpu::RenderPipeline,
 }
 
 impl PipelineState {
@@ -347,7 +347,7 @@ impl PipelineState {
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("viewer pipeline layout"),
                     bind_group_layouts: &[Some(&camera_state.bind_group_layout)],
-                    immediate_size: 0
+                    immediate_size: 0,
                 });
 
         let pipeline = state
@@ -359,7 +359,7 @@ impl PipelineState {
                     module: &shader,
                     entry_point: Some("vs_main"),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    buffers: &[Some(Vertex3::layout())]
+                    buffers: &[Some(Vertex3::layout())],
                 },
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
@@ -368,7 +368,7 @@ impl PipelineState {
                     cull_mode: Some(wgpu::Face::Back),
                     polygon_mode: wgpu::PolygonMode::Fill,
                     unclipped_depth: false,
-                    conservative: false
+                    conservative: false,
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: DEPTH_FORMAT,
@@ -378,13 +378,13 @@ impl PipelineState {
                         front: wgpu::StencilFaceState::IGNORE,
                         back: wgpu::StencilFaceState::IGNORE,
                         read_mask: 0,
-                        write_mask: 0
+                        write_mask: 0,
                     },
                     bias: wgpu::DepthBiasState {
                         clamp: 0.0,
                         constant: 0,
-                        slope_scale: 0.0
-                    }
+                        slope_scale: 0.0,
+                    },
                 }),
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
@@ -393,16 +393,16 @@ impl PipelineState {
                     targets: &[Some(wgpu::ColorTargetState {
                         format: TARGET_FORMAT,
                         blend: Some(wgpu::BlendState::REPLACE),
-                        write_mask: wgpu::ColorWrites::ALL
-                    })]
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
                 }),
                 multisample: wgpu::MultisampleState {
                     count: MSAA_SAMPLE_COUNT,
                     mask: !0,
-                    alpha_to_coverage_enabled: false
+                    alpha_to_coverage_enabled: false,
                 },
                 multiview_mask: None,
-                cache: None
+                cache: None,
             });
 
         Self { pipeline }
@@ -411,7 +411,7 @@ impl PipelineState {
 
 pub struct ModelState {
     pub vertex_buffer: wgpu::Buffer,
-    pub index_buffer: wgpu::Buffer
+    pub index_buffer: wgpu::Buffer,
 }
 
 impl ModelState {
@@ -421,7 +421,7 @@ impl ModelState {
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("viewer vertex buffer"),
                 usage: wgpu::BufferUsages::VERTEX,
-                contents: bytemuck::cast_slice(&CUBE_VERTICES)
+                contents: bytemuck::cast_slice(&CUBE_VERTICES),
             });
 
         let index_buffer = state
@@ -429,12 +429,12 @@ impl ModelState {
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("viewer index buffer"),
                 usage: wgpu::BufferUsages::INDEX,
-                contents: bytemuck::cast_slice(&CUBE_INDICES)
+                contents: bytemuck::cast_slice(&CUBE_INDICES),
             });
 
         Self {
             vertex_buffer,
-            index_buffer
+            index_buffer,
         }
     }
 }
@@ -451,7 +451,7 @@ impl<T: ViewerPipeline + 'static> From<T> for Box<dyn ViewerPipeline> {
 
 #[derive(Default)]
 pub struct ViewerPipelineRegistry {
-    pipelines: Vec<Box<dyn ViewerPipeline>>
+    pipelines: Vec<Box<dyn ViewerPipeline>>,
 }
 
 impl ViewerPipelineRegistry {
@@ -478,14 +478,15 @@ pub struct ViewerPipelines {
     pub pipelines: ViewerPipelineRegistry,
 
     pub camera_state: CameraState,
-    pub screen_texture_state: ScreenTextureState
+    pub screen_texture_state: ScreenTextureState,
 }
 
 impl ViewerPipelines {
     pub fn new(
         arena: Arc<IrArena>,
         graphics_state: GraphicsState,
-        intermediate_model: Option<IntermediateModel>
+        intermediate_model: Option<IntermediateModel>,
+        course_kmp: Option<IrNodeKey>,
     ) -> SlipstreamResult<Self> {
         let viewport_size = glam::uvec2(800, 600);
 
@@ -527,7 +528,7 @@ impl ViewerPipelines {
             move_speed: camera_move_speed,
             orientation: glam::Quat::default(),
             vertical_fov: 90.0,
-            aspect_ratio: viewport_size.x as f32 / viewport_size.y as f32
+            aspect_ratio: viewport_size.x as f32 / viewport_size.y as f32,
         });
 
         let camera_state = CameraState::new(camera, &graphics_state, viewport_size);
@@ -539,7 +540,7 @@ impl ViewerPipelines {
                     &graphics_state.device,
                     &graphics_state.queue,
                     &camera_state,
-                    model
+                    model,
                 )
             })
             .transpose()?;
@@ -549,7 +550,7 @@ impl ViewerPipelines {
         pipelines.push(GridPipeline::new(
             &graphics_state.device,
             &camera_state.bind_group_layout,
-            camera_state.bind_group.clone()
+            camera_state.bind_group.clone(),
         ));
 
         let skeleton_pipeline = model_state.as_ref().map(|model| {
@@ -559,7 +560,7 @@ impl ViewerPipelines {
                 camera_state.bind_group.clone(),
                 &model.bind_pose_group_layout,
                 model.bind_pose_group.clone(),
-                model.bone_count
+                model.bone_count,
             )
         });
 
@@ -571,14 +572,15 @@ impl ViewerPipelines {
             pipelines.push(pipeline);
         }
 
-        // Check if the file contains a `course.kmp` file
-        if let Some(pipeline) = KmpPipeline::from_root(
-            &graphics_state.device,
-            &camera_state.bind_group_layout,
-            camera_state.bind_group.clone(),
-            arena
-        )? {
-            pipelines.push(pipeline);
+        if let Some(course_kmp) = course_kmp {
+            let kmp_pipeline = KmpPipeline::from_root(
+                course_kmp,
+                &graphics_state.device,
+                &camera_state.bind_group_layout,
+                camera_state.bind_group.clone(),
+                arena,
+            )?;
+            pipelines.push(kmp_pipeline);
         }
 
         Ok(Self {
@@ -588,7 +590,7 @@ impl ViewerPipelines {
             pipelines,
 
             viewport_size,
-            graphics_state
+            graphics_state,
         })
     }
 
@@ -621,20 +623,20 @@ impl ViewerPipelines {
                 resolve_target: Some(&self.screen_texture_state.output_view),
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(CLEAR_COLOR),
-                    store: wgpu::StoreOp::Store
-                }
+                    store: wgpu::StoreOp::Store,
+                },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &self.screen_texture_state.depth_view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(0.0),
-                    store: wgpu::StoreOp::Store
+                    store: wgpu::StoreOp::Store,
                 }),
-                stencil_ops: None
+                stencil_ops: None,
             }),
             timestamp_writes: None,
             occlusion_query_set: None,
-            multiview_mask: None
+            multiview_mask: None,
         });
 
         self.pipelines.draw_all(&mut render_pass);

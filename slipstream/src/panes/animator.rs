@@ -11,7 +11,7 @@ pub struct AnimationFrame {}
 
 pub struct AnimationData {
     node: IrNodeKey,
-    header: ChrHeader
+    header: ChrHeader,
 }
 
 pub struct AnimatorPane {
@@ -21,7 +21,7 @@ pub struct AnimatorPane {
     animation: Option<AnimationData>,
     current_frame: u16,
 
-    dialog: Option<ObjectDialog>
+    dialog: Option<ObjectDialog>,
 }
 
 impl AnimatorPane {
@@ -33,7 +33,7 @@ impl AnimatorPane {
             animation: None,
             current_frame: 0,
 
-            dialog: None
+            dialog: None,
         })
     }
 
@@ -58,7 +58,7 @@ impl Pane for AnimatorPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        _is_focused: bool
+        _is_focused: bool,
     ) -> PaneResponse {
         if let Some(response) = self.dialog.as_mut().map(|dialog| dialog.draw(ui)) {
             match response {
@@ -79,7 +79,7 @@ impl Pane for AnimatorPane {
                     // Open object dialog
                     self.dialog = Some(ObjectDialog::new(
                         ObjectFilter::Type(IrNodeType::ChrHeader),
-                        self.arena.clone()
+                        self.arena.clone(),
                     ));
                 }
             });

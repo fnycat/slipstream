@@ -14,7 +14,7 @@ pub struct XfSizePayload {
     #[bits(4)]
     pub uv_count: u8,
     #[bits(24)]
-    _padding: u32
+    _padding: u32,
 }
 
 impl XfSizePayload {
@@ -31,7 +31,7 @@ pub enum XfProjectionType {
     St,
     Stq,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -43,7 +43,7 @@ pub enum XfInputForm {
     /// Generally used with STQ projection.
     Abc1,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -55,7 +55,7 @@ pub enum XfTexGenType {
     ColorMapping1,
     ColorMapping2,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -75,7 +75,7 @@ pub enum XfSourceRow {
     Uv6,
     Uv7,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[inspect_bitfield(u32)]
@@ -98,7 +98,7 @@ pub struct XfSetPayload {
     #[bits(3)]
     pub used_light_index: u8,
     #[bits(14)]
-    _padding: u16
+    _padding: u16,
 }
 
 impl XfSetPayload {
@@ -112,12 +112,12 @@ impl XfSetPayload {
 pub enum LoadXfPayload {
     Size(XfSizePayload),
     Set { tex_id: u8, payload: XfSetPayload },
-    Unknown { tex_id: u8, payload: u32 }
+    Unknown { tex_id: u8, payload: u32 },
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct LoadXfOpCode {
-    pub loads: Vec<LoadXfPayload>
+    pub loads: Vec<LoadXfPayload>,
 }
 
 impl LoadXfOpCode {

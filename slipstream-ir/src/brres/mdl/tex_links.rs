@@ -8,13 +8,13 @@ use slipstream_shared::error::SlipstreamResult;
 use crate::brres::{DeserializeContents, MdlSectionType, SerializeContents};
 use crate::node::node::IrNodeType;
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureLink {
     pub offset1: u32,
-    pub offset2: u32
+    pub offset2: u32,
 }
 
 impl TextureLink {
@@ -35,7 +35,7 @@ impl TextureLink {
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct TextureLinks {
-    pub links: Vec<TextureLink>
+    pub links: Vec<TextureLink>,
 }
 
 impl Visitable for TextureLinks {
@@ -49,7 +49,7 @@ impl Visitable for TextureLinks {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_mdl()
@@ -61,7 +61,7 @@ impl Visitable for TextureLinks {
 impl DeserializeContents for TextureLinks {
     const NAME: &str = "Texture links";
     const KIND: IrNodeType = IrNodeType::MdlSection {
-        ty: MdlSectionType::TextureLinks
+        ty: MdlSectionType::TextureLinks,
     };
 
     #[tracing::instrument(skip_all)]

@@ -25,26 +25,26 @@ pub enum OpenedFileInfo {
     Native {
         path: PathBuf,
         file_name: String,
-        content: Vec<u8>
+        content: Vec<u8>,
     },
     Web {
         file_name: String,
-        content: Vec<u8>
-    }
+        content: Vec<u8>,
+    },
 }
 
 impl OpenedFileInfo {
     pub fn content(&self) -> &[u8] {
         match self {
             Self::Native { content, .. } => content,
-            Self::Web { content, .. } => content
+            Self::Web { content, .. } => content,
         }
     }
 
     pub fn file_name(&self) -> &str {
         match self {
             Self::Native { file_name, .. } => file_name,
-            Self::Web { file_name, .. } => file_name
+            Self::Web { file_name, .. } => file_name,
         }
     }
 }
@@ -52,7 +52,7 @@ impl OpenedFileInfo {
 /// Generates the initial window layout at startup.
 fn create_initial_layout(
     arena: &Arc<IrArena>,
-    graphics_state: GraphicsState
+    graphics_state: GraphicsState,
 ) -> SlipstreamResult<(PaneBehavior, egui_tiles::Tree<Box<dyn Pane>>)> {
     let mut tiles = egui_tiles::Tiles::default();
 
@@ -74,7 +74,7 @@ fn create_initial_layout(
     let vertical_split = egui_tiles::Linear::new_binary(
         egui_tiles::LinearDir::Vertical,
         [horizontal_id, animator],
-        0.7
+        0.7,
     );
 
     let container_id = tiles.insert_container(vertical_split);
@@ -82,7 +82,7 @@ fn create_initial_layout(
     let pane_behavior = PaneBehavior {
         receiver: rx,
         sender: tx,
-        focused_pane: None
+        focused_pane: None,
     };
 
     let pane_tree =
@@ -111,7 +111,7 @@ pub struct App {
     /// Controls `egui_tiles` behavior
     pub pane_behavior: PaneBehavior,
     /// Contains the editor panes.
-    pub pane_tree: egui_tiles::Tree<Box<dyn Pane>>
+    pub pane_tree: egui_tiles::Tree<Box<dyn Pane>>,
 }
 
 impl App {
@@ -126,7 +126,7 @@ impl App {
         egui_phosphor::add_font_bytes_as_family(
             &mut fonts,
             "slipstream_shared::icons::icons::fill",
-            egui_phosphor::bytes::fill::FONT
+            egui_phosphor::bytes::fill::FONT,
         );
 
         cc.egui_ctx.set_fonts(fonts);
@@ -142,7 +142,7 @@ impl App {
             adapter: egui_rs.adapter.clone(),
             device: egui_rs.device.clone(),
             queue: egui_rs.queue.clone(),
-            renderer: Arc::clone(&egui_rs.renderer)
+            renderer: Arc::clone(&egui_rs.renderer),
         };
 
         let arena = Arc::new(IrArena::new());
@@ -157,7 +157,7 @@ impl App {
 
             file_info: None,
             pane_behavior,
-            pane_tree
+            pane_tree,
         }
     }
 
@@ -204,7 +204,7 @@ impl App {
     pub fn on_new_pane_request(
         &mut self,
         request: AddPaneRequest,
-        output_tile: Option<egui_tiles::TileId>
+        output_tile: Option<egui_tiles::TileId>,
     ) -> SlipstreamResult<egui_tiles::TileId> {
         // Check if this pane already exists.
 
@@ -221,7 +221,7 @@ impl App {
 
                     (pane.ty() == request.id()).then_some(id)
                 })
-                .copied()
+                .copied(),
         };
 
         // Pane was not found, create a new one
@@ -229,21 +229,21 @@ impl App {
             AddPaneRequest::Outliner { base } => OutlinerPane::new(
                 self.pane_behavior.sender.clone(),
                 Some(base),
-                self.arena.clone()
+                self.arena.clone(),
             ) as Box<dyn Pane>,
             AddPaneRequest::Inspector { inspected } => InspectorPane::new(
                 self.pane_behavior.sender.clone(),
                 inspected,
-                self.arena.clone()
+                self.arena.clone(),
             ) as Box<dyn Pane>,
             AddPaneRequest::Viewer { viewed } => ViewerPane::new(
                 self.pane_behavior.sender.clone(),
                 viewed,
                 self.arena.clone(),
-                self.render_state.clone()
+                self.render_state.clone(),
             )? as Box<dyn Pane>,
             AddPaneRequest::Log => LogPane::new(self.pane_behavior.sender.clone()) as Box<dyn Pane>,
-            AddPaneRequest::Debug { ty } => Box::new(ty) as Box<dyn Pane>
+            AddPaneRequest::Debug { ty } => Box::new(ty) as Box<dyn Pane>,
         };
 
         Ok(if let Some(existing_tile) = existing_tile {
@@ -309,7 +309,7 @@ impl App {
 
                         self.pane_tree.root = Some(new_pane_id);
                     }
-                }
+                },
             }
 
             new_pane_id
@@ -333,7 +333,7 @@ impl App {
 
             self.ctx
                 .send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
-                    center_x, center_y
+                    center_x, center_y,
                 )));
         }
     }

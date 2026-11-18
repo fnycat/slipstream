@@ -7,7 +7,7 @@ use slipstream_shared::{RefCursor, SlipstreamResult};
 use crate::encoding::ReadArrayExt;
 use crate::kmp::{KmpSectionHeader, MAX_KMP_SECTION_ENTRY_COUNT};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
@@ -15,7 +15,7 @@ pub struct CheckpointGroup {
     pub first: u8,
     pub count: u8,
     pub previous: [u8; 6],
-    pub next: [u8; 6]
+    pub next: [u8; 6],
 }
 
 impl CheckpointGroup {
@@ -30,20 +30,20 @@ impl CheckpointGroup {
             first,
             count,
             previous,
-            next
+            next,
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct CheckpointGroups {
-    pub groups: Vec<CheckpointGroup>
+    pub groups: Vec<CheckpointGroup>,
 }
 
 impl CheckpointGroups {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header: KmpSectionHeader
+        header: KmpSectionHeader,
     ) -> SlipstreamResult<Self> {
         // We cap the capacity at 255, as files generally shouldn't have more entries
         // and 255 is still a reasonable upper bound.
@@ -69,7 +69,7 @@ impl Visitable for CheckpointGroups {
     fn accept_mut(
         &mut self,
         meta: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_kmp()

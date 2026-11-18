@@ -6,7 +6,7 @@ use slipstream_shared::{RefCursor, SlipstreamResult, verify};
 
 use crate::tpl::{
     EncodedImage, ExportableImage, ImageFormat, Rgba8Image, deserialize_color, detile, from_rgb565,
-    hash_pixels
+    hash_pixels,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,7 +16,7 @@ pub struct CmprImage {
     // As `wgpu` natively supports this format, we will simply store a reference to the reader
     // instead of deserializing the texture data.
     pub(super) raw: RefCursor<[u8]>,
-    pub(super) hash: u64
+    pub(super) hash: u64,
 }
 
 impl CmprImage {
@@ -47,7 +47,7 @@ impl CmprImage {
     pub fn create_wgpu_texture(
         &self,
         device: &wgpu::Device,
-        queue: &wgpu::Queue
+        queue: &wgpu::Queue,
     ) -> SlipstreamResult<(wgpu::Texture, wgpu::TextureView)> {
         use wgpu::util::DeviceExt;
 
@@ -62,15 +62,15 @@ impl CmprImage {
                 size: wgpu::Extent3d {
                     width: self.dimensions().x as u32,
                     height: self.dimensions().y as u32,
-                    depth_or_array_layers: 1
+                    depth_or_array_layers: 1,
                 },
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[Self::SHADER_FORMAT],
                 mip_level_count: self.mipmaps(),
-                sample_count: 1
+                sample_count: 1,
             },
             wgpu::util::TextureDataOrder::LayerMajor,
-            bytemuck::cast_slice(self.raw.slice(..data_len)?)
+            bytemuck::cast_slice(self.raw.slice(..data_len)?),
         );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
@@ -82,7 +82,7 @@ impl CmprImage {
             base_mip_level: 0,
             mip_level_count: Some(self.mipmaps()),
             base_array_layer: 0,
-            array_layer_count: None
+            array_layer_count: None,
         });
 
         Ok((texture, view))
@@ -93,7 +93,7 @@ impl CmprImage {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmap_count: u32
+        mipmap_count: u32,
     ) -> SlipstreamResult<Self> {
         let blocks_x = dimensions.x.div_ceil(8);
         let blocks_y = dimensions.y.div_ceil(8);
@@ -108,7 +108,7 @@ impl CmprImage {
             dimensions,
             mipmaps: mipmap_count,
             raw: reader.clone(),
-            hash
+            hash,
         })
     }
 }
@@ -171,7 +171,7 @@ impl EncodedImage for CmprImage {
                         color0.as_u8vec4(),
                         color1.as_u8vec4(),
                         color2.as_u8vec4(),
-                        color3.as_u8vec4()
+                        color3.as_u8vec4(),
                     ];
 
                     let mut indices = reader.read_u32::<BigEndian>()?;
@@ -192,7 +192,7 @@ impl EncodedImage for CmprImage {
             dimensions: self.dimensions,
             mipmaps: self.mipmaps,
             hash: self.hash,
-            pixels: Arc::from(pixels)
+            pixels: Arc::from(pixels),
         })
     }
 
@@ -210,7 +210,7 @@ impl ExportableImage for CmprImage {
     fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
-        format: image::ImageFormat
+        format: image::ImageFormat,
     ) -> SlipstreamResult<()> {
         let rgba = self.to_rgba8()?;
         let dims = self.dimensions();
@@ -222,7 +222,7 @@ impl ExportableImage for CmprImage {
             dims.x as u32,
             dims.y as u32,
             image::ExtendedColorType::Rgba8,
-            format
+            format,
         )?;
 
         Ok(())

@@ -17,7 +17,7 @@ pub struct IndexedLoad {
     pub transfer_count: u8,
     /// The matrix slot to pull the data from
     #[bits(16)]
-    pub index: u16
+    pub index: u16,
 }
 
 impl IndexedLoad {

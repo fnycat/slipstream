@@ -7,7 +7,7 @@ pub struct UserData {}
 
 impl DeserializeContents for UserData {
     const KIND: IrNodeType = IrNodeType::MdlSection {
-        ty: MdlSectionType::UserData
+        ty: MdlSectionType::UserData,
     };
     const NAME: &str = "User Data";
 

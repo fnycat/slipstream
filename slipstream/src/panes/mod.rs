@@ -39,14 +39,14 @@ pub const PANE_TITLE_SIZE: f32 = 15.0;
 pub enum PaneResponse {
     None,
     DragStarted,
-    Closed
+    Closed,
 }
 
 impl PaneResponse {
     pub fn into_tiles_response(self) -> egui_tiles::UiResponse {
         match self {
             Self::DragStarted => egui_tiles::UiResponse::DragStarted,
-            _ => egui_tiles::UiResponse::None
+            _ => egui_tiles::UiResponse::None,
         }
     }
 }
@@ -59,7 +59,7 @@ impl BitOr for PaneResponse {
             (Self::None, rhs) => rhs,
             (Self::DragStarted, Self::Closed) => Self::Closed,
             (Self::DragStarted, _) => Self::DragStarted,
-            (Self::Closed, _) => Self::Closed
+            (Self::Closed, _) => Self::Closed,
         }
     }
 }
@@ -98,7 +98,7 @@ pub trait Pane: Send + Sync {
                         .interact(
                             ui.available_rect_before_wrap(),
                             ui.scope_id().with("pane_header"),
-                            egui::Sense::drag()
+                            egui::Sense::drag(),
                         )
                         .drag_started()
                     {
@@ -108,7 +108,7 @@ pub trait Pane: Send + Sync {
                     let label = egui::Label::new(
                         egui::RichText::new(self.title())
                             .heading()
-                            .size(PANE_TITLE_SIZE)
+                            .size(PANE_TITLE_SIZE),
                     )
                     .selectable(false);
 
@@ -133,7 +133,7 @@ pub trait Pane: Send + Sync {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
-        is_focused: bool
+        is_focused: bool,
     ) -> PaneResponse {
         let mut response = self.draw_pane_header(ui, is_focused);
 
@@ -152,7 +152,7 @@ pub trait Pane: Send + Sync {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
-        is_focused: bool
+        is_focused: bool,
     ) -> PaneResponse;
 
     fn highlight(&self, _painter: &mut egui::Painter) {
@@ -167,7 +167,7 @@ pub enum PaneId {
     Viewer,
     Logs,
     Debug,
-    Animator
+    Animator,
 }
 
 /// Requests to the tile manager to open a new pane.
@@ -182,18 +182,18 @@ pub enum AddPaneRequest {
     ///
     /// [`Outliner`]: outliner::OutlinerPane.
     Outliner {
-        base: IrNodeKey
+        base: IrNodeKey,
     },
     Inspector {
-        inspected: IrNodeKey
+        inspected: IrNodeKey,
     },
     Viewer {
-        viewed: Option<IrNodeKey>
+        viewed: Option<IrNodeKey>,
     },
     Log,
     Debug {
-        ty: DebugPane
-    }
+        ty: DebugPane,
+    },
 }
 
 impl AddPaneRequest {
@@ -203,7 +203,7 @@ impl AddPaneRequest {
             Self::Inspector { .. } => PaneId::Inspector,
             Self::Viewer { .. } => PaneId::Viewer,
             Self::Log => PaneId::Logs,
-            Self::Debug { .. } => PaneId::Debug
+            Self::Debug { .. } => PaneId::Debug,
         }
     }
 
@@ -227,7 +227,7 @@ impl AddPaneRequest {
                 viewed.hash(&mut hasher);
             }
             AddPaneRequest::Log => {}
-            AddPaneRequest::Debug { ty } => ty.hash(&mut hasher)
+            AddPaneRequest::Debug { ty } => ty.hash(&mut hasher),
         }
 
         ContentSignature::from(hasher.finish())
@@ -237,7 +237,7 @@ impl AddPaneRequest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReplacePaneRequest {
     pub tile_id: egui_tiles::TileId,
-    pub request: AddPaneRequest
+    pub request: AddPaneRequest,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -251,14 +251,14 @@ pub enum PaneAction {
     /// If this specific pane already exists, it will become active instead.
     AddPane(AddPaneRequest),
     /// Removes the pane with the given tile ID.
-    RemoveTile(egui_tiles::TileId)
+    RemoveTile(egui_tiles::TileId),
 }
 
 pub struct PaneBehavior {
     pub sender: mpsc::Sender<PaneAction>,
     pub receiver: mpsc::Receiver<PaneAction>,
 
-    pub focused_pane: Option<egui_tiles::TileId>
+    pub focused_pane: Option<egui_tiles::TileId>,
 }
 
 impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
@@ -270,7 +270,7 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
     fn is_tab_closable(
         &self,
         _tiles: &egui_tiles::Tiles<Box<dyn Pane>>,
-        _tile_id: egui_tiles::TileId
+        _tile_id: egui_tiles::TileId,
     ) -> bool {
         true
     }
@@ -285,7 +285,7 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
         visuals: &egui::Visuals,
         painter: &egui::Painter,
         parent_rect: Option<egui::Rect>,
-        preview_rect: egui::Rect
+        preview_rect: egui::Rect,
     ) {
         let preview_stroke = self.drag_preview_stroke(visuals);
         let preview_color = self.drag_preview_color(visuals);
@@ -299,7 +299,7 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
             0.0,
             preview_color,
             preview_stroke,
-            egui::StrokeKind::Inside
+            egui::StrokeKind::Inside,
         );
     }
 
@@ -307,7 +307,7 @@ impl egui_tiles::Behavior<Box<dyn Pane>> for PaneBehavior {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
-        pane: &mut Box<dyn Pane>
+        pane: &mut Box<dyn Pane>,
     ) -> egui_tiles::UiResponse {
         let pane_rect = ui.cursor();
         let clicked = ui.input(|i| {

@@ -5,7 +5,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{
-    CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult
+    CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult,
 };
 
 use crate::brres::NormalFormat;
@@ -17,7 +17,7 @@ pub struct Box2 {
     #[inspect(tooltip = "The minimum corner of the axis-aligned bounding box.")]
     pub min: glam::Vec2,
     #[inspect(tooltip = "The maximum corner of the axis-aligned bounding box.")]
-    pub max: glam::Vec2
+    pub max: glam::Vec2,
 }
 
 impl Box2 {
@@ -29,7 +29,7 @@ impl Box2 {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         Ok(Self {
             min: glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?),
-            max: glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?)
+            max: glam::Vec2::from_array(reader.read_f32_array::<2, BigEndian>()?),
         })
     }
 }
@@ -40,7 +40,7 @@ pub struct Box3 {
     #[inspect(tooltip = "The minimum corner of the axis-aligned bounding box.")]
     pub min: glam::Vec3,
     #[inspect(tooltip = "The maximum corner of the axis-aligned bounding box.")]
-    pub max: glam::Vec3
+    pub max: glam::Vec3,
 }
 
 impl Box3 {
@@ -52,7 +52,7 @@ impl Box3 {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         Ok(Self {
             min: glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?),
-            max: glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?)
+            max: glam::Vec3::from_array(reader.read_f32_array::<3, BigEndian>()?),
         })
     }
 }
@@ -79,7 +79,7 @@ pub enum VertexFormat {
     /// Fallback value for `bitenum`, this variant should never be used.
     #[inspect(ignore)]
     #[fallback]
-    Invalid = 5
+    Invalid = 5,
 }
 
 impl From<NormalFormat> for VertexFormat {
@@ -88,7 +88,7 @@ impl From<NormalFormat> for VertexFormat {
             NormalFormat::Int8 => Self::Int8,
             NormalFormat::Int16 => Self::Int16,
             NormalFormat::Float32 => Self::Float32,
-            NormalFormat::Invalid => Self::Invalid
+            NormalFormat::Invalid => Self::Invalid,
         }
     }
 }
@@ -117,14 +117,14 @@ pub enum VectorDivisor {
     /// It automatically assumes the full range of the form maps to [-1, 1].
     Normalize,
     /// Sets a custom divisor.
-    Custom(u8)
+    Custom(u8),
 }
 
 /// Deserializes a single value of the given format.
 pub fn deserialize_scalar(
     reader: &mut RefCursor<[u8]>,
     format: VertexFormat,
-    divisor: VectorDivisor
+    divisor: VectorDivisor,
 ) -> SlipstreamResult<f32> {
     let factor = match (format, divisor) {
         (VertexFormat::Int8, VectorDivisor::Normalize) => 1.0 / 128.0,
@@ -133,7 +133,7 @@ pub fn deserialize_scalar(
         _ => {
             return Err(InvalidInputError {
                 reason: format!("invalid format-divisor combination: {format:?} and {divisor:?}"),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         }
@@ -160,7 +160,7 @@ pub fn deserialize_scalar_data(
     reader: &mut RefCursor<[u8]>,
     count: usize,
     format: VertexFormat,
-    divisor: VectorDivisor
+    divisor: VectorDivisor,
 ) -> SlipstreamResult<Vec<f32>> {
     let mut data = Vec::with_capacity(count);
     for _ in 0..count {
@@ -173,7 +173,7 @@ pub fn deserialize_scalar_data(
 pub fn deserialize_vector<const N: usize>(
     reader: &mut RefCursor<[u8]>,
     format: VertexFormat,
-    divisor: VectorDivisor
+    divisor: VectorDivisor,
 ) -> SlipstreamResult<[f32; N]> {
     let factor = match (format, divisor) {
         (VertexFormat::Int8, VectorDivisor::Normalize) => 1.0 / 128.0,
@@ -182,7 +182,7 @@ pub fn deserialize_vector<const N: usize>(
         _ => {
             return Err(InvalidInputError {
                 reason: format!("invalid format-divisor combination: {format:?} and {divisor:?}"),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         }
@@ -221,7 +221,7 @@ pub fn deserialize_vector_data<const N: usize, I: From<[f32; N]>>(
     reader: &mut RefCursor<[u8]>,
     count: usize,
     format: VertexFormat,
-    divisor: VectorDivisor
+    divisor: VectorDivisor,
 ) -> SlipstreamResult<Vec<I>> {
     let mut data = Vec::with_capacity(count);
     for _ in 0..count {

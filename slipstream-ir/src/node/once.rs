@@ -18,7 +18,7 @@ pub enum OnceState {
     Incomplete,
     Poisoned,
     InProgress,
-    Complete
+    Complete,
 }
 
 impl OnceState {
@@ -93,7 +93,7 @@ impl Once {
     #[inline]
     pub fn try_call_once<F>(&self, f: F) -> SlipstreamResult<()>
     where
-        F: FnOnce() -> SlipstreamResult<()>
+        F: FnOnce() -> SlipstreamResult<()>,
     {
         if self.0.load(Ordering::Acquire) == DONE_BIT {
             return Ok(());
@@ -115,7 +115,7 @@ impl Once {
     #[inline]
     pub fn try_call_once_force<F>(&self, f: F) -> SlipstreamResult<()>
     where
-        F: FnOnce(OnceState) -> SlipstreamResult<()>
+        F: FnOnce(OnceState) -> SlipstreamResult<()>,
     {
         if self.0.load(Ordering::Acquire) == DONE_BIT {
             return Ok(());
@@ -142,7 +142,7 @@ impl Once {
     fn try_call_once_slow(
         &self,
         ignore_poison: bool,
-        f: &mut dyn FnMut(OnceState) -> SlipstreamResult<()>
+        f: &mut dyn FnMut(OnceState) -> SlipstreamResult<()>,
     ) -> SlipstreamResult<()> {
         let mut spinwait = SpinWait::new();
         let mut state = self.0.load(Ordering::Relaxed);
@@ -171,10 +171,10 @@ impl Once {
                     state,
                     (state | LOCKED_BIT) & !POISON_BIT,
                     Ordering::Acquire,
-                    Ordering::Relaxed
+                    Ordering::Relaxed,
                 ) {
                     Ok(_) => break,
-                    Err(x) => state = x
+                    Err(x) => state = x,
                 }
                 continue;
             }
@@ -190,7 +190,7 @@ impl Once {
                     state,
                     state | PARKED_BIT,
                     Ordering::Relaxed,
-                    Ordering::Relaxed
+                    Ordering::Relaxed,
                 )
             {
                 state = x;
@@ -211,7 +211,7 @@ impl Once {
                     before_sleep,
                     timed_out,
                     DEFAULT_PARK_TOKEN,
-                    None
+                    None,
                 );
             }
 
@@ -283,7 +283,7 @@ impl Once {
     #[inline]
     pub fn call_once<F>(&self, f: F)
     where
-        F: FnOnce()
+        F: FnOnce(),
     {
         if self.0.load(Ordering::Acquire) == DONE_BIT {
             return;
@@ -305,7 +305,7 @@ impl Once {
     #[inline]
     pub fn call_once_force<F>(&self, f: F)
     where
-        F: FnOnce(OnceState)
+        F: FnOnce(OnceState),
     {
         if self.0.load(Ordering::Acquire) == DONE_BIT {
             return;
@@ -357,10 +357,10 @@ impl Once {
                     state,
                     (state | LOCKED_BIT) & !POISON_BIT,
                     Ordering::Acquire,
-                    Ordering::Relaxed
+                    Ordering::Relaxed,
                 ) {
                     Ok(_) => break,
-                    Err(x) => state = x
+                    Err(x) => state = x,
                 }
                 continue;
             }
@@ -376,7 +376,7 @@ impl Once {
                     state,
                     state | PARKED_BIT,
                     Ordering::Relaxed,
-                    Ordering::Relaxed
+                    Ordering::Relaxed,
                 )
             {
                 state = x;
@@ -397,7 +397,7 @@ impl Once {
                     before_sleep,
                     timed_out,
                     DEFAULT_PARK_TOKEN,
-                    None
+                    None,
                 );
             }
 

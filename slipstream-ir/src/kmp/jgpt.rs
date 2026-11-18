@@ -8,7 +8,7 @@ use slipstream_shared::{RefCursor, SlipstreamResult};
 use crate::encoding::ReadArrayExt;
 use crate::kmp::{KmpSectionHeader, MAX_KMP_SECTION_ENTRY_COUNT};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
@@ -16,7 +16,7 @@ pub struct RespawnPoint {
     pub position: glam::Vec3,
     pub rotation: glam::Vec3,
     pub id: u16,
-    pub user_data: i16
+    pub user_data: i16,
 }
 
 impl RespawnPoint {
@@ -30,20 +30,20 @@ impl RespawnPoint {
             position,
             rotation,
             id,
-            user_data
+            user_data,
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Respawns {
-    pub respawns: Vec<RespawnPoint>
+    pub respawns: Vec<RespawnPoint>,
 }
 
 impl Respawns {
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header: KmpSectionHeader
+        header: KmpSectionHeader,
     ) -> SlipstreamResult<Self> {
         // We cap the capacity at 255, as files generally shouldn't have more entries
         // and 255 is still a reasonable upper bound.
@@ -69,7 +69,7 @@ impl Visitable for Respawns {
     fn accept_mut(
         &mut self,
         meta: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_kmp()

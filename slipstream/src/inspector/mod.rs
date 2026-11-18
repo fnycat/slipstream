@@ -11,19 +11,19 @@ pub struct InspectorPane {
     cmd_sender: mpsc::Sender<PaneAction>,
 
     inspected: IrNodeKey,
-    arena: Arc<IrArena>
+    arena: Arc<IrArena>,
 }
 
 impl InspectorPane {
     pub fn new(
         cmd_sender: mpsc::Sender<PaneAction>,
         inspected: IrNodeKey,
-        arena: Arc<IrArena>
+        arena: Arc<IrArena>,
     ) -> Box<Self> {
         Box::new(Self {
             cmd_sender,
             inspected,
-            arena
+            arena,
         })
     }
 
@@ -39,7 +39,7 @@ impl InspectorPane {
                     key: node.key(),
                     label: &mut node.label,
                     ty: node.ty,
-                    children: &mut node.children
+                    children: &mut node.children,
                 };
 
                 ui.spacing_mut().item_spacing = egui::vec2(2.0, 4.0);
@@ -72,7 +72,7 @@ impl Pane for InspectorPane {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        _is_focused: bool
+        _is_focused: bool,
     ) -> PaneResponse {
         self.draw_properties(ui).unwrap();
 

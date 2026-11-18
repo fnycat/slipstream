@@ -6,7 +6,7 @@ pub fn load_shader(device: &wgpu::Device, name: &str) -> io::Result<wgpu::Shader
 
     Ok(device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some(name),
-        source: wgpu::ShaderSource::Wgsl(shader_code.into())
+        source: wgpu::ShaderSource::Wgsl(shader_code.into()),
     }))
 }
 

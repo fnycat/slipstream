@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use slipstream_derive::Inspect;
 use slipstream_shared::cursor::{MutCursor, RefCursor};
 use slipstream_shared::error::{
-    CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult
+    CorruptionError, InvalidInputError, SlipstreamError, SlipstreamResult,
 };
 use slipstream_shared::verify;
 
@@ -26,7 +26,7 @@ use crate::visitor::{VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMu
 /// [`pn_index_enabled`]: CpVcdLo::pn_index_enabled
 #[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct BoneTable {
-    pub entries: Vec<u16>
+    pub entries: Vec<u16>,
 }
 
 impl BoneTable {
@@ -63,7 +63,7 @@ impl BoneTable {
 pub enum PolygonModifier {
     None,
     ChangeCurrentMatrix,
-    Invisible
+    Invisible,
 }
 
 impl TryFrom<u32> for PolygonModifier {
@@ -108,7 +108,7 @@ pub enum BoneBind {
     ///
     /// If the shape uses this bone bind type, the `GX_VA_PNMTXIDX` flag is set to true.
     /// and each primitive will store an index to its transformation matrix in this table.
-    Mixed(BoneTable)
+    Mixed(BoneTable),
 }
 
 /// Setup bytecode for a shape.
@@ -132,7 +132,7 @@ pub struct GxVertexDeclaration {
     /// The third vertex attribute table.
     #[inspect(rename = "Attribute Table 3")]
     pub vat_c: CpVatC,
-    pub xf: Vec<LoadXfPayload>
+    pub xf: Vec<LoadXfPayload>,
 }
 
 impl TryFrom<GxBytecode> for GxVertexDeclaration {
@@ -194,7 +194,7 @@ impl TryFrom<GxBytecode> for GxVertexDeclaration {
                     reason: String::from("vertex declaration did not contain cp5 opcode"),
                     ..Default::default()
                 })
-            })?
+            })?,
         })
     }
 }
@@ -248,7 +248,7 @@ pub struct Polygon {
     #[inspect(rename = "Vertex Declaration")]
     pub vertex_decl: GxVertexDeclaration,
     /// Bytecode containing this shape's draw calls.
-    pub vertex_data_gx: GxBytecode
+    pub vertex_data_gx: GxBytecode,
 }
 
 impl Visitable for Polygon {
@@ -262,7 +262,7 @@ impl Visitable for Polygon {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_mdl()
@@ -274,7 +274,7 @@ impl Visitable for Polygon {
 impl DeserializeContents for Polygon {
     const NAME: &str = "Polygons";
     const KIND: IrNodeType = IrNodeType::MdlSection {
-        ty: MdlSectionType::Polygon
+        ty: MdlSectionType::Polygon,
     };
 
     #[tracing::instrument(skip_all)]
@@ -284,7 +284,7 @@ impl DeserializeContents for Polygon {
         let _mdl_offset = reader.read_i32::<BigEndian>()?;
         let bone_index = match reader.read_i32::<BigEndian>()? {
             -1 => None,
-            v => Some(v as u32)
+            v => Some(v as u32),
         };
 
         let _cp_vtx = reader.read_u32::<BigEndian>()?;
@@ -314,7 +314,7 @@ impl DeserializeContents for Polygon {
 
         let bone_bind = match bone_index {
             Some(index) => BoneBind::Rigid(index),
-            None => BoneBind::Mixed(BoneTable::deserialize(reader)?)
+            None => BoneBind::Mixed(BoneTable::deserialize(reader)?),
         };
 
         // The definitions and vertices offsets are relative to their fields, not the the file start.
@@ -330,7 +330,7 @@ impl DeserializeContents for Polygon {
 
         tracing::trace!("Reading vertex declaration GX bytecode");
         let vertex_decl = GxVertexDeclaration::try_from(
-            GxBytecode::deserialize_vertex_declaration(reader, definitions_end as u64)?
+            GxBytecode::deserialize_vertex_declaration(reader, definitions_end as u64)?,
         )?;
 
         let vertices_start =
@@ -358,7 +358,7 @@ impl DeserializeContents for Polygon {
 
             bone_bind,
             vertex_decl,
-            vertex_data_gx
+            vertex_data_gx,
         })
     }
 }

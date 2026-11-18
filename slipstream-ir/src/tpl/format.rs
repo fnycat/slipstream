@@ -14,7 +14,7 @@ use crate::defer::WriteHandle;
 use crate::encoding::Deserialize;
 use crate::tpl::{
     CmprImage, EncodedImage, ExportableImage, L4Image, L8Image, La4Image, La8Image, Rgb5a3Image,
-    Rgb565Image, Rgba8Image
+    Rgb565Image, Rgba8Image,
 };
 
 pub const SUPPORTED_EXPORT_FORMATS: [&str; 4] = ["png", "jpeg", "jpg", "webp"];
@@ -45,7 +45,7 @@ pub enum ImageFormat {
     // also no 0x0b, 0x0c and 0x0d
     #[inspect(rename = "CMPR")]
     #[inspect(tooltip = "A compressed texture using DXT1 compression.")]
-    Cmpr = 0x0e
+    Cmpr = 0x0e,
 }
 
 impl ImageFormat {
@@ -84,7 +84,7 @@ pub enum ImageData {
     /// Regular 8-bit colour + alpha channels.
     Rgba8(Rgba8Image),
     /// DXT1 color palette compressed image.
-    Cmpr(CmprImage)
+    Cmpr(CmprImage),
 }
 
 impl ImageData {
@@ -105,7 +105,7 @@ impl ImageData {
     pub fn export_to_file_with_format<P: AsRef<Path>>(
         &self,
         filepath: P,
-        format: image::ImageFormat
+        format: image::ImageFormat,
     ) -> SlipstreamResult<()> {
         let path = filepath.as_ref();
         let mut file = std::fs::File::create(path)?;
@@ -153,7 +153,7 @@ impl ImageData {
                     [dims.x as usize, dims.y as usize],
                     rgba8
                         .bytes()
-                        .expect("Rgba8Texture::bytes should be infallible")
+                        .expect("Rgba8Texture::bytes should be infallible"),
                 ));
 
                 let data = egui::ImageData::Color(color_img);
@@ -261,7 +261,7 @@ impl ImageData {
         reader: &mut RefCursor<[u8]>,
         dims: glam::U16Vec2,
         mipmaps: u32,
-        format: ImageFormat
+        format: ImageFormat,
     ) -> SlipstreamResult<Self> {
         Ok(match format {
             ImageFormat::Luminance4 => ImageData::Luminance4(L4Image::new(reader, dims, mipmaps)?),
@@ -282,7 +282,7 @@ impl ImageData {
                     dimensions: glam::u16vec2(1, 1),
                     mipmaps: 1,
                     pixels: Arc::from(vec![255; 8 * 8]),
-                    hash: 0
+                    hash: 0,
                 })
             }
         })
@@ -292,7 +292,7 @@ impl ImageData {
     pub fn serialize(
         &self,
         writer: &mut MutCursor,
-        img_address_handle: WriteHandle<u32, BigEndian>
+        img_address_handle: WriteHandle<u32, BigEndian>,
     ) -> SlipstreamResult<()> {
         img_address_handle.finish(writer, writer.len() as u32)?;
 
@@ -358,7 +358,7 @@ macro_rules! impl_img_data {
             }
 
             /// Hashes the raw contents of the image.
-            /// 
+            ///
             /// This is mainly used when converting images to textures to be displayed in the
             /// editor.
             pub fn content_hash(&self) -> u64 {

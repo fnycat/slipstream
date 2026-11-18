@@ -14,17 +14,17 @@ pub type DynContent = dyn Visitable + Send + Sync;
 #[derive(Clone)]
 pub struct DeferPayload {
     pub reader: RefCursor<[u8]>,
-    pub ty: IrNodeType
+    pub ty: IrNodeType,
 }
 
 union LazyInner {
     payload: ManuallyDrop<DeferPayload>,
-    content: ManuallyDrop<Box<DynContent>>
+    content: ManuallyDrop<Box<DynContent>>,
 }
 
 pub struct LazyContent {
     once: Once,
-    data: UnsafeCell<LazyInner>
+    data: UnsafeCell<LazyInner>,
 }
 
 impl LazyContent {
@@ -32,8 +32,8 @@ impl LazyContent {
         Self {
             once: Once::new(),
             data: UnsafeCell::new(LazyInner {
-                payload: ManuallyDrop::new(DeferPayload { reader, ty })
-            })
+                payload: ManuallyDrop::new(DeferPayload { reader, ty }),
+            }),
         }
     }
 
@@ -55,7 +55,7 @@ impl LazyContent {
                     OnceState::Incomplete => Err(ManuallyDrop::into_inner(unsafe { data.payload })),
                     OnceState::Complete => Ok(ManuallyDrop::into_inner(unsafe { data.content })),
                     OnceState::Poisoned => unreachable!(),
-                    OnceState::InProgress => todo!()
+                    OnceState::InProgress => todo!(),
                 }
             }
         }
@@ -104,7 +104,7 @@ impl LazyContent {
             // SAFETY: The `Once` state is `Incomplete`.
             OnceState::Incomplete => unsafe { really_init_mut(this) }?,
             OnceState::Poisoned => panic_poisoned(),
-            OnceState::InProgress => todo!("init in progress")
+            OnceState::InProgress => todo!("init in progress"),
         })
     }
 
@@ -143,7 +143,7 @@ impl LazyContent {
             // SAFETY:
             // The closure has been run successfully, so `content` has been initialized.
             OnceState::Complete => Some(unsafe { &mut this.data.get_mut().content }.as_mut()),
-            _ => None
+            _ => None,
         }
     }
 
@@ -156,7 +156,7 @@ impl LazyContent {
             // SAFETY:
             // The closure has been run successfully, so `content` has been initialized.
             OnceState::Complete => Some(unsafe { &(*this.data.get()).content }.as_ref()),
-            _ => None
+            _ => None,
         }
     }
 
@@ -175,7 +175,7 @@ impl Drop for LazyContent {
             },
             OnceState::Complete => unsafe { ManuallyDrop::drop(&mut self.data.get_mut().content) },
             OnceState::Poisoned => {}
-            OnceState::InProgress => unreachable!()
+            OnceState::InProgress => unreachable!(),
         }
     }
 }
@@ -185,7 +185,7 @@ impl fmt::Debug for LazyContent {
         let mut d = f.debug_tuple("LazyContentLock");
         match LazyContent::get(self) {
             Some(_) => d.field(&format_args!("<data>")),
-            None => d.field(&format_args!("<uninit>"))
+            None => d.field(&format_args!("<uninit>")),
         };
         d.finish()
     }
@@ -197,8 +197,8 @@ impl From<Box<DynContent>> for LazyContent {
         LazyContent {
             once: Once::new_complete(),
             data: UnsafeCell::new(LazyInner {
-                content: ManuallyDrop::new(value)
-            })
+                content: ManuallyDrop::new(value),
+            }),
         }
     }
 }

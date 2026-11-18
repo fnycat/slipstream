@@ -1,6 +1,6 @@
 use crate::arc::{ArcDirectory, UnknownFile};
 use crate::brres::{
-    BrresFile, ChrHeader, ClrHeader, ColorAnimation, MdlVisitor, SkeletalAnimation, Texture
+    BrresFile, ChrHeader, ClrHeader, ColorAnimation, MdlVisitor, SkeletalAnimation, Texture,
 };
 use crate::kmp::KmpVisitor;
 use crate::node::arena::IrNodeKey;
@@ -13,7 +13,7 @@ pub struct VisitorCtxMeta<'a> {
     pub label: &'a str,
     pub ty: IrNodeType,
     pub key: IrNodeKey,
-    pub children: &'a [IrNodeKey]
+    pub children: &'a [IrNodeKey],
 }
 
 impl<'a> From<&'a IrNode> for VisitorCtxMeta<'a> {
@@ -23,14 +23,14 @@ impl<'a> From<&'a IrNode> for VisitorCtxMeta<'a> {
             label: &node.label,
             ty: node.ty,
             key: node.key(),
-            children: &node.children
+            children: &node.children,
         }
     }
 }
 
 pub struct VisitorCtx<'a, T> {
     pub meta: VisitorCtxMeta<'a>,
-    pub content: &'a T
+    pub content: &'a T,
 }
 
 impl<'a, T> VisitorCtx<'a, T> {
@@ -38,7 +38,7 @@ impl<'a, T> VisitorCtx<'a, T> {
     pub(crate) fn new(node: VisitorCtxMeta<'a>, content: &'a T) -> Self {
         Self {
             meta: node,
-            content
+            content,
         }
     }
 }
@@ -55,7 +55,7 @@ pub struct VisitorCtxMetaMut<'a> {
     pub label: &'a mut String,
     pub ty: IrNodeType,
     pub key: IrNodeKey,
-    pub children: &'a mut [IrNodeKey]
+    pub children: &'a mut [IrNodeKey],
 }
 
 impl<'a> From<&'a mut IrNode> for VisitorCtxMetaMut<'a> {
@@ -64,7 +64,7 @@ impl<'a> From<&'a mut IrNode> for VisitorCtxMetaMut<'a> {
             key: node.key(),
             label: &mut node.label,
             ty: node.ty,
-            children: &mut node.children
+            children: &mut node.children,
         }
     }
 }
@@ -72,7 +72,7 @@ impl<'a> From<&'a mut IrNode> for VisitorCtxMetaMut<'a> {
 /// The contents can be accessed via the deref implementations.
 pub struct VisitorCtxMut<'a, T> {
     pub meta: VisitorCtxMetaMut<'a>,
-    pub content: &'a mut T
+    pub content: &'a mut T,
 }
 
 impl<'a, T> VisitorCtxMut<'a, T> {
@@ -80,7 +80,7 @@ impl<'a, T> VisitorCtxMut<'a, T> {
     pub(crate) fn new(node: VisitorCtxMetaMut<'a>, content: &'a mut T) -> Self {
         Self {
             meta: node,
-            content
+            content,
         }
     }
 }
@@ -227,7 +227,7 @@ pub trait Visitor {
     /// Mutably visits a color animation
     fn visit_color_animation_mut(
         &mut self,
-        anim: VisitorCtxMut<'_, ColorAnimation>
+        anim: VisitorCtxMut<'_, ColorAnimation>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -273,7 +273,7 @@ pub trait Visitor {
 
     fn visit_skeletal_animation(
         &mut self,
-        animation: VisitorCtx<'_, SkeletalAnimation>
+        animation: VisitorCtx<'_, SkeletalAnimation>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -284,7 +284,7 @@ pub trait Visitor {
 
     fn visit_skeletal_animation_mut(
         &mut self,
-        animation: VisitorCtxMut<'_, SkeletalAnimation>
+        animation: VisitorCtxMut<'_, SkeletalAnimation>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())

@@ -36,7 +36,7 @@ use crate::encoding::ReadArrayExt;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 pub const KMP_MAGIC: [u8; 4] = [0x52, 0x4b, 0x4d, 0x44]; // "RKMD"
@@ -61,7 +61,7 @@ pub const KMP_READABLE_SECTION_NAMES: [&str; 15] = [
     "Respawn Positions",
     "Cannon Target Positions",
     "Mission Success Points",
-    "Stage Information"
+    "Stage Information",
 ];
 
 /// These are just four letter magics for each of the files, but converted to an `u32` for easier
@@ -86,7 +86,7 @@ pub enum KmpSectionType {
     RespawnPositions = 0x4a475054,
     CannonTargetPositions = 0x434e5054,
     MissionSuccessPoints = 0x4d535054,
-    StageInformation = 0x53544749
+    StageInformation = 0x53544749,
 }
 
 impl KmpSectionType {
@@ -103,7 +103,7 @@ pub struct KmpHeader {
     #[inspect(tooltip = "The length in bytes of the entire KMP file.")]
     pub length: u32,
     #[inspect(tooltip = "Offsets to the subsections within the KMP file.")]
-    pub offsets: Vec<u32>
+    pub offsets: Vec<u32>,
 }
 
 impl KmpHeader {
@@ -142,7 +142,7 @@ impl KmpHeader {
         Ok(Self {
             start,
             length,
-            offsets
+            offsets,
         })
     }
 }
@@ -158,7 +158,7 @@ impl Visitable for KmpHeader {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_kmp()
@@ -171,7 +171,7 @@ impl Visitable for KmpHeader {
 pub struct KmpSectionHeader {
     pub ty: KmpSectionType,
     pub entry_count: u16,
-    pub extra_data: u16
+    pub extra_data: u16,
 }
 
 impl KmpSectionHeader {
@@ -183,7 +183,7 @@ impl KmpSectionHeader {
         Ok(Self {
             ty,
             entry_count,
-            extra_data
+            extra_data,
         })
     }
 }
@@ -192,7 +192,7 @@ pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
     parent: Option<IrNodeKey>,
     arena: &IrArena,
-    name: String
+    name: String,
 ) -> SlipstreamResult<IrNodeKey> {
     let header = KmpHeader::deserialize(reader)?;
     let header_end = reader.position();
@@ -278,8 +278,8 @@ pub fn deserialize(
             ty: IrNodeType::KmpHeader,
             parent,
             children,
-            contents: ContentSlot::eager(Box::new(header))
-        }
+            contents: ContentSlot::eager(Box::new(header)),
+        },
     );
 
     Ok(kmp_root)

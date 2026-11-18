@@ -4,7 +4,7 @@ pub struct SkeletonPipeline {
     bone_count: u32,
     bone_transform_bind_group: wgpu::BindGroup,
     camera_bind_group: wgpu::BindGroup,
-    pipeline: wgpu::RenderPipeline
+    pipeline: wgpu::RenderPipeline,
 }
 
 impl SkeletonPipeline {
@@ -14,7 +14,7 @@ impl SkeletonPipeline {
         camera_bg: wgpu::BindGroup,
         bone_bg_layout: &wgpu::BindGroupLayout,
         bone_bg: wgpu::BindGroup,
-        bone_count: u32
+        bone_count: u32,
     ) -> Self {
         let module =
             device.create_shader_module(wgpu::include_wgsl!("../../shaders/skeleton.wgsl"));
@@ -22,7 +22,7 @@ impl SkeletonPipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("skeleton visual pipeline layout"),
             bind_group_layouts: &[Some(camera_bg_layout), Some(bone_bg_layout)],
-            immediate_size: 0
+            immediate_size: 0,
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -33,9 +33,9 @@ impl SkeletonPipeline {
                 entry_point: Some("vs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions {
                     constants: &[("line_width", 2.0)],
-                    zero_initialize_workgroup_memory: false
+                    zero_initialize_workgroup_memory: false,
                 },
-                buffers: &[]
+                buffers: &[],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
@@ -44,7 +44,7 @@ impl SkeletonPipeline {
                 cull_mode: None,
                 unclipped_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
-                conservative: false
+                conservative: false,
             },
             // To run this pipeline within the same render pass as the other drawing commands, we need to include a compatible depth stencil.
             // We will not use this stencil and will not write to it either.
@@ -53,12 +53,12 @@ impl SkeletonPipeline {
                 depth_write_enabled: Some(false),
                 depth_compare: None,
                 stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default()
+                bias: wgpu::DepthBiasState::default(),
             }),
             multisample: wgpu::MultisampleState {
                 count: MSAA_SAMPLE_COUNT,
                 mask: !0,
-                alpha_to_coverage_enabled: false
+                alpha_to_coverage_enabled: false,
             },
             fragment: Some(wgpu::FragmentState {
                 module: &module,
@@ -67,18 +67,18 @@ impl SkeletonPipeline {
                 targets: &[Some(wgpu::ColorTargetState {
                     format: TARGET_FORMAT,
                     blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL
-                })]
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
             }),
             multiview_mask: None,
-            cache: None
+            cache: None,
         });
 
         Self {
             pipeline,
             camera_bind_group: camera_bg,
             bone_transform_bind_group: bone_bg,
-            bone_count
+            bone_count,
         }
     }
 

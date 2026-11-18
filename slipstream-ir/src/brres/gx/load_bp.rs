@@ -24,7 +24,7 @@ pub struct SetIndirectTexture {
     #[bits(3)]
     pub coord3: u8,
     #[bits(8)]
-    _padding: u8
+    _padding: u8,
 }
 
 #[bitenum]
@@ -37,7 +37,7 @@ pub enum RasConstant {
     AlphaBumpCorrected = 0b110,
     Zero = 0b111,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[inspect_bitfield(u32)]
@@ -60,7 +60,7 @@ pub struct TextureReadSettings {
     #[bits(3)]
     pub ras1_value: RasConstant,
     #[bits(10)]
-    _padding2: u16
+    _padding2: u16,
 }
 
 #[inspect_bitfield(u32)]
@@ -72,7 +72,7 @@ pub struct DepthTest {
     pub depth_function: AlphaCompare,
     pub enable_depth_write: bool,
     #[bits(27)]
-    _padding: u32
+    _padding: u32,
 }
 
 impl DepthTest {
@@ -95,7 +95,7 @@ pub enum BlendFactor {
     InverseDestinationAlpha = 0b111,
     #[inspect(ignore)]
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -129,7 +129,7 @@ pub enum LogicOp {
     Set,
     #[inspect(ignore)]
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[inspect_bitfield(u32)]
@@ -151,7 +151,7 @@ pub struct BlendMode {
     #[bits(4)]
     pub logic_op: LogicOp,
     #[bits(16)]
-    _padding: u16
+    _padding: u16,
 }
 
 impl BlendMode {
@@ -173,7 +173,7 @@ pub struct ConstantAlpha {
     #[bits(8)]
     pub value: u8,
     #[bits(8)]
-    _padding3: u8
+    _padding3: u8,
 }
 
 impl ConstantAlpha {
@@ -191,7 +191,7 @@ pub enum LayerBlendDest {
     Temp1 = 0b10,
     Temp2 = 0b11,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -203,7 +203,7 @@ pub enum LayerBlendShift {
     Four = 0b10,
     Five = 0b11,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -227,7 +227,7 @@ pub enum ColorBlendArgument {
     Const = 0b1110,
     Zero = 0b1111,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -239,7 +239,7 @@ pub enum LayerBlendBias {
     NegativeHalf = 0b10,
     Special = 0b11,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -249,7 +249,7 @@ pub enum LayerBlendOp {
     Add = 0b0,
     Subtract = 0b1,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 /// The command performed on each layer by the graphics obeys the format:
@@ -276,7 +276,7 @@ pub struct ColorLayerBlendSettings {
     #[bits(2)]
     pub dest: LayerBlendDest,
     #[bits(8)]
-    _padding: u8
+    _padding: u8,
 }
 
 #[bitenum]
@@ -292,7 +292,7 @@ pub enum AlphaBlendArgument {
     Const = 0b110,
     Zero = 0b111,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 /// The command performed on each layer by the graphics card obeys the format:
@@ -323,7 +323,7 @@ pub struct AlphaLayerBlendSettings {
     #[bits(2)]
     pub dest: LayerBlendDest,
     #[bits(8)]
-    _padding: u8
+    _padding: u8,
 }
 
 #[bitenum]
@@ -335,7 +335,7 @@ pub enum SwapComponent {
     Blue = 0b10,
     Alpha = 0b11,
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 /// Controls how the swap mode table is accessed when rendering a texture on a polygon.
@@ -355,7 +355,7 @@ pub struct SwapModeTableSettings {
     #[bits(5)]
     pub alpha1_index: u8,
     #[bits(8)]
-    _padding: u8
+    _padding: u8,
 }
 
 #[bitenum]
@@ -372,7 +372,7 @@ pub enum AlphaCompare {
     Always = 0x07,
     #[inspect(ignore)]
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[bitenum]
@@ -389,7 +389,7 @@ pub enum AlphaOp {
     Xnor,
     #[inspect(ignore)]
     #[fallback]
-    Invalid
+    Invalid,
 }
 
 #[inspect_bitfield(u32)]
@@ -412,7 +412,7 @@ pub struct AlphaFunction {
     #[bits(2)]
     pub logic: AlphaOp,
     #[bits(8)]
-    _padding: u8
+    _padding: u8,
 }
 
 impl AlphaFunction {
@@ -431,14 +431,14 @@ pub struct MaterialAddressRange {
     pub alpha_green: u16,
     pub constant: bool,
     #[bits(8)]
-    _padding2: u8
+    _padding2: u8,
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 pub enum ComponentsSet {
     #[default]
     RedAlpha,
-    BlueGreen
+    BlueGreen,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Inspect)]
@@ -446,29 +446,29 @@ pub enum LoadBpOpCode {
     IndirectTexture(SetIndirectTexture),
     TextureRead {
         tex_id: u8,
-        payload: TextureReadSettings
+        payload: TextureReadSettings,
     },
     DepthTest(DepthTest),
     BlendMode(BlendMode),
     ConstantAlpha(ConstantAlpha),
     ColorLayerBlend {
         layer: u8,
-        payload: ColorLayerBlendSettings
+        payload: ColorLayerBlendSettings,
     },
     AlphaLayerBlend {
         layer: u8,
-        payload: AlphaLayerBlendSettings
+        payload: AlphaLayerBlendSettings,
     },
     SwapModeTable {
         table: u8,
-        payload: SwapModeTableSettings
+        payload: SwapModeTableSettings,
     },
     MaterialAddress {
         components: ComponentsSet,
-        payload: MaterialAddressRange
+        payload: MaterialAddressRange,
     },
     AlphaFunction(AlphaFunction),
-    WriteMask(u32)
+    WriteMask(u32),
 }
 
 impl LoadBpOpCode {
@@ -488,7 +488,7 @@ impl LoadBpOpCode {
                 let tex_id = todo!("compute tex id");
                 Self::TextureRead {
                     tex_id,
-                    payload: TextureReadSettings::from_bits(value)
+                    payload: TextureReadSettings::from_bits(value),
                 }
             }
             0x40 => Self::DepthTest(DepthTest::from_bits(value)),
@@ -496,18 +496,18 @@ impl LoadBpOpCode {
             0x42 => Self::ConstantAlpha(ConstantAlpha::from_bits(value)),
             0xc0 | 0xc2 | 0xc4 | 0xc6 | 0xc8 | 0xca | 0xcc | 0xce => Self::ColorLayerBlend {
                 layer: address,
-                payload: ColorLayerBlendSettings::from_bits(value)
+                payload: ColorLayerBlendSettings::from_bits(value),
             },
             0xc1 | 0xc3 | 0xc5 | 0xc7 | 0xc9 | 0xcb | 0xcd | 0xcf => Self::AlphaLayerBlend {
                 layer: address,
-                payload: AlphaLayerBlendSettings::from_bits(value)
+                payload: AlphaLayerBlendSettings::from_bits(value),
             },
             0xf6..=0xfd => {
                 // table id is the 3 lowest bits of the address.
                 let table = address & 0x03;
                 Self::SwapModeTable {
                     table,
-                    payload: SwapModeTableSettings::from_bits(value)
+                    payload: SwapModeTableSettings::from_bits(value),
                 }
             }
             0xe0..=0xe8 => {
@@ -518,7 +518,7 @@ impl LoadBpOpCode {
                     } else {
                         ComponentsSet::RedAlpha
                     },
-                    payload: MaterialAddressRange::from_bits(value)
+                    payload: MaterialAddressRange::from_bits(value),
                 }
             }
             0xf3 => Self::AlphaFunction(AlphaFunction::from_bits(value)),
@@ -526,7 +526,7 @@ impl LoadBpOpCode {
             _ => {
                 return Err(CorruptionError {
                     reason: format!("invalid blit processor opcode: {address:#04x}"),
-                    location: Some(reader.position())
+                    location: Some(reader.position()),
                 }
                 .into());
             }

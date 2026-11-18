@@ -9,7 +9,7 @@ use crate::index::IndexGroup;
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 pub const CLR_MAGIC: [u8; 4] = [0x43, 0x4c, 0x52, 0x30]; // "CLR0"
@@ -51,7 +51,7 @@ pub struct AnimationFlag {
     #[inspect(rename = "TEV Register 4 Constant")]
     pub constant_tev_register3: bool,
     #[bits(16)]
-    _unused: u16
+    _unused: u16,
 }
 
 impl AnimationFlag {
@@ -68,7 +68,7 @@ impl AnimationFlag {
 #[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub struct MaterialData {
     pub target_name_offset: u32,
-    pub animation_flag: AnimationFlag
+    pub animation_flag: AnimationFlag,
 }
 
 impl MaterialData {
@@ -78,7 +78,7 @@ impl MaterialData {
 
         Ok(Self {
             target_name_offset,
-            animation_flag
+            animation_flag,
         })
     }
 }
@@ -86,7 +86,7 @@ impl MaterialData {
 #[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub struct MaterialAnimationDataValue {
     pub rgba_mask: u32,
-    pub rgba_offset: u32
+    pub rgba_offset: u32,
 }
 
 impl MaterialAnimationDataValue {
@@ -96,7 +96,7 @@ impl MaterialAnimationDataValue {
 
         Ok(Self {
             rgba_mask,
-            rgba_offset
+            rgba_offset,
         })
     }
 }
@@ -124,7 +124,7 @@ pub struct MaterialAnimationData {
     #[inspect(rename = "Constant Color Register 3")]
     pub constant_color_register2: MaterialAnimationDataValue,
     #[inspect(rename = "Constant Color Register 4")]
-    pub constant_color_register3: MaterialAnimationDataValue
+    pub constant_color_register3: MaterialAnimationDataValue,
 }
 
 impl MaterialAnimationData {
@@ -152,7 +152,7 @@ impl MaterialAnimationData {
             constant_color_register0,
             constant_color_register1,
             constant_color_register2,
-            constant_color_register3
+            constant_color_register3,
         })
     }
 }
@@ -160,7 +160,7 @@ impl MaterialAnimationData {
 #[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub struct ColorAnimation {
     pub data: MaterialData,
-    pub anim_data: MaterialAnimationData
+    pub anim_data: MaterialAnimationData,
 }
 
 impl ColorAnimation {
@@ -180,7 +180,7 @@ impl Visitable for ColorAnimation {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor.visit_color_animation_mut(VisitorCtxMut::new(node, self))
     }
@@ -192,7 +192,7 @@ pub struct ClrHeader {
     pub start_position: u64,
     pub frame_count: u16,
     pub animated_materials: u16,
-    pub looping: bool
+    pub looping: bool,
 }
 
 impl ClrHeader {
@@ -210,7 +210,7 @@ impl ClrHeader {
             start_position: start,
             frame_count,
             animated_materials: material_count,
-            looping
+            looping,
         })
     }
 }
@@ -223,7 +223,7 @@ impl Visitable for ClrHeader {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor.visit_clr_mut(VisitorCtxMut::new(node, self))
     }
@@ -234,7 +234,7 @@ pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
     parent_id: Option<IrNodeKey>,
     arena: &IrArena,
-    name: String
+    name: String,
 ) -> SlipstreamResult<IrNodeKey> {
     let clr_header = ClrHeader::deserialize(reader)?;
 
@@ -261,7 +261,7 @@ pub fn deserialize(
             ty: IrNodeType::ColorAnimation,
             contents: ContentSlot::eager(Box::new(ColorAnimation {
                 data: material_data,
-                anim_data: material_anim_data
+                anim_data: material_anim_data,
             })),
             ..Default::default()
         });
@@ -276,8 +276,8 @@ pub fn deserialize(
             ty: IrNodeType::ClrHeader,
             parent: parent_id,
             children,
-            contents: ContentSlot::eager(Box::new(clr_header))
-        }
+            contents: ContentSlot::eager(Box::new(clr_header)),
+        },
     );
 
     Ok(clr_key)

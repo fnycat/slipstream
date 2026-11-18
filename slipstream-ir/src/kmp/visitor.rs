@@ -4,7 +4,7 @@ use crate::kmp::enph::EnemyRoutes;
 use crate::kmp::enpt::EnemyRoutePoints;
 use crate::kmp::{
     Areas, CheckpointGroups, Checkpoints, GeoObjects, ItemRoutePoints, ItemRoutes, KmpHeader,
-    PointInformationPaths, Respawns, StartingPositions
+    PointInformationPaths, Respawns, StartingPositions,
 };
 use crate::visitor::{VisitorCtx, VisitorCtxMut};
 
@@ -32,7 +32,7 @@ pub trait KmpVisitor {
 
     fn visit_starting_positions(
         &self,
-        context: VisitorCtx<'_, StartingPositions>
+        context: VisitorCtx<'_, StartingPositions>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -43,7 +43,7 @@ pub trait KmpVisitor {
 
     fn visit_starting_positions_mut(
         &mut self,
-        context: VisitorCtxMut<'_, StartingPositions>
+        context: VisitorCtxMut<'_, StartingPositions>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -62,7 +62,7 @@ pub trait KmpVisitor {
 
     fn visit_enemy_routes_mut(
         &mut self,
-        context: VisitorCtxMut<'_, EnemyRoutes>
+        context: VisitorCtxMut<'_, EnemyRoutes>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -73,7 +73,7 @@ pub trait KmpVisitor {
 
     fn visit_enemy_route_points(
         &mut self,
-        context: VisitorCtx<'_, EnemyRoutePoints>
+        context: VisitorCtx<'_, EnemyRoutePoints>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -84,7 +84,7 @@ pub trait KmpVisitor {
 
     fn visit_enemy_route_points_mut(
         &mut self,
-        context: VisitorCtxMut<'_, EnemyRoutePoints>
+        context: VisitorCtxMut<'_, EnemyRoutePoints>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -103,7 +103,7 @@ pub trait KmpVisitor {
 
     fn visit_item_route_points_mut(
         &mut self,
-        context: VisitorCtxMut<'_, ItemRoutePoints>
+        context: VisitorCtxMut<'_, ItemRoutePoints>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -138,7 +138,7 @@ pub trait KmpVisitor {
 
     fn visit_checkpoints_mut(
         &mut self,
-        context: VisitorCtxMut<'_, Checkpoints>
+        context: VisitorCtxMut<'_, Checkpoints>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -149,7 +149,7 @@ pub trait KmpVisitor {
 
     fn visit_checkpoint_groups(
         &mut self,
-        context: VisitorCtx<'_, CheckpointGroups>
+        context: VisitorCtx<'_, CheckpointGroups>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -160,7 +160,7 @@ pub trait KmpVisitor {
 
     fn visit_checkpoint_groups_mut(
         &mut self,
-        context: VisitorCtxMut<'_, CheckpointGroups>
+        context: VisitorCtxMut<'_, CheckpointGroups>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -187,7 +187,7 @@ pub trait KmpVisitor {
 
     fn visit_point_information(
         &mut self,
-        context: VisitorCtx<'_, PointInformationPaths>
+        context: VisitorCtx<'_, PointInformationPaths>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
@@ -198,7 +198,7 @@ pub trait KmpVisitor {
 
     fn visit_point_information_mut(
         &mut self,
-        context: VisitorCtxMut<'_, PointInformationPaths>
+        context: VisitorCtxMut<'_, PointInformationPaths>,
     ) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())

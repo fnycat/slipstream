@@ -16,7 +16,7 @@ use crate::{arc, brres, kmp, tpl};
 pub fn deserialize_maybe_compressed(
     mut reader: RefCursor<[u8]>,
     arena: &IrArena,
-    name: String
+    name: String,
 ) -> SlipstreamResult<IrNodeKey> {
     // Is this file compressed?
     if reader.slice(..4)? == YAZ0_MAGIC {
@@ -35,7 +35,7 @@ pub fn deserialize_maybe_compressed(
 pub fn deserialize_unknown_root(
     reader: &mut RefCursor<[u8]>,
     arena: &IrArena,
-    name: String
+    name: String,
 ) -> SlipstreamResult<IrNodeKey> {
     let magic: &[u8; 4] = reader
         .slice(..4)?
@@ -59,7 +59,7 @@ pub fn deserialize_unknown_root(
                     "unknown or unsupported file magic: `{}`",
                     String::from_utf8_lossy(magic)
                 ),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         }

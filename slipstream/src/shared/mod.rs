@@ -17,7 +17,7 @@ pub struct GraphicsState {
     pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
-    pub renderer: Arc<RwLock<egui_wgpu::Renderer>>
+    pub renderer: Arc<RwLock<egui_wgpu::Renderer>>,
 }
 
 impl GraphicsState {
@@ -33,7 +33,7 @@ impl GraphicsState {
 
     pub fn inspect_viewer<F, T>(&self, viewer: ViewerId, inspect_fn: F) -> Option<T>
     where
-        F: FnOnce(&ViewerPipelines) -> T
+        F: FnOnce(&ViewerPipelines) -> T,
     {
         let guard = self.renderer.read();
         guard
@@ -44,7 +44,7 @@ impl GraphicsState {
 
     pub fn update_viewer<F, T>(&self, viewer: ViewerId, update_fn: F) -> Option<T>
     where
-        F: FnOnce(&mut ViewerPipelines) -> T
+        F: FnOnce(&mut ViewerPipelines) -> T,
     {
         let mut guard = self.renderer.write();
         guard

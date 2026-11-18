@@ -8,7 +8,7 @@ use crate::node::node::{ContentSlot, IrNode};
 type LockReadGuard = ArcRwLockReadGuard<RawRwLock, IrNode>;
 
 pub struct ContentReadGuard {
-    inner: LockReadGuard
+    inner: LockReadGuard,
 }
 
 impl ContentReadGuard {

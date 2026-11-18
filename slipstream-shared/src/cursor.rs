@@ -13,7 +13,7 @@ pub trait SizeEstimate {
 
 #[derive(Default)]
 pub struct MutCursor {
-    inner: Vec<u8>
+    inner: Vec<u8>,
 }
 
 impl MutCursor {
@@ -151,7 +151,7 @@ impl MutCursor {
             return Err(RangeError {
                 requested: (pos + N) as u64,
                 range: 0..self.len() as u64,
-                location: Some(pos as u64)
+                location: Some(pos as u64),
             }
             .into());
         }
@@ -204,7 +204,7 @@ impl Write for MutCursor {
 pub struct RefCursor<T: ?Sized> {
     inner: Arc<T>,
     /// The current position of the cursor.
-    pos: u64
+    pos: u64,
 }
 
 impl<T: ?Sized> RefCursor<T> {
@@ -291,13 +291,13 @@ impl<T: AsRef<[u8]> + ?Sized> RefCursor<T> {
         let start = match start {
             Bound::Unbounded => 0,
             Bound::Included(&x) => x.min(rem - 1),
-            Bound::Excluded(&x) => (x + 1).min(rem - 1)
+            Bound::Excluded(&x) => (x + 1).min(rem - 1),
         };
 
         let end = match end {
             Bound::Unbounded => rem - 1,
             Bound::Included(&x) => x.min(rem - 1),
-            Bound::Excluded(&x) => (x - 1).min(rem - 1)
+            Bound::Excluded(&x) => (x - 1).min(rem - 1),
         };
 
         &self.inner.as_ref().as_ref()[start..=end]
@@ -338,7 +338,7 @@ impl<T: ?Sized> Clone for RefCursor<T> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
-            pos: self.pos
+            pos: self.pos,
         }
     }
 }
@@ -346,7 +346,7 @@ impl<T: ?Sized> Clone for RefCursor<T> {
 /// This is a nearly exact copy of the standard library.
 impl<T> io::Read for RefCursor<T>
 where
-    T: AsRef<[u8]> + ?Sized
+    T: AsRef<[u8]> + ?Sized,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let rem = self.remaining_slice();
@@ -418,7 +418,7 @@ where
 /// This is a nearly exact copy of the standard library.
 impl<T> io::Seek for RefCursor<T>
 where
-    T: AsRef<[u8]> + ?Sized
+    T: AsRef<[u8]> + ?Sized,
 {
     fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
         let (base_pos, offset) = match style {
@@ -427,7 +427,7 @@ where
                 return Ok(n);
             }
             SeekFrom::End(n) => (self.inner.as_ref().as_ref().len() as u64, n),
-            SeekFrom::Current(n) => (self.position(), n)
+            SeekFrom::Current(n) => (self.position(), n),
         };
 
         match base_pos.checked_add_signed(offset) {
@@ -437,8 +437,8 @@ where
             }
             None => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "invalid seek to a negative or overflowing position"
-            ))
+                "invalid seek to a negative or overflowing position",
+            )),
         }
     }
 

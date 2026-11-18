@@ -38,7 +38,7 @@ pub fn configure_dark_style() -> egui::Style {
                 open: egui::style::WidgetVisuals {
                     corner_radius: egui::CornerRadius::ZERO,
                     ..style.visuals.widgets.open
-                }
+                },
             },
             panel_fill: egui::Color32::from_gray(70),
             ..Default::default()
@@ -75,7 +75,7 @@ pub fn configure_light_style() -> egui::Style {
                 open: egui::style::WidgetVisuals {
                     corner_radius: egui::CornerRadius::ZERO,
                     ..style.visuals.widgets.open
-                }
+                },
             },
             ..Default::default()
         },

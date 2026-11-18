@@ -9,7 +9,7 @@ use slipstream_shared::verify;
 use crate::brres::{DeserializeContents, MdlSectionType};
 use crate::node::node::IrNodeType;
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 pub const NODE_TREE_NAME: &str = "NodeTree";
@@ -66,7 +66,7 @@ pub enum DefinitionOpCodeId {
     Weights = 0x03,
     Draw = 0x04,
     WeightIndex = 0x05,
-    DuplicateMatrix = 0x06
+    DuplicateMatrix = 0x06,
 }
 
 /// Maps a bone index to a matrix index.
@@ -76,7 +76,7 @@ pub enum DefinitionOpCodeId {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct MapNode {
     pub bone_index: BoneIndex,
-    pub matrix_index: MatrixId
+    pub matrix_index: MatrixId,
 }
 
 impl MapNode {
@@ -86,7 +86,7 @@ impl MapNode {
 
         Ok(Self {
             bone_index,
-            matrix_index
+            matrix_index,
         })
     }
 
@@ -105,7 +105,7 @@ pub struct BoneWeight {
     pub matrix_id: MatrixId,
     /// A value between 0.0 and 1.0 that determines how much geometry "sticks" to this bone
     /// when moving. A vertex can be affected by multiple bones. The weights must add up to 1.0.
-    pub weight: f32
+    pub weight: f32,
 }
 
 impl BoneWeight {
@@ -127,7 +127,7 @@ impl BoneWeight {
 #[derive(Debug, Default, Clone, PartialEq, Inspect)]
 pub struct Weights {
     pub id: WeightId,
-    pub weights: Vec<BoneWeight>
+    pub weights: Vec<BoneWeight>,
 }
 
 impl Weights {
@@ -167,7 +167,7 @@ pub struct Draw {
     pub material_index: u16,
     pub polygon_index: u16,
     pub bone_index: BoneIndex,
-    pub z_index: u8
+    pub z_index: u8,
 }
 
 impl Draw {
@@ -181,7 +181,7 @@ impl Draw {
             material_index,
             polygon_index,
             bone_index,
-            z_index
+            z_index,
         })
     }
 
@@ -201,7 +201,7 @@ impl Draw {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct WeightIndex {
     pub matrix_id: MatrixId,
-    pub weight_id: WeightId
+    pub weight_id: WeightId,
 }
 
 impl WeightIndex {
@@ -211,7 +211,7 @@ impl WeightIndex {
 
         Ok(Self {
             matrix_id,
-            weight_id
+            weight_id,
         })
     }
 }
@@ -219,7 +219,7 @@ impl WeightIndex {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct DuplicateMatrix {
     pub dest: u16,
-    pub src: u16
+    pub src: u16,
 }
 
 impl DuplicateMatrix {
@@ -247,7 +247,7 @@ pub enum DefCommand {
     Weights(Weights),
     Draw(Draw),
     WeightIndex(WeightIndex),
-    DuplicateMatrix(DuplicateMatrix)
+    DuplicateMatrix(DuplicateMatrix),
 }
 
 /// Model-wide setup code.
@@ -262,7 +262,7 @@ pub enum DefCommand {
 /// - `NodeMix`: if the model uses weights, this file contains all of them.
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct Definitions {
-    pub commands: Vec<DefCommand>
+    pub commands: Vec<DefCommand>,
 }
 
 impl Definitions {
@@ -283,7 +283,7 @@ impl Visitable for Definitions {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_mdl()
@@ -295,7 +295,7 @@ impl Visitable for Definitions {
 impl DeserializeContents for Definitions {
     const NAME: &str = "Definitions";
     const KIND: IrNodeType = IrNodeType::MdlSection {
-        ty: MdlSectionType::Definitions
+        ty: MdlSectionType::Definitions,
     };
 
     #[tracing::instrument(skip_all)]
@@ -321,7 +321,7 @@ impl DeserializeContents for Definitions {
                 DefinitionOpCodeId::DuplicateMatrix => {
                     DefCommand::DuplicateMatrix(DuplicateMatrix::deserialize(reader)?)
                 }
-                _ => unreachable!()
+                _ => unreachable!(),
             };
 
             commands.push(command);

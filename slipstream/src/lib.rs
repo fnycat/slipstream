@@ -117,7 +117,7 @@ pub fn run() -> SlipstreamResult<()> {
                 backend_options: wgpu::BackendOptions::default(),
                 display: None,
                 flags: wgpu::InstanceFlags::empty(),
-                memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default()
+                memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
             },
             device_descriptor: Arc::new(|adapter| {
                 let adapter_info = adapter.get_info();
@@ -130,12 +130,12 @@ pub fn run() -> SlipstreamResult<()> {
                     memory_hints: wgpu::MemoryHints::Performance,
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::defaults(),
-                    trace: wgpu::Trace::Off
+                    trace: wgpu::Trace::Off,
                 }
             }),
             native_adapter_selector: None,
             display_handle: None,
-            power_preference: wgpu::PowerPreference::default()
+            power_preference: wgpu::PowerPreference::default(),
         };
 
         let wgpu_options = eframe::WgpuConfiguration {
@@ -155,7 +155,7 @@ pub fn run() -> SlipstreamResult<()> {
                 }
             }),
             surface: eframe::SurfaceConfig::HIGH_THROUGHPUT,
-            wgpu_setup: eframe::egui_wgpu::WgpuSetup::CreateNew(wgpu_setup)
+            wgpu_setup: eframe::egui_wgpu::WgpuSetup::CreateNew(wgpu_setup),
         };
 
         let native_options = eframe::NativeOptions {
@@ -170,7 +170,7 @@ pub fn run() -> SlipstreamResult<()> {
         eframe::run_native(
             "Slipstream",
             native_options,
-            Box::new(|cc| Ok(Box::new(App::new(cc))))
+            Box::new(|cc| Ok(Box::new(App::new(cc)))),
         )?;
     }
 

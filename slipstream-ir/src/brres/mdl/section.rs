@@ -27,7 +27,7 @@ pub fn deserialize_leaf_section<T: DeserializeContents>(
     reader: &mut RefCursor<[u8]>,
     _header_start: u32,
     parent: Option<IrNodeKey>,
-    arena: &IrArena
+    arena: &IrArena,
 ) -> SlipstreamResult<IrNodeKey> {
     let index = IndexGroup::deserialize(reader)?;
     let section_key = arena.reserve_key();
@@ -58,7 +58,7 @@ pub fn deserialize_leaf_section<T: DeserializeContents>(
             parent,
             children: entries,
             ..Default::default()
-        }
+        },
     );
 
     Ok(section_key)

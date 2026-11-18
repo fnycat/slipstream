@@ -8,13 +8,13 @@ use slipstream_shared::error::SlipstreamResult;
 use crate::brres::{DeserializeContents, MdlSectionType, SerializeContents};
 use crate::node::node::IrNodeType;
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PaletteLink {
     pub offset1: u32,
-    pub offset2: u32
+    pub offset2: u32,
 }
 
 impl PaletteLink {
@@ -34,7 +34,7 @@ impl PaletteLink {
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PaletteLinks {
-    pub links: Vec<PaletteLink>
+    pub links: Vec<PaletteLink>,
 }
 
 impl Visitable for PaletteLinks {
@@ -48,7 +48,7 @@ impl Visitable for PaletteLinks {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_mdl()
@@ -60,7 +60,7 @@ impl Visitable for PaletteLinks {
 impl DeserializeContents for PaletteLinks {
     const NAME: &str = "Palette links";
     const KIND: IrNodeType = IrNodeType::MdlSection {
-        ty: MdlSectionType::PaletteLinks
+        ty: MdlSectionType::PaletteLinks,
     };
 
     #[tracing::instrument(skip_all)]

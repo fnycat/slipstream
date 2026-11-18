@@ -7,7 +7,7 @@ use slipstream_shared::{RefCursor, SlipstreamResult};
 use crate::encoding::ReadArrayExt;
 use crate::kmp::{KmpSectionHeader, MAX_KMP_SECTION_ENTRY_COUNT};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 pub const STARTING_POSITION_COUNT: usize = 12;
@@ -16,7 +16,7 @@ pub const STARTING_POSITION_COUNT: usize = 12;
 pub struct StartingPosition {
     pub position: glam::Vec3,
     pub rotation: glam::Vec3,
-    pub player: i16
+    pub player: i16,
 }
 
 impl StartingPosition {
@@ -29,7 +29,7 @@ impl StartingPosition {
         Ok(Self {
             position,
             rotation,
-            player
+            player,
         })
     }
 }
@@ -37,7 +37,7 @@ impl StartingPosition {
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct StartingPositions {
     #[inspect(max_horizontal_elements = 1)]
-    pub players: Vec<StartingPosition>
+    pub players: Vec<StartingPosition>,
 }
 
 impl StartingPositions {
@@ -45,7 +45,7 @@ impl StartingPositions {
 
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header: KmpSectionHeader
+        header: KmpSectionHeader,
     ) -> SlipstreamResult<Self> {
         // We cap the capacity at 255, as files generally shouldn't have more entries
         // and 255 is still a reasonable upper bound.
@@ -74,7 +74,7 @@ impl Visitable for StartingPositions {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_kmp()

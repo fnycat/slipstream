@@ -2,14 +2,14 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use slipstream_ir::kmp::{
-    Checkpoint, CheckpointBox2, Checkpoints, KmpHeader, KmpVisitor, RespawnPoint, Respawns
+    Checkpoint, CheckpointBox2, Checkpoints, KmpHeader, KmpVisitor, RespawnPoint, Respawns,
 };
 use slipstream_ir::node::arena::{IrArena, IrNodeKey};
 use slipstream_ir::visitor::{Visitor, VisitorCtx};
 use slipstream_shared::SlipstreamResult;
 use wgpu::util::DeviceExt;
 
-use crate::viewer::kmp::KmpRootVisitor;
+use crate::viewer::kmp::CourseKmpPreReqVisitor;
 use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT, ViewerPipeline};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, bytemuck::Zeroable, bytemuck::NoUninit)]
@@ -17,7 +17,7 @@ use crate::viewer::pipeline::{DEPTH_FORMAT, MSAA_SAMPLE_COUNT, TARGET_FORMAT, Vi
 enum CheckpointType {
     Standard = 0x00,
     Key = 0x01,
-    Lap = 0x02
+    Lap = 0x02,
 }
 
 impl From<u8> for CheckpointType {
@@ -25,7 +25,7 @@ impl From<u8> for CheckpointType {
         match value {
             0x00 => Self::Lap,
             0xFF => Self::Standard,
-            _ => Self::Key
+            _ => Self::Key,
         }
     }
 }
@@ -35,7 +35,7 @@ impl From<u8> for CheckpointType {
 struct CheckpointData {
     pub bounds: CheckpointBox2,
     pub respawn_y: f32,
-    pub ty: CheckpointType
+    pub ty: CheckpointType,
 }
 
 pub(super) struct CheckpointsPipeline {
@@ -44,7 +44,7 @@ pub(super) struct CheckpointsPipeline {
     /// shader.
     vertex_buffer: wgpu::Buffer,
     camera_bg: wgpu::BindGroup,
-    pipeline: wgpu::RenderPipeline
+    pipeline: wgpu::RenderPipeline,
 }
 
 impl CheckpointsPipeline {
@@ -56,7 +56,7 @@ impl CheckpointsPipeline {
             2 => Float32,
             3 => Uint32
         ],
-        step_mode: wgpu::VertexStepMode::Instance
+        step_mode: wgpu::VertexStepMode::Instance,
     };
 
     pub fn new(
@@ -64,10 +64,13 @@ impl CheckpointsPipeline {
         camera_bg_layout: &wgpu::BindGroupLayout,
         camera_bg: wgpu::BindGroup,
         checkpoints: &[Checkpoint],
-        respawns: &[RespawnPoint]
+        respawns: &[RespawnPoint],
     ) -> Self {
         let checkpoint_count = checkpoints.len();
-        debug_assert!(checkpoint_count > 0, "cannot create checkpoint pipeline for zero checkpoints.");
+        debug_assert!(
+            checkpoint_count > 0,
+            "cannot create checkpoint pipeline for zero checkpoints."
+        );
 
         // 6 floats per checkpoint
         let mut bounds = Vec::with_capacity(checkpoint_count);
@@ -87,14 +90,14 @@ impl CheckpointsPipeline {
             bounds.push(CheckpointData {
                 bounds: checkpoint.bounds,
                 respawn_y,
-                ty: CheckpointType::from(checkpoint.ty as u8)
+                ty: CheckpointType::from(checkpoint.ty as u8),
             });
         }
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("checkpoint bounding box buffer"),
             contents: bytemuck::cast_slice(&bounds),
-            usage: wgpu::BufferUsages::VERTEX
+            usage: wgpu::BufferUsages::VERTEX,
         });
         tracing::trace!(
             "Generated vertex buffer with {} checkpoint bounds",
@@ -107,7 +110,7 @@ impl CheckpointsPipeline {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("checkpoints pipeline layout"),
             bind_group_layouts: &[Some(camera_bg_layout)],
-            immediate_size: 0
+            immediate_size: 0,
         });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -117,7 +120,7 @@ impl CheckpointsPipeline {
                 module: &module,
                 entry_point: Some("vs_main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &[Some(Self::VERTEX_LAYOUT)]
+                buffers: &[Some(Self::VERTEX_LAYOUT)],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
@@ -126,19 +129,19 @@ impl CheckpointsPipeline {
                 cull_mode: None,
                 unclipped_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
-                conservative: false
+                conservative: false,
             },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: DEPTH_FORMAT,
                 depth_write_enabled: Some(true),
                 depth_compare: Some(wgpu::CompareFunction::Greater),
                 stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default()
+                bias: wgpu::DepthBiasState::default(),
             }),
             multisample: wgpu::MultisampleState {
                 count: MSAA_SAMPLE_COUNT,
                 mask: !0,
-                alpha_to_coverage_enabled: false
+                alpha_to_coverage_enabled: false,
             },
             fragment: Some(wgpu::FragmentState {
                 module: &module,
@@ -147,18 +150,18 @@ impl CheckpointsPipeline {
                 targets: &[Some(wgpu::ColorTargetState {
                     format: TARGET_FORMAT,
                     blend: Some(wgpu::BlendState::ADDITIVE),
-                    write_mask: wgpu::ColorWrites::ALL
-                })]
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
             }),
             multiview_mask: None,
-            cache: None
+            cache: None,
         });
 
         Self {
             checkpoint_count,
             vertex_buffer,
             camera_bg,
-            pipeline
+            pipeline,
         }
     }
 }

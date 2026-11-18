@@ -6,7 +6,7 @@ use slipstream_shared::error::SlipstreamResult;
 #[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct CallDisplayList {
     pub address: u32,
-    pub size: u32
+    pub size: u32,
 }
 
 impl CallDisplayList {

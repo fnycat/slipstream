@@ -33,7 +33,7 @@ pub struct LogEvent {
     pub name: &'static str,
     pub verbosity: Level,
     pub target: String,
-    pub message: String
+    pub message: String,
 }
 
 impl<S: Subscriber> Layer<S> for GlobalMemLogLayer {
@@ -48,7 +48,7 @@ impl<S: Subscriber> Layer<S> for GlobalMemLogLayer {
             name: metadata.name(),
             verbosity: *metadata.level(),
             target: metadata.target().to_owned(),
-            message: visitor.0
+            message: visitor.0,
         });
     }
 }

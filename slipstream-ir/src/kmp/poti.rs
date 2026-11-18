@@ -7,14 +7,14 @@ use slipstream_shared::{RefCursor, SlipstreamResult};
 use crate::encoding::ReadArrayExt;
 use crate::kmp::{KmpSectionHeader, MAX_KMP_SECTION_ENTRY_COUNT};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PointInformation {
     pub position: glam::Vec3,
     pub settings: u16,
-    pub additional_settings: u16
+    pub additional_settings: u16,
 }
 
 impl PointInformation {
@@ -26,7 +26,7 @@ impl PointInformation {
         Ok(Self {
             position,
             settings,
-            additional_settings
+            additional_settings,
         })
     }
 }
@@ -35,7 +35,7 @@ impl PointInformation {
 pub struct PointInformationPath {
     pub enable_smoothing: bool,
     pub cyclic: bool,
-    pub points: Vec<PointInformation>
+    pub points: Vec<PointInformation>,
 }
 
 impl PointInformationPath {
@@ -60,14 +60,14 @@ impl PointInformationPath {
         Ok(Self {
             enable_smoothing,
             cyclic,
-            points
+            points,
         })
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub struct PointInformationPaths {
-    pub paths: Vec<PointInformationPath>
+    pub paths: Vec<PointInformationPath>,
 }
 
 impl PointInformationPaths {
@@ -75,7 +75,7 @@ impl PointInformationPaths {
 
     pub fn deserialize(
         reader: &mut RefCursor<[u8]>,
-        header: KmpSectionHeader
+        header: KmpSectionHeader,
     ) -> SlipstreamResult<Self> {
         // We cap the capacity at 255, as files generally shouldn't have more entries
         // and 255 is still a reasonable upper bound.
@@ -101,7 +101,7 @@ impl Visitable for PointInformationPaths {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_kmp()

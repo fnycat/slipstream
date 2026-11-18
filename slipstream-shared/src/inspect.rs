@@ -26,13 +26,13 @@ pub trait AsEnumLabel {
 /// Describes changes made by the window
 #[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct Changes {
-    pub changed: bool
+    pub changed: bool,
 }
 
 impl From<Option<egui::Response>> for Changes {
     fn from(value: Option<egui::Response>) -> Self {
         Self {
-            changed: value.map(|c| c.changed()).unwrap_or(false)
+            changed: value.map(|c| c.changed()).unwrap_or(false),
         }
     }
 }
@@ -40,7 +40,7 @@ impl From<Option<egui::Response>> for Changes {
 impl From<egui::Response> for Changes {
     fn from(value: egui::Response) -> Self {
         Self {
-            changed: value.changed()
+            changed: value.changed(),
         }
     }
 }
@@ -50,7 +50,7 @@ impl BitOr for Changes {
 
     fn bitor(self, rhs: Self) -> Self::Output {
         Changes {
-            changed: self.changed || rhs.changed
+            changed: self.changed || rhs.changed,
         }
     }
 }
@@ -117,7 +117,7 @@ pub struct FieldConfig {
     pub suffix: Option<&'static str>,
     /// The maximum amount of elements (in an array) that the inspector will display
     /// in one row.
-    pub max_horizontal_elements: usize
+    pub max_horizontal_elements: usize,
 }
 
 impl Default for FieldConfig {
@@ -130,14 +130,14 @@ impl Default for FieldConfig {
             category: None,
             read_only: false,
             range: None,
-            max_horizontal_elements: MAX_HORIZONTAL_INPUT_COUNT
+            max_horizontal_elements: MAX_HORIZONTAL_INPUT_COUNT,
         }
     }
 }
 
 pub struct BitFieldWrapper<T, F> {
     pub value: T,
-    pub on_update: F
+    pub on_update: F,
 }
 
 impl<T: Inspect + Copy, F: FnMut(T)> Inspect for BitFieldWrapper<T, F> {
@@ -268,7 +268,7 @@ impl<T: Inspect> Inspect for Option<T> {
     fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         match self {
             Some(x) => x.draw_inner(ui, cfg).into(),
-            None => ui.label("None").into()
+            None => ui.label("None").into(),
         }
     }
 }

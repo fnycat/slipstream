@@ -11,7 +11,7 @@ pub struct PatHeader {
     pub frame_count: u16,
     pub base_number: u16,
     pub string_number: u16,
-    pub cyclic: bool
+    pub cyclic: bool,
 }
 
 impl PatHeader {
@@ -27,7 +27,7 @@ impl PatHeader {
             frame_count,
             base_number,
             string_number,
-            cyclic
+            cyclic,
         })
     }
 }
@@ -38,7 +38,7 @@ pub struct AnimationSection {}
 /// Both section #1 and section #3 have the same format of `string_number` amount of u32s.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct U32Section {
-    pub offsets: Vec<u32>
+    pub offsets: Vec<u32>,
 }
 
 impl U32Section {
@@ -55,7 +55,7 @@ impl U32Section {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PatternAnimation {
     pub subfile_header: SubfileHeader,
-    pub pat0_header: PatHeader
+    pub pat0_header: PatHeader,
 }
 
 impl PatternAnimation {

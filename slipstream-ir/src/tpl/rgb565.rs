@@ -5,7 +5,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::tpl::{
-    EncodedImage, ExportableImage, ImageFormat, Rgba8Image, block_count, detile, hash_pixels
+    EncodedImage, ExportableImage, ImageFormat, Rgba8Image, block_count, detile, hash_pixels,
 };
 
 /// Converts a 16-byte integer representing an RGB565 colour to an RGBA8 colour.
@@ -29,7 +29,7 @@ pub struct Rgb565Image {
     pub(super) dimensions: glam::U16Vec2,
     pub(super) mipmaps: u32,
     pub(super) hash: u64,
-    pub(super) pixels: Arc<[glam::U8Vec4]>
+    pub(super) pixels: Arc<[glam::U8Vec4]>,
 }
 
 impl Rgb565Image {
@@ -43,7 +43,7 @@ impl Rgb565Image {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32
+        mipmaps: u32,
     ) -> SlipstreamResult<Self> {
         let blocks = block_count(dimensions, Self::BLOCK_SIZE);
 
@@ -63,7 +63,7 @@ impl Rgb565Image {
             dimensions,
             mipmaps,
             pixels,
-            hash
+            hash,
         })
     }
 }
@@ -99,7 +99,7 @@ impl ExportableImage for Rgb565Image {
     fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
-        format: image::ImageFormat
+        format: image::ImageFormat,
     ) -> SlipstreamResult<()> {
         let dims = self.dimensions();
 
@@ -111,7 +111,7 @@ impl ExportableImage for Rgb565Image {
             dims.x as u32,
             dims.y as u32,
             image::ExtendedColorType::Rgba8,
-            format
+            format,
         )?;
 
         Ok(())

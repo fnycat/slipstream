@@ -13,7 +13,7 @@ use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::tpl::{ImageData, ImageFormat};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 pub const TPL_MAGIC: [u8; 4] = [0x00, 0x20, 0xAF, 0x30];
@@ -26,7 +26,7 @@ pub struct TplHeader {
     #[inspect(tooltip = "Number of images in this file.")]
     pub image_count: u32,
     #[inspect(tooltip = "Offset in bytes to the image table.")]
-    pub table_offset: i32
+    pub table_offset: i32,
 }
 
 impl TplHeader {
@@ -48,7 +48,7 @@ impl TplHeader {
             return Err(IncorrectFormat {
                 expected_magic: TPL_MAGIC.into(),
                 found_magic: magic.into(),
-                location: Some(reader.position())
+                location: Some(reader.position()),
             }
             .into());
         }
@@ -59,7 +59,7 @@ impl TplHeader {
         Ok(Self {
             header_start,
             image_count,
-            table_offset
+            table_offset,
         })
     }
 }
@@ -72,7 +72,7 @@ impl Visitable for TplHeader {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor.visit_tpl_mut(VisitorCtxMut::new(node, self))
     }
@@ -86,7 +86,7 @@ pub enum PaletteFormat {
     #[inspect(rename = "RGB565")]
     Rgb565 = 0x01,
     #[inspect(rename = "RGB5A3")]
-    Rgba5a3 = 0x02
+    Rgba5a3 = 0x02,
 }
 
 impl PaletteFormat {
@@ -116,7 +116,7 @@ pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
     parent: Option<IrNodeKey>,
     arena: &IrArena,
-    label: String
+    label: String,
 ) -> SlipstreamResult<IrNodeKey> {
     let tpl_start = reader.position();
 
@@ -163,7 +163,7 @@ pub fn deserialize(
                     reason: format!(
                         "TPL file `{label}`, image #{i} mipmap count exceeds 32-bit integer limit"
                     ),
-                    location: Some(reader.position())
+                    location: Some(reader.position()),
                 })
             })?;
 
@@ -172,7 +172,7 @@ pub fn deserialize(
             reader,
             image_header.dimensions,
             mipmaps_used as u32,
-            image_header.format
+            image_header.format,
         )?;
 
         let img_key = arena.insert(IrNodeDescriptor {
@@ -181,7 +181,7 @@ pub fn deserialize(
             parent: Some(root_key),
             contents: ContentSlot::eager(Box::new(TplImage {
                 header: image_header,
-                image
+                image,
             })),
             ..Default::default()
         });
@@ -195,8 +195,8 @@ pub fn deserialize(
             ty: IrNodeType::Tpl,
             parent,
             children: images,
-            contents: ContentSlot::eager(Box::new(header))
-        }
+            contents: ContentSlot::eager(Box::new(header)),
+        },
     );
 
     Ok(root_key)
@@ -223,7 +223,7 @@ pub struct ImageHeader {
     pub min_lod: u8,
     #[inspect(rename = "Maximum LOD")]
     pub max_lod: u8,
-    pub unpacked: u8
+    pub unpacked: u8,
 }
 
 impl ImageHeader {
@@ -274,14 +274,14 @@ impl ImageHeader {
             enable_edge_lod,
             min_lod,
             max_lod,
-            unpacked
+            unpacked,
         })
     }
 
     /// Serializes the header, returning a handle to write the image data address later on.
     pub fn serialize(
         &self,
-        writer: &mut MutCursor
+        writer: &mut MutCursor,
     ) -> SlipstreamResult<WriteHandle<u32, BigEndian>> {
         writer.write_u16::<BigEndian>(self.dimensions.y)?; // Height is stored first
         writer.write_u16::<BigEndian>(self.dimensions.x)?;
@@ -309,7 +309,7 @@ impl ImageHeader {
 pub struct TplImage {
     pub header: ImageHeader,
     #[inspect(with = ImageData::draw_ui, read_only)]
-    pub image: ImageData
+    pub image: ImageData,
 }
 
 impl TplImage {
@@ -329,7 +329,7 @@ impl Visitable for TplImage {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor.visit_tpl_image_mut(VisitorCtxMut::new(node, self))
     }

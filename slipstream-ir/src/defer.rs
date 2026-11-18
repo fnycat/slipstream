@@ -29,7 +29,7 @@ impl ByteOrderExt for byteorder::LittleEndian {
 /// so we use a generic bool instead.
 pub struct WriteHandle<T, B> {
     location: usize,
-    _marker: PhantomData<(T, B)>
+    _marker: PhantomData<(T, B)>,
 }
 
 impl<T: num::traits::ToBytes, B: ByteOrderExt> WriteHandle<T, B> {
@@ -76,7 +76,7 @@ impl DeferredWriteExt for MutCursor {
 
         Ok(WriteHandle {
             location: self.len() - 4,
-            _marker: PhantomData
+            _marker: PhantomData,
         })
     }
 
@@ -85,7 +85,7 @@ impl DeferredWriteExt for MutCursor {
 
         Ok(WriteHandle {
             location: self.len() - 4,
-            _marker: PhantomData
+            _marker: PhantomData,
         })
     }
 }
@@ -97,14 +97,14 @@ impl DeferredWriteExt for MutCursor {
 pub struct StringPool {
     /// Maps a string to an index into the string pool.
     strings: HashMap<String, u32>,
-    buffer: MutCursor
+    buffer: MutCursor,
 }
 
 impl StringPool {
     pub fn new() -> Self {
         Self {
             strings: HashMap::new(),
-            buffer: MutCursor::new()
+            buffer: MutCursor::new(),
         }
     }
 

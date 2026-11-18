@@ -7,7 +7,7 @@ pub struct FurVectors {}
 
 impl DeserializeContents for FurVectors {
     const KIND: IrNodeType = IrNodeType::MdlSection {
-        ty: MdlSectionType::FurVectors
+        ty: MdlSectionType::FurVectors,
     };
     const NAME: &str = "Fur Vectors";
 

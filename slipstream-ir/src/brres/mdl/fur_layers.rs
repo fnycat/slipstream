@@ -7,7 +7,7 @@ pub struct FurLayers {}
 
 impl DeserializeContents for FurLayers {
     const KIND: IrNodeType = IrNodeType::MdlSection {
-        ty: MdlSectionType::FurLayers
+        ty: MdlSectionType::FurLayers,
     };
     const NAME: &str = "Fur Layers";
 

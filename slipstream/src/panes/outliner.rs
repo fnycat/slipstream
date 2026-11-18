@@ -21,7 +21,7 @@ use slipstream_shared::widgets::{self, CollapseDescriptor, DropdownType, HeaderI
 pub struct OutlinerPane {
     cmd_sender: mpsc::Sender<PaneAction>,
     base_node: Option<IrNodeKey>,
-    arena: Arc<IrArena>
+    arena: Arc<IrArena>,
 }
 
 impl OutlinerPane {
@@ -32,12 +32,12 @@ impl OutlinerPane {
     pub fn new(
         cmd_sender: mpsc::Sender<PaneAction>,
         base_node: Option<IrNodeKey>,
-        arena: Arc<IrArena>
+        arena: Arc<IrArena>,
     ) -> Box<Self> {
         Box::new(Self {
             cmd_sender,
             base_node,
-            arena
+            arena,
         })
     }
 
@@ -58,7 +58,7 @@ impl OutlinerPane {
         if node.ty == IrNodeType::MdlHeader && ui.button("Open in 3D viewer").clicked() {
             self.cmd_sender
                 .send(PaneAction::AddPane(AddPaneRequest::Viewer {
-                    viewed: Some(node.key())
+                    viewed: Some(node.key()),
                 }))
                 .expect("failed to send context command");
         }
@@ -66,7 +66,7 @@ impl OutlinerPane {
         if ui.button("Open in new outliner").clicked() {
             self.cmd_sender
                 .send(PaneAction::AddPane(AddPaneRequest::Outliner {
-                    base: node.key()
+                    base: node.key(),
                 }))
                 .expect("failed to send context command");
         }
@@ -74,7 +74,7 @@ impl OutlinerPane {
         if ui.button("Properties").clicked() {
             self.cmd_sender
                 .send(PaneAction::AddPane(AddPaneRequest::Inspector {
-                    inspected: node.key()
+                    inspected: node.key(),
                 }))
                 .expect("failed to send context command");
         }
@@ -87,7 +87,7 @@ impl OutlinerPane {
                 node.label.clone().into(),
                 Some(HeaderIcons {
                     open: node.ty.open_icon(),
-                    closed: node.ty.closed_icon()
+                    closed: node.ty.closed_icon(),
                 }),
                 DropdownType::Regular,
                 false,
@@ -102,9 +102,9 @@ impl OutlinerPane {
 
                     Ok(())
                 },
-                Some(&mut |ui| self.draw_context_menu(node, ui))
+                Some(&mut |ui| self.draw_context_menu(node, ui)),
             ),
-            ui
+            ui,
         )
     }
 
@@ -119,7 +119,7 @@ impl OutlinerPane {
             if response.clicked() {
                 self.cmd_sender
                     .send(PaneAction::AddPane(AddPaneRequest::Inspector {
-                        inspected: node.key()
+                        inspected: node.key(),
                     }))
                     .expect("failed to send inspector pane open request");
             }
@@ -163,7 +163,7 @@ impl Pane for OutlinerPane {
         &mut self,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
-        _is_focused: bool
+        _is_focused: bool,
     ) -> PaneResponse {
         ui.set_min_size(ui.available_size());
 
@@ -198,10 +198,10 @@ impl Pane for OutlinerPane {
                             pane_channel.send(PaneAction::ReplacePane(ReplacePaneRequest {
                                 tile_id,
                                 request: AddPaneRequest::Outliner {
-                                    base: IrNodeKey::ROOT
-                                }
+                                    base: IrNodeKey::ROOT,
+                                },
                             }));
-                        }
+                        },
                     );
                 }
             });
@@ -226,7 +226,7 @@ impl NodeIconsExt for IrNodeType {
                 reg_icon!(FOLDER_OPEN)
             }
             // Just reuse the closed icon for everything else.
-            _ => self.closed_icon()
+            _ => self.closed_icon(),
         }
     }
 
@@ -251,7 +251,7 @@ impl NodeIconsExt for IrNodeType {
                 MdlSectionType::FurVectors => reg_icon!(PAW_PRINT),
                 MdlSectionType::TextureLinks => reg_icon!(LINK),
                 MdlSectionType::PaletteLinks => reg_icon!(LINK),
-                MdlSectionType::UserData => reg_icon!(FOLDER_USER)
+                MdlSectionType::UserData => reg_icon!(FOLDER_USER),
             },
 
             Self::ChrHeader => reg_icon!(FILM_SLATE),
@@ -281,10 +281,10 @@ impl NodeIconsExt for IrNodeType {
                 KmpSectionType::RespawnPositions => reg_icon!(LIFEBUOY),
                 KmpSectionType::Routes => reg_icon!(PATH),
                 KmpSectionType::StageInformation => reg_icon!(INFO),
-                KmpSectionType::StartingPositions => reg_icon!(FLAG_BANNER)
+                KmpSectionType::StartingPositions => reg_icon!(FLAG_BANNER),
             },
 
-            Self::Unknown => reg_icon!(FILE)
+            Self::Unknown => reg_icon!(FILE),
         }
     }
 }

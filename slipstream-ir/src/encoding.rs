@@ -55,7 +55,7 @@ macro_rules! impl_byteorder_arrays {
             }
 
             /// Extends [`ReadBytesExt`] with array methods.
-            /// 
+            ///
             /// [`ReadBytesExt`]: byteorder::ReadBytesExt
             pub trait ReadArrayExt: byteorder::ReadBytesExt {
                 /// Reads an `N`-element array of unsigned bytes.

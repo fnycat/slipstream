@@ -15,7 +15,7 @@ pub enum WindowState {
     /// The window is currently maximized.
     Maximized,
     /// The window is currently minimized.
-    Minimized
+    Minimized,
 }
 
 impl WindowState {
@@ -29,7 +29,7 @@ impl WindowState {
         match states {
             (Some(true), _) => Self::Maximized,
             (_, Some(true)) => Self::Minimized,
-            _ => Self::Normal
+            _ => Self::Normal,
         }
     }
 }
@@ -60,7 +60,7 @@ fn draw_unmaximize(ui: &mut egui::Ui) -> egui::Response {
             0.0,
             visuals.weak_bg_fill,
             visuals.bg_stroke,
-            egui::StrokeKind::Inside
+            egui::StrokeKind::Inside,
         );
 
         let stroke_color = if response.hovered() {
@@ -99,7 +99,7 @@ pub fn draw_version_details(ui: &mut egui::Ui) {
     ui.ctx()
         .layer_painter(egui::LayerId::new(
             egui::Order::Foreground,
-            egui::Id::unique("version_overlay")
+            egui::Id::unique("version_overlay"),
         ))
         .text(
             pos,
@@ -110,7 +110,7 @@ pub fn draw_version_details(ui: &mut egui::Ui) {
                 &env!("VERGEN_GIT_SHA")[..8]
             ),
             egui::FontId::proportional(12.0),
-            egui::Color32::from_white_alpha(200)
+            egui::Color32::from_white_alpha(200),
         );
 }
 
@@ -245,7 +245,7 @@ impl App {
                 egui::Frame::new()
                     .fill(ui.visuals().window_fill)
                     .inner_margin(egui::Margin::symmetric(8, 0))
-                    .outer_margin(egui::Margin::ZERO)
+                    .outer_margin(egui::Margin::ZERO),
             )
             .resizable(false)
             .show(ui, |ui| {
@@ -253,7 +253,7 @@ impl App {
                 let response = ui.interact(
                     ui.ctx().viewport_rect(),
                     decorations_id,
-                    egui::Sense::click_and_drag()
+                    egui::Sense::click_and_drag(),
                 );
 
                 if response.double_clicked() {
@@ -309,48 +309,48 @@ impl App {
                             if ui.button("Widget Inspector").clicked() {
                                 self.send_pane_action(PaneAction::AddPane(
                                     AddPaneRequest::Debug {
-                                        ty: DebugPane::Inspection
-                                    }
+                                        ty: DebugPane::Inspection,
+                                    },
                                 ))?;
                             }
 
                             if ui.button("GUI Settings").clicked() {
                                 self.send_pane_action(PaneAction::AddPane(
                                     AddPaneRequest::Debug {
-                                        ty: DebugPane::General
-                                    }
+                                        ty: DebugPane::General,
+                                    },
                                 ))?;
                             }
 
                             if ui.button("Style Settings").clicked() {
                                 self.send_pane_action(PaneAction::AddPane(
                                     AddPaneRequest::Debug {
-                                        ty: DebugPane::Style
-                                    }
+                                        ty: DebugPane::Style,
+                                    },
                                 ))?;
                             }
 
                             if ui.button("Image Loader Statistics").clicked() {
                                 self.send_pane_action(PaneAction::AddPane(
                                     AddPaneRequest::Debug {
-                                        ty: DebugPane::Loaders
-                                    }
+                                        ty: DebugPane::Loaders,
+                                    },
                                 ))?;
                             }
 
                             if ui.button("Memory Statistics").clicked() {
                                 self.send_pane_action(PaneAction::AddPane(
                                     AddPaneRequest::Debug {
-                                        ty: DebugPane::Memory
-                                    }
+                                        ty: DebugPane::Memory,
+                                    },
                                 ))?;
                             }
 
                             if ui.button("Texture Statistics").clicked() {
                                 self.send_pane_action(PaneAction::AddPane(
                                     AddPaneRequest::Debug {
-                                        ty: DebugPane::Textures
-                                    }
+                                        ty: DebugPane::Textures,
+                                    },
                                 ))?;
                             }
 
@@ -397,7 +397,7 @@ pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
             egui::Frame::new()
                 .fill(layout_bg)
                 .inner_margin(egui::Margin::ZERO)
-                .outer_margin(egui::Margin::ZERO)
+                .outer_margin(egui::Margin::ZERO),
         )
         .resizable(false)
         .show(ui, |ui| {
@@ -405,7 +405,7 @@ pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
             let response = ui.interact(
                 ui.ctx().viewport_rect(),
                 decorations_id,
-                egui::Sense::click_and_drag()
+                egui::Sense::click_and_drag(),
             );
 
             let window_state = WindowState::get_state(ui);
@@ -414,7 +414,7 @@ pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
                     WindowState::Maximized => {
                         ui.send_viewport_cmd(egui::ViewportCommand::Maximized(false))
                     }
-                    _ => ui.send_viewport_cmd(egui::ViewportCommand::Maximized(true))
+                    _ => ui.send_viewport_cmd(egui::ViewportCommand::Maximized(true)),
                 }
             }
 
@@ -432,7 +432,7 @@ pub fn draw_basic_title_bar(ui: &mut egui::Ui) {
                     egui::Align2::CENTER_CENTER,
                     APP_TITLE,
                     egui::FontId::proportional(14.0),
-                    ui.visuals().text_color()
+                    ui.visuals().text_color(),
                 );
 
                 draw_title_buttons(ui);

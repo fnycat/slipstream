@@ -11,10 +11,10 @@ use crate::encoding::{Deserialize, WriteArrayExt};
 use crate::node::arena::{IrArena, IrNodeDescriptor, IrNodeKey};
 use crate::node::node::{ContentSlot, IrNodeType};
 use crate::tpl::{
-    EncodedImage, ImageData, ImageFormat, MAX_SAFE_PIXEL_HEIGHT, MAX_SAFE_PIXEL_WIDTH
+    EncodedImage, ImageData, ImageFormat, MAX_SAFE_PIXEL_HEIGHT, MAX_SAFE_PIXEL_WIDTH,
 };
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 pub const TEX_MAGIC: [u8; 4] = [0x54, 0x45, 0x58, 0x30]; // "TEX"
@@ -24,7 +24,7 @@ pub const TEX_MAGIC: [u8; 4] = [0x54, 0x45, 0x58, 0x30]; // "TEX"
 pub struct TextureFlags {
     pub is_paletted: bool,
     #[bits(31)]
-    _unused: u32
+    _unused: u32,
 }
 
 impl TextureFlags {
@@ -44,14 +44,14 @@ pub struct Texture {
     pub header: TexHeader,
     #[inspect(rename = "Image")]
     #[inspect(with = ImageData::draw_ui, read_only)]
-    pub data: ImageData
+    pub data: ImageData,
 }
 
 impl Texture {
     pub fn serialize(
         &self,
         writer: &mut MutCursor,
-        header: &SubfileHeader
+        header: &SubfileHeader,
     ) -> SlipstreamResult<()> {
         header.serialize(writer)?;
 
@@ -87,7 +87,7 @@ impl Visitable for Texture {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> std::ops::ControlFlow<()> {
         visitor.visit_tex_mut(VisitorCtxMut::new(node, self))
     }
@@ -102,7 +102,7 @@ pub struct TexHeader {
     pub format: ImageFormat,
     pub mipmaps: u32,
     pub min_mipmap_used: f32,
-    pub max_mipmap_used: f32
+    pub max_mipmap_used: f32,
 }
 
 impl TexHeader {
@@ -126,7 +126,7 @@ impl TexHeader {
             format,
             mipmaps,
             min_mipmap_used,
-            max_mipmap_used
+            max_mipmap_used,
         })
     }
 }
@@ -136,7 +136,7 @@ pub fn deserialize(
     reader: &mut RefCursor<[u8]>,
     parent_id: Option<IrNodeKey>,
     arena: &IrArena,
-    name: String
+    name: String,
 ) -> SlipstreamResult<IrNodeKey> {
     let header = TexHeader::deserialize(reader)?;
     tracing::debug!(
@@ -153,7 +153,7 @@ pub fn deserialize(
                 "image exceeds maximum width of {MAX_SAFE_PIXEL_WIDTH} ({})",
                 header.dimensions.x
             ),
-            location: Some(reader.position())
+            location: Some(reader.position()),
         }
         .into());
     }
@@ -164,7 +164,7 @@ pub fn deserialize(
                 "image exceeds maximum height of {MAX_SAFE_PIXEL_HEIGHT} ({})",
                 header.dimensions.y
             ),
-            location: Some(reader.position())
+            location: Some(reader.position()),
         }
         .into());
     }
@@ -178,7 +178,7 @@ pub fn deserialize(
         ty: IrNodeType::Texture,
         parent: parent_id,
         children: Vec::new(),
-        contents: ContentSlot::eager(Box::new(Texture { header, data }))
+        contents: ContentSlot::eager(Box::new(Texture { header, data })),
     });
 
     Ok(key)
@@ -197,7 +197,7 @@ mod test {
     const OOM_CORPUS: &[u8] = &[
         255, 0, 3, 255, 255, 255, 0, 0, 0, 0, 0, 3, 255, 255, 255, 3, 0, 0, 0, 49, 0, 0, 0, 0, 0,
         0, 84, 250, 255, 251, 255, 1, 0, 0, 0, 3, 255, 255, 255, 255, 255, 5, 3, 87, 138, 255, 255,
-        255, 255, 255, 255, 254, 3, 0, 0, 138, 255, 255, 5, 3, 255, 87
+        255, 255, 255, 255, 254, 3, 0, 0, 138, 255, 255, 5, 3, 255, 87,
     ];
 
     #[test]

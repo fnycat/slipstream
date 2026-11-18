@@ -18,7 +18,7 @@ pub struct WgpuModel {
     pub pipelines: PipelineRegistry,
 
     pub textures: Vec<WgpuTexture>,
-    pub polygons: Vec<WgpuPolygon>
+    pub polygons: Vec<WgpuPolygon>,
 }
 
 impl WgpuModel {
@@ -26,18 +26,18 @@ impl WgpuModel {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         camera_state: &CameraState,
-        ir: IntermediateModel
+        ir: IntermediateModel,
     ) -> SlipstreamResult<Self> {
         let bone_transform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("bone transform storage buffer"),
             contents: bytemuck::cast_slice(&ir.bone_transforms),
-            usage: wgpu::BufferUsages::STORAGE
+            usage: wgpu::BufferUsages::STORAGE,
         });
 
         let bone_parent_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("bone parent storage buffer"),
             contents: bytemuck::cast_slice(&ir.bone_parents),
-            usage: wgpu::BufferUsages::STORAGE
+            usage: wgpu::BufferUsages::STORAGE,
         });
 
         let bone_bg_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -50,9 +50,9 @@ impl WgpuModel {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: true },
                         min_binding_size: None,
-                        has_dynamic_offset: false
+                        has_dynamic_offset: false,
                     },
-                    count: None
+                    count: None,
                 },
                 // bone parents
                 wgpu::BindGroupLayoutEntry {
@@ -61,11 +61,11 @@ impl WgpuModel {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: true },
                         min_binding_size: None,
-                        has_dynamic_offset: false
+                        has_dynamic_offset: false,
                     },
-                    count: None
-                }
-            ]
+                    count: None,
+                },
+            ],
         });
 
         let bone_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -77,18 +77,18 @@ impl WgpuModel {
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                         buffer: &bone_transform_buffer,
                         offset: 0,
-                        size: None
-                    })
+                        size: None,
+                    }),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                         buffer: &bone_parent_buffer,
                         offset: 0,
-                        size: None
-                    })
-                }
-            ]
+                        size: None,
+                    }),
+                },
+            ],
         });
 
         let mut pipelines = PipelineRegistry::new(device.clone());
@@ -105,7 +105,7 @@ impl WgpuModel {
                 &bone_bg_layout,
                 &camera_state.bind_group_layout,
                 &mut pipelines,
-                polygon
+                polygon,
             )?);
         }
 
@@ -116,7 +116,7 @@ impl WgpuModel {
             bind_pose_group: bone_bind_group,
             pipelines,
             textures,
-            polygons
+            polygons,
         })
     }
 }
@@ -128,7 +128,7 @@ impl ViewerPipeline for WgpuModel {
                 &self.pipelines,
                 &self.camera_bind_group,
                 &self.bind_pose_group,
-                render_pass
+                render_pass,
             );
         }
     }
@@ -136,14 +136,14 @@ impl ViewerPipeline for WgpuModel {
 
 pub struct WgpuTexture {
     texture: wgpu::Texture,
-    view: wgpu::TextureView
+    view: wgpu::TextureView,
 }
 
 impl WgpuTexture {
     pub fn from_intermediate(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        rgba8: Rgba8Image
+        rgba8: Rgba8Image,
     ) -> SlipstreamResult<Self> {
         let dims = rgba8.dimensions();
 
@@ -154,17 +154,17 @@ impl WgpuTexture {
                 size: wgpu::Extent3d {
                     width: dims.x as u32,
                     height: dims.y as u32,
-                    depth_or_array_layers: 1
+                    depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: wgpu::TextureFormat::Rgba8Unorm,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                view_formats: &[wgpu::TextureFormat::Rgba8Unorm]
+                view_formats: &[wgpu::TextureFormat::Rgba8Unorm],
             },
             wgpu::util::TextureDataOrder::LayerMajor,
-            rgba8.bytes().expect("Rgba8Image::bytes never fails")
+            rgba8.bytes().expect("Rgba8Image::bytes never fails"),
         );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
@@ -176,7 +176,7 @@ impl WgpuTexture {
             base_mip_level: 0,
             mip_level_count: None,
             base_array_layer: 0,
-            array_layer_count: None
+            array_layer_count: None,
         });
 
         Ok(Self { texture, view })
@@ -189,7 +189,7 @@ pub struct WgpuPolygon {
     indices: u32,
     index_buffer: wgpu::Buffer,
     vertex_buffer: wgpu::Buffer,
-    uv_buffer: wgpu::Buffer
+    uv_buffer: wgpu::Buffer,
 }
 
 impl WgpuPolygon {
@@ -203,7 +203,7 @@ impl WgpuPolygon {
             3 => Uint32x4,
             4 => Float32x4,
         ],
-        step_mode: wgpu::VertexStepMode::Vertex
+        step_mode: wgpu::VertexStepMode::Vertex,
     };
     pub const UV_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
         array_stride: 64,
@@ -213,7 +213,7 @@ impl WgpuPolygon {
             7 => Float32x4,
             8 => Float32x4
         ],
-        step_mode: wgpu::VertexStepMode::Vertex
+        step_mode: wgpu::VertexStepMode::Vertex,
     };
 
     pub fn from_intermediate(
@@ -221,30 +221,30 @@ impl WgpuPolygon {
         bind_pose_layout: &wgpu::BindGroupLayout,
         camera_layout: &wgpu::BindGroupLayout,
         pipelines: &mut PipelineRegistry,
-        ir: IntermediatePolygon
+        ir: IntermediatePolygon,
     ) -> SlipstreamResult<Self> {
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("polygon index buffer"),
             contents: bytemuck::cast_slice(&ir.indices),
-            usage: wgpu::BufferUsages::INDEX
+            usage: wgpu::BufferUsages::INDEX,
         });
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("polygon vertex buffer"),
             contents: bytemuck::cast_slice(&ir.vertices),
-            usage: wgpu::BufferUsages::VERTEX
+            usage: wgpu::BufferUsages::VERTEX,
         });
 
         let uv_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("polygon uv buffer"),
             contents: bytemuck::cast_slice(&ir.uv_buffer),
-            usage: wgpu::BufferUsages::VERTEX
+            usage: wgpu::BufferUsages::VERTEX,
         });
 
         let pipeline_signature = pipelines.register(PipelineDescriptor {
             name: "polygon",
             bind_group_layouts: &[Some(camera_layout), Some(bind_pose_layout)],
-            vertex_layouts: &[Some(Self::VERTEX_LAYOUT), Some(Self::UV_LAYOUT)]
+            vertex_layouts: &[Some(Self::VERTEX_LAYOUT), Some(Self::UV_LAYOUT)],
         });
 
         tracing::trace!("Generated wgpu model with {} indices", ir.indices.len());
@@ -255,7 +255,7 @@ impl WgpuPolygon {
 
             vertex_buffer,
             uv_buffer,
-            index_buffer
+            index_buffer,
         })
     }
 
@@ -264,7 +264,7 @@ impl WgpuPolygon {
         pipelines: &PipelineRegistry,
         camera_group: &wgpu::BindGroup,
         bind_pose_group: &wgpu::BindGroup,
-        render_pass: &mut wgpu::RenderPass
+        render_pass: &mut wgpu::RenderPass,
     ) {
         let pipeline = pipelines.get(self.pipeline).expect("pipeline not found");
 

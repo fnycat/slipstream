@@ -7,7 +7,7 @@ use slipstream_shared::{RefCursor, SlipstreamResult};
 
 use crate::tpl::{
     EncodedImage, ExportableImage, ImageFormat, L4Image, L8Image, La4Image, La8Image, Rgb5a3Image,
-    Rgb565Image, block_count, detile, hash_pixels
+    Rgb565Image, block_count, detile, hash_pixels,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,7 +15,7 @@ pub struct Rgba8Image {
     pub(super) dimensions: glam::U16Vec2,
     pub(super) pixels: Arc<[glam::U8Vec4]>,
     pub(super) mipmaps: u32,
-    pub(super) hash: u64
+    pub(super) hash: u64,
 }
 
 impl Rgba8Image {
@@ -29,7 +29,7 @@ impl Rgba8Image {
     pub fn new(
         reader: &mut RefCursor<[u8]>,
         dimensions: glam::U16Vec2,
-        mipmaps: u32
+        mipmaps: u32,
     ) -> SlipstreamResult<Self> {
         let blocks = block_count(dimensions, Self::BLOCK_SIZE);
 
@@ -58,7 +58,7 @@ impl Rgba8Image {
             dimensions,
             pixels,
             mipmaps,
-            hash
+            hash,
         })
     }
 
@@ -98,7 +98,7 @@ impl ExportableImage for Rgba8Image {
     fn export<W: Write + Seek>(
         &self,
         buffered_writer: &mut W,
-        format: image::ImageFormat
+        format: image::ImageFormat,
     ) -> SlipstreamResult<()> {
         let dims = self.dimensions();
 
@@ -109,7 +109,7 @@ impl ExportableImage for Rgba8Image {
             dims.x as u32,
             dims.y as u32,
             image::ExtendedColorType::Rgba8,
-            format
+            format,
         )?;
 
         Ok(())
@@ -126,7 +126,7 @@ impl From<&L4Image> for Rgba8Image {
                 .pixels
                 .iter()
                 .map(|&p| glam::u8vec4(p, p, p, 0xff))
-                .collect()
+                .collect(),
         }
     }
 }
@@ -141,7 +141,7 @@ impl From<&L8Image> for Rgba8Image {
                 .pixels
                 .iter()
                 .map(|&p| glam::u8vec4(p, p, p, 0xff))
-                .collect()
+                .collect(),
         }
     }
 }
@@ -156,7 +156,7 @@ impl From<&La4Image> for Rgba8Image {
                 .pixels
                 .iter()
                 .map(|&p| glam::u8vec4(p.x, p.x, p.x, p.y))
-                .collect()
+                .collect(),
         }
     }
 }
@@ -171,7 +171,7 @@ impl From<&La8Image> for Rgba8Image {
                 .pixels
                 .iter()
                 .map(|&p| glam::u8vec4(p.x, p.x, p.x, p.y))
-                .collect()
+                .collect(),
         }
     }
 }
@@ -182,7 +182,7 @@ impl From<&Rgb5a3Image> for Rgba8Image {
             dimensions: value.dimensions,
             mipmaps: value.mipmaps,
             hash: value.hash,
-            pixels: value.pixels.clone()
+            pixels: value.pixels.clone(),
         }
     }
 }
@@ -193,7 +193,7 @@ impl From<&Rgb565Image> for Rgba8Image {
             dimensions: value.dimensions,
             mipmaps: value.mipmaps,
             hash: value.hash,
-            pixels: value.pixels.clone()
+            pixels: value.pixels.clone(),
         }
     }
 }

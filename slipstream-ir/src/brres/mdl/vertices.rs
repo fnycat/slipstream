@@ -10,7 +10,7 @@ use crate::brres::{DeserializeContents, MdlSectionType, SectionHeader};
 use crate::node::node::IrNodeType;
 use crate::util::{Box3, VectorDivisor, VertexFormat, deserialize_vector_data};
 use crate::visitor::{
-    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut
+    Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut,
 };
 
 const COMPONENTS_XY: u32 = 0x0;
@@ -22,13 +22,13 @@ pub enum VertexPositionType {
     /// Stores only two position components.
     Xy,
     /// Stores all three position components.
-    Xyz
+    Xyz,
 }
 
 #[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum VertexBufData {
     Xy(Vec<glam::Vec2>),
-    Xyz(Vec<glam::Vec3>)
+    Xyz(Vec<glam::Vec3>),
 }
 
 impl VertexBufData {
@@ -36,14 +36,14 @@ impl VertexBufData {
     pub const fn ty(&self) -> VertexPositionType {
         match self {
             Self::Xy(_) => VertexPositionType::Xy,
-            Self::Xyz(_) => VertexPositionType::Xyz
+            Self::Xyz(_) => VertexPositionType::Xyz,
         }
     }
 
     pub const fn components(&self) -> usize {
         match self {
             Self::Xy(_) => 2,
-            Self::Xyz(_) => 3
+            Self::Xyz(_) => 3,
         }
     }
 
@@ -51,7 +51,7 @@ impl VertexBufData {
     pub fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Xy(verts) => bytemuck::cast_slice(verts),
-            Self::Xyz(verts) => bytemuck::cast_slice(verts)
+            Self::Xyz(verts) => bytemuck::cast_slice(verts),
         }
     }
 
@@ -59,7 +59,7 @@ impl VertexBufData {
     pub fn size(&self) -> usize {
         match self {
             Self::Xy(verts) => size_of::<glam::Vec2>() * verts.len(),
-            Self::Xyz(verts) => size_of::<glam::Vec3>() * verts.len()
+            Self::Xyz(verts) => size_of::<glam::Vec3>() * verts.len(),
         }
     }
 
@@ -67,7 +67,7 @@ impl VertexBufData {
     pub fn len(&self) -> usize {
         match self {
             Self::Xy(verts) => verts.len(),
-            Self::Xyz(verts) => verts.len()
+            Self::Xyz(verts) => verts.len(),
         }
     }
 
@@ -102,7 +102,7 @@ pub struct VertexBuffer {
     pub divisor: u8,
     pub bounding_volume: Box3,
     /// The vertex data.
-    pub vertices: VertexBufData
+    pub vertices: VertexBufData,
 }
 
 impl VertexBuffer {
@@ -113,7 +113,7 @@ impl VertexBuffer {
             VertexBufData::Xy(xy) => xy
                 .get(index)
                 .map(|glam::Vec2 { x, y }| glam::vec3(*x, *y, 0.0)),
-            VertexBufData::Xyz(xyz) => xyz.get(index).copied()
+            VertexBufData::Xyz(xyz) => xyz.get(index).copied(),
         }
     }
 }
@@ -129,7 +129,7 @@ impl Visitable for VertexBuffer {
     fn accept_mut(
         &mut self,
         node: VisitorCtxMetaMut<'_>,
-        visitor: &mut dyn Visitor
+        visitor: &mut dyn Visitor,
     ) -> ControlFlow<()> {
         visitor
             .as_mdl()
@@ -141,7 +141,7 @@ impl Visitable for VertexBuffer {
 impl DeserializeContents for VertexBuffer {
     const NAME: &str = "Vertices";
     const KIND: IrNodeType = IrNodeType::MdlSection {
-        ty: MdlSectionType::Vertices
+        ty: MdlSectionType::Vertices,
     };
 
     #[tracing::instrument(skip_all, fields(header_start))]
@@ -166,18 +166,18 @@ impl DeserializeContents for VertexBuffer {
                 reader,
                 vertex_count as usize,
                 format,
-                VectorDivisor::Custom(divisor)
+                VectorDivisor::Custom(divisor),
             )?),
             COMPONENTS_XYZ => VertexBufData::Xyz(deserialize_vector_data::<3, glam::Vec3>(
                 reader,
                 vertex_count as usize,
                 format,
-                VectorDivisor::Custom(divisor)
+                VectorDivisor::Custom(divisor),
             )?),
             v => {
                 return Err(CorruptionError {
                     reason: format!("invalid vertex component count: {v} (expected 2 or 3)"),
-                    location: Some(reader.position())
+                    location: Some(reader.position()),
                 }
                 .into());
             }
@@ -188,7 +188,7 @@ impl DeserializeContents for VertexBuffer {
             vertices,
             format,
             divisor,
-            bounding_volume
+            bounding_volume,
         })
     }
 }
