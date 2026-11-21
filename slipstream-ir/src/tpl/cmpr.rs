@@ -27,7 +27,7 @@ impl CmprImage {
     /// Size in bytes of a CMPR subblock.
     pub const SUBBLOCK_BYTE_SIZE: usize = 8;
     /// The format of this texture when uploaded to the GPU.
-    #[cfg(feature = "egui-impls")]
+    #[cfg(feature = "ui-impls")]
     pub const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bc1RgbaUnorm;
 
     /// The amount of subblocks in this image.
@@ -43,7 +43,7 @@ impl CmprImage {
     /// format.
     ///
     /// [`Bc1RgbaUnorm`]: wgpu::TextureFormat::Bc1RgbaUnorm
-    #[cfg(feature = "egui-impls")]
+    #[cfg(feature = "ui-impls")]
     pub fn create_wgpu_texture(
         &self,
         device: &wgpu::Device,

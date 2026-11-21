@@ -1,4 +1,5 @@
 pub mod arc;
+pub mod bmg;
 pub mod brres;
 pub mod compression;
 pub mod defer;

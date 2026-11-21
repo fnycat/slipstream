@@ -33,7 +33,7 @@ pub struct Rgb565Image {
 }
 
 impl Rgb565Image {
-    #[cfg(feature = "egui-impls")]
+    #[cfg(feature = "ui-impls")]
     pub const SHADER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
     pub const BLOCK_W: usize = 4;

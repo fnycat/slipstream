@@ -59,7 +59,7 @@ impl La4Image {
 }
 
 impl EncodedImage for La4Image {
-    // #[cfg(feature = "egui-impls")]
+    // #[cfg(feature = "ui-impls")]
     // fn create_wgpu_texture(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> (wgpu::Texture, wgpu::TextureView) {
     //     use wgpu::util::DeviceExt;
 
@@ -199,7 +199,7 @@ impl La8Image {
 }
 
 impl EncodedImage for La8Image {
-    // #[cfg(feature = "egui-impls")]
+    // #[cfg(feature = "ui-impls")]
     // fn create_wgpu_texture(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> (wgpu::Texture, wgpu::TextureView) {
     //     use wgpu::util::DeviceExt;
 

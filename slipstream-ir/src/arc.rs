@@ -28,7 +28,7 @@ pub const ARC_SAFE_NODE_COUNT: usize = 10_000;
 
 /// See [`Custom Mario Kart Wiiki`](https://mkwiiki.org/wiki/ARC_(File_Format)) for more info.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Header {
+struct ArcHeader {
     /// Offset to the first node in the archive.
     pub node_offset: i32,
     /// Size of all nodes including the string table.
@@ -37,7 +37,7 @@ struct Header {
     pub file_offset: i32,
 }
 
-impl Header {
+impl ArcHeader {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
         let magic = reader.read_u8_array::<4>()?;
         if magic != ARC_MAGIC {
@@ -313,7 +313,7 @@ pub fn deserialize(
 ) -> SlipstreamResult<IrNodeKey> {
     tracing::trace!("Parsing ARC file `{name}`");
 
-    let header = Header::deserialize(reader)?;
+    let header = ArcHeader::deserialize(reader)?;
 
     let ty = NodeType::deserialize(reader)?;
     if ty != NodeType::Directory {
@@ -474,7 +474,7 @@ pub fn serialize(arena: &IrArena, node: IrNodeKey, writer: &mut MutCursor) -> Sl
     let header_start = writer.len();
     let arc_size = node_count as usize * ARC_NODE_SIZE + string_pool.len();
 
-    let header: Header = Header {
+    let header: ArcHeader = ArcHeader {
         node_offset: 0x20, // Header is 32 bytes long, first node starts directly after header.
         file_offset: (header_start + arc_size) as i32 + 1, // Files start directly after the string pool.
         size: 0x20 + arc_size as i32, // node_offset + node_count * node_size + string_pool_size

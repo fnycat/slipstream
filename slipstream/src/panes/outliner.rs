@@ -63,6 +63,7 @@ impl OutlinerPane {
                 .expect("failed to send context command");
         }
 
+        // Opens this file subtree in a new outliner window.
         if ui.button("Open in new outliner").clicked() {
             self.cmd_sender
                 .send(PaneAction::AddPane(AddPaneRequest::Outliner {
@@ -71,12 +72,19 @@ impl OutlinerPane {
                 .expect("failed to send context command");
         }
 
+        // Opens the property window.
         if ui.button("Properties").clicked() {
             self.cmd_sender
                 .send(PaneAction::AddPane(AddPaneRequest::Inspector {
                     inspected: node.key(),
                 }))
                 .expect("failed to send context command");
+        }
+
+        if node.ty.is_exportable() {
+            if ui.button("Export").clicked() {
+                node.export();
+            }
         }
     }
 

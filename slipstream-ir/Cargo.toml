@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["egui-impls"]
+default = ["ui-impls"]
 
 # Enables all `egui` functionality. Disabling this feature will remove the `egui` and `wgpu` dependencies
 # and any `egui` related code (this includes the `Inspect` implementations)
-egui-impls = ["egui", "wgpu", "eframe"]
+ui-impls = ["egui", "wgpu", "eframe"]
 
 [dependencies]
 slipstream-derive = { path = "../slipstream-derive" }
@@ -34,6 +34,7 @@ parking_lot_core = "0.10.0"
 downcast-rs = "2.0.2"
 rfd = "0.18.0"
 num = "0.4.3"
+smallvec = "1.16.6"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4.30"

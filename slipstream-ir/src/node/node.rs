@@ -124,6 +124,22 @@ impl IrNode {
     pub fn children_keys(&self) -> &[IrNodeKey] {
         &self.children
     }
+
+    #[cfg(feature = "ui-impls")]
+    pub fn export(&self) -> SlipstreamResult<()> {
+        // Show a file dialog to determine where to export to.
+
+        use slipstream_shared::file_dialog::{FileDialogKind, pick_file_dialog};
+
+        pick_file_dialog(FileDialogKind::Save, async |file| {
+            tracing::trace!("Exporting file to {:?}", file.path());
+
+            // Serialize the object.
+            file.write(&[1, 2, 3]).await;
+        });
+
+        Ok(())
+    }
 }
 
 /// The category this node belongs to. This affects visuals such as the icon but also how the editor treats this node.
@@ -175,4 +191,13 @@ pub enum IrNodeType {
 
     /// An unknown file format. The object simply stores the raw bytes of the file.
     Unknown,
+}
+
+impl IrNodeType {
+    /// Whether the editor is capable of exporting/serializing this node type.
+    ///
+    /// For some nodes like the NW4R directories it doesn't make too much sense to do
+    pub fn is_exportable(&self) -> bool {
+        true
+    }
 }

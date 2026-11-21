@@ -7,7 +7,7 @@ use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::cursor::MutCursor;
 use slipstream_shared::{RefCursor, SlipstreamResult};
 
-#[cfg(feature = "egui-impls")]
+#[cfg(feature = "ui-impls")]
 use slipstream_shared::inspect::{Changes, FieldConfig};
 
 use crate::defer::WriteHandle;
@@ -114,7 +114,7 @@ impl ImageData {
         self.export(&mut buf_writer, format)
     }
 
-    #[cfg(feature = "egui-impls")]
+    #[cfg(feature = "ui-impls")]
     pub fn draw_ui(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
         use slipstream_shared::inspect::Inspect;
 
