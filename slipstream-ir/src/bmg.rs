@@ -77,7 +77,7 @@ impl FontKind {
 /// The text index attributes format specifically for Mario Kart Wii.
 ///
 /// Other games will have different formats.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MkTextIndexAttributes {
     pub font: FontKind,
 }
@@ -89,13 +89,13 @@ impl MkTextIndexAttributes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TextIndexAttributes {
     MkWii(MkTextIndexAttributes),
     Unknown(Vec<u8>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextIndexTableEntry {
     /// Offset into the text pool of the `DAT1` section.
     pub text_offset: u32,
@@ -135,13 +135,13 @@ impl TextIndexTableEntry {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct TextIndexTable {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InfoSection {
     pub group_id: u16,
     pub entries: Vec<TextIndexTableEntry>,
 }
 
-impl TextIndexTable {
+impl InfoSection {
     pub const MAGIC: [u8; 4] = *b"INF1";
 
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
@@ -161,9 +161,62 @@ impl TextIndexTable {
     }
 }
 
+/// Contains the strings in the BMG file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StringSection {
+    /// Pool of strings.
+    /// 
+    /// Strings are sequence of 16-bit values terminated by a NULL value, but these NULL values
+    /// are also possible in the middle of the string if they are part of an escape sequence.
+    pub pool: Vec<u16>
+}   
+
+impl StringSection {
+    pub const MAGIC: [u8; 4] = *b"DAT1";
+
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let total_size = reader.read_u32::<BigEndian>()?;
+        verify!(total_size.is_multiple_of(4), "BMG string pool size must be a multiple of 4, got {total_size}");
+
+        let pool_slice = reader.slice(0..total_size as usize)?;
+
+        // We need to manually copy over the data from the `&[u8]` to the `Vec<u16>`
+        // as the pool may not have a 2-byte alignment in memory.
+        //
+        // This means we casting using bytemuck may fail.
+        // let pool = bytemuck::cast_slice::<u8, u16>(pool_slice).to_vec();
+
+        let mut pool = Vec::with_capacity(total_size as usize / 2);
+
+        // `pool_slice` is guaranteed to be divisible into 2-byte chunks due to
+        // the divisible by 4 assertion at the start of this function.
+        //
+        // Therefore we simply discard the remainder.
+        for bytes in pool_slice.as_chunks::<2>().0 {
+            let short = u16::from_be_bytes(*bytes);
+            pool.push(short);
+        }
+
+        Ok(Self {
+            pool
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MessageIdSection {
+
+}
+
+impl MessageIdSection {
+
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum BmgSection {
-    IndexTable(TextIndexTable),
+    IndexTable(InfoSection),
+    StringPool(StringSection),
+    // Messages
 }
 
 impl BmgSection {
@@ -172,7 +225,8 @@ impl BmgSection {
         let len = reader.read_u32::<BigEndian>()?;
 
         let data = match magic {
-            TextIndexTable::MAGIC => Self::IndexTable(TextIndexTable::deserialize(reader)?),
+            InfoSection::MAGIC => Self::IndexTable(InfoSection::deserialize(reader)?),
+            StringSection::MAGIC => Self::StringPool(StringSection::deserialize(reader)?),
             _ => {
                 return Err(CorruptionError {
                     reason: format!(
