@@ -1,5 +1,7 @@
 use std::ops::{BitOr, BitOrAssign, RangeInclusive};
 
+use smallvec::SmallVec;
+
 use crate::widgets::{self, drag_value};
 
 /// The maximum amount of input entries that will be allowed on a single line.
@@ -315,11 +317,35 @@ impl<T: Inspect> Inspect for Vec<T> {
     }
 
     fn draw_inner(&mut self, ui: &mut egui::Ui, _cfg: &FieldConfig) -> Changes {
-        let err_text = egui::RichText::new("ERROR: You should use `Inspect::draw_rows` instead of `Inspect::draw_inner` for array types!")
+        let err_text = egui::RichText::new("ERROR: You should use `Inspect::draw_rows` instead of `Inspect::draw_inner` for Vec")
             .color(ui.visuals().error_fg_color);
 
         ui.label(err_text);
 
+        Changes::default()
+    }
+
+    fn draw_rows(&mut self, ui: &mut egui::Ui, id: egui::Id, cfg: &FieldConfig) -> Changes {
+        let mut changes = Changes::default();
+
+        widgets::wrapped(ui, id, self, cfg.max_horizontal_elements, |ui, item| {
+            changes |= item.draw_inner(ui, cfg);
+        });
+
+        changes
+    }
+}
+
+impl<T: Inspect, const N: usize> Inspect for SmallVec<[T; N]> {
+    fn is_nested(&self) -> bool {
+        true
+    }
+
+    fn draw_inner(&mut self, ui: &mut egui::Ui, cfg: &FieldConfig) -> Changes {
+        let err_text = egui::RichText::new("ERROR: You should use `Inspect::draw_rows instead` of `Inspect::draw_inner` for SmallVecs")
+            .color(ui.visuals().error_fg_color);
+
+        ui.label(err_text);
         Changes::default()
     }
 

@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use slipstream_ir::arc::ArcDirectory;
+use slipstream_ir::bmg::BmgFile;
 use slipstream_ir::brres::{
     Bone, BrresFile, ChrHeader, ClrHeader, ColorAnimation, ColorBuffer, Definitions, Material,
     MdlHeader, MdlVisitor, NormalBuffer, PaletteLinks, Polygon, SkeletalAnimation, Texture,
@@ -95,6 +96,14 @@ impl Visitor for InspectorVisitor<'_> {
         &mut self,
         context: VisitorCtxMut<'_, ColorAnimation>,
     ) -> ControlFlow<()> {
+        let _changes = context
+            .content
+            .draw_properties(self.ui, &FieldConfig::default());
+
+        ControlFlow::Continue(())
+    }
+
+    fn visit_bmg_mut(&mut self, context: VisitorCtxMut<'_, BmgFile>) -> ControlFlow<()> {
         let _changes = context
             .content
             .draw_properties(self.ui, &FieldConfig::default());

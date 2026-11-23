@@ -4,6 +4,7 @@ use slipstream_shared::cursor::RefCursor;
 use slipstream_shared::error::{SlipstreamResult, UnsupportedError};
 
 use crate::arc::ARC_MAGIC;
+use crate::bmg::{self, BMG_MAGIC};
 use crate::brres::{BRRES_MAGIC, CHR_MAGIC, CLR_MAGIC, MDL_MAGIC, TEX_MAGIC};
 use crate::compression::{self, YAZ0_MAGIC};
 use crate::kmp::KMP_MAGIC;
@@ -53,6 +54,7 @@ pub fn deserialize_unknown_root(
         TEX_MAGIC => brres::tex::deserialize(reader, None, arena, name)?,
         TPL_MAGIC => tpl::deserialize(reader, None, arena, name)?,
         KMP_MAGIC => kmp::deserialize(reader, None, arena, name)?,
+        BMG_MAGIC => bmg::deserialize(reader, None, arena, name)?,
         _ => {
             return Err(UnsupportedError {
                 reason: format!(

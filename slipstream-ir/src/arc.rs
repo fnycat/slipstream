@@ -9,6 +9,7 @@ use slipstream_shared::error::{
     CorruptionError, IncorrectFormat, SlipstreamError, SlipstreamResult,
 };
 
+use crate::bmg::{self, BMG_MAGIC};
 use crate::brres::{self, BRRES_MAGIC};
 use crate::defer::StringPool;
 use crate::encoding::{ReadArrayExt, ReadStringExt, WriteArrayExt};
@@ -199,6 +200,7 @@ fn parse_leaf_node(
         BRRES_MAGIC => brres::deserialize(reader, Some(parent_id), arena, label),
         TPL_MAGIC => tpl::deserialize(reader, Some(parent_id), arena, label),
         KMP_MAGIC => kmp::deserialize(reader, Some(parent_id), arena, label),
+        BMG_MAGIC => bmg::deserialize(reader, Some(parent_id), arena, label),
         _ => {
             let key = arena.insert(IrNodeDescriptor {
                 label,

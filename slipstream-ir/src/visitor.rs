@@ -1,4 +1,5 @@
 use crate::arc::{ArcDirectory, UnknownFile};
+use crate::bmg::BmgFile;
 use crate::brres::{
     BrresFile, ChrHeader, ClrHeader, ColorAnimation, MdlVisitor, SkeletalAnimation, Texture,
 };
@@ -305,6 +306,22 @@ pub trait Visitor {
     }
 
     fn visit_tex_mut(&mut self, texture: VisitorCtxMut<'_, Texture>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_bmg(&mut self, bmg: VisitorCtx<'_, BmgFile>) -> ControlFlow<()> {
+        if self.stop_when_uninterested() {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_bmg_mut(&mut self, bmg: VisitorCtxMut<'_, BmgFile>) -> ControlFlow<()> {
         if self.stop_when_uninterested() {
             ControlFlow::Break(())
         } else {

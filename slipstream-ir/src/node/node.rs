@@ -189,6 +189,9 @@ pub enum IrNodeType {
         ty: KmpSectionType,
     },
 
+    /// A BMG message file
+    Bmg,
+
     /// An unknown file format. The object simply stores the raw bytes of the file.
     Unknown,
 }

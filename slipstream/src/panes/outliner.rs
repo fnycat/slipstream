@@ -292,6 +292,8 @@ impl NodeIconsExt for IrNodeType {
                 KmpSectionType::StartingPositions => reg_icon!(FLAG_BANNER),
             },
 
+            Self::Bmg => reg_icon!(TEXT_T),
+
             Self::Unknown => reg_icon!(FILE),
         }
     }

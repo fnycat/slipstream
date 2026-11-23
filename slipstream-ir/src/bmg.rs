@@ -1,17 +1,19 @@
+use std::ops::ControlFlow;
+
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use slipstream_derive::try_from;
+use slipstream_derive::{Inspect, try_from};
 use slipstream_shared::{
     RefCursor, SlipstreamResult, cursor::MutCursor, error::CorruptionError, verify,
 };
 use smallvec::SmallVec;
 
-use crate::encoding::ReadArrayExt;
+use crate::{encoding::ReadArrayExt, node::{arena::{IrArena, IrNodeDescriptor, IrNodeKey}, node::{ContentSlot, IrNodeType}}, visitor::{Visitable, Visitor, VisitorCtx, VisitorCtxMeta, VisitorCtxMetaMut, VisitorCtxMut}};
 
 pub const BMG_MAGIC: [u8; 4] = *b"MESG";
 pub const BMG_DATA_TYPE: [u8; 4] = *b"bmg1";
 
 /// The character encoding used for the text in a BMG file.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Inspect)]
 #[try_from(u8)]
 pub enum Charset {
     Undefined = 0x00,
@@ -38,32 +40,49 @@ impl Charset {
 /// A selection of fonts from `Font.szs`.
 ///
 /// This is used in BMG files to select a font for the messages.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Inspect)]
 #[try_from(u8)]
 pub enum FontKind {
     /// `tt_kart_font_rodan_ntlg_pro_b.brfnt`.
     ///
     /// Used for the countdown and for race strings like `FINISH!`.
+    #[inspect(tooltip = "Used for the countdown and race strings such as `FINISH!`")]
     RodanNtlgPro = 0x00,
     /// `kart_kanji_font.brfnt` or `kart_font_korea.brfnt` in the NTSC-K version.
     ///
     /// Used for nearly all messages.
+    #[inspect(tooltip = "Corresponds to `kart_kanji_font.brnft` or `kart_font_korea.brfnt` in the NTSC-K version of the game. Used for nearly all messages.")]
+    #[default]
     KanjiOrKorea = 0x01,
     /// `tt_kart_extension_font.brfnt`.
     ///
     /// Unused.
+    #[inspect(tooltip = "Corresponds to `tt_kart_extension_font.brfnt` in Font.szs")]
     Extension = 0x02,
-    /// `indictator_font.brfnt`.
+    /// `indicator_font.brfnt`.
     ///
     /// Unused.
+    #[inspect(tooltip = "Corresponds to `indicator_font.brfnt` in Font.szs")]
     Indicator = 0x03,
     /// `mario_font_number_red.brfnt`.
     ///
     /// Special red font (only digits) used for battle and team points.
+    #[inspect(
+        tooltip = "Special blue font (only digits) used for battle and team points
+        
+        Corresponds to `mario_font_number_red.brfnt` in Font.szs
+        "
+    )]
     FontNumberRed = 0x04,
     /// `mario_font_number_blue.brfnt`.
     ///
     /// Special blue font (only digits) used for battle and team points
+    #[inspect(
+        tooltip = "Special blue font (only digits) used for battle and team points
+        
+        Corresponds to `mario_font_number_blue.brfnt` in Font.szs
+        "
+    )]
     FontNumberBlue = 0x05,
 }
 
@@ -77,7 +96,7 @@ impl FontKind {
 /// The text index attributes format specifically for Mario Kart Wii.
 ///
 /// Other games will have different formats.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct MkTextIndexAttributes {
     pub font: FontKind,
 }
@@ -89,13 +108,13 @@ impl MkTextIndexAttributes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub enum TextIndexAttributes {
     MkWii(MkTextIndexAttributes),
     Unknown(Vec<u8>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Inspect)]
 pub struct TextIndexTableEntry {
     /// Offset into the text pool of the `DAT1` section.
     pub text_offset: u32,
@@ -135,7 +154,7 @@ impl TextIndexTableEntry {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct InfoSection {
     pub group_id: u16,
     pub entries: Vec<TextIndexTableEntry>,
@@ -162,12 +181,13 @@ impl InfoSection {
 }
 
 /// Contains the strings in the BMG file.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct StringSection {
     /// Pool of strings.
     /// 
     /// Strings are sequence of 16-bit values terminated by a NULL value, but these NULL values
     /// are also possible in the middle of the string if they are part of an escape sequence.
+    #[inspect(ignore)]
     pub pool: Vec<u16>
 }   
 
@@ -203,19 +223,38 @@ impl StringSection {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Inspect)]
 pub struct MessageIdSection {
-
+    pub format: u8,
+    pub info: u8,
+    pub message_ids: Vec<u32>
 }
 
 impl MessageIdSection {
+    pub const MAGIC: [u8; 4] = *b"MID1";
 
+    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        let num_entries = reader.read_u16::<BigEndian>()?;
+        let format = reader.read_u8()?;
+        let info = reader.read_u8()?;
+        let _reserved = reader.read_u32::<BigEndian>()?;
+        
+        let mut message_ids = Vec::with_capacity(num_entries as usize);
+        for _ in 0..num_entries {
+            message_ids.push(reader.read_u32::<BigEndian>()?);
+        }
+
+        Ok(Self {
+            format, info, message_ids
+        })
+    }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Inspect)]
 pub enum BmgSection {
     IndexTable(InfoSection),
     StringPool(StringSection),
+    MessageIds(MessageIdSection)
     // Messages
 }
 
@@ -227,6 +266,7 @@ impl BmgSection {
         let data = match magic {
             InfoSection::MAGIC => Self::IndexTable(InfoSection::deserialize(reader)?),
             StringSection::MAGIC => Self::StringPool(StringSection::deserialize(reader)?),
+            MessageIdSection::MAGIC => Self::MessageIds(MessageIdSection::deserialize(reader)?),
             _ => {
                 return Err(CorruptionError {
                     reason: format!(
@@ -242,16 +282,19 @@ impl BmgSection {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct BmgHeader {
+#[derive(Debug, Clone, PartialEq, Inspect)]
+pub struct BmgFile {
+    #[inspect(ignore)]
     pub len: u32,
-    pub num_sections: u32,
+    #[inspect(rename = "Character set")]
     pub charset: Charset,
     pub sections: SmallVec<[BmgSection; 3]>,
 }
 
-impl BmgHeader {
+impl BmgFile {
     pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
+        tracing::debug!("Deserializing BMG file");
+
         let signature = reader.read_u8_array::<4>()?;
         verify!(
             signature == BMG_MAGIC,
@@ -280,19 +323,35 @@ impl BmgHeader {
             sections.push(BmgSection::deserialize(reader)?);
         }
 
+        tracing::debug!("Finished deserializing BMG file");
+
         Ok(Self {
             len,
-            num_sections,
             charset,
             sections,
         })
     }
 }
 
-pub struct Bmg {}
-
-impl Bmg {
-    pub fn deserialize(reader: &mut RefCursor<[u8]>) -> SlipstreamResult<Self> {
-        todo!()
+impl Visitable for BmgFile {
+    fn accept(&self, ctx: VisitorCtxMeta, visitor: &mut dyn Visitor) -> ControlFlow<()> {
+        visitor.visit_bmg(VisitorCtx::new(ctx, self))
     }
+
+    fn accept_mut(&mut self, ctx: VisitorCtxMetaMut, visitor: &mut dyn Visitor) -> ControlFlow<()> {
+        visitor.visit_bmg_mut(VisitorCtxMut::new(ctx, self))
+    }
+}
+
+pub fn deserialize(reader: &mut RefCursor<[u8]>, parent: Option<IrNodeKey>, arena: &IrArena, label: String) -> SlipstreamResult<IrNodeKey> {
+    let header = BmgFile::deserialize(reader)?;
+    let key = arena.insert(IrNodeDescriptor {
+        label,
+        ty: IrNodeType::Bmg,
+        children: Vec::new(),
+        parent,
+        contents: ContentSlot::eager(Box::new(header))
+    });
+
+    Ok(key)
 }
